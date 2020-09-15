@@ -1,5 +1,6 @@
 (* TEST
    modules = "stubs.c"
+   compare_programs = "false"
 *)
 
 (* C version of ephetest.ml *)

@@ -1,5 +1,6 @@
 (* TEST
    modules = "custom_finalize.c"
+   compare_programs = "false"
 *)
 
 type t

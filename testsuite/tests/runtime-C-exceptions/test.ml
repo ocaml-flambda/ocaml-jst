@@ -1,5 +1,6 @@
 (* TEST
    modules = "stub_test.c"
+   compare_programs = "false"
 *)
 
 external failwith_from_ocaml : string -> 'a = "caml_failwith_value"

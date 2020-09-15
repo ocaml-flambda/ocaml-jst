@@ -1,5 +1,6 @@
 (* TEST
    modules = "manyargsprim.c"
+   compare_programs = "false"
 *)
 
 let manyargs a b c d e f g h i j k l m n o =

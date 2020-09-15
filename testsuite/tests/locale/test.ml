@@ -1,5 +1,6 @@
 (* TEST
 modules = "stubs.c"
+compare_programs = "false"
 *)
 
 external setlocale : string -> unit = "ml_setlocale"

@@ -1,6 +1,7 @@
 (* TEST
    flags += " -w -a "
    modules = "globrootsprim.c"
+   compare_programs = "false"
 *)
 
 module type GLOBREF = sig

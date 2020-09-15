@@ -1,5 +1,6 @@
 (* TEST
    modules = "cmstub.c cmmain.c"
+   compare_programs = "false"
 *)
 
 (* OCaml part of the code *)

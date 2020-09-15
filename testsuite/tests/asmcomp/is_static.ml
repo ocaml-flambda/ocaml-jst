@@ -1,5 +1,6 @@
 (* TEST
    modules = "is_in_static_data.c"
+   compare_programs = "false"
    * naked_pointers
    ** native
 *)

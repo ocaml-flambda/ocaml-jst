@@ -663,7 +663,7 @@ AS_CASE([$host],
       [AC_MSG_ERROR([Unsupported C compiler for a Mingw build])])],
   [AS_CASE([$ocaml_cv_cc_vendor],
     [clang-*],
-      [common_cflags="-O2 -fno-strict-aliasing -fwrapv";
+      [common_cflags="-O0 -fno-strict-aliasing -fwrapv";
       internal_cflags="$cc_warnings -fno-common"],
     [gcc-[[012]]-*],
       # Some versions known to miscompile OCaml, e,g, 2.7.2.1, some 2.96.

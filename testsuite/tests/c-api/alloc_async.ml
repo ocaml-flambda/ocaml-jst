@@ -1,5 +1,6 @@
 (* TEST
    modules = "alloc_async_stubs.c"
+   compare_programs = "false"
 *)
 
 external test : int ref -> unit = "stub"

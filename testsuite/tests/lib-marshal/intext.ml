@@ -1,5 +1,6 @@
 (* TEST
    modules = "intextaux.c"
+   compare_programs = "false"
 *)
 
 (* Test for output_value / input_value *)
