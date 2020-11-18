@@ -249,13 +249,12 @@ type type_declaration =
     type_expansion_scope: int;
     type_loc: Location.t;
     type_attributes: Parsetree.attributes;
-    type_immediate: Type_immediacy.t;
     type_unboxed_default: bool;
     type_uid: Uid.t;
  }
 
 and type_kind =
-    Type_abstract
+    Type_abstract of {immediate: Type_immediacy.t}
   | Type_record of label_declaration list  * record_representation
   | Type_variant of constructor_declaration list * variant_representation
   | Type_open
@@ -458,6 +457,13 @@ let may_equal_constr c1 c2 =
          true
      | tag1, tag2 ->
          equal_tag tag1 tag2)
+
+let kind_abstract = Type_abstract { immediate = Unknown }
+
+let decl_is_abstract decl =
+  match decl.type_kind with
+  | Type_abstract _ -> true
+  | Type_record _ | Type_variant _ | Type_open -> false
 
 type label_description =
   { lbl_name: string;                   (* Short name *)

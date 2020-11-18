@@ -28,10 +28,7 @@ let scrape_ty env ty =
       begin match Env.find_type p env with
       | {type_kind = ( Type_variant (_, Variant_unboxed)
                      | Type_record (_, Record_unboxed _) ); _} ->
-        begin match Typedecl.get_unboxed_type_representation env ty with
-        | None -> ty
-        | Some ty2 -> ty2
-        end
+        Ctype.get_unboxed_type_representation env ty
       | _ -> ty
       | exception Not_found -> ty
       end
@@ -84,7 +81,7 @@ let classify env ty =
       else begin
         try
           match (Env.find_type p env).type_kind with
-          | Type_abstract ->
+          | Type_abstract _ ->
               Any
           | Type_record _ | Type_variant _ | Type_open ->
               Addr
@@ -303,7 +300,7 @@ let value_kind env ty =
             | Record_extension _ ->
               num_nodes_visited, Pgenval
           end
-        | Type_abstract | Type_open -> num_nodes_visited, Pgenval
+        | Type_abstract _ | Type_open -> num_nodes_visited, Pgenval
       end
     | Ttuple fields ->
       if cannot_proceed () then
