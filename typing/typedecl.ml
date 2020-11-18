@@ -60,7 +60,7 @@ type error =
   | Multiple_native_repr_attributes
   | Cannot_unbox_or_untag_type of native_repr_kind
   | Deep_unbox_or_untag_attribute of native_repr_kind
-  | Immediacy of Typedecl_immediacy.error
+  | Immediacy of Type_immediacy.Violation.t
   | Separability of Typedecl_separability.error
   | Bad_unboxed_attribute of string
   | Boxed_and_unboxed
@@ -108,7 +108,7 @@ let enter_type rec_flag env sdecl (id, uid) =
     { type_params =
         List.map (fun _ -> Btype.newgenvar ()) sdecl.ptype_params;
       type_arity = arity;
-      type_kind = Type_abstract;
+      type_kind = Types.kind_abstract;
       type_private = sdecl.ptype_private;
       type_manifest =
         begin match sdecl.ptype_manifest with None -> None
@@ -119,7 +119,6 @@ let enter_type rec_flag env sdecl (id, uid) =
       type_expansion_scope = Btype.lowest_level;
       type_loc = sdecl.ptype_loc;
       type_attributes = sdecl.ptype_attributes;
-      type_immediate = Unknown;
       type_unboxed_default = false;
       type_uid = uid;
     }
@@ -138,12 +137,8 @@ let update_type temp_env env id loc =
 
 (* Determine if a type's values are represented by floats at run-time. *)
 let is_float env ty =
-  match Typedecl_unboxed.get_unboxed_type_representation env ty with
-    Some ty' ->
-      begin match get_desc ty' with
-        Tconstr(p, _, _) -> Path.same p Predef.path_float
-      | _ -> false
-      end
+  match get_desc (Ctype.get_unboxed_type_representation env ty) with
+    Tconstr(p, _, _) -> Path.same p Predef.path_float
   | _ -> false
 
 (* Determine if a type definition defines a fixed type. (PW) *)
@@ -215,8 +210,8 @@ let transl_global_flags loc attrs =
     | Ok b -> b
     | Error () -> raise(Error(loc, Local_not_enabled))
   in
-  let global = transl_global_flag loc (Builtin_attributes.has_global attrs) in 
-  let nonlocal = transl_global_flag loc (Builtin_attributes.has_nonlocal attrs) in 
+  let global = transl_global_flag loc (Builtin_attributes.has_global attrs) in
+  let nonlocal = transl_global_flag loc (Builtin_attributes.has_nonlocal attrs) in
   match global, nonlocal with
   | true, true -> raise(Error(loc, Global_and_nonlocal))
   | true, false -> Types.Global
@@ -396,9 +391,10 @@ let transl_declaration env sdecl (id, uid) =
       Option.is_none unboxed_attr
     | _ -> false, false (* Not unboxable, mark as boxed *)
   in
+  let immediate = Type_immediacy.of_attributes sdecl.ptype_attributes in
   let (tkind, kind) =
     match sdecl.ptype_kind with
-      | Ptype_abstract -> Ttype_abstract, Type_abstract
+      | Ptype_abstract -> Ttype_abstract, Type_abstract {immediate}
       | Ptype_variant scstrs ->
         if List.exists (fun cstr -> cstr.pcd_res <> None) scstrs then begin
           match cstrs with
@@ -460,6 +456,11 @@ let transl_declaration env sdecl (id, uid) =
           Ttype_record lbls, Type_record(lbls', rep)
       | Ptype_open -> Ttype_open, Type_open
       in
+    let kind_imm = Ctype.kind_immediacy kind in
+    begin match Type_immediacy.coerce kind_imm ~as_:immediate with
+    | Ok () -> ()
+    | Error v -> raise(Error(sdecl.ptype_loc, Immediacy v))
+    end;
     let (tman, man) = match sdecl.ptype_manifest with
         None -> None, None
       | Some sty ->
@@ -480,11 +481,9 @@ let transl_declaration env sdecl (id, uid) =
         type_expansion_scope = Btype.lowest_level;
         type_loc = sdecl.ptype_loc;
         type_attributes = sdecl.ptype_attributes;
-        type_immediate = Unknown;
         type_unboxed_default = unboxed_default;
         type_uid = uid;
       } in
-
   (* Check constraints *)
     List.iter
       (fun (cty, cty', loc) ->
@@ -576,7 +575,7 @@ let check_constraints env sdecl (_, decl) =
     (fun (sty, _) ty -> check_constraints_rec env sty.ptyp_loc visited ty)
     sdecl.ptype_params decl.type_params;
   begin match decl.type_kind with
-  | Type_abstract -> ()
+  | Type_abstract _ -> ()
   | Type_variant (l, _rep) ->
       let find_pl = function
           Ptype_variant pl -> pl
@@ -629,9 +628,12 @@ let check_constraints env sdecl (_, decl) =
   end
 
 (*
+   Check that the type expression (if present) is compatible with the kind.
    If both a variant/record definition and a type equation are given,
    need to check that the equation refers to a type of the same kind
    with the same constructors and labels.
+   If the kind is Type_abstract {immediate}, need to check that the equation
+   refers to a sufficiently-immediate type.
 *)
 let check_coherence env loc dpath decl =
   match decl with
@@ -665,7 +667,13 @@ let check_coherence env loc dpath decl =
           end
       | _ -> raise(Error(loc, Definition_mismatch (ty, env, None)))
       end
-  | _ -> ()
+  | { type_kind = Type_abstract { immediate = imm };
+      type_manifest = Some ty } ->
+     begin match Ctype.check_type_immediate env ty imm with
+     | Ok () -> ()
+     | Error v -> raise(Error(loc, Immediacy v))
+     end
+  | { type_manifest = None } -> ()
 
 let check_abbrev env sdecl (id, decl) =
   check_coherence env sdecl.ptype_loc (Path.Pident id) decl
@@ -845,7 +853,7 @@ let check_duplicates sdecl_list =
 (* Force recursion to go through id for private types*)
 let name_recursion sdecl id decl =
   match decl with
-  | { type_kind = Type_abstract;
+  | { type_kind = Type_abstract _;
       type_manifest = Some ty;
       type_private = Private; } when is_fixed_type sdecl ->
     let ty' = newty2 ~level:(get_level ty) (get_desc ty) in
@@ -994,13 +1002,10 @@ let transl_type_decl env rec_flag sdecl_list =
       decls
       |> name_recursion_decls sdecl_list
       |> Typedecl_variance.update_decls env sdecl_list
-      |> Typedecl_immediacy.update_decls env
       |> Typedecl_separability.update_decls env
     with
     | Typedecl_variance.Error (loc, err) ->
         raise (Error (loc, Variance err))
-    | Typedecl_immediacy.Error (loc, err) ->
-        raise (Error (loc, Immediacy err))
     | Typedecl_separability.Error (loc, err) ->
         raise (Error (loc, Separability err))
   in
@@ -1540,17 +1545,17 @@ let transl_with_constraint id ?fixed_row_path ~sig_env ~sig_decl ~outer_env
   ) constraints;
   let priv =
     if sdecl.ptype_private = Private then Private else
-    if arity_ok && sig_decl.type_kind <> Type_abstract
+    if arity_ok && not (decl_is_abstract sig_decl)
     then sig_decl.type_private else sdecl.ptype_private
   in
-  if arity_ok && sig_decl.type_kind <> Type_abstract
+  if arity_ok && not (decl_is_abstract sig_decl)
   && sdecl.ptype_private = Private then
     Location.deprecated loc "spurious use of private";
   let type_kind, type_unboxed_default =
     if arity_ok && man <> None then
       sig_decl.type_kind, sig_decl.type_unboxed_default
     else
-      Type_abstract, false
+      Types.kind_abstract, false
   in
   let new_sig_decl =
     { type_params = params;
@@ -1564,7 +1569,6 @@ let transl_with_constraint id ?fixed_row_path ~sig_env ~sig_decl ~outer_env
       type_expansion_scope = Btype.lowest_level;
       type_loc = loc;
       type_attributes = sdecl.ptype_attributes;
-      type_immediate = Unknown;
       type_unboxed_default;
       type_uid = Uid.mk ~current_unit:(Env.get_unit_name ());
     }
@@ -1581,9 +1585,6 @@ let transl_with_constraint id ?fixed_row_path ~sig_env ~sig_decl ~outer_env
       Typedecl_variance.compute_decl env ~check:true new_sig_decl required
     with Typedecl_variance.Error (loc, err) ->
       raise (Error (loc, Variance err)) in
-  let new_type_immediate =
-    (* Typedecl_immediacy.compute_decl never raises *)
-    Typedecl_immediacy.compute_decl env new_sig_decl in
   let new_type_separability =
     try Typedecl_separability.compute_decl env new_sig_decl
     with Typedecl_separability.Error (loc, err) ->
@@ -1607,7 +1608,6 @@ let transl_with_constraint id ?fixed_row_path ~sig_env ~sig_decl ~outer_env
       type_uid = new_sig_decl.type_uid;
 
       type_variance = new_type_variance;
-      type_immediate = new_type_immediate;
       type_separability = new_type_separability;
     } in
   Ctype.end_def();
@@ -1634,7 +1634,7 @@ let abstract_type_decl ~injective arity =
   let decl =
     { type_params = make_params arity;
       type_arity = arity;
-      type_kind = Type_abstract;
+      type_kind = Types.kind_abstract;
       type_private = Public;
       type_manifest = None;
       type_variance = Variance.unknown_signature ~injective ~arity;
@@ -1643,7 +1643,6 @@ let abstract_type_decl ~injective arity =
       type_expansion_scope = Btype.lowest_level;
       type_loc = Location.none;
       type_attributes = [];
-      type_immediate = Unknown;
       type_unboxed_default = false;
       type_uid = Uid.internal_not_actually_unique;
      } in
@@ -1820,7 +1819,7 @@ let report_error ppf = function
       | Type_record (tl, _), _ ->
           explain_unbound ppf ty tl (fun l -> l.Types.ld_type)
             "field" (fun l -> Ident.name l.Types.ld_id ^ ": ")
-      | Type_abstract, Some ty' ->
+      | Type_abstract _, Some ty' ->
           explain_unbound_single ppf ty ty'
       | _ -> ()
       end;
@@ -1919,7 +1918,7 @@ let report_error ppf = function
          a direct argument or result of the primitive,@ \
          it should not occur deeply into its type.@]"
         (match kind with Unboxed -> "@unboxed" | Untagged -> "@untagged")
-  | Immediacy (Typedecl_immediacy.Bad_immediacy_attribute violation) ->
+  | Immediacy violation ->
       fprintf ppf "@[%a@]" Format.pp_print_text
         (match violation with
          | Type_immediacy.Violation.Not_always_immediate ->
