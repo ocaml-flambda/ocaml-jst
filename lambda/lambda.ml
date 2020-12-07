@@ -397,6 +397,7 @@ type scoped_location = Debuginfo.Scoped_location.t
 
 type lambda =
     Lvar of Ident.t
+  | Lmutvar of Ident.t
   | Lconst of structured_constant
   | Lapply of lambda_apply
   | Lfunction of lfunction
@@ -543,7 +544,8 @@ let make_key e =
     incr count ;
     if !count > max_raw then raise Not_simple ; (* Too big ! *)
     match e with
-    | Lvar id ->
+    | Lvar id
+    | Lmutvar id ->
       begin
         try Ident.find_same id env
         with Not_found -> e
@@ -641,12 +643,13 @@ let iter_opt f = function
 
 let shallow_iter ~tail ~non_tail:f = function
     Lvar _
+  | Lmutvar _
   | Lconst _ -> ()
   | Lapply{ap_func = fn; ap_args = args} ->
       f fn; List.iter f args
   | Lfunction{body} ->
       f body
-  | Llet(_str, _k, _id, arg, body) ->
+  | Llet(_, _k, _id, arg, body) ->
       f arg; tail body
   | Lletrec(decl, body) ->
       tail body;
@@ -697,7 +700,8 @@ let iter_head_constructor f l =
   shallow_iter ~tail:f ~non_tail:f l
 
 let rec free_variables = function
-  | Lvar id -> Ident.Set.singleton id
+  | Lvar id
+  | Lmutvar id -> Ident.Set.singleton id
   | Lconst _ -> Ident.Set.empty
   | Lapply{ap_func = fn; ap_args = args} ->
       free_variables_list (free_variables fn) args
@@ -882,6 +886,12 @@ let subst update_env ?(freshen_bound_variables = false) s input_lam =
                 to [l]; it is a free variable of the input term. *)
              begin try Ident.Map.find id s with Not_found -> lam end
         end
+    | Lmutvar id as lam ->
+       begin match Ident.Map.find id l with
+          | id' -> Lmutvar id'
+          | exception Not_found ->
+             begin try Ident.Map.find id s with Not_found -> lam end
+        end
     | Lconst _ as l -> l
     | Lapply ap ->
         Lapply{ap with ap_func = subst s l ap.ap_func;
@@ -992,6 +1002,7 @@ let duplicate lam =
 
 let shallow_map ~tail ~non_tail:f = function
   | Lvar _
+  | Lmutvar _
   | Lconst _ as lam -> lam
   | Lapply { ap_func; ap_args; ap_region_close; ap_mode; ap_loc; ap_tailcall;
              ap_inlined; ap_specialised; ap_probe } ->

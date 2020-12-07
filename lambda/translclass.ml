@@ -700,7 +700,7 @@ let free_methods l =
     | Lfor {for_id} ->
         fv := Ident.Set.remove for_id !fv
     | Lassign _
-    | Lvar _ | Lconst _ | Lapply _
+    | Lvar _ | Lmutvar _ | Lconst _ | Lapply _
     | Lprim _ | Lswitch _ | Lstringswitch _ | Lstaticraise _
     | Lifthenelse _ | Lsequence _ | Lwhile _
     | Levent _ | Lifused _ | Lregion _ -> ()
