@@ -641,7 +641,7 @@ let rec lam ppf = function
         function_attribute attr return_kind (rmode, return) lam body
   | Llet _ as expr ->
      let kind = function
-        Alias -> "a" | Strict -> "" | StrictOpt -> "o" | Variable -> "v"
+         Alias -> "a" | Strict -> "" | StrictOpt -> "o"
       in
       let rec letbody ~sp = function
         | Llet(str, k, id, arg, body) ->
@@ -653,6 +653,17 @@ let rec lam ppf = function
       in
       fprintf ppf "@[<2>(let@ @[<hv 1>(";
       let expr = letbody ~sp:false expr in
+      fprintf ppf ")@]@ %a)@]" lam expr
+  | Lmutlet(k, id, arg, body) ->
+      let rec letbody = function
+        | Lmutlet(k, id, arg, body) ->
+            fprintf ppf "@ @[<2>%a =%a@ %a@]"
+              Ident.print id value_kind k lam arg;
+            letbody body
+        | expr -> expr in
+      fprintf ppf "@[<2>(let[mut]@ @[<hv 1>(@[<2>%a =%a@ %a@]"
+        Ident.print id value_kind k lam arg;
+      let expr = letbody body in
       fprintf ppf ")@]@ %a)@]" lam expr
   | Lletrec(id_arg_list, body) ->
       let bindings ppf id_arg_list =
