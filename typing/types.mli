@@ -378,14 +378,15 @@ type type_declaration =
     type_loc: Location.t;
     type_attributes: Parsetree.attributes;
     type_immediate: Type_immediacy.t;
-    type_unboxed: unboxed_status;
+    type_unboxed_default: bool;
+    (* true if the unboxed-ness of this type was chosen by a compiler flag *)
     type_uid: Uid.t;
   }
 
 and type_kind =
     Type_abstract
   | Type_record of label_declaration list  * record_representation
-  | Type_variant of constructor_declaration list
+  | Type_variant of constructor_declaration list * variant_representation
   | Type_open
 
 and record_representation =
@@ -399,6 +400,10 @@ and global_flag =
   | Global
   | Nonlocal
   | Unrestricted
+
+and variant_representation =
+    Variant_regular          (* Constant or boxed constructors *)
+  | Variant_unboxed          (* One unboxed single-field constructor *)
 
 and label_declaration =
   {
@@ -424,20 +429,6 @@ and constructor_declaration =
 and constructor_arguments =
   | Cstr_tuple of type_expr list
   | Cstr_record of label_declaration list
-
-and unboxed_status = private
-  (* This type must be private in order to ensure perfect sharing of the
-     four possible values. Otherwise, ocamlc.byte and ocamlc.opt produce
-     different executables. *)
-  {
-    unboxed: bool;
-    default: bool; (* True for unannotated unboxable types. *)
-  }
-
-val unboxed_false_default_false : unboxed_status
-val unboxed_false_default_true : unboxed_status
-val unboxed_true_default_false : unboxed_status
-val unboxed_true_default_true : unboxed_status
 
 type extension_constructor =
   {
