@@ -842,7 +842,7 @@ let pats_of_type ?(always=false) env ty mode =
               labels
           in
           [make_pat (Tpat_record (fields, Closed)) ty mode env]
-      | Type_variant _ | Type_abstract | Type_open -> [omega]
+      | Type_variant _ | Type_abstract _ | Type_open -> [omega]
       end
   | Ttuple tl ->
       [make_pat (Tpat_tuple (omegas (List.length tl))) ty mode env]

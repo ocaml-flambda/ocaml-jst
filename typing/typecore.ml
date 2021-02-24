@@ -556,13 +556,7 @@ let has_poly_constraint spat =
   | _ -> false
 
 let mode_cross env (ty : type_expr) mode =
-  if is_principal ty then begin
-    match immediacy env ty with
-    | Type_immediacy.Always -> Value_mode.newvar ()
-    | Type_immediacy.Always_on_64bits when !Clflags.native_code && Sys.word_size = 64 ->
-        Value_mode.newvar ()  (* floating and relaxed *)
-    | _ -> mode
-  end
+  if is_principal ty && is_immediate env ty then Value_mode.newvar ()
   else mode
 
 let expect_mode_cross env (ty : type_expr) (mode : expected_mode) =
@@ -883,9 +877,8 @@ and build_as_type_aux ~refine (env : Env.t ref) p =
       end
   | Tpat_constant _ ->
       let mode =
-        match Ctype.immediacy !env p.pat_type with
-        | Always -> Value_mode.newvar ()
-        | Unknown | Always_on_64bits -> p.pat_mode
+        if Ctype.is_immediate !env p.pat_type then Value_mode.newvar ()
+        else p.pat_mode
       in
       p.pat_type, mode
   | Tpat_any | Tpat_var _
@@ -999,7 +992,7 @@ let solve_Ppat_construct ~refine env loc constr no_existentials
         let ty_args, ty_res, ty_ex =
           instance_constructor ?in_pattern constr in
         let equated_types = unify_res ty_res in
-        let ty_args_ty, ty_args_gf = List.split ty_args in 
+        let ty_args_ty, ty_args_gf = List.split ty_args in
         let ty_args_ty, existential_ctyp =
           solve_constructor_annotation env name_list sty ty_args_ty ty_ex in
         ty_args_ty, ty_args_gf, ty_res, equated_types, existential_ctyp
@@ -2020,7 +2013,7 @@ and type_pat_aux
       assert construction_not_used_in_counterexamples;
       type_pat Value sq expected_ty (fun q ->
         let ty_var, mode = solve_Ppat_alias ~refine env q in
-        let mode = mode_cross !env expected_ty mode in 
+        let mode = mode_cross !env expected_ty mode in
         let id =
           enter_variable ~is_as_variable:true loc name mode
             ty_var sp.ppat_attributes
@@ -3872,13 +3865,13 @@ and type_expect_
               (try unify_var env (newvar()) ty_arg
                with Unify _ -> assert false);
               ret_tvar (TypeSet.add ty seen) ty_fun
-          | Tvar _ -> 
-              let v = newvar () in 
-              let rt = get_level ty > get_level v in 
+          | Tvar _ ->
+              let v = newvar () in
+              let rt = get_level ty > get_level v in
               unify_var env v ty;
               rt
-          | _ -> 
-            let v = newvar () in 
+          | _ ->
+            let v = newvar () in
             unify_var env v ty;
             false
       in
@@ -3892,7 +3885,7 @@ and type_expect_
         end;
         let ty = instance funct.exp_type in
         end_def ();
-        let rt = wrap_trace_gadt_instances env (ret_tvar TypeSet.empty) ty in 
+        let rt = wrap_trace_gadt_instances env (ret_tvar TypeSet.empty) ty in
         rt, funct
       in
       let type_sfunct_args sfunct extra_args =
@@ -4263,7 +4256,7 @@ and type_expect_
       let to_unify = Predef.type_array ty in
       with_explanation (fun () ->
         unify_exp_types loc env to_unify (generic_instance ty_expected));
-      let argument_mode = expect_mode_cross env ty mode_global in 
+      let argument_mode = expect_mode_cross env ty mode_global in
       let argl =
         List.map
           (fun sarg -> type_expect env argument_mode sarg (mk_expected ty))
@@ -5224,8 +5217,8 @@ and type_function ?in_function loc attrs env (expected_mode : expected_mode)
       let ret_value_mode =
         if region_locked then Value_mode.local_to_regional ret_value_mode
         else ret_value_mode
-      in  
-      let ret_value_mode = mode_cross env ty_res ret_value_mode in 
+      in
+      let ret_value_mode = mode_cross env ty_res ret_value_mode in
       mode_return ret_value_mode,
       Final_arg { partial_mode = Alloc_mode.join [arg_mode; alloc_mode] }
     end
@@ -5784,7 +5777,7 @@ and type_argument ?explanation ?recarg env (mode : expected_mode) sarg
       end
       end
   | None ->
-      let mode = expect_mode_cross env ty_expected' mode in
+      let mode = expect_mode_cross env (generic_instance ty_expected') mode in
       let texp = type_expect ?recarg env mode sarg
         (mk_expected ?explanation ty_expected') in
       unify_exp env texp ty_expected;
@@ -5881,9 +5874,9 @@ and type_application env app_loc expected_mode position funct funct_mode sargs r
         filter_arrow_mono env (instance funct.exp_type) Nolabel
       in
       if !Clflags.principal then begin
-        end_def (); 
+        end_def ();
         generalize_structure ty_res
-      end; 
+      end;
       let mode = mode_cross env ty_res (Value_mode.of_alloc mres) in
       submode ~loc:app_loc ~env
         mode expected_mode;

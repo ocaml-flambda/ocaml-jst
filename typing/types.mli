@@ -492,7 +492,6 @@ type type_declaration =
     type_expansion_scope: int;
     type_loc: Location.t;
     type_attributes: Parsetree.attributes;
-    type_immediate: Type_immediacy.t;
     type_unboxed_default: bool;
     (* true if the unboxed-ness of this type was chosen by a compiler flag *)
     type_uid: Uid.t;
@@ -501,7 +500,7 @@ type type_declaration =
 and type_decl_kind = (label_declaration, constructor_declaration) type_kind
 
 and ('lbl, 'cstr) type_kind =
-    Type_abstract
+    Type_abstract of {immediate : Type_immediacy.t}
   | Type_record of 'lbl list  * record_representation
   | Type_variant of 'cstr list * variant_representation
   | Type_open
@@ -546,6 +545,12 @@ and constructor_declaration =
 and constructor_arguments =
   | Cstr_tuple of (type_expr * global_flag) list
   | Cstr_record of label_declaration list
+
+val kind_abstract : ('a,'b) type_kind
+val decl_is_abstract : type_declaration -> bool
+
+(* Returns the inner type, if unboxed. *)
+val decl_is_unboxed : type_declaration -> type_expr option
 
 type extension_constructor =
   {
