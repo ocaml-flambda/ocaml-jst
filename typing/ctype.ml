@@ -663,7 +663,7 @@ let closed_type_decl decl =
     begin match decl.type_kind with
       Type_abstract ->
         ()
-    | Type_variant v ->
+    | Type_variant (v, _rep) ->
         List.iter
           (fun {cd_args; cd_res; _} ->
             match cd_res with
@@ -1333,7 +1333,7 @@ let new_declaration expansion_scope manifest =
     type_loc = Location.none;
     type_attributes = [];
     type_immediate = Unknown;
-    type_unboxed = unboxed_false_default_false;
+    type_unboxed_default = false;
     type_uid = Uid.mk ~current_unit:(Env.get_unit_name ());
   }
 
@@ -1386,7 +1386,7 @@ let instance_parameterized_type_2 sch_args sch_lst sch =
 let map_kind f = function
   | Type_abstract -> Type_abstract
   | Type_open -> Type_open
-  | Type_variant cl ->
+  | Type_variant (cl, rep) ->
       Type_variant (
         List.map
           (fun c ->
@@ -1394,7 +1394,7 @@ let map_kind f = function
               cd_args = map_type_expr_cstr_args f c.cd_args;
               cd_res = Option.map f c.cd_res
              })
-          cl)
+          cl, rep)
   | Type_record (fl, rr) ->
       Type_record (
         List.map
@@ -2455,7 +2455,7 @@ and mcomp_type_decl type_pairs env p1 p2 tl1 tl2 =
       | Type_record (lst,r), Type_record (lst',r') when r = r' ->
           mcomp_list type_pairs env tl1 tl2;
           mcomp_record_description type_pairs env lst lst'
-      | Type_variant v1, Type_variant v2 ->
+      | Type_variant (v1,r), Type_variant (v2,r') when r = r' ->
           mcomp_list type_pairs env tl1 tl2;
           mcomp_variant_description type_pairs env v1 v2
       | Type_open, Type_open ->
@@ -4953,7 +4953,7 @@ let nondep_type_decl env mid is_covariant decl =
       type_loc = decl.type_loc;
       type_attributes = decl.type_attributes;
       type_immediate = decl.type_immediate;
-      type_unboxed = decl.type_unboxed;
+      type_unboxed_default = decl.type_unboxed_default;
       type_uid = decl.type_uid;
     }
   with Nondep_cannot_erase _ as exn ->

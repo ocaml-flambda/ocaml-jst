@@ -857,7 +857,7 @@ let pats_of_type ?(always=false) env ty mode =
   match ty'.desc with
   | Tconstr (path, _, _) ->
       begin try match (Env.find_type path env).type_kind with
-      | Type_variant cl when always || List.length cl <= 1 ||
+      | Type_variant (cl, _) when always || List.length cl <= 1 ||
         (* Only explode when all constructors are GADTs *)
         List.for_all (fun cd -> cd.Types.cd_res <> None) cl ->
           let cstrs = fst (Env.find_type_descrs path env) in
@@ -881,7 +881,7 @@ let rec get_variant_constructors env ty =
   match (Ctype.repr ty).desc with
   | Tconstr (path,_,_) -> begin
       try match Env.find_type path env with
-      | {type_kind=Type_variant _} ->
+      | {type_kind=Type_variant (_, _)} ->
           fst (Env.find_type_descrs path env)
       | {type_manifest = Some _} ->
           get_variant_constructors env
