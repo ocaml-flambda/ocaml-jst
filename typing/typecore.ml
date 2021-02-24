@@ -999,7 +999,7 @@ let solve_Ppat_construct ~refine env loc constr no_existentials
         let ty_args, ty_res, ty_ex =
           instance_constructor ?in_pattern constr in
         let equated_types = unify_res ty_res in
-        let ty_args_ty, ty_args_gf = List.split ty_args in 
+        let ty_args_ty, ty_args_gf = List.split ty_args in
         let ty_args_ty, existential_ctyp =
           solve_constructor_annotation env name_list sty ty_args_ty ty_ex in
         ty_args_ty, ty_args_gf, ty_res, equated_types, existential_ctyp

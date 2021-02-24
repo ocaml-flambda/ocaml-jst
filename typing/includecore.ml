@@ -508,7 +508,7 @@ module Record_diffing = struct
           Some (Mutability ord)
         else begin
           match compare_global_flags ld1.ld_global ld2.ld_global with
-          | None -> 
+          | None ->
             let tl1 = params1 @ [ld1.ld_type] in
             let tl2 = params2 @ [ld2.ld_type] in
             begin
@@ -516,9 +516,9 @@ module Record_diffing = struct
             | exception Ctype.Equality err ->
                 Some (Type err : label_mismatch)
             | () -> None
-            end 
+            end
           | Some e -> Some (Nonlocality e : label_mismatch)
-        end         
+        end
 
   let rec equal ~loc env params1 params2
       (labels1 : Types.label_declaration list)
@@ -644,7 +644,7 @@ let rec find_map_idx f ?(off = 0) l =
       match f x with
       | None -> find_map_idx f ~off:(off+1) xs
       | Some y -> Some (off, y)
-    end  
+    end
 
 module Variant_diffing = struct
 
@@ -656,7 +656,7 @@ module Variant_diffing = struct
         else begin
           let arg1_tys, arg1_gfs = List.split arg1
           and arg2_tys, arg2_gfs = List.split arg2
-          in          
+          in
           (* Ctype.equal must be called on all arguments at once, cf. PR#7378 *)
           match Ctype.equal env true (params1 @ arg1_tys) (params2 @ arg2_tys) with
           | exception Ctype.Equality err -> Some (Type err)
