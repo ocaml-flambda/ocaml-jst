@@ -63,7 +63,16 @@ let rec build_closure_env env_param pos = function
    contain the right names if the -for-pack option is active. *)
 
 let getglobal dbg id =
-  Uprim(P.Pread_symbol (Compilenv.symbol_for_global id), [], dbg)
+  assert (Ident.is_global_or_predef id);
+  let pack_prefix =
+    if Ident.is_global id then Compilenv.pack_prefix_for_global_ident id
+    else Compilation_unit.Prefix.empty
+  in
+  let symbol =
+    Symbol.for_ident id ~pack_prefix
+    |> Symbol.linkage_name
+  in
+  Uprim (P.Pread_symbol symbol, [], dbg)
 
 let region ulam =
   let is_trivial =
@@ -1396,7 +1405,10 @@ and close_functions { backend; fenv; cenv; mutable_vars } fun_defs =
           (id, Lfunction({kind; params; return; body; loc; mode; region}
                          as funct)) ->
             Lambda.check_lfunction funct;
-            let label = Compilenv.make_symbol (Some (V.unique_name id)) in
+            let label =
+              Symbol.for_ident id ~pack_prefix:(Compilenv.pack_prefix_for_current_unit ())
+              |> Symbol.linkage_name
+            in
             let arity = List.length params in
             let fundesc =
               {fun_label = label;
@@ -1644,7 +1656,10 @@ let reset () =
 
 let intro ~backend ~size lam =
   reset ();
-  let id = Compilenv.make_symbol None in
+  let id =
+    Symbol.for_current_unit ()
+    |> Symbol.linkage_name
+  in
   global_approx := Array.init size (fun i -> Value_global_field (id, i));
   Compilenv.set_global_approx(Value_tuple (alloc_heap, !global_approx));
   let (ulam, _approx) =
@@ -1653,7 +1668,9 @@ let intro ~backend ~size lam =
   in
   let opaque =
     !Clflags.opaque
-    || Env.is_imported_opaque (Compilenv.current_unit_name ())
+    || Env.is_imported_opaque
+         (Compilation_unit.get_current_exn ()
+          |> Compilation_unit.full_path_as_string)
   in
   if opaque
   then Compilenv.set_global_approx(Value_unknown)
