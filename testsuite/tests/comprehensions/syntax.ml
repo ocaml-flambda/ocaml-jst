@@ -17,6 +17,7 @@ let test_printing () =
 
 let () = test_printing ()
 
+let () = printf "\n-----\n\n"
 
 let starts_with pfx str =
   String.length str >= String.length pfx
