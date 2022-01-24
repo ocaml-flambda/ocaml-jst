@@ -384,12 +384,13 @@ let string_of_extension = function
 | Comprehensions -> "comprehensions"
 
 let extension_of_string = function
-| "comprehensions" -> Comprehensions
-| extn ->  raise (Arg.Bad(Printf.sprintf "Extension %s is not known" extn))
+| "comprehensions" -> Some Comprehensions
+| _ -> None
 
 let add_extension extn =
-  let extension = extension_of_string (String.lowercase_ascii extn) in
-  extensions := extension::!extensions
+  match extension_of_string (String.lowercase_ascii extn) with
+  | Some extension -> extensions := extension :: !extensions
+  | None -> raise (Arg.Bad (Printf.sprintf "Unknown extension \"%s\"" extn))
 
 let is_extension_enabled ext = List.mem ext !extensions
 

@@ -228,17 +228,25 @@ let expr sub {exp_extra; exp_desc; exp_env; _} =
   | Texp_while (exp1, exp2) ->
       sub.expr sub exp1;
       sub.expr sub exp2
-  | Texp_list_comprehension (exp1, type_comps)
-  | Texp_arr_comprehension (exp1, type_comps) ->
-    sub.expr sub exp1;
-    List.iter (fun  {clauses; guard} ->
-        List.iter (fun type_comp ->
-          match type_comp with
-          | From_to (_, _,e2,e3, _) -> sub.expr sub e2; sub.expr sub e3
-          | In (_, e2) -> sub.expr sub e2
-          ) clauses;
-        Option.iter (fun g -> sub.expr sub g) guard)
-      type_comps
+  | Texp_list_comprehension { comp_body; comp_clauses }
+  | Texp_array_comprehension { comp_body; comp_clauses } ->
+    sub.expr sub comp_body;
+    List.iter
+      (function
+        | Texp_comp_for bindings ->
+            List.iter
+              (* CR aspectorzabusky: Process patterns/attributes? *)
+              (fun { comp_cb_iterator; comp_cb_attributes = _ } ->
+                 match comp_cb_iterator with
+                 | Texp_comp_range { ident = _; start; stop; direction = _ } ->
+                     sub.expr sub start;
+                     sub.expr sub stop
+                 | Texp_comp_in { pattern = _; sequence } ->
+                     sub.expr sub sequence)
+              bindings
+        | Texp_comp_when exp ->
+          sub.expr sub exp)
+      comp_clauses
   | Texp_for (_, _, exp1, exp2, _, exp3) ->
       sub.expr sub exp1;
       sub.expr sub exp2;

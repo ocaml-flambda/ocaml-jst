@@ -19,88 +19,83 @@ let gen_binding {let_kind; value_kind; var; init} body =
 let gen_bindings bindings body =
   List.fold_right gen_binding bindings body
 
-(* Translate a clause into some initialising bindings, a variable
-   that will be bound to the number of iterations in the clause by
-   those bindings, and lambda code that performs the iterations. *)
-let transl_arr_clause ~transl_exp ~scopes ~loc clause body =
-  let len_var = Ident.create_local "len_var" in
-  let bindings, for_ =
-    match clause with
-    | In (pat , e2) ->
-        let in_var = Ident.create_local "in_var" in
-        let in_kind = Typeopt.array_kind e2 in
-        let in_binding =
-          binding Strict Pgenval in_var (transl_exp ~scopes e2)
+let transl_arr_iterator ~transl_exp ~scopes ~loc iterator =
+  let len_var        = Ident.create_local "len_var" in
+  let mk_len_binding = binding Alias Pintval len_var in
+  let bindings, mk_iterator = match iterator with
+    | Texp_comp_range { ident; pattern = _; start; stop; direction } ->
+        let transl_bound name bound =
+          let var = Ident.create_local name in
+          var, binding Strict Pintval var (transl_exp ~scopes bound)
         in
+        let start_var, start_binding = transl_bound "start" start in
+        let stop_var,  stop_binding  = transl_bound "stop"  stop  in
         let len_binding =
-          let init = Lprim( (Parraylength(in_kind)), [Lvar(in_var)], loc) in
-          binding Alias Pintval len_var init
+          let low, high = match direction with
+            | Upto   -> start_var, stop_var
+            | Downto -> stop_var,  start_var
+          in
+          (* (high - low) + 1 *)
+          mk_len_binding
+            (Lprim(Paddint, [Lprim(Psubint, [Lvar high; Lvar low], loc); int 1], loc))
+        in
+        let mk_iterator body =
+          Lfor(ident, Lvar start_var, Lvar stop_var, direction, body)
+        in
+        [start_binding; stop_binding; len_binding], mk_iterator
+    | Texp_comp_in { pattern; sequence = arr } ->
+        let arr_var     = Ident.create_local "arr_var" in
+        let arr_kind    = Typeopt.array_kind arr in
+        let arr_binding = binding Strict Pgenval arr_var (transl_exp ~scopes arr) in
+        let len_binding =
+          mk_len_binding (Lprim(Parraylength arr_kind, [Lvar arr_var], loc))
         in
         let index = Ident.create_local "index" in
-        let for_ =
-          Lfor(index, (int 0), Lprim(Psubint, [Lvar(len_var); int 1], loc) , Upto,
-            Matching.for_let ~scopes pat.pat_loc
-              (Lprim(Parrayrefu(in_kind),
-                     [Lvar(in_var); Lvar(index)], loc)) pat body)
-        in
-        [in_binding; len_binding], for_
-    | From_to(id, _, e2, e3, dir) ->
-        let from_var = Ident.create_local "from" in
-        let from_binding =
-          binding Strict Pintval from_var (transl_exp ~scopes e2)
-        in
-        let to_var = Ident.create_local "to" in
-        let to_binding =
-          binding Strict Pintval to_var (transl_exp ~scopes e3)
-        in
-        let low, high =
-          match dir with
-          | Upto -> Lvar from_var, Lvar to_var
-          | Downto -> Lvar to_var, Lvar from_var
-        in
-        let len_binding =
-          let init =
-            Lprim(Psubint, [Lprim(Paddint, [high; int 1], loc); low], loc)
-          in
-          binding Alias Pintval len_var init
-        in
-        let for_ = Lfor(id, Lvar from_var, Lvar to_var, dir, body) in
-        [from_binding; to_binding; len_binding], for_
+        let mk_iterator body =
+          (* for index = 0 to Array.length arr - 1 ... *)
+          Lfor(index, int 0, Lprim(Psubint, [Lvar len_var; int 1], loc), Upto,
+               Matching.for_let
+                 ~scopes
+                 pattern.pat_loc
+                 (Lprim(Parrayrefu arr_kind, [Lvar arr_var; Lvar index], loc))
+                 pattern
+                 body)
+        in [arr_binding; len_binding], mk_iterator
   in
-  bindings, len_var, for_
+  bindings, len_var, mk_iterator
 
-(* Generate code to iterate over a comprehension block, along with some
-   initialising bindings.  The bindings will also bind the given
-   [length_var] ident to the total number of iterations in the
-   block. *)
-let iterate_arr_block ~transl_exp ~loc ~scopes
-      {clauses; guard} length_var body =
-  let body =
-    match guard with
-    | None -> body
-    | Some guard ->
-      Lifthenelse(transl_exp ~scopes guard, body, lambda_unit)
-  in
-  let body, length_opt, bindings =
-    List.fold_left
-      (fun (body, length, bindings) clause ->
-         let new_bindings, new_length_var, body =
-           transl_arr_clause ~transl_exp ~scopes ~loc clause body
-         in
-         let rev_bindings = new_bindings @ bindings in
-         let length =
-           match length with
-           | None -> Lvar new_length_var
-           | Some length ->
-               Lprim(Pmulint, [Lvar new_length_var; length], loc)
-         in
-         body, Some length, rev_bindings)
-      (body, None, []) clauses
-  in
-  let length = Option.value length_opt ~default:(int 0) in
-  let length_binding = binding Alias Pintval length_var length in
-  let bindings = List.append bindings [length_binding] in
-  bindings, body
+let transl_arr_binding
+      ~transl_exp
+      ~loc
+      ~scopes
+      { comp_cb_iterator; comp_cb_attributes = _ } =
+  (* CR aspectorzabusky: What do we do with attributes here? *)
+  transl_arr_iterator ~transl_exp ~loc ~scopes comp_cb_iterator
+
+let transl_arr_clause ~transl_exp ~loc ~scopes length_var = function
+  | Texp_comp_for bindings ->
+      let bindings, length_opt, with_body =
+        List.fold_left
+          (fun (bindings, length, with_body) binding ->
+             let new_bindings, length_var, mk_iterator =
+               transl_arr_binding ~transl_exp ~loc ~scopes binding
+             in
+             let bindings = new_bindings @ bindings in
+             let length = match length with
+               | None        -> Lvar length_var
+               | Some length -> Lprim(Pmulint, [Lvar length_var; length], loc)
+             in
+             let with_body body = mk_iterator (with_body body) in
+             bindings, Some length, with_body)
+          ([], None, Fun.id)
+          bindings
+      in
+      let length = Option.value length_opt ~default:(int 0) in
+      let length_binding = binding Alias Pintval length_var length in
+      let bindings = bindings @ [length_binding] in
+      bindings, with_body
+  | Texp_comp_when cond ->
+      [], fun body -> Lifthenelse(transl_exp ~scopes cond, body, lambda_unit)
 
 let make_array_prim ~loc size init =
   let prim =
@@ -124,7 +119,7 @@ let blit_array_prim ~loc src src_pos dst dst_pos len =
 let make_array ~loc ~kind ~size ~array =
   match kind with
   | Pgenarray ->
-      (* This array can be Immutable since it is empty and will later be 
+      (* This array can be Immutable since it is empty and will later be
          replaced when an example value (to create the array) is known.
          That is also why the biding is a Variable. *)
       let init = Lprim(Pmakearray(Pgenarray, Immutable), [] ,loc) in
@@ -163,7 +158,7 @@ let init_array_elems ~loc ~kind ~size ~array ~index ~src ~len =
         Lprim(Pintcomp Ceq, [Lvar index; int 0], loc)
       in
       let is_not_empty =
-        Lprim(Pintcomp(Cne), [Lvar len; int 0], loc)
+        Lprim(Pintcomp Cne, [Lvar len; int 0], loc)
       in
       let first_elem =
         Lprim(Parrayrefu kind, [Lvar src; int 0], loc)
@@ -367,12 +362,15 @@ let concat_arrays ~loc arr kind shape global_count_var =
                     (loop shape array_var (Some len_var),
                      Lvar res_var)))))
 
-let transl_arr_comprehension ~transl_exp ~loc ~scopes
-      ~array_kind exp blocks =
-  let body = transl_exp ~scopes exp in
+let transl_arr_comprehension
+      ~transl_exp ~loc ~scopes ~array_kind { comp_body; comp_clauses } =
+  let body = transl_exp ~scopes comp_body in
   let value_kind = Typeopt.value_kind exp.exp_env exp.exp_type in
   match blocks with
-  | [] -> assert false
+  | [] ->
+      Misc.fatal_error
+        "Comprehensions must have at least one clause, but translation into \
+         lambda found an array comprehension with no clauses"
   | [block] ->
       transl_single_arr_block ~transl_exp ~loc ~scopes
         block body array_kind value_kind
@@ -494,3 +492,88 @@ let transl_list_comprehension ~transl_exp ~loc ~scopes body blocks =
         ap_specialised=Default_specialise;
         ap_probe=None;
       })
+
+(*******************************************************************************)
+
+(* Translate a clause into some initialising bindings, a variable
+   that will be bound to the number of iterations in the clause by
+   those bindings, and lambda code that performs the iterations. *)
+let transl_arr_clause ~transl_exp ~scopes ~loc clause body =
+  let len_var = Ident.create_local "len_var" in
+  let bindings, for_ =
+    match clause with
+    | In (pat , e2) ->
+        let in_var = Ident.create_local "in_var" in
+        let in_kind = Typeopt.array_kind e2 in
+        let in_binding =
+          binding Strict Pgenval in_var (transl_exp ~scopes e2)
+        in
+        let len_binding =
+          let init = Lprim( (Parraylength(in_kind)), [Lvar(in_var)], loc) in
+          binding Alias Pintval len_var init
+        in
+        let index = Ident.create_local "index" in
+        let for_ =
+          Lfor(index, (int 0), Lprim(Psubint, [Lvar(len_var); int 1], loc) , Upto,
+            Matching.for_let ~scopes pat.pat_loc
+              (Lprim(Parrayrefu(in_kind),
+                     [Lvar(in_var); Lvar(index)], loc)) pat body)
+        in
+        [in_binding; len_binding], for_
+    | From_to(id, _, e2, e3, dir) ->
+        let from_var = Ident.create_local "from" in
+        let from_binding =
+          binding Strict Pintval from_var (transl_exp ~scopes e2)
+        in
+        let to_var = Ident.create_local "to" in
+        let to_binding =
+          binding Strict Pintval to_var (transl_exp ~scopes e3)
+        in
+        let low, high =
+          match dir with
+          | Upto -> Lvar from_var, Lvar to_var
+          | Downto -> Lvar to_var, Lvar from_var
+        in
+        let len_binding =
+          let init =
+            Lprim(Psubint, [Lprim(Paddint, [high; int 1], loc); low], loc)
+          in
+          binding Alias Pintval len_var init
+        in
+        let for_ = Lfor(id, Lvar from_var, Lvar to_var, dir, body) in
+        [from_binding; to_binding; len_binding], for_
+  in
+  bindings, len_var, for_
+
+(* Generate code to iterate over a comprehension block, along with some
+   initialising bindings.  The bindings will also bind the given
+   [length_var] ident to the total number of iterations in the
+   block. *)
+let iterate_arr_block ~transl_exp ~loc ~scopes
+      {clauses; guard} length_var body =
+  let body =
+    match guard with
+    | None -> body
+    | Some guard ->
+      Lifthenelse(transl_exp ~scopes guard, body, lambda_unit)
+  in
+  let body, length_opt, bindings =
+    List.fold_left
+      (fun (body, length, bindings) clause ->
+         let new_bindings, new_length_var, body =
+           transl_arr_clause ~transl_exp ~scopes ~loc clause body
+         in
+         let rev_bindings = new_bindings @ bindings in
+         let length =
+           match length with
+           | None -> Lvar new_length_var
+           | Some length ->
+               Lprim(Pmulint, [Lvar new_length_var; length], loc)
+         in
+         body, Some length, rev_bindings)
+      (body, None, []) clauses
+  in
+  let length = Option.value length_opt ~default:(int 0) in
+  let length_binding = binding Alias Pintval length_var length in
+  let bindings = List.append bindings [length_binding] in
+  bindings, body

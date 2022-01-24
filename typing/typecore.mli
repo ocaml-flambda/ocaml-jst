@@ -31,13 +31,16 @@ type type_forcing_context =
   | If_no_else_branch
   | While_loop_conditional
   | While_loop_body
-  | In_comprehension_argument
   | For_loop_start_index
   | For_loop_stop_index
   | For_loop_body
   | Assert_condition
   | Sequence_left_hand_side
   | When_guard
+  | Comprehension_in_iterator
+  | Comprehension_for_start
+  | Comprehension_for_stop
+  | Comprehension_when
 
 (* The combination of a type and a "type forcing context". The intent is that it
    describes a type that is "expected" (required) by the context. If unifying
@@ -171,6 +174,7 @@ type error =
   | Unexpected_existential of existential_restriction * string * string list
   | Invalid_interval
   | Invalid_for_loop_index
+  | Invalid_comprehension_for_range_iterator_index
   | No_value_clauses
   | Exception_pattern_disallowed
   | Mixed_value_and_exception_patterns_under_guard
@@ -185,7 +189,6 @@ type error =
   | Probe_name_undefined of string
   (* CR-soon mshinwell: Use an inlined record *)
   | Probe_is_enabled_format
-  | Extension_not_enabled of Clflags.extension
   | Literal_overflow of string
   | Unknown_literal of string * char
   | Illegal_letrec_pat

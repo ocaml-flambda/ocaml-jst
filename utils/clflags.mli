@@ -207,6 +207,7 @@ val set_standard : unit -> unit
 val add_extension: string -> unit
 val is_extension_enabled: extension -> bool
 val string_of_extension: extension -> string
+val extension_of_string: string -> extension option
 
 (* Support for flags that can also be set from an environment variable *)
 type 'a env_reader = {

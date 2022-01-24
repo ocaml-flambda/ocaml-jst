@@ -306,22 +306,6 @@ and expression_extra i ppf x attrs =
       line i ppf "Texp_newtype \"%s\"\n" s;
       attributes i ppf attrs;
 
-and comprehension i ppf comp_types=
-  List.iter (fun {clauses; guard}  ->
-    List.iter (fun comp_type ->
-      match comp_type with
-      | From_to (s, _, e2, e3, df) ->
-        line i ppf "From_to \"%a\" %a\n" fmt_ident s fmt_direction_flag df;
-        expression i ppf e2;
-        expression i ppf e3
-      | In (p, e2) ->
-        line i ppf "In\n" ;
-        pattern i ppf p;
-        expression i ppf e2)
-    clauses;
-    Option.iter (expression i ppf) guard
-  ) comp_types
-
 and expression i ppf x =
   line i ppf "expression %a\n" fmt_location x.exp_loc;
   attributes i ppf x.exp_attributes;
@@ -397,14 +381,12 @@ and expression i ppf x =
       line i ppf "Texp_while\n";
       expression i ppf e1;
       expression i ppf e2;
-  | Texp_list_comprehension(e1, type_comp) ->
-    line i ppf "Texp_list_comprehension\n";
-    expression i ppf e1;
-    comprehension i ppf type_comp
-  | Texp_arr_comprehension(e1, type_comp) ->
-    line i ppf "Texp_arr_comprehension\n";
-    expression i ppf e1;
-    comprehension i ppf type_comp
+  | Texp_list_comprehension comp ->
+      line i ppf "Texp_list_comprehension\n";
+      comprehension i ppf comp
+  | Texp_array_comprehension comp ->
+      line i ppf "Texp_array_comprehension\n";
+      comprehension i ppf comp
   | Texp_for (s, _, e1, e2, df, e3) ->
       line i ppf "Texp_for \"%a\" %a\n" fmt_ident s fmt_direction_flag df;
       expression i ppf e1;
@@ -918,6 +900,37 @@ and label_decl i ppf {ld_id; ld_name = _; ld_mutable; ld_type; ld_loc;
 and longident_x_pattern i ppf (li, _, p) =
   line i ppf "%a\n" fmt_longident li;
   pattern (i+1) ppf p;
+
+and comprehension i ppf {comp_body; comp_clauses} =
+  line i ppf "comprehension\n";
+  expression i ppf comp_body;
+  List.iter (comprehension_clause i ppf) comp_clauses
+
+and comprehension_clause i ppf = function
+  | Texp_comp_for ccbs ->
+      line i ppf "Texp_comp_for\n";
+      List.iter (comprehension_clause_binding i ppf) ccbs
+  | Texp_comp_when cond ->
+      line i ppf "Texp_comp_when\n";
+      expression i ppf cond
+
+and comprehension_clause_binding
+      i ppf { comp_cb_iterator; comp_cb_attributes} =
+  line i ppf "comprehension_clause_binding\n";
+  comprehension_iterator i ppf comp_cb_iterator;
+  attributes i ppf comp_cb_attributes
+
+and comprehension_iterator i ppf = function
+  | Texp_comp_range { ident; pattern = _; start; stop; direction } ->
+      line i ppf "Texp_comp_range \"%a\" %a\n"
+        fmt_ident          ident
+        fmt_direction_flag direction;
+      expression i ppf start;
+      expression i ppf stop
+  | Texp_comp_in { pattern = pattern'; sequence } ->
+      line i ppf "Texp_comp_in\n";
+      pattern i ppf pattern';
+      expression i ppf sequence
 
 and case
     : type k . _ -> _ -> k case -> unit

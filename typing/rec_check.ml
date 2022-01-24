@@ -179,7 +179,7 @@ let classify_expression : Typedtree.expression -> sd =
 
     | Texp_list_comprehension _ ->
         Dynamic
-    | Texp_arr_comprehension _  ->
+    | Texp_array_comprehension _  ->
         Dynamic
     | Texp_for _
     | Texp_constant _
@@ -546,9 +546,9 @@ let rec expression : Typedtree.expression -> term_judg =
           List.split (List.map (fun c -> case c mode) cases) in
         let env_e = expression e (List.fold_left Mode.join Ignore pat_modes) in
         Env.join_list (env_e :: pat_envs))
-    | Texp_list_comprehension(body, comp_types) ->
-      join ((expression body << Guard)::(comprehension comp_types))
-    | Texp_arr_comprehension(body, comp_types) ->
+    | Texp_list_comprehension { comp_body; comp_clauses } ->
+      join ((expression comp_body << Guard) :: comprehension_clauses comp_clauses)
+    | Texp_array_comprehension { comp_body; comp_clauses } ->
       let array_mode = match Typeopt.array_kind exp with
         | Lambda.Pfloatarray ->
             (* (flat) float arrays unbox their elements *)
@@ -561,7 +561,7 @@ let rec expression : Typedtree.expression -> term_judg =
             (* non-generic, non-float arrays act as constructors *)
             Guard
       in
-      join ((expression body << array_mode)::(comprehension comp_types))
+      join ((expression comp_body << array_mode) :: comprehension_clauses comp_clauses)
     | Texp_for (_, _, low, high, _, body) ->
       (*
         G1 |- low: m[Dereference]
@@ -844,26 +844,21 @@ let rec expression : Typedtree.expression -> term_judg =
       expression handler << Dereference
     | Texp_probe_is_enabled _ -> empty
 
-and comprehension comp_types=
-  List.concat_map (fun {clauses; guard}  ->
-      let clauses =
-        List.concat_map (fun comp_type ->
-          match comp_type with
-          | From_to (_, _, low, high, _) ->
-            [
-              expression low << Dereference;
-              expression high << Dereference;
-            ]
-          | In (_, in_) ->
-            [
-              expression in_ << Dereference;
-            ]
-        ) clauses
-      in
-      match guard with
-      | None -> clauses
-      | Some guard -> (expression guard << Dereference)::clauses)
-  comp_types
+and comprehension_clauses clauses =
+  List.concat_map
+    (function
+      | Texp_comp_for bindings ->
+          List.concat_map
+            (fun { comp_cb_iterator; comp_cb_attributes = _ } ->
+               match comp_cb_iterator with
+               | Texp_comp_range { ident = _; start; stop; direction = _ } ->
+                   [expression start << Dereference; expression stop << Dereference]
+               | Texp_comp_in { pattern = _; sequence } ->
+                   [expression sequence << Dereference])
+            bindings
+      | Texp_comp_when guard ->
+          [expression guard << Dereference])
+    clauses
 
 and binding_op : Typedtree.binding_op -> term_judg =
   fun bop ->

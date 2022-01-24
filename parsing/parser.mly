@@ -2310,32 +2310,40 @@ simple_expr:
       { unclosed "(" $loc($1) ")" $loc($6) }
 ;
 
-comprehension_clause:
-|  ext_attributes pattern EQUAL expr direction_flag expr
-      { Extensions.From_to($2, $4, $6, $5) }
-|  ext_attributes pattern IN expr { Extensions.In($2, $4) }
+comprehension_iterator:
+  | EQUAL expr direction_flag expr
+      { Extensions.Comprehensions.Range { start = $2 ; stop = $4 ; direction = $3 } }
+  | IN expr
+      { Extensions.Comprehensions.In $2 }
 ;
 
-comprehension_tail(bracket):
-| FOR separated_nonempty_llist(AND, comprehension_clause) bracket
-      { [({clauses= $2; guard=None} : Extensions.comprehension)] }
-| FOR separated_nonempty_llist(AND, comprehension_clause) WHEN expr bracket
-      { [({clauses= $2; guard= Some $4} : Extensions.comprehension)] }
-| FOR separated_nonempty_llist(AND, comprehension_clause) comprehension_tail(bracket)
-      { ({clauses= $2; guard=None} : Extensions.comprehension) :: $3 }
-| FOR separated_nonempty_llist(AND, comprehension_clause) WHEN expr comprehension_tail(bracket)
-      { ({clauses= $2; guard= Some $4}: Extensions.comprehension) :: $5 }
+comprehension_clause_binding:
+  ext_attributes pattern comprehension_iterator
+    { Extensions.Comprehensions.{ pattern = $2 ; iterator = $3 ; attributes = $1 } }
+;
+
+comprehension_clause:
+  | FOR separated_nonempty_llist(AND, comprehension_clause_binding)
+      { Extensions.Comprehensions.For $2 }
+  | WHEN expr
+      { Extensions.Comprehensions.When $2 }
+
+%inline comprehension(lbracket, rbracket):
+  lbracket expr nonempty_llist(comprehension_clauses) rbracket
+    { Extensions.Comprehensions.{ body = $2; clauses = $3 } }
 ;
 
 %inline comprehension_expr:
-| LBRACKET expr comprehension_tail(RBRACKET)
-      { Pexp_extension(
-          Extensions.payload_of_extension_expr 
-            ~loc:(make_loc $sloc) (Eexp_list_comprehension($2, $3))) }
-| LBRACKETBAR expr comprehension_tail(BARRBRACKET)
-      { Pexp_extension(
-          Extensions.payload_of_extension_expr 
-            ~loc:(make_loc $sloc) (Eexp_arr_comprehension($2, $3))) }
+  | comprehension(LBRACKET,RBRACKET)
+      { Extensions.expr_of_extension_expr
+          ~loc:(make_loc $sloc)
+          Comprehensions
+          (Eexp_comprehension (Cexp_list_comprehension $1)) }
+  | comprehension(LBRACKETBAR,BARRBRACKET)
+      { Extensions.expr_of_extension_expr
+          ~loc:(make_loc $sloc)
+          Comprehensions
+          (Eexp_comprehension (Cexp_array_comprehension $1)) }
 ;
 
 %inline simple_expr_:
@@ -2405,7 +2413,7 @@ comprehension_tail(bracket):
       { fst (mktailexp $loc($3) $2) }
   | LBRACKET expr_semi_list error
       { unclosed "[" $loc($1) "]" $loc($3) }
-  | comprehension_expr { $1 } 
+  | comprehension_expr { $1 }
   | od=open_dot_declaration DOT comprehension_expr
       { Pexp_open(od, mkexp ~loc:($loc($3)) $3) }
   | od=open_dot_declaration DOT LBRACKET expr_semi_list RBRACKET

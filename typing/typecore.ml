@@ -28,13 +28,16 @@ type type_forcing_context =
   | If_no_else_branch
   | While_loop_conditional
   | While_loop_body
-  | In_comprehension_argument
   | For_loop_start_index
   | For_loop_stop_index
   | For_loop_body
   | Assert_condition
   | Sequence_left_hand_side
   | When_guard
+  | Comprehension_in_iterator
+  | Comprehension_for_start
+  | Comprehension_for_stop
+  | Comprehension_when
 
 type type_expected = {
   ty: type_expr;
@@ -114,6 +117,7 @@ type error =
   | Unexpected_existential of existential_restriction * string * string list
   | Invalid_interval
   | Invalid_for_loop_index
+  | Invalid_comprehension_for_range_iterator_index
   | No_value_clauses
   | Exception_pattern_disallowed
   | Mixed_value_and_exception_patterns_under_guard
@@ -127,7 +131,6 @@ type error =
   | Probe_name_format of string
   | Probe_name_undefined of string
   | Probe_is_enabled_format
-  | Extension_not_enabled of Clflags.extension
   | Literal_overflow of string
   | Unknown_literal of string * char
   | Illegal_letrec_pat
@@ -612,7 +615,8 @@ let split_cases env cases =
     | vp, ep -> add_case vals case vp, add_case exns case ep
   ) cases ([], [])
 
-let type_for_loop_index ~loc ~env ~param ty =
+(* CR aspectorzabusky: Should we specialize the warning? *)
+let type_for_loop_like_index ~error ~loc ~env ~param ty =
   match param.ppat_desc with
   | Ppat_any -> Ident.create_local "_for", env
   | Ppat_var {txt} ->
@@ -625,7 +629,13 @@ let type_for_loop_index ~loc ~env ~param ty =
         } env
         ~check:(fun s -> Warnings.Unused_for_index s)
   | _ ->
-      raise (Error (param.ppat_loc, env, Invalid_for_loop_index))
+      raise (Error (param.ppat_loc, env, error))
+
+let type_for_loop_index =
+  type_for_loop_like_index ~error:Invalid_for_loop_index
+
+let type_comprehension_for_range_iterator_index =
+  type_for_loop_like_index ~error:Invalid_comprehension_for_range_iterator_index
 
 (* Type paths *)
 
@@ -2189,7 +2199,7 @@ let rec is_nonexpansive exp =
   | Texp_setfield _
   | Texp_while _
   | Texp_list_comprehension _
-  | Texp_arr_comprehension _
+  | Texp_array_comprehension _
   | Texp_for _
   | Texp_send _
   | Texp_instvar _
@@ -2281,8 +2291,11 @@ let rec approx_type env sty =
       approx_type env sty
   | _ -> newvar ()
 
+
 let rec type_approx env sexp =
-  match sexp.pexp_desc with
+  match Extensions.extension_expr_of_expr sexp with
+  | Some eexp -> type_approx_extension eexp
+  | None      -> match sexp.pexp_desc with
     Pexp_let (_, _, e) -> type_approx env e
   | Pexp_fun (p, _, _, e) ->
       let ty = if is_optional p then type_option (newvar ()) else newvar () in
@@ -2314,6 +2327,12 @@ let rec type_approx env sexp =
       end;
       ty2
   | _ -> newvar ()
+
+and type_approx_extension : Extensions.extension_expr -> _ = function
+  | _ -> newvar ()
+  (* CR aspectorzabusky: Since [Pexp_array] doesn't get approximated, we don't
+     approximate comprehensions -- but why doesn't [Pexp_array] get
+     approximated?  Should we approximate comprehensions? *)
 
 (* List labels in a function type, and whether return type is a variable *)
 let rec list_labels_aux env visited ls ty_fun =
@@ -2401,7 +2420,7 @@ let check_partial_application statement exp =
             | Texp_ident _ | Texp_constant _ | Texp_tuple _
             | Texp_construct _ | Texp_variant _ | Texp_record _
             | Texp_field _ | Texp_setfield _ | Texp_array _
-            | Texp_list_comprehension _ | Texp_arr_comprehension _
+            | Texp_list_comprehension _ | Texp_array_comprehension _
             | Texp_while _ | Texp_for _ | Texp_instvar _
             | Texp_setinstvar _ | Texp_override _ | Texp_assert _
             | Texp_lazy _ | Texp_object _ | Texp_pack _ | Texp_unreachable
@@ -2633,7 +2652,10 @@ and type_expect_
       unify_exp env (re exp) (instance ty_expected));
     exp
   in
-  match sexp.pexp_desc with
+  (* CR aspectorzabusky: How's this indentation? *)
+  match Extensions.extension_expr_of_expr sexp with
+  | Some eexp -> type_expect_extension ~loc ~env ~ty_expected eexp
+  | None      -> match sexp.pexp_desc with
   | Pexp_ident lid ->
       let path, desc = type_ident env ~recarg lid in
       let exp_desc =
@@ -3773,15 +3795,6 @@ and type_expect_
           exp_env = env }
       | _ -> raise (Error (loc, env, Probe_is_enabled_format))
     end
-  | Pexp_extension (({ txt = ("extension.list_comprehension"
-                            | "extension.arr_comprehension"); _ },
-                    _ ) as extension)  ->
-    if Clflags.is_extension_enabled Clflags.Comprehensions then
-      let ext_expr = Extensions.extension_expr_of_payload ~loc extension in
-      type_extension ~loc ~env ~ty_expected ~sexp ext_expr
-    else
-      raise
-        (Error (loc, env, Extension_not_enabled(Clflags.Comprehensions)))
   | Pexp_extension ext ->
     raise (Error_forward (Builtin_attributes.error_of_extension ext))
 
@@ -4214,11 +4227,15 @@ and type_argument ?explanation ?recarg env sarg ty_expected' ty_expected =
     not tvar && List.for_all ((=) Nolabel) ls
   in
   let rec is_inferred sexp =
-    match sexp.pexp_desc with
+    match Extensions.extension_expr_of_expr sexp with
+    | Some eexp -> is_inferred_extension eexp
+    | None      -> match sexp.pexp_desc with
       Pexp_ident _ | Pexp_apply _ | Pexp_field _ | Pexp_constraint _
     | Pexp_coerce _ | Pexp_send _ | Pexp_new _ -> true
     | Pexp_sequence (_, e) | Pexp_open (_, e) -> is_inferred e
     | Pexp_ifthenelse (_, e1, Some e2) -> is_inferred e1 && is_inferred e2
+    | _ -> false
+  and is_inferred_extension : Extensions.extension_expr -> _ = function
     | _ -> false
   in
   match expand_head env ty_expected' with
@@ -4933,8 +4950,13 @@ and type_let
   in
   (* Only bind pattern variables after generalizing *)
   List.iter (fun f -> f()) force;
+  let eexp_is_fun : Extensions.extension_expr -> _ = function
+    | _ -> false
+  in
   let sexp_is_fun { pvb_expr = sexp; _ } =
-    match sexp.pexp_desc with
+    match Extensions.extension_expr_of_expr sexp with
+    | Some eexp -> eexp_is_fun eexp
+    | None      -> match sexp.pexp_desc with
     | Pexp_fun _ | Pexp_function _ -> true
     | _ -> false
   in
@@ -5170,106 +5192,133 @@ and type_andops env sarg sands expected_ty =
   let let_arg, rev_ands = loop env sarg (List.rev sands) expected_ty in
   let_arg, List.rev rev_ands
 
-  and type_extension ~loc ~env ~ty_expected ~sexp = function
-  | Extensions.Eexp_list_comprehension (sbody, comp_typell) ->
-    type_comprehension ~loc ~env ~ty_expected ~sexp ~sbody ~comp_typell
-      ~container_type:Predef.type_list ~build:(fun body comp_type ->
-          Texp_list_comprehension (body, comp_type))
-| Extensions.Eexp_arr_comprehension (sbody, comp_typell) ->
-    type_comprehension ~loc ~env ~ty_expected ~sexp ~sbody ~comp_typell
-      ~container_type:Predef.type_array ~build:(fun body comp_type ->
-          Texp_arr_comprehension (body, comp_type))
+and type_expect_extension ~loc ~env ~ty_expected
+  : Extensions.extension_expr -> _ = function
+  | Eexp_comprehension cexpr ->
+      type_comprehension_expr ~loc ~env ~ty_expected cexpr
 
-  and type_comprehension ~loc ~env ~ty_expected ~sexp ~sbody ~comp_typell 
-      ~container_type ~build =
-    if !Clflags.principal then begin_def ();
-    let without_arr_ty = Ctype.newvar ()  in
-    unify_exp_types loc env
-      (instance (container_type without_arr_ty)) (instance ty_expected);
-    if !Clflags.principal then begin
-      end_def();
-      generalize_structure without_arr_ty;
-    end;
-    let comp_type, new_env =
-      type_comprehension_list ~loc ~env ~container_type ~comp_typell
-    in
-    let body = type_expect new_env sbody (mk_expected without_arr_ty) in
-    re {
-      exp_desc = build body comp_type;
-      exp_loc = loc; exp_extra = [];
-      exp_type = instance (container_type body.exp_type);
-      exp_attributes = sexp.pexp_attributes;
-      exp_env = env }
+and type_comprehension_expr ~loc ~env ~ty_expected cexpr =
+  let open Extensions.Comprehensions in
+  let container_type, make_texp, {body = sbody; clauses} = match cexpr with
+    | Cexp_list_comprehension comp ->
+        Predef.type_list,
+        (fun tcomp -> Texp_list_comprehension tcomp),
+        comp
+    | Cexp_array_comprehension comp ->
+        Predef.type_array,
+        (fun tcomp -> Texp_array_comprehension tcomp),
+        comp
+  in
+  if !Clflags.principal then begin_def ();
+  let element_ty = Ctype.newvar ()  in
+  unify_exp_types
+    loc
+    env
+    (instance (container_type element_ty))
+    (instance ty_expected);
+  if !Clflags.principal then begin
+    end_def();
+    generalize_structure element_ty;
+  end;
+  let new_env, comp_clauses =
+    type_comprehension_clauses ~loc ~env ~container_type clauses
+  in
+  let comp_body = type_expect new_env sbody (mk_expected element_ty) in
+  re { exp_desc       = make_texp { comp_body ; comp_clauses }
+     ; exp_loc        = loc
+     ; exp_extra      = []
+     ; exp_type       = instance (container_type comp_body.exp_type)
+     ; exp_attributes = [] (* CR aspectorzabusky: These should come from somewhere *)
+     ; exp_env        = env (* CR aspectorzabusky: Should this be [env] or [new_env]? *) }
 
-  and type_comprehension_clause ~body_env ~env ~loc ~container_type
-      ~(comp_type : Extensions.comprehension_clause) =
-    let comp, env = match comp_type with
-    | From_to (param, slow, shigh, dir) ->
-      let low = type_expect env slow
-          (mk_expected ~explanation:For_loop_start_index Predef.type_int) in
-      let high = type_expect env shigh
-          (mk_expected ~explanation:For_loop_stop_index Predef.type_int) in
-      let id, new_env =
-        type_for_loop_index ~loc ~env:body_env ~param Predef.type_int
+and type_comprehension_clauses ~loc ~env ~container_type clauses =
+  List.fold_left_map
+    (type_comprehension_clause ~loc ~container_type)
+    env
+    clauses
+
+and type_comprehension_clause ~loc ~container_type env
+  : Extensions.Comprehensions.clause -> _ = function
+  | For bindings ->
+      let env, tbindings =
+        List.fold_left_map
+          (type_comprehension_binding ~loc ~container_type)
+          env
+          bindings
       in
-      From_to(id, param, low, high, dir), new_env
-    | In (param, siter) ->
-      let item_ty = newvar() in
-      let iter_ty = instance (container_type item_ty) in
-      let iter = type_expect env siter
-          (mk_expected ~explanation:In_comprehension_argument iter_ty) in
-      let pat =
-        type_pat Value ~no_existentials:In_self_pattern (ref env) param item_ty
+      env, Texp_comp_for tbindings
+  | When cond ->
+      let tcond =
+        type_expect
+          env
+          cond
+          (mk_expected ~explanation:Comprehension_when Predef.type_bool)
       in
-      let pv = !pattern_variables in
-      pattern_variables := [];
-      let new_env =
-        List.fold_right
-          (fun {pv_id; pv_type; pv_loc; pv_as_var=_; pv_attributes}
-              env ->
-            Env.add_value pv_id
-              { val_type = pv_type;
-                val_attributes = pv_attributes;
-                val_kind = Val_reg;
-                val_loc = pv_loc;
-                val_uid = Uid.mk ~current_unit:(Env.get_unit_name ());
-              } env
-              (*Perhaps this should be Unused_var_strict if some of the pattern
-                is used.*)
-              ~check:(fun s -> Warnings.Unused_var s))
-        pv body_env
+      env, Texp_comp_when tcond
+
+and type_comprehension_binding
+      ~loc
+      ~container_type
+      env
+      Extensions.Comprehensions.{ pattern; iterator; attributes } =
+  let comp_cb_iterator, env =
+    type_comprehension_iterator ~loc ~env ~container_type pattern iterator
+  in
+  (* CR aspectorzabusky: What is this doing? *)
+  let pv = !pattern_variables in
+  pattern_variables := [];
+  let env =
+    List.fold_right
+      (fun {pv_id; pv_type; pv_loc; pv_as_var=_; pv_attributes} env ->
+         Env.add_value
+           pv_id
+           { val_type = pv_type;
+             val_attributes = pv_attributes;
+             val_kind = Val_reg;
+             val_loc = pv_loc;
+             val_uid = Uid.mk ~current_unit:(Env.get_unit_name ()) }
+           env
+           (*Perhaps this should be Unused_var_strict if some of the pattern
+             is used.*)
+           ~check:(fun s -> Warnings.Unused_var s))
+      pv env
+  in
+  env, { comp_cb_iterator ; comp_cb_attributes = attributes }
+
+and type_comprehension_iterator ~loc ~env ~container_type pattern
+  : Extensions.Comprehensions.iterator -> _ = function
+  | Range { start; stop; direction } ->
+      let tbound ~explanation bound =
+        type_expect env bound (mk_expected ~explanation Predef.type_int)
       in
-      In(pat, iter), new_env
-    in
-    comp, env
-
-  and type_comprehension_block ~env ~loc
-      ~comp:({clauses; guard} : Extensions.comprehension) ~container_type  =
-    let new_comps, new_env = List.fold_right
-      (fun comp_type (comps, body_env)->
-        let comp, new_env =
-          type_comprehension_clause ~body_env ~env ~loc
-            ~container_type ~comp_type in
-        comp::comps, new_env)
-      clauses
-      ([], env)
-    in
-    let new_guard = Option.map (fun gu -> type_expect new_env gu
-      (mk_expected ~explanation:When_guard Predef.type_bool)) guard in
-    {clauses=new_comps; guard=new_guard}, new_env
-
-  and type_comprehension_list ~loc ~env ~container_type ~comp_typell =
-    let comps, new_env = List.fold_right
-      (fun comp (comps, env) ->
-          let new_comps, new_env  =
-            type_comprehension_block
-              ~env ~loc ~comp ~container_type
-          in
-          new_comps::comps, new_env
-      )
-      comp_typell ([], env)
-    in
-    comps, new_env
+      let start = tbound ~explanation:Comprehension_for_start start in
+      let stop  = tbound ~explanation:Comprehension_for_stop  stop  in
+      let ident, new_env =
+        type_comprehension_for_range_iterator_index
+          ~loc
+          ~env
+          ~param:pattern
+          Predef.type_int
+      in
+      Texp_comp_range { ident; pattern; start; stop; direction }, new_env
+  | In seq ->
+      let item_ty = newvar () in
+      let seq_ty = instance (container_type item_ty) in
+      let sequence =
+        type_expect
+          env
+          seq
+          (mk_expected ~explanation:Comprehension_in_iterator seq_ty)
+      in
+      let pattern =
+        type_pat
+          Value
+          ~no_existentials:In_self_pattern
+          (ref env)
+          pattern
+          item_ty
+      in
+      Texp_comp_in { pattern; sequence }, env
 
 (* Typing of toplevel bindings *)
 
@@ -5381,8 +5430,6 @@ let report_type_expected_explanation expl ppf =
       because "the condition of a while-loop"
   | While_loop_body ->
       because "the body of a while-loop"
-  | In_comprehension_argument ->
-    because "the iteration argument of a comprehension"
   | For_loop_start_index ->
       because "a for-loop start index"
   | For_loop_stop_index ->
@@ -5395,6 +5442,14 @@ let report_type_expected_explanation expl ppf =
       because "the left-hand side of a sequence"
   | When_guard ->
       because "a when-guard"
+  | Comprehension_in_iterator ->
+      because "a for-in iterator in a comprehension"
+  | Comprehension_for_start ->
+      because "a range-based for iterator start index in a comprehension"
+  | Comprehension_for_stop ->
+      because "a range-based for iterator stop index in a comprehension"
+  | Comprehension_when ->
+      because "a when-clause in a comprehension"
 
 let report_type_expected_explanation_opt expl ppf =
   match expl with
@@ -5686,6 +5741,10 @@ let report_error ~loc env = function
   | Invalid_for_loop_index ->
       Location.errorf ~loc
         "@[Invalid for-loop index: only variables and _ are allowed.@]"
+  | Invalid_comprehension_for_range_iterator_index ->
+      Location.errorf ~loc
+        "@[Invalid pattern in comprehension for-range iterator: \
+         only variables and _ are allowed.@]"
   | No_value_clauses ->
       Location.errorf ~loc
         "None of the patterns in this 'match' expression match values."
@@ -5739,10 +5798,6 @@ let report_error ~loc env = function
       Location.errorf ~loc
         "%%probe_is_enabled points must specify a single probe name as a \
          string literal"
-  | Extension_not_enabled(ext) ->
-    let name = Clflags.string_of_extension ext in
-    Location.errorf ~loc
-        "Extension %s must be enabled to use this feature." name
   | Literal_overflow ty ->
       Location.errorf ~loc
         "Integer literal exceeds the range of representable integers of type %s"
