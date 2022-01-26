@@ -2318,7 +2318,7 @@ comprehension_iterator:
 ;
 
 comprehension_clause_binding:
-  ext_attributes pattern comprehension_iterator
+  attributes pattern comprehension_iterator
     { Extensions.Comprehensions.{ pattern = $2 ; iterator = $3 ; attributes = $1 } }
 ;
 
@@ -2329,21 +2329,22 @@ comprehension_clause:
       { Extensions.Comprehensions.When $2 }
 
 %inline comprehension(lbracket, rbracket):
-  lbracket expr nonempty_llist(comprehension_clauses) rbracket
+  lbracket expr nonempty_llist(comprehension_clause) rbracket
     { Extensions.Comprehensions.{ body = $2; clauses = $3 } }
 ;
 
-%inline comprehension_expr:
+%inline comprehension_eexpr:
   | comprehension(LBRACKET,RBRACKET)
-      { Extensions.expr_of_extension_expr
-          ~loc:(make_loc $sloc)
-          Comprehensions
-          (Eexp_comprehension (Cexp_list_comprehension $1)) }
+      { Extensions.Comprehensions.Cexp_list_comprehension  $1 }
   | comprehension(LBRACKETBAR,BARRBRACKET)
-      { Extensions.expr_of_extension_expr
-          ~loc:(make_loc $sloc)
-          Comprehensions
-          (Eexp_comprehension (Cexp_array_comprehension $1)) }
+      { Extensions.Comprehensions.Cexp_array_comprehension $1 }
+;
+
+%inline comprehension_expr:
+  comprehension_eexpr
+    { (Extensions.Comprehensions.expr_of_comprehension_expr
+         ~loc:(make_loc $sloc)
+         $1).pexp_desc }
 ;
 
 %inline simple_expr_:
