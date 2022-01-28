@@ -2,6 +2,8 @@ open Lambda
 open Typedtree
 open Asttypes
 
+[@@@warning "-32"]
+
 let int n = Lconst (Const_base (Const_int n))
 
 type binding =
@@ -19,6 +21,73 @@ let gen_binding {let_kind; value_kind; var; init} body =
 let gen_bindings bindings body =
   List.fold_right gen_binding bindings body
 
+module type Lambda_int_ops = sig
+  val ( + ) : lambda -> lambda -> lambda
+  val ( - ) : lambda -> lambda -> lambda
+  val ( * ) : lambda -> lambda -> lambda
+  val ( / ) : lambda -> lambda -> lambda
+
+  val ( = )  : lambda -> lambda -> lambda
+  val ( <> ) : lambda -> lambda -> lambda
+  val ( < )  : lambda -> lambda -> lambda
+  val ( > )  : lambda -> lambda -> lambda
+  val ( <= ) : lambda -> lambda -> lambda
+  val ( >= ) : lambda -> lambda -> lambda
+
+  val ( && ) : lambda -> lambda -> lambda
+  val ( || ) : lambda -> lambda -> lambda
+
+  val l0 : lambda
+  val l1 : lambda
+  val i  : int -> lambda
+end
+
+let lambda_int_ops ~loc : (module Lambda_int_ops) = (module struct
+  let binop prim l r = Lprim(prim, [l; r], loc)
+
+  let ( + )  = binop Paddint
+  let ( - )  = binop Psubint
+  let ( * )  = binop Pmulint
+  let ( / )  = binop (Pdivint Unsafe)
+  let ( = )  = binop (Pintcomp Ceq)
+  let ( <> ) = binop (Pintcomp Cne)
+  let ( < )  = binop (Pintcomp Clt)
+  let ( > )  = binop (Pintcomp Cgt)
+  let ( <= ) = binop (Pintcomp Cle)
+  let ( >= ) = binop (Pintcomp Cge)
+  let ( && ) = binop Psequor
+  let ( || ) = binop Psequor
+
+  let i n = Lconst (const_int n)
+  let l0 = i 0
+  let l1 = i 1
+end)
+
+let lunless cond body = Lifthenelse(cond, lambda_unit, body)
+
+let safe_range_size ~loc ~low ~high =
+  let (module O) = lambda_int_ops ~loc in
+  let open O in
+  let range_size = Ident.create_local "range_size" in
+  Lifthenelse(low <= high,
+    Llet(Alias, Pintval,
+         range_size, (high - low) + l1,
+         Lifthenelse(Lvar range_size >= l0,
+           Lvar range_size,
+           Lprim(Praise Raise_regular, [], loc))),
+    l0)
+
+(* [safe_mul_assign ~loc ~product x y] generates lambda code that computes
+   [product := x * y] but fails if the multiplication overflowed *)
+let safe_mul_assign ~loc ~product x y =
+  let (module O) = lambda_int_ops ~loc in
+  let open O in
+  Lsequence(
+    Lassign(product, x * y),
+    Lifthenelse(y = i 0 || Lvar product / y = x,
+                lambda_unit,
+                Lprim(Praise Raise_regular, [], loc)))
+
 let transl_arr_iterator ~transl_exp ~scopes ~loc iterator =
   let len_var        = Ident.create_local "len_var" in
   let mk_len_binding = binding Alias Pintval len_var in
@@ -26,7 +95,7 @@ let transl_arr_iterator ~transl_exp ~scopes ~loc iterator =
     | Texp_comp_range { ident; pattern = _; start; stop; direction } ->
         let transl_bound name bound =
           let var = Ident.create_local name in
-          var, binding Strict Pintval var (transl_exp ~scopes bound)
+          Lvar var, binding Strict Pintval var (transl_exp ~scopes bound)
         in
         let start_var, start_binding = transl_bound "start" start in
         let stop_var,  stop_binding  = transl_bound "stop"  stop  in
@@ -35,12 +104,10 @@ let transl_arr_iterator ~transl_exp ~scopes ~loc iterator =
             | Upto   -> start_var, stop_var
             | Downto -> stop_var,  start_var
           in
-          (* (high - low) + 1 *)
-          mk_len_binding
-            (Lprim(Paddint, [Lprim(Psubint, [Lvar high; Lvar low], loc); int 1], loc))
+          mk_len_binding (safe_range_size ~loc ~low ~high)
         in
         let mk_iterator body =
-          Lfor(ident, Lvar start_var, Lvar stop_var, direction, body)
+          Lfor(ident, start_var, stop_var, direction, body)
         in
         [start_binding; stop_binding; len_binding], mk_iterator
     | Texp_comp_in { pattern; sequence = arr } ->
@@ -181,231 +248,61 @@ let make_counter counter =
 let increment_counter ~loc counter step =
   Lassign(counter, Lprim(Paddint, [Lvar counter; step], loc))
 
-type block_lambda =
-  | Without_size of { body : lambda }
-  | With_size of { body : lambda; raise_count: int }
+let blarp ~loc ~array_kind ~array_size ~array ~index ~body =
+  Lsequence(
+    Lifthenelse(
+      Lprim(Pintcomp Clt, [Lvar index; array_size], loc),
+      lambda_unit,
+      Lassign(array, (* double it *) Lvar array)),
+    Lprim(Parraysetu array_kind, [Lvar array; Lvar index; body], loc))
 
-let transl_arr_block ~transl_exp ~loc ~scopes
-          global_counter body array_kind value_kind block =
-  let length_var = Ident.create_local "len" in
-  let size =
-    match body with
-    | Without_size _ -> Lvar length_var
-    | With_size _ -> Lprim(Pmulint, [Lvar length_var; int 2], loc)
-  in
-  let result_array_var = Ident.create_local "arr" in
-  let result_array_binding =
-    make_array ~loc ~kind:array_kind ~size ~array:result_array_var
-  in
-  let counter_var = Ident.create_local "counter" in
-  let counter_binding = make_counter counter_var in
-  let elem_var = Ident.create_local "elem" in
-  let init_elem =
-    init_array_elem ~loc ~kind:array_kind ~size
-      ~array:result_array_var ~index:counter_var ~value:elem_var
-  in
-  let set_result =
-    match body with
-    | Without_size {body} ->
-        Llet(Strict, value_kind, elem_var, body,
-          Lsequence(init_elem, increment_counter ~loc counter_var (int 1)))
-    | With_size {body; raise_count} ->
-        let elem_len_var = Ident.create_local "len" in
-        let set_len =
-          Lprim(Parraysetu Paddrarray,
-            [Lvar result_array_var;
-             Lprim(Paddint, [Lvar counter_var; int 1], loc);
-             Lvar elem_len_var], loc)
-        in
-        Lstaticcatch(body,
-          (raise_count, [(elem_var, Pgenval); (elem_len_var, Pintval)]),
-          Lsequence(init_elem, Lsequence(set_len,
-             increment_counter ~loc counter_var (int 2))))
-  in
-  let bindings, loops =
-    iterate_arr_block ~transl_exp ~loc ~scopes block length_var set_result
-  in
-  let bindings =
-    bindings @ [result_array_binding; counter_binding]
-  in
-  let body =
-    match global_counter with
-    | None -> loops
-    | Some global_counter_var ->
-      let len =
-        match body with
-        | Without_size _ -> Lvar counter_var
-        | With_size _ -> Lprim(Pdivint Unsafe, [Lvar counter_var; int 2], loc)
+
+
+let rec go ~loc ~new_size ~prev_size ~size = function
+  | [] -> prev_size, lambda_unit (* how do I remove this? *)
+  | arr_size :: arr_sizes ->
+      let final_size, multiply_rest =
+        go ~loc ~new_size:prev_size ~prev_size:new_size ~size arr_sizes
       in
-      Lsequence(loops, increment_counter ~loc global_counter_var len)
-  in
-  match block.guard with
-  | None ->
-      let body =
-        gen_bindings bindings (Lsequence(body, Lvar result_array_var))
-      in
-      Without_size { body }
-  | Some _ ->
-      let raise_count = next_raise_count () in
-      let return =
-        Lstaticraise(raise_count, [Lvar result_array_var; Lvar counter_var])
-      in
-      let body =
-        gen_bindings bindings (Lsequence(body, return))
-      in
-      With_size { body; raise_count }
+      final_size,
+      Lsequence(
+        Lassign(size, arr_size),
+        Lsequence(
+          safe_mul_assign ~loc ~product:new_size (Lvar prev_size) (Lvar size),
+          multiply_rest))
 
-let sub_array ~loc src src_pos len =
-  let prim =
-    Primitive.simple ~name:"caml_array_sub" ~arity:3 ~alloc:true
-  in
-  Lprim (Pccall prim, [src; src_pos; len], loc)
+(* let combine ~loc ~total_size = function
+ *   | [] ->
+ *       Misc.fatal_error
+ *         "Comprehensions must have at least one clause, but translation into \
+ *          found an array comprehension with no clauses"
+ *   | [size] ->
+ *       (* Avoids creating extra variables; however, the latter case would still
+ *          work, this is just an optimization *)
+ *       Lassign(total_size, size)
+ *   | size :: sizes ->
+ *       let size_var = Ident.create_local "size" in
+ *       List
+ *         Llet(Alias, Pintval, size_var, size,
+ *              total_size
+ *            Lassign(total_size, size)
+ *
+ *
+ * total_size_1 = length arr1
+ * size = length arr2
+ * total_size_2 = total_size_1 * size
+ * size = length arr3
+ * total_size_1 = total_size_2 * size
+ * size = length arr4
+ * total_size_2 = total_size_1 * size *)
 
-let transl_single_arr_block ~transl_exp ~loc ~scopes
-      block body array_kind value_kind =
-  let body =
-    transl_arr_block ~transl_exp ~loc ~scopes None
-      (Without_size {body}) array_kind value_kind block
-  in
-  match body with
-  | Without_size { body } -> body
-  | With_size { body; raise_count } ->
-      let array_var = Ident.create_local "array" in
-      let len_var = Ident.create_local "len" in
-      Lstaticcatch(body,
-          (raise_count, [(array_var, Pgenval); (len_var, Pintval)]),
-          sub_array ~loc (Lvar array_var) (int 0) (Lvar len_var))
+let transl_array_comprehension ~transl_exp:_ ~scopes:_ ~loc:_ ~array_kind:_ _comprehension =
+  lambda_unit
 
-type intermediate_array_shape =
-  | Array_of_elements
-  | Array_of_arrays of intermediate_array_shape
-  | Array_of_filtered_arrays of intermediate_array_shape
+let transl_list_comprehension ~transl_exp:_ ~scopes:_ ~loc:_ _comprehension =
+  lambda_unit
 
-let concat_arrays ~loc arr kind shape global_count_var =
-  let res_var = Ident.create_local "res" in
-  let res_binding =
-    make_array ~loc ~kind ~size:(Lvar global_count_var) ~array:res_var
-  in
-  let counter_var = Ident.create_local "counter" in
-  let counter_binding = make_counter counter_var in
-  let rec loop shape arr_var len_var =
-    let kind =
-      match shape with
-      | Array_of_elements -> kind
-      | Array_of_arrays _ | Array_of_filtered_arrays _ -> Paddrarray
-    in
-    let len_var, bindings =
-      match len_var with
-      | Some var -> var, []
-      | None ->
-        let var = Ident.create_local "len" in
-        let init = Lprim((Parraylength kind), [Lvar(arr_var)], loc) in
-        let binding = binding Alias Pintval var init in
-        var, [binding]
-    in
-    match shape with
-    | Array_of_elements ->
-        gen_bindings bindings
-          (Lsequence(
-             init_array_elems ~loc ~kind ~size:(Lvar global_count_var)
-               ~array:res_var ~index:counter_var ~src:arr_var ~len:len_var,
-             increment_counter ~loc counter_var (Lvar len_var)))
-    | Array_of_arrays shape ->
-        let index_var = Ident.create_local "index" in
-        let sub_arr_var = Ident.create_local "arr" in
-        let last_index = Lprim(Psubint, [Lvar len_var; int 1], loc) in
-        let sub_arr =
-          Lprim(Parrayrefu kind, [Lvar arr_var; Lvar index_var], loc)
-        in
-        gen_bindings bindings
-          (Lfor(index_var, int 0, last_index, Upto,
-             Llet(Strict, Pgenval, sub_arr_var, sub_arr,
-               loop shape sub_arr_var None)))
-    | Array_of_filtered_arrays shape ->
-        let index_var = Ident.create_local "index" in
-        let index_binding = make_counter index_var in
-        let sub_arr_var = Ident.create_local "arr" in
-        let sub_arr =
-          Lprim(Parrayrefu kind, [Lvar arr_var; Lvar index_var], loc)
-        in
-        let sub_arr_len_var = Ident.create_local "len" in
-        let sub_arr_len =
-          Lprim(Parrayrefu kind,
-                [Lvar arr_var; Lprim(Paddint, [Lvar index_var; int 1], loc)], loc)
-        in
-        gen_bindings bindings
-          (gen_binding index_binding
-            (Lwhile(Lprim(Pintcomp Clt, [Lvar index_var; Lvar len_var], loc),
-               Lsequence(
-                 Llet(Strict, Pgenval, sub_arr_var, sub_arr,
-                   Llet(Strict, Pintval, sub_arr_len_var, sub_arr_len,
-                     loop shape sub_arr_var (Some sub_arr_len_var))),
-                 increment_counter ~loc index_var (int 2)))))
-  in
-  match arr with
-  | Without_size { body } ->
-      let array_var = Ident.create_local "array" in
-      Llet(Strict, Pgenval, array_var, body,
-           gen_binding res_binding
-             (gen_binding counter_binding
-                (Lsequence
-                   (loop shape array_var None,
-                    Lvar res_var))))
-  | With_size { body; raise_count } ->
-      let array_var = Ident.create_local "array" in
-      let len_var = Ident.create_local "len" in
-      Lstaticcatch(body,
-          (raise_count, [(array_var, Pgenval); (len_var, Pintval)]),
-           gen_binding res_binding
-             (gen_binding counter_binding
-                ((Lsequence
-                    (loop shape array_var (Some len_var),
-                     Lvar res_var)))))
-
-let transl_arr_comprehension
-      ~transl_exp ~loc ~scopes ~array_kind { comp_body; comp_clauses } =
-  let body = transl_exp ~scopes comp_body in
-  let value_kind = Typeopt.value_kind exp.exp_env exp.exp_type in
-  match blocks with
-  | [] ->
-      Misc.fatal_error
-        "Comprehensions must have at least one clause, but translation into \
-         lambda found an array comprehension with no clauses"
-  | [block] ->
-      transl_single_arr_block ~transl_exp ~loc ~scopes
-        block body array_kind value_kind
-  | inner_block :: rest ->
-      let counter_var = Ident.create_local "counter" in
-      let counter_binding = make_counter counter_var in
-      let body =
-        transl_arr_block ~transl_exp ~loc ~scopes (Some counter_var)
-          (Without_size {body}) array_kind value_kind inner_block
-      in
-      let shape, body =
-        List.fold_left
-          (fun (shape, body) block ->
-             let shape =
-               match body with
-               | Without_size _ -> Array_of_arrays shape
-               | With_size _ -> Array_of_filtered_arrays shape
-             in
-             let body =
-               transl_arr_block ~transl_exp ~loc ~scopes None
-                 body Paddrarray Pgenval block
-             in
-             shape, body)
-          (Array_of_elements, body) rest
-      in
-      gen_binding counter_binding
-        (concat_arrays ~loc body array_kind shape counter_var)
-
-let from_to_comp_prim ~dir=
-  let function_name = match dir with
-    | Upto ->  "map_from_to_cons"
-    | Downto -> "map_from_downto_cons"
-  in
-  Lambda.transl_prim "CamlinternalComprehension" function_name
-
+(*
 let in_comp_prim () = Lambda.transl_prim "CamlinternalComprehension" "map_cons"
 
 let comp_rev () = Lambda.transl_prim "CamlinternalComprehension" "rev"
@@ -577,3 +474,4 @@ let iterate_arr_block ~transl_exp ~loc ~scopes
   let length_binding = binding Alias Pintval length_var length in
   let bindings = List.append bindings [length_binding] in
   bindings, body
+*)
