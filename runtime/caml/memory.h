@@ -55,6 +55,8 @@ CAMLextern void caml_adjust_gc_speed (mlsize_t, mlsize_t);
 CAMLextern void caml_alloc_dependent_memory (mlsize_t bsz);
 CAMLextern void caml_free_dependent_memory (mlsize_t bsz);
 CAMLextern void caml_modify (value *, value);
+CAMLextern void caml_modify_batch (void);
+CAMLextern void caml_init_modify (void);
 CAMLextern void caml_initialize (value *, value);
 CAMLextern value caml_check_urgent_gc (value);
 CAMLextern color_t caml_allocation_color (void *hp);

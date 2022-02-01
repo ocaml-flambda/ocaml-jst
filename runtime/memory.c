@@ -601,19 +601,16 @@ CAMLexport CAMLweakdef void caml_initialize (value *fp, value val)
   }
 }
 
-/* You must use [caml_modify] to change a field of an existing shared block,
-   unless you are sure the value being overwritten is not a shared block and
-   the value being written is not a young block. */
-/* [caml_modify] never calls the GC. */
-/* [caml_modify] can also be used to do assignment on data structures that are
-   in the minor heap instead of in the major heap.  In this case, it
-   is a bit slower than simple assignment.
-   In particular, you can use [caml_modify] when you don't know whether the
-   block being changed is in the minor heap or the major heap. */
-/* PR#6084 workaround: define it as a weak symbol */
+struct modify_log_entry {
+  value *field_pointer;
+  value old_value;
+};
 
-CAMLexport CAMLweakdef void caml_modify (value *fp, value val)
+#define MODIFY_LOG_SIZE 1024
+
+void caml_modify_batch (void)
 {
+
   /* The write barrier implemented by [caml_modify] checks for the
      following two conditions and takes appropriate action:
      1- a pointer from the major heap to the minor heap is created
@@ -628,31 +625,39 @@ CAMLexport CAMLweakdef void caml_modify (value *fp, value val)
      values.  Don't forget to update caml_array_fill if the logic
      below changes!
   */
-  value old;
 
-  if (Is_young((value)fp)) {
-    /* The modified object resides in the minor heap.
-       Conditions 1 and 2 cannot occur. */
-    *fp = val;
-  } else {
-    /* The modified object resides in the major heap. */
-    CAMLassert(Is_in_heap(fp));
-    old = *fp;
-    *fp = val;
-    if (Is_block(old)) {
-      /* If [old] is a pointer within the minor heap, we already
-         have a major->minor pointer and [fp] is already in the
-         remembered set.  Conditions 1 and 2 cannot occur. */
-      if (Is_young(old)) return;
-      /* Here, [old] can be a pointer within the major heap.
-         Check for condition 2. */
-      if (caml_gc_phase == Phase_mark) caml_darken(old, NULL);
-    }
-    /* Check for condition 1. */
-    if (Is_block(val) && Is_young(val)) {
-      add_to_ref_table (Caml_state->ref_table, fp);
+  uintnat i, log_index;
+  value *fp;
+  value old, val;
+
+  log_index = Caml_state->modify_log_index;
+  for (i = 0; i < log_index; i++){
+    fp = Caml_state->modify_log[i].field_pointer;
+    if (Is_young((value)fp)){
+      /* The modified object resides in the minor heap.
+         Conditions 1 and 2 cannot occur. */
+      continue;
+    } else {
+      /* The modified object resides in the major heap. */
+      CAMLassert(Is_in_heap(fp));
+      old = Caml_state->modify_log[i].old_value;
+      if (Is_block(old)) {
+        /* If [old] is a pointer within the minor heap, we already
+           have a major->minor pointer and [fp] is already in the
+           remembered set.  Conditions 1 and 2 cannot occur. */
+        if (Is_young(old)) continue;
+        /* Here, [old] can be a pointer within the major heap.
+           Check for condition 2. */
+        if (caml_gc_phase == Phase_mark) caml_darken(old, NULL);
+      }
+      /* Check for condition 1. */
+      val = *fp;
+      if (Is_block(val) && Is_young(val)) {
+        add_to_ref_table (Caml_state->ref_table, fp);
+      }
     }
   }
+  Caml_state->modify_log_index = 0;
 }
 
 /* This version of [caml_modify] may additionally be used to mutate
@@ -783,6 +788,37 @@ CAMLprim value caml_local_stack_offset(value blk)
 #else
   return Val_long(0);
 #endif
+}
+
+/* You must use [caml_modify] to change a field of an existing shared block,
+   unless you are sure the value being overwritten is not a shared block and
+   the value being written is not a young block. */
+/* [caml_modify] never calls the GC. */
+/* [caml_modify] can also be used to do assignment on data structures that are
+   in the minor heap instead of in the major heap.  In this case, it
+   is a bit slower than simple assignment.
+   In particular, you can use [caml_modify] when you don't know whether the
+   block being changed is in the minor heap or the major heap. */
+/* PR#6084 workaround: define it as a weak symbol */
+
+CAMLexport CAMLweakdef void caml_modify (value *fp, value val)
+{
+  if (Caml_state->modify_log_index == MODIFY_LOG_SIZE){
+    caml_modify_batch ();
+  }
+  Caml_state->modify_log[Caml_state->modify_log_index].field_pointer = fp;
+  Caml_state->modify_log[Caml_state->modify_log_index].old_value = *fp;
+  ++ Caml_state->modify_log_index;
+  *fp = val;
+}
+
+void caml_init_modify (void)
+{
+  Caml_state->modify_log =
+    caml_stat_alloc_noexc (MODIFY_LOG_SIZE * sizeof (struct modify_log_entry));
+  if(Caml_state->modify_log == NULL)
+    caml_fatal_error("not enough memory for the modify log");
+  Caml_state->modify_log_index = 0;
 }
 
 /* Global memory pool.

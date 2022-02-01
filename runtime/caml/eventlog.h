@@ -56,7 +56,8 @@ typedef enum {
     EV_MINOR_COPY,
     EV_MINOR_UPDATE_WEAK,
     EV_MINOR_FINALIZED,
-    EV_EXPLICIT_GC_MAJOR_SLICE
+    EV_EXPLICIT_GC_MAJOR_SLICE,
+    EV_MODIFY_BATCH
 } ev_gc_phase;
 
 typedef enum {

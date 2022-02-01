@@ -699,6 +699,7 @@ void caml_init_gc (uintnat minor_size, uintnat major_size,
   caml_custom_major_ratio = norm_custom_maj (custom_maj);
   caml_custom_minor_ratio = norm_custom_min (custom_min);
   caml_custom_minor_max_bsz = custom_bsz;
+  caml_init_modify ();
   caml_gc_message (0x20, "Initial minor heap size: %"
                    ARCH_SIZET_PRINTF_FORMAT "uk words\n",
                    Caml_state->minor_heap_wsz / 1024);
