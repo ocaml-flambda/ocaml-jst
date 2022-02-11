@@ -127,7 +127,8 @@ let transl_arr_iterator ~transl_exp ~scopes ~loc iterator =
                  (Lprim(Parrayrefu arr_kind, [Lvar arr_var; Lvar index], loc))
                  pattern
                  body)
-        in [arr_binding; len_binding], mk_iterator
+        in
+        [arr_binding; len_binding], mk_iterator
   in
   bindings, len_var, mk_iterator
 
@@ -164,6 +165,15 @@ let transl_arr_clause ~transl_exp ~loc ~scopes length_var = function
   | Texp_comp_when cond ->
       [], fun body -> Lifthenelse(transl_exp ~scopes cond, body, lambda_unit)
 
+let transl_arr_clauses ~transl_exp ~loc ~scopes length_var =
+  List.fold_left
+    (fun (bindings, all_clauses_k) clause ->
+       let new_bindings, with_body =
+         transl_arr_clause ~transl_exp ~loc ~scopes length_var clause
+       in
+       bindings @ new_bindings, fun body -> all_clauses_k (with_body body))
+    ([], Fun.id)
+
 let make_array_prim ~loc size init =
   let prim =
     Primitive.simple ~name:"caml_make_vect" ~arity:2 ~alloc:true
@@ -189,7 +199,7 @@ let make_array ~loc ~kind ~size ~array =
       (* This array can be Immutable since it is empty and will later be
          replaced when an example value (to create the array) is known.
          That is also why the biding is a Variable. *)
-      let init = Lprim(Pmakearray(Pgenarray, Immutable), [] ,loc) in
+      let init = Lprim(Pmakearray(Pgenarray, Immutable), [], loc) in
       binding Variable Pgenval array init
   | Pintarray | Paddrarray ->
       let init = make_array_prim ~loc size (int 0) in
@@ -257,7 +267,6 @@ let blarp ~loc ~array_kind ~array_size ~array ~index ~body =
     Lprim(Parraysetu array_kind, [Lvar array; Lvar index; body], loc))
 
 
-
 let rec go ~loc ~new_size ~prev_size ~size = function
   | [] -> prev_size, lambda_unit (* how do I remove this? *)
   | arr_size :: arr_sizes ->
@@ -296,8 +305,31 @@ let rec go ~loc ~new_size ~prev_size ~size = function
  * size = length arr4
  * total_size_2 = total_size_1 * size *)
 
-let transl_array_comprehension ~transl_exp:_ ~scopes:_ ~loc:_ ~array_kind:_ _comprehension =
-  lambda_unit
+let transl_array_comprehension
+      ~transl_exp ~scopes ~loc ~array_kind { comp_body; comp_clauses } =
+  let starting_size = 10 (* CR aspectorzabusky: pick deliberately *) in
+  let array_size = Ident.create_local "array_size" in
+  let index      = Ident.create_local "index" in
+  let array      = Ident.create_local "array" in
+  let comprehension_bindings =
+    [ binding Alias    Pintval array_size (int starting_size)
+    ; binding Variable Pintval index      (int 0)
+    ; binding Variable Pgenval array
+        (Lprim(Pmakearray(array_kind, Mutable),
+               Misc.replicate_list (int 0) starting_size,
+               loc))
+    ]
+  in
+  let clause_bindings, make_comprehension =
+    transl_arr_clauses ~transl_exp ~scopes ~loc array_size comp_clauses
+  in
+  gen_bindings
+    (comprehension_bindings @ clause_bindings)
+    (Lsequence(
+       make_comprehension
+         (blarp ~loc ~array_kind ~array_size:(Lvar array_size) ~array ~index ~body:(transl_exp ~scopes comp_body)),
+       (* CR aspectorzabusky: shrink array *)
+       Lvar array))
 
 let transl_list_comprehension ~transl_exp:_ ~scopes:_ ~loc:_ _comprehension =
   lambda_unit

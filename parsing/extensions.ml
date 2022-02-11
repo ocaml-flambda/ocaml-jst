@@ -153,7 +153,7 @@ module Comprehensions = struct
 
   (* CR aspectorzabusky: new name? *)
   let comprehension_expr ~loc names =
-    extension_expr ~loc ("comprehension" :: names)
+    extension_expr ~loc ("comprehensions" :: names)
     (* CR aspectorzabusky: make sure this is linked to the name of the
        [Clflags.extension] *)
 
@@ -192,10 +192,10 @@ module Comprehensions = struct
           ["when"]
           (Ast_helper.Exp.sequence cond rest)
 
-  let expr_of_comprehension ~loc { body; clauses } =
+  let expr_of_comprehension ~loc ~type_ { body; clauses } =
     comprehension_expr
       ~loc
-      []
+      [type_]
       (List.fold_left
          (Fun.flip (expr_of_clause ~loc))
          (comprehension_expr ~loc ["body"] body)
@@ -203,8 +203,8 @@ module Comprehensions = struct
 
   let expr_of_comprehension_expr ~loc eexpr =
     let ghost_loc = { loc with Location.loc_ghost = true } in
-    let expr_of_comprehension_type typ comp =
-      comprehension_expr ~loc [typ] (expr_of_comprehension ~loc:ghost_loc comp)
+    let expr_of_comprehension_type type_ comp =
+      comprehension_expr ~loc [] (expr_of_comprehension ~loc:ghost_loc ~type_ comp)
     in
     match eexpr with
     | Cexp_list_comprehension  comp -> expr_of_comprehension_type "list"  comp
@@ -212,7 +212,7 @@ module Comprehensions = struct
 
   let expand_comprehension_extension_expr expr =
     match expand_extension_expr expr with
-    | Some ("comprehension" :: name, expr) ->
+    | Some ("comprehensions" :: name, expr) ->
         name, expr
     | Some (name, _) ->
         failwith ("Tried to desugar the non-comprehension extension point \
