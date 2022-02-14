@@ -74,27 +74,6 @@ end)
 (* CR aspectorzabusky: Raise something real *)
 let asz_bad_exn = int 737
 
-(* CR aspectorzabusky: I don't think these range checks are correct *)
-        (* let len_binding =
-         *   let low, high = match direction with
-         *     | Upto   -> start_var, stop_var
-         *     | Downto -> stop_var,  start_var
-         *   in
-         *   mk_len_binding (safe_range_size ~loc ~low ~high)
-         * in *)
-let safe_range_size ~loc ~low ~high =
-  let (module O) = lambda_int_ops ~loc in
-  let open O in
-  let range_size = Ident.create_local "range_size" in
-  Lifthenelse(low <= high,
-    Llet(Alias, Pintval,
-         range_size, (high - low) + l1,
-         Lifthenelse(Lvar range_size >= l0,
-           Lvar range_size,
-           Lprim(Praise Raise_regular, [asz_bad_exn], loc))),
-    l0)
-let _asz = safe_range_size
-
 (* [safe_mul_assign ~loc ~product x y] generates lambda code that computes
    [product := x * y] but fails if the multiplication overflowed *)
 let safe_mul_assign ~loc ~product x y =
@@ -107,44 +86,94 @@ let safe_mul_assign ~loc ~product x y =
                 Lprim(Praise Raise_regular, [asz_bad_exn], loc)))
 let _asz = safe_mul_assign
 
-let transl_arr_iterator ~transl_exp ~scopes ~loc iterator =
-  let bindings, mk_iterator = match iterator with
-    | Texp_comp_range { ident; pattern = _; start; stop; direction } ->
-        let transl_bound name bound =
-          var_binding Strict Pintval name (transl_exp ~scopes bound)
-        in
-        let start_var, start_binding = transl_bound "start" start in
-        let stop_var,  stop_binding  = transl_bound "stop"  stop  in
-        let mk_iterator body =
-          Lfor(ident, start_var, stop_var, direction, body)
-        in
-        [start_binding; stop_binding], mk_iterator
-    | Texp_comp_in { pattern; sequence = iter_arr } ->
-        let iter_arr_var, iter_arr_binding =
-          var_binding Strict Pgenval "iter_arr" (transl_exp ~scopes iter_arr)
-        in
-        let iter_arr_kind = Typeopt.array_kind iter_arr in
-        let iter_len_var, iter_len_binding =
-          var_binding Alias Pintval
-            "iter_len"
-            (Lprim(Parraylength iter_arr_kind, [iter_arr_var], loc))
-        in
-        let iter_ix = Ident.create_local "iter_ix" in
-        let mk_iterator body =
-          (* for iter_ix = 0 to Array.length iter_arr - 1 ... *)
-          Lfor(iter_ix, int 0, Lprim(Psubint, [iter_len_var; int 1], loc), Upto,
-               Matching.for_let
-                 ~scopes
-                 pattern.pat_loc
-                 (Lprim(Parrayrefu iter_arr_kind,
-                        [iter_arr_var; Lvar iter_ix],
-                        loc))
-                 pattern
-                 body)
-        in
-        [iter_arr_binding; iter_len_binding], mk_iterator
-  in
-  fun body -> gen_bindings bindings (mk_iterator body)
+(* CR aspectorzabusky: Should these hold less information and then have us
+   construct the [binding] later? *)
+type array_iterator_let_bindings =
+  | Range_let_bindings of
+      { start_binding : binding
+      ; stop_binding  : binding
+      ; direction     : direction_flag }
+  | Array_let_bindings of
+      { iter_arr_binding : binding
+      ; iter_len_binding : binding }
+
+let gen_array_iterator_let_bindings bindings =
+  gen_bindings
+    (List.concat_map
+       (function
+         | Range_let_bindings { start_binding; stop_binding } ->
+             [start_binding; stop_binding]
+         | Array_let_bindings { iter_arr_binding; iter_len_binding } ->
+             [iter_arr_binding; iter_len_binding])
+       bindings)
+
+let transl_arr_static_binding_size ~loc = function
+  | Range_let_bindings { start_binding; stop_binding; direction }  ->
+      let (module O) = lambda_int_ops ~loc in
+      let open O in
+      let start = Lvar start_binding.var in
+      let stop  = Lvar stop_binding.var in
+      let low, high = match direction with
+        | Upto   -> start, stop
+        | Downto -> stop,  start
+      in
+      Lifthenelse(low < high,
+        (* The range has content *)
+        (let range_size = Ident.create_local "range_size" in
+         Llet(Alias, Pintval, range_size, (high - low) + l1,
+           (* If the computed size of the range is nonpositive, there was
+              overflow.  (The zero case is checked for when we check to see if
+              the bounds are in the right order.) *)
+           Lifthenelse(Lvar range_size > l0,
+             Lvar range_size,
+             Lprim(Praise Raise_regular, [asz_bad_exn], loc)))),
+        (* The range is empty *)
+        int 0)
+  | Array_let_bindings { iter_arr_binding = _; iter_len_binding } ->
+      Lvar iter_len_binding.var
+
+let transl_arr_static_bindings_size ~loc iterators =
+  let (module O) = lambda_int_ops ~loc in
+  let open O in
+  let sizes = List.map (transl_arr_static_binding_size ~loc) iterators in
+  (* CR aspectorzabusky: check for overflow *)
+  List.fold_left ( * ) l1 sizes
+
+let transl_arr_iterator ~transl_exp ~scopes ~loc = function
+  | Texp_comp_range { ident; pattern = _; start; stop; direction } ->
+      let transl_bound name bound =
+        var_binding Strict Pintval name (transl_exp ~scopes bound)
+      in
+      let start_var, start_binding = transl_bound "start" start in
+      let stop_var,  stop_binding  = transl_bound "stop"  stop  in
+      let mk_iterator body =
+        Lfor(ident, start_var, stop_var, direction, body)
+      in
+      mk_iterator, Range_let_bindings { start_binding; stop_binding; direction }
+  | Texp_comp_in { pattern; sequence = iter_arr } ->
+      let iter_arr_var, iter_arr_binding =
+        var_binding Strict Pgenval "iter_arr" (transl_exp ~scopes iter_arr)
+      in
+      let iter_arr_kind = Typeopt.array_kind iter_arr in
+      let iter_len_var, iter_len_binding =
+        var_binding Alias Pintval
+          "iter_len"
+          (Lprim(Parraylength iter_arr_kind, [iter_arr_var], loc))
+      in
+      let iter_ix = Ident.create_local "iter_ix" in
+      let mk_iterator body =
+        (* for iter_ix = 0 to Array.length iter_arr - 1 ... *)
+        Lfor(iter_ix, int 0, Lprim(Psubint, [iter_len_var; int 1], loc), Upto,
+             Matching.for_let
+               ~scopes
+               pattern.pat_loc
+               (Lprim(Parrayrefu iter_arr_kind,
+                      [iter_arr_var; Lvar iter_ix],
+                      loc))
+               pattern
+               body)
+      in
+      mk_iterator, Array_let_bindings { iter_arr_binding; iter_len_binding }
 
 let transl_arr_binding
       ~transl_exp
@@ -154,6 +183,15 @@ let transl_arr_binding
   (* CR aspectorzabusky: What do we do with attributes here? *)
   transl_arr_iterator ~transl_exp ~loc ~scopes comp_cb_iterator
 
+let transl_nested_with_bindings transl =
+  List.fold_left_map
+    (fun whole_cps next ->
+       let next_cps, bindings = transl next in
+       (fun body -> whole_cps (next_cps body)), bindings)
+    Fun.id
+
+(* As [transl_nested_with_bindings], but we don't need to keep track of the
+   generated let-bindings *)
 let transl_nested transl =
   List.fold_left
     (fun whole_cps next ->
@@ -161,14 +199,60 @@ let transl_nested transl =
        fun body -> whole_cps (next_cps body))
     Fun.id
 
+let transl_arr_for_and_clause ~transl_exp ~loc ~scopes bindings =
+  let transl_bindings, var_bindings =
+    transl_nested_with_bindings
+      (transl_arr_binding ~transl_exp ~loc ~scopes)
+      bindings
+  in
+  (fun body -> gen_array_iterator_let_bindings var_bindings
+                 (transl_bindings body)),
+  var_bindings
+
 let transl_arr_clause ~transl_exp ~loc ~scopes = function
   | Texp_comp_for bindings ->
-      transl_nested (transl_arr_binding ~transl_exp ~loc ~scopes) bindings
+      fst (transl_arr_for_and_clause ~transl_exp ~loc ~scopes bindings)
   | Texp_comp_when cond ->
       fun body -> Lifthenelse(transl_exp ~scopes cond, body, lambda_unit)
 
-let transl_arr_clauses ~transl_exp ~loc ~scopes =
-  transl_nested (transl_arr_clause ~transl_exp ~loc ~scopes)
+(* CR aspectorzabusky: Pick deliberately *)
+let starting_resizable_array_size = int 10
+
+(* If the array comprehension is of the form
+
+       [|BODY for ITER and ITER ... and ITER|]
+
+   then we can compute the size of the resulting array statically
+   ([Static_size]); otherwise, we cannot, and we have to dynamically grow the
+   array as we iterate and shrink it to size at the end. *)
+type array_size_behavior =
+  | Static_size
+  | Resizable
+
+type translated_clauses =
+  { array_size_behavior : array_size_behavior
+  ; starting_size       : lambda
+      (* With [Resizable], we could pick it later instead, but this way leads to
+         simpler code.  I suppose we could pick the starting size heuristically
+         in the future if we wanted? *)
+  ; make_comprehension  : lambda -> lambda }
+
+let transl_arr_clauses ~transl_exp ~loc ~scopes = function
+  | [Texp_comp_for bindings] when false ->
+      (* CR aspectorzabusky: There are still bugs with binding structure here *)
+      let transl_clause, var_bindings =
+        transl_arr_for_and_clause ~transl_exp ~loc ~scopes bindings
+      in
+      { array_size_behavior = Static_size
+      ; starting_size       = transl_arr_static_bindings_size ~loc var_bindings
+      ; make_comprehension  = transl_clause }
+  | clauses ->
+      let transl_clauses =
+        transl_nested (transl_arr_clause ~transl_exp ~loc ~scopes) clauses
+      in
+      { array_size_behavior = Resizable
+      ; starting_size       = starting_resizable_array_size
+      ; make_comprehension  = transl_clauses }
 
 let make_array_prim ~loc size init =
   let prim =
@@ -199,10 +283,6 @@ let make_uninitialized_array ~loc ~array_kind ~size =
       make_array_prim ~loc size (int 0)
   | Pfloatarray ->
       make_floatarray_prim ~loc size
-
-type array_size_behavior =
-  | Static_size
-  | Resizable
 
 (* Generate the code for the body of an array comprehension:
      1. Compute the next element
@@ -285,19 +365,18 @@ let sub_array_prim ~loc arr ~pos ~len =
 
 let transl_array_comprehension
       ~transl_exp ~scopes ~loc ~array_kind { comp_body; comp_clauses } =
-  let starting_size = 10 (* CR aspectorzabusky: pick deliberately *) in
   let array_size = Ident.create_local "array_size" in
   let index      = Ident.create_local "index" in
   let array      = Ident.create_local "array" in
+  let { array_size_behavior; starting_size; make_comprehension } =
+    transl_arr_clauses ~transl_exp ~scopes ~loc comp_clauses
+  in
   let comprehension_bindings =
-    [ binding Variable Pintval array_size (int starting_size)
+    [ binding Variable Pintval array_size starting_size
     ; binding Variable Pintval index      (int 0)
     ; binding Variable Pgenval array
         (make_uninitialized_array ~loc ~array_kind ~size:(Lvar array_size))
     ]
-  in
-  let make_comprehension =
-    transl_arr_clauses ~transl_exp ~scopes ~loc comp_clauses
   in
   gen_bindings
     comprehension_bindings
@@ -307,11 +386,15 @@ let transl_array_comprehension
             ~loc
             ~array_kind
             ~array_size
-            ~array_size_behavior:(if false then Static_size else Resizable)
+            ~array_size_behavior
             ~array
             ~index
             ~body:(transl_exp ~scopes comp_body)),
-       (sub_array_prim ~loc (Lvar array) ~pos:(int 0) ~len:(Lvar index))))
+       match array_size_behavior with
+       | Static_size ->
+           Lvar array
+       | Resizable ->
+           (sub_array_prim ~loc (Lvar array) ~pos:(int 0) ~len:(Lvar index))))
 
 let transl_list_comprehension ~transl_exp:_ ~scopes:_ ~loc:_ _comprehension =
   lambda_unit
