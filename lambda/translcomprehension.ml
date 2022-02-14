@@ -2,10 +2,6 @@ open Lambda
 open Typedtree
 open Asttypes
 
-[@@@warning "-32"]
-
-let int n = Lconst (Const_base (Const_int n))
-
 type binding =
   { let_kind : let_kind;
     value_kind : value_kind;
@@ -15,13 +11,25 @@ type binding =
 let binding let_kind value_kind var init =
   {let_kind; value_kind; var; init}
 
+let id_var_binding let_kind value_kind name init =
+  let id = Ident.create_local name in
+  id, Lvar id, binding let_kind value_kind id init
+
+let var_binding let_kind value_kind name init =
+  let _id, var, binding = id_var_binding let_kind value_kind name init in
+  var, binding
+
 let gen_binding {let_kind; value_kind; var; init} body =
   Llet(let_kind, value_kind, var, init, body)
 
 let gen_bindings bindings body =
   List.fold_right gen_binding bindings body
 
+let int n = Lconst (const_int n)
+
 module type Lambda_int_ops = sig
+  [@@@warning "-32"]
+
   val ( + ) : lambda -> lambda -> lambda
   val ( - ) : lambda -> lambda -> lambda
   val ( * ) : lambda -> lambda -> lambda
@@ -63,8 +71,17 @@ let lambda_int_ops ~loc : (module Lambda_int_ops) = (module struct
   let l1 = i 1
 end)
 
-let lunless cond body = Lifthenelse(cond, lambda_unit, body)
+(* CR aspectorzabusky: Raise something real *)
+let asz_bad_exn = int 737
 
+(* CR aspectorzabusky: I don't think these range checks are correct *)
+        (* let len_binding =
+         *   let low, high = match direction with
+         *     | Upto   -> start_var, stop_var
+         *     | Downto -> stop_var,  start_var
+         *   in
+         *   mk_len_binding (safe_range_size ~loc ~low ~high)
+         * in *)
 let safe_range_size ~loc ~low ~high =
   let (module O) = lambda_int_ops ~loc in
   let open O in
@@ -74,8 +91,9 @@ let safe_range_size ~loc ~low ~high =
          range_size, (high - low) + l1,
          Lifthenelse(Lvar range_size >= l0,
            Lvar range_size,
-           Lprim(Praise Raise_regular, [], loc))),
+           Lprim(Praise Raise_regular, [asz_bad_exn], loc))),
     l0)
+let _asz = safe_range_size
 
 (* [safe_mul_assign ~loc ~product x y] generates lambda code that computes
    [product := x * y] but fails if the multiplication overflowed *)
@@ -86,51 +104,47 @@ let safe_mul_assign ~loc ~product x y =
     Lassign(product, x * y),
     Lifthenelse(y = i 0 || Lvar product / y = x,
                 lambda_unit,
-                Lprim(Praise Raise_regular, [], loc)))
+                Lprim(Praise Raise_regular, [asz_bad_exn], loc)))
+let _asz = safe_mul_assign
 
 let transl_arr_iterator ~transl_exp ~scopes ~loc iterator =
-  let len_var        = Ident.create_local "len_var" in
-  let mk_len_binding = binding Alias Pintval len_var in
   let bindings, mk_iterator = match iterator with
     | Texp_comp_range { ident; pattern = _; start; stop; direction } ->
         let transl_bound name bound =
-          let var = Ident.create_local name in
-          Lvar var, binding Strict Pintval var (transl_exp ~scopes bound)
+          var_binding Strict Pintval name (transl_exp ~scopes bound)
         in
         let start_var, start_binding = transl_bound "start" start in
         let stop_var,  stop_binding  = transl_bound "stop"  stop  in
-        let len_binding =
-          let low, high = match direction with
-            | Upto   -> start_var, stop_var
-            | Downto -> stop_var,  start_var
-          in
-          mk_len_binding (safe_range_size ~loc ~low ~high)
-        in
         let mk_iterator body =
           Lfor(ident, start_var, stop_var, direction, body)
         in
-        [start_binding; stop_binding; len_binding], mk_iterator
-    | Texp_comp_in { pattern; sequence = arr } ->
-        let arr_var     = Ident.create_local "arr_var" in
-        let arr_kind    = Typeopt.array_kind arr in
-        let arr_binding = binding Strict Pgenval arr_var (transl_exp ~scopes arr) in
-        let len_binding =
-          mk_len_binding (Lprim(Parraylength arr_kind, [Lvar arr_var], loc))
+        [start_binding; stop_binding], mk_iterator
+    | Texp_comp_in { pattern; sequence = iter_arr } ->
+        let iter_arr_var, iter_arr_binding =
+          var_binding Strict Pgenval "iter_arr" (transl_exp ~scopes iter_arr)
         in
-        let index = Ident.create_local "index" in
+        let iter_arr_kind = Typeopt.array_kind iter_arr in
+        let iter_len_var, iter_len_binding =
+          var_binding Alias Pintval
+            "iter_len"
+            (Lprim(Parraylength iter_arr_kind, [iter_arr_var], loc))
+        in
+        let iter_ix = Ident.create_local "iter_ix" in
         let mk_iterator body =
-          (* for index = 0 to Array.length arr - 1 ... *)
-          Lfor(index, int 0, Lprim(Psubint, [Lvar len_var; int 1], loc), Upto,
+          (* for iter_ix = 0 to Array.length iter_arr - 1 ... *)
+          Lfor(iter_ix, int 0, Lprim(Psubint, [iter_len_var; int 1], loc), Upto,
                Matching.for_let
                  ~scopes
                  pattern.pat_loc
-                 (Lprim(Parrayrefu arr_kind, [Lvar arr_var; Lvar index], loc))
+                 (Lprim(Parrayrefu iter_arr_kind,
+                        [iter_arr_var; Lvar iter_ix],
+                        loc))
                  pattern
                  body)
         in
-        [arr_binding; len_binding], mk_iterator
+        [iter_arr_binding; iter_len_binding], mk_iterator
   in
-  bindings, len_var, mk_iterator
+  fun body -> gen_bindings bindings (mk_iterator body)
 
 let transl_arr_binding
       ~transl_exp
@@ -140,39 +154,21 @@ let transl_arr_binding
   (* CR aspectorzabusky: What do we do with attributes here? *)
   transl_arr_iterator ~transl_exp ~loc ~scopes comp_cb_iterator
 
-let transl_arr_clause ~transl_exp ~loc ~scopes length_var = function
-  | Texp_comp_for bindings ->
-      let bindings, length_opt, with_body =
-        List.fold_left
-          (fun (bindings, length, with_body) binding ->
-             let new_bindings, length_var, mk_iterator =
-               transl_arr_binding ~transl_exp ~loc ~scopes binding
-             in
-             let bindings = new_bindings @ bindings in
-             let length = match length with
-               | None        -> Lvar length_var
-               | Some length -> Lprim(Pmulint, [Lvar length_var; length], loc)
-             in
-             let with_body body = mk_iterator (with_body body) in
-             bindings, Some length, with_body)
-          ([], None, Fun.id)
-          bindings
-      in
-      let length = Option.value length_opt ~default:(int 0) in
-      let length_binding = binding Alias Pintval length_var length in
-      let bindings = bindings @ [length_binding] in
-      bindings, with_body
-  | Texp_comp_when cond ->
-      [], fun body -> Lifthenelse(transl_exp ~scopes cond, body, lambda_unit)
-
-let transl_arr_clauses ~transl_exp ~loc ~scopes length_var =
+let transl_nested transl =
   List.fold_left
-    (fun (bindings, all_clauses_k) clause ->
-       let new_bindings, with_body =
-         transl_arr_clause ~transl_exp ~loc ~scopes length_var clause
-       in
-       bindings @ new_bindings, fun body -> all_clauses_k (with_body body))
-    ([], Fun.id)
+    (fun whole_cps next ->
+       let next_cps = transl next in
+       fun body -> whole_cps (next_cps body))
+    Fun.id
+
+let transl_arr_clause ~transl_exp ~loc ~scopes = function
+  | Texp_comp_for bindings ->
+      transl_nested (transl_arr_binding ~transl_exp ~loc ~scopes) bindings
+  | Texp_comp_when cond ->
+      fun body -> Lifthenelse(transl_exp ~scopes cond, body, lambda_unit)
+
+let transl_arr_clauses ~transl_exp ~loc ~scopes =
+  transl_nested (transl_arr_clause ~transl_exp ~loc ~scopes)
 
 let make_array_prim ~loc size init =
   let prim =
@@ -186,124 +182,101 @@ let make_floatarray_prim ~loc size =
   in
   Lprim (Pccall prim, [size], loc)
 
-let blit_array_prim ~loc src src_pos dst dst_pos len =
-  let prim_blit_arr =
-    Primitive.simple ~name:"caml_array_blit" ~arity:5 ~alloc:true
+let array_append_prim ~loc arr1 arr2 =
+  let prim =
+    Primitive.simple ~name:"caml_array_append" ~arity:2 ~alloc:true
   in
-  Lprim (Pccall prim_blit_arr, [src; src_pos; dst; dst_pos; len], loc)
+  Lprim (Pccall prim, [arr1; arr2], loc)
 
 (* Generate binding to make an "uninitialized" array *)
-let make_array ~loc ~kind ~size ~array =
-  match kind with
+let make_uninitialized_array ~loc ~array_kind ~size =
+  match array_kind with
   | Pgenarray ->
       (* This array can be Immutable since it is empty and will later be
-         replaced when an example value (to create the array) is known.
-         That is also why the biding is a Variable. *)
-      let init = Lprim(Pmakearray(Pgenarray, Immutable), [], loc) in
-      binding Variable Pgenval array init
+         replaced when an example value (to create the array) is known. *)
+      Lprim(Pmakearray(Pgenarray, Immutable), [], loc)
   | Pintarray | Paddrarray ->
-      let init = make_array_prim ~loc size (int 0) in
-      binding Strict Pgenval array init
+      make_array_prim ~loc size (int 0)
   | Pfloatarray ->
-      let init = make_floatarray_prim ~loc size in
-      binding Strict Pgenval array init
+      make_floatarray_prim ~loc size
 
-(* Generate code to initialise an element of an "uninitialised" array *)
-let init_array_elem ~loc ~kind ~size ~array ~index ~value =
-  let set_elem =
-    Lprim(Parraysetu kind, [Lvar array; Lvar index; Lvar value], loc)
+type array_size_behavior =
+  | Static_size
+  | Resizable
+
+(* Generate the code for the body of an array comprehension:
+     1. Compute the next element
+     2. Assign it (mutably) to the next element of the array
+     3. Advance the index of the next element
+   However, there's several pieces of complexity:
+     (a) If the array size is not statically known, we have to check if the
+         index has overflowed; if it has, we have to double the size of the
+         array.  (The complex case corresponds to [array_size_behavior] being
+         [Resizable].)
+     (b) If the array kind is not statically known, we initially created an
+         empty array; we have to check if we're on the first iteration and use
+         the putative first element of the array as the placeholder value for
+         every element of the array.  (The complex case corresponds to
+         [array_kind] being [Pgenarray].)
+     (c) If both (a) and (b) hold, we shouldn't bother checking for an
+         overflowed index on the first loop iteration.
+   The result is that we build the "set the element" behavior in three steps:
+     i.   First, we build the raw "set the element unconditionally" expression
+          ([set_element_raw]).
+     ii.  Then, if necessary, we precede that with the resizing check;
+          otherwise, we leave the raw behavior alone ([set_element_in_bounds]).
+     iii. Then, if necessary, we check to see if we're on the first iteration
+          and create the fresh array instead if so; otherwise, we leave the
+          size-safe behavior alone ([set_element_known_kind_in_bounds]).
+     iv.  Finally, we take the resulting safe element-setting behavior (which
+          could be equal to the result from any of stages i--iii), and follow it
+          up by advancing the index of the element to update.
+*)
+let transl_arr_body
+      ~loc ~array_kind ~array_size_behavior ~array_size ~array ~index ~body
+  =
+  let (module O) = lambda_int_ops ~loc in
+  let open O in
+  (* CR aspectorzabusky: This used to use shadowing, but I think this is
+     clearer? *)
+  let set_element_raw =
+    (* array.(index) <- body *)
+    Lprim(Parraysetu array_kind, [Lvar array; Lvar index; body], loc)
   in
-  match kind with
-  | Pgenarray ->
-      let is_first_iteration =
-        Lprim(Pintcomp Ceq, [Lvar index; int 0], loc)
-      in
-      let make_array =
-        Lassign(array, make_array_prim ~loc size (Lvar value))
-      in
-      Lifthenelse(is_first_iteration, make_array, set_elem)
-  | Pintarray | Paddrarray | Pfloatarray -> set_elem
-
-(* Generate code to blit elements into an "uninitialised" array *)
-let init_array_elems ~loc ~kind ~size ~array ~index ~src ~len =
-  let blit =
-    blit_array_prim ~loc (Lvar src) (int 0) (Lvar array) (Lvar index) (Lvar len)
-  in
-  match kind with
-  | Pgenarray ->
-      let is_first_iteration =
-        Lprim(Pintcomp Ceq, [Lvar index; int 0], loc)
-      in
-      let is_not_empty =
-        Lprim(Pintcomp Cne, [Lvar len; int 0], loc)
-      in
-      let first_elem =
-        Lprim(Parrayrefu kind, [Lvar src; int 0], loc)
-      in
-      let make_array =
-        Lassign(array, make_array_prim ~loc size first_elem)
-      in
-      Lsequence(
-        Lifthenelse(is_first_iteration,
-          Lifthenelse(is_not_empty, make_array, lambda_unit),
-          lambda_unit),
-        blit)
-  | Pintarray | Paddrarray | Pfloatarray -> blit
-
-(* Binding for a counter *)
-let make_counter counter =
-  binding Variable Pintval counter (int 0)
-
-(* Code to increment a counter *)
-let increment_counter ~loc counter step =
-  Lassign(counter, Lprim(Paddint, [Lvar counter; step], loc))
-
-let blarp ~loc ~array_kind ~array_size ~array ~index ~body =
-  Lsequence(
-    Lifthenelse(
-      Lprim(Pintcomp Clt, [Lvar index; array_size], loc),
-      lambda_unit,
-      Lassign(array, (* double it *) Lvar array)),
-    Lprim(Parraysetu array_kind, [Lvar array; Lvar index; body], loc))
-
-
-let rec go ~loc ~new_size ~prev_size ~size = function
-  | [] -> prev_size, lambda_unit (* how do I remove this? *)
-  | arr_size :: arr_sizes ->
-      let final_size, multiply_rest =
-        go ~loc ~new_size:prev_size ~prev_size:new_size ~size arr_sizes
-      in
-      final_size,
-      Lsequence(
-        Lassign(size, arr_size),
+  let set_element_in_bounds = match array_size_behavior with
+    | Static_size ->
+        set_element_raw
+    | Resizable ->
         Lsequence(
-          safe_mul_assign ~loc ~product:new_size (Lvar prev_size) (Lvar size),
-          multiply_rest))
+          (* Double the size of the array if it's time *)
+          Lifthenelse(Lvar index < array_size,
+            lambda_unit,
+            (* CR aspectorzabusky: Is this the best way to double the size of an
+               array? *)
+            Lassign(array, array_append_prim ~loc (Lvar array) (Lvar array))),
+        set_element_raw)
+  in
+  let set_element_known_kind_in_bounds = match array_kind with
+    | Pgenarray ->
+        let is_first_iteration = (Lvar index = l0) in
+        (* CR aspectorzabusky: Why doesn't this check to see if we have a float
+           array? *)
+        let make_array = Lassign(array, make_array_prim ~loc array_size body) in
+        Lifthenelse(is_first_iteration, make_array, set_element_in_bounds)
+    | Pintarray | Paddrarray | Pfloatarray ->
+        set_element_in_bounds
+  in
+  Lsequence(
+    set_element_known_kind_in_bounds,
+    Lassign(index, Lvar index + l1))
 
-(* let combine ~loc ~total_size = function
- *   | [] ->
- *       Misc.fatal_error
- *         "Comprehensions must have at least one clause, but translation into \
- *          found an array comprehension with no clauses"
- *   | [size] ->
- *       (* Avoids creating extra variables; however, the latter case would still
- *          work, this is just an optimization *)
- *       Lassign(total_size, size)
- *   | size :: sizes ->
- *       let size_var = Ident.create_local "size" in
- *       List
- *         Llet(Alias, Pintval, size_var, size,
- *              total_size
- *            Lassign(total_size, size)
- *
- *
- * total_size_1 = length arr1
- * size = length arr2
- * total_size_2 = total_size_1 * size
- * size = length arr3
- * total_size_1 = total_size_2 * size
- * size = length arr4
- * total_size_2 = total_size_1 * size *)
+(* CR aspectorzabusky: Should we move the [Primitive.simple] call outside of the
+   function? *)
+let sub_array_prim ~loc arr ~pos ~len =
+  let prim_sub_arr =
+    Primitive.simple ~name:"caml_array_sub" ~arity:3 ~alloc:true
+  in
+  Lprim (Pccall prim_sub_arr, [arr; pos; len], loc)
 
 let transl_array_comprehension
       ~transl_exp ~scopes ~loc ~array_kind { comp_body; comp_clauses } =
@@ -312,24 +285,28 @@ let transl_array_comprehension
   let index      = Ident.create_local "index" in
   let array      = Ident.create_local "array" in
   let comprehension_bindings =
-    [ binding Alias    Pintval array_size (int starting_size)
+    [ binding Variable Pintval array_size (int starting_size)
     ; binding Variable Pintval index      (int 0)
     ; binding Variable Pgenval array
-        (Lprim(Pmakearray(array_kind, Mutable),
-               Misc.replicate_list (int 0) starting_size,
-               loc))
+        (make_uninitialized_array ~loc ~array_kind ~size:(Lvar array_size))
     ]
   in
-  let clause_bindings, make_comprehension =
-    transl_arr_clauses ~transl_exp ~scopes ~loc array_size comp_clauses
+  let make_comprehension =
+    transl_arr_clauses ~transl_exp ~scopes ~loc comp_clauses
   in
   gen_bindings
-    (comprehension_bindings @ clause_bindings)
+    comprehension_bindings
     (Lsequence(
        make_comprehension
-         (blarp ~loc ~array_kind ~array_size:(Lvar array_size) ~array ~index ~body:(transl_exp ~scopes comp_body)),
-       (* CR aspectorzabusky: shrink array *)
-       Lvar array))
+         (transl_arr_body
+            ~loc
+            ~array_kind
+            ~array_size:(Lvar array_size)
+            ~array_size_behavior:(if false then Static_size else Resizable)
+            ~array
+            ~index
+            ~body:(transl_exp ~scopes comp_body)),
+       (sub_array_prim ~loc (Lvar array) ~pos:(int 0) ~len:(Lvar index))))
 
 let transl_list_comprehension ~transl_exp:_ ~scopes:_ ~loc:_ _comprehension =
   lambda_unit
