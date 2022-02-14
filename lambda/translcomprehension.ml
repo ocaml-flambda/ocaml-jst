@@ -249,11 +249,14 @@ let transl_arr_body
     | Resizable ->
         Lsequence(
           (* Double the size of the array if it's time *)
-          Lifthenelse(Lvar index < array_size,
+          Lifthenelse(Lvar index < Lvar array_size,
             lambda_unit,
-            (* CR aspectorzabusky: Is this the best way to double the size of an
-               array? *)
-            Lassign(array, array_append_prim ~loc (Lvar array) (Lvar array))),
+            Lsequence(
+              Lassign(array_size, i 2 * Lvar array_size),
+              (* CR aspectorzabusky: Is this the best way to double the size of
+                 an array? *)
+              Lassign(array,
+                      array_append_prim ~loc (Lvar array) (Lvar array)))),
         set_element_raw)
   in
   let set_element_known_kind_in_bounds = match array_kind with
@@ -261,7 +264,9 @@ let transl_arr_body
         let is_first_iteration = (Lvar index = l0) in
         (* CR aspectorzabusky: Why doesn't this check to see if we have a float
            array? *)
-        let make_array = Lassign(array, make_array_prim ~loc array_size body) in
+        let make_array =
+          Lassign(array, make_array_prim ~loc (Lvar array_size) body)
+        in
         Lifthenelse(is_first_iteration, make_array, set_element_in_bounds)
     | Pintarray | Paddrarray | Pfloatarray ->
         set_element_in_bounds
@@ -301,7 +306,7 @@ let transl_array_comprehension
          (transl_arr_body
             ~loc
             ~array_kind
-            ~array_size:(Lvar array_size)
+            ~array_size
             ~array_size_behavior:(if false then Static_size else Resizable)
             ~array
             ~index
