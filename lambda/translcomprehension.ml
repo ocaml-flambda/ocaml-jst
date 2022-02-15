@@ -103,15 +103,13 @@ type array_iterator_let_bindings =
       { iter_arr_binding : binding
       ; iter_len_binding : binding }
 
-let gen_array_iterator_let_bindings bindings =
-  gen_bindings
-    (List.concat_map
-       (function
-         | Range_let_bindings { start_binding; stop_binding } ->
-             [start_binding; stop_binding]
-         | Array_let_bindings { iter_arr_binding; iter_len_binding } ->
-             [iter_arr_binding; iter_len_binding])
-       bindings)
+let array_iterator_let_bindings =
+  List.concat_map
+    (function
+      | Range_let_bindings { start_binding; stop_binding } ->
+          [start_binding; stop_binding]
+      | Array_let_bindings { iter_arr_binding; iter_len_binding } ->
+          [iter_arr_binding; iter_len_binding])
 
 let transl_arr_fixed_binding_size ~loc = function
   | Range_let_bindings { start_binding; stop_binding; direction }  ->
@@ -205,19 +203,17 @@ let transl_nested transl =
        fun body -> whole_cps (next_cps body))
     Fun.id
 
-let transl_arr_for_and_clause ~transl_exp ~loc ~scopes bindings =
-  let transl_bindings, var_bindings =
-    transl_nested_with_bindings
-      (transl_arr_binding ~transl_exp ~loc ~scopes)
-      bindings
-  in
-  (fun body -> gen_array_iterator_let_bindings var_bindings
-                 (transl_bindings body)),
-  var_bindings
+(* Separated out for the known fixed size case *)
+let transl_arr_for_and_clause ~transl_exp ~loc ~scopes =
+  transl_nested_with_bindings (transl_arr_binding ~transl_exp ~loc ~scopes)
 
 let transl_arr_clause ~transl_exp ~loc ~scopes = function
   | Texp_comp_for bindings ->
-      fst (transl_arr_for_and_clause ~transl_exp ~loc ~scopes bindings)
+      let transl_clause, var_bindings =
+        transl_arr_for_and_clause ~transl_exp ~loc ~scopes bindings
+      in fun body -> gen_bindings
+                       (array_iterator_let_bindings var_bindings)
+                       (transl_clause body)
   | Texp_comp_when cond ->
       fun body -> Lifthenelse(transl_exp ~scopes cond, body, lambda_unit)
 
@@ -238,22 +234,28 @@ type array_sizing =
 
 type translated_clauses =
   { array_sizing       : array_sizing
+  ; outer_bindings     : binding list
   ; make_comprehension : lambda -> lambda }
+  (* [outer_bindings] is nonempty iff [array_sizing] is [Fixed_size _]; however,
+     we pass around [Fixed_size] too much for me to want to include it in
+     [array_sizing]. *)
 
 let transl_arr_clauses ~transl_exp ~loc ~scopes = function
-  | [Texp_comp_for bindings] when false ->
+  | [Texp_comp_for bindings] ->
       (* CR aspectorzabusky: There are still bugs with binding structure here *)
       let transl_clause, var_bindings =
         transl_arr_for_and_clause ~transl_exp ~loc ~scopes bindings
       in
       let starting_size = transl_arr_fixed_bindings_size ~loc var_bindings in
       { array_sizing       = Fixed_size starting_size
+      ; outer_bindings     = array_iterator_let_bindings var_bindings
       ; make_comprehension = transl_clause }
   | clauses ->
       let transl_clauses =
         transl_nested (transl_arr_clause ~transl_exp ~loc ~scopes) clauses
       in
       { array_sizing       = Unknown_size
+      ; outer_bindings     = []
       ; make_comprehension = transl_clauses }
 
 let make_array_prim ~loc size init =
@@ -414,7 +416,7 @@ let sub_array_prim ~loc arr ~pos ~len =
 
 let transl_array_comprehension
       ~transl_exp ~scopes ~loc ~array_kind { comp_body; comp_clauses } =
-  let { array_sizing; make_comprehension } =
+  let { array_sizing; outer_bindings; make_comprehension } =
     transl_arr_clauses ~transl_exp ~scopes ~loc comp_clauses
   in
   let { array; array_size; array_bindings } =
@@ -424,7 +426,7 @@ let transl_array_comprehension
     id_var_binding Variable Pintval "index" (int 0)
   in
   gen_bindings
-    (array_bindings @ [index_binding])
+    (outer_bindings @ array_bindings @ [index_binding])
     (Lsequence(
        make_comprehension
          (transl_arr_body
