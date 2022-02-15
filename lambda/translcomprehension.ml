@@ -11,9 +11,13 @@ type binding =
 let binding let_kind value_kind var init =
   {let_kind; value_kind; var; init}
 
-let id_var_binding let_kind value_kind name init =
+let id_binding let_kind value_kind name init =
   let id = Ident.create_local name in
-  id, Lvar id, binding let_kind value_kind id init
+  id, binding let_kind value_kind id init
+
+let id_var_binding let_kind value_kind name init =
+  let id, binding = id_binding let_kind value_kind name init in
+  id, Lvar id, binding
 
 let var_binding let_kind value_kind name init =
   let _id, var, binding = id_var_binding let_kind value_kind name init in
@@ -26,6 +30,8 @@ let gen_bindings bindings body =
   List.fold_right gen_binding bindings body
 
 let int n = Lconst (const_int n)
+
+let float f = Lconst (Const_base (Const_float (Float.to_string f)))
 
 module type Lambda_int_ops = sig
   [@@@warning "-32"]
@@ -107,7 +113,7 @@ let gen_array_iterator_let_bindings bindings =
              [iter_arr_binding; iter_len_binding])
        bindings)
 
-let transl_arr_static_binding_size ~loc = function
+let transl_arr_fixed_binding_size ~loc = function
   | Range_let_bindings { start_binding; stop_binding; direction }  ->
       let (module O) = lambda_int_ops ~loc in
       let open O in
@@ -132,10 +138,10 @@ let transl_arr_static_binding_size ~loc = function
   | Array_let_bindings { iter_arr_binding = _; iter_len_binding } ->
       Lvar iter_len_binding.var
 
-let transl_arr_static_bindings_size ~loc iterators =
+let transl_arr_fixed_bindings_size ~loc iterators =
   let (module O) = lambda_int_ops ~loc in
   let open O in
-  let sizes = List.map (transl_arr_static_binding_size ~loc) iterators in
+  let sizes = List.map (transl_arr_fixed_binding_size ~loc) iterators in
   (* CR aspectorzabusky: check for overflow *)
   List.fold_left ( * ) l1 sizes
 
@@ -215,27 +221,24 @@ let transl_arr_clause ~transl_exp ~loc ~scopes = function
   | Texp_comp_when cond ->
       fun body -> Lifthenelse(transl_exp ~scopes cond, body, lambda_unit)
 
-(* CR aspectorzabusky: Pick deliberately *)
-let starting_resizable_array_size = int 10
+(* A small power of two *)
+let starting_resizable_array_size = 8
 
 (* If the array comprehension is of the form
 
        [|BODY for ITER and ITER ... and ITER|]
 
-   then we can compute the size of the resulting array statically
-   ([Static_size]); otherwise, we cannot, and we have to dynamically grow the
+   then we can compute the size of the resulting array before allocating it
+   ([Fixed_size], which carries the expression that computes this size);
+   otherwise, we cannot ([Unknown_size]), and we have to dynamically grow the
    array as we iterate and shrink it to size at the end. *)
-type array_size_behavior =
-  | Static_size
-  | Resizable
+type array_sizing =
+  | Fixed_size of lambda
+  | Unknown_size
 
 type translated_clauses =
-  { array_size_behavior : array_size_behavior
-  ; starting_size       : lambda
-      (* With [Resizable], we could pick it later instead, but this way leads to
-         simpler code.  I suppose we could pick the starting size heuristically
-         in the future if we wanted? *)
-  ; make_comprehension  : lambda -> lambda }
+  { array_sizing       : array_sizing
+  ; make_comprehension : lambda -> lambda }
 
 let transl_arr_clauses ~transl_exp ~loc ~scopes = function
   | [Texp_comp_for bindings] when false ->
@@ -243,16 +246,15 @@ let transl_arr_clauses ~transl_exp ~loc ~scopes = function
       let transl_clause, var_bindings =
         transl_arr_for_and_clause ~transl_exp ~loc ~scopes bindings
       in
-      { array_size_behavior = Static_size
-      ; starting_size       = transl_arr_static_bindings_size ~loc var_bindings
-      ; make_comprehension  = transl_clause }
+      let starting_size = transl_arr_fixed_bindings_size ~loc var_bindings in
+      { array_sizing       = Fixed_size starting_size
+      ; make_comprehension = transl_clause }
   | clauses ->
       let transl_clauses =
         transl_nested (transl_arr_clause ~transl_exp ~loc ~scopes) clauses
       in
-      { array_size_behavior = Resizable
-      ; starting_size       = starting_resizable_array_size
-      ; make_comprehension  = transl_clauses }
+      { array_sizing       = Unknown_size
+      ; make_comprehension = transl_clauses }
 
 let make_array_prim ~loc size init =
   let prim =
@@ -272,27 +274,66 @@ let array_append_prim ~loc arr1 arr2 =
   in
   Lprim (Pccall prim, [arr1; arr2], loc)
 
-(* Generate binding to make an "uninitialized" array *)
-let make_uninitialized_array ~loc ~array_kind ~size =
-  match array_kind with
-  | Pgenarray ->
-      (* This array can be Immutable since it is empty and will later be
-         replaced when an example value (to create the array) is known. *)
-      Lprim(Pmakearray(Pgenarray, Immutable), [], loc)
-  | Pintarray | Paddrarray ->
-      make_array_prim ~loc size (int 0)
-  | Pfloatarray ->
-      make_floatarray_prim ~loc size
+let make_initial_resizable_array ~loc array_kind elt =
+  Lprim(Pmakearray(array_kind, Mutable),
+        Misc.replicate_list elt starting_resizable_array_size,
+        loc)
+
+type transl_arr_init_array =
+  { array_size     : Ident.t
+  ; array          : Ident.t
+  ; array_bindings : binding list }
+
+let transl_arr_init_array ~loc ~array_kind ~array_sizing =
+  let array_size_let_kind, array_size_value = match array_sizing with
+    | Fixed_size size -> Alias,    size
+    | Unknown_size    -> Variable, int starting_resizable_array_size
+  in
+  (* There are three cases to consider for how we allocate the array.
+
+     1. We are subject to the float array hack: The array kind is Pgenarray.  In
+        this case, we create an immutable empty array as a Variable, since
+        rather than being updated it will simply be overwritten once we have the
+        first element.  This is the only time a fixed-size array needs to be a
+        Variable, since it will be overwritten on the first iteration.
+     2. The array is of fixed size and known array kind, in which case we use
+        [caml_make_(float)vect] to create the array, and bind it as [StrictOpt]
+        since it never needs to be overwritten to be resized.
+     3. The array is of unknown size and known array kind, in which case we
+        create a small array of default values using [Pmakearray] and bind it as
+        a Variable so that it can be overwritten when its size needs to be
+        doubled. *)
+  let array_let_kind, array_value = match array_sizing, array_kind with
+    (* Case 1: Float array hack difficulties *)
+    | (Fixed_size _ | Unknown_size), Pgenarray ->
+        Variable, Lprim(Pmakearray(Pgenarray, Immutable), [], loc)
+    (* Case 2: Fixed size, known array kind *)
+    | Fixed_size size, (Pintarray | Paddrarray) ->
+        StrictOpt, make_array_prim ~loc size (int 0)
+    | Fixed_size size, Pfloatarray ->
+        StrictOpt, make_floatarray_prim ~loc size
+    (* Case 3: Unknown size, known array kind *)
+    | Unknown_size, (Pintarray | Paddrarray) ->
+        Variable, make_initial_resizable_array ~loc array_kind (int 0)
+    | Unknown_size, Pfloatarray ->
+        Variable, make_initial_resizable_array ~loc array_kind (float 0.)
+  in
+  let array_size, array_size_binding =
+    id_binding array_size_let_kind Pintval "array_size" array_size_value
+  in
+  let array, array_binding =
+    id_binding array_let_kind Pgenval "array" array_value
+  in
+  { array_size; array; array_bindings = [ array_size_binding; array_binding] }
 
 (* Generate the code for the body of an array comprehension:
      1. Compute the next element
      2. Assign it (mutably) to the next element of the array
      3. Advance the index of the next element
    However, there's several pieces of complexity:
-     (a) If the array size is not statically known, we have to check if the
-         index has overflowed; if it has, we have to double the size of the
-         array.  (The complex case corresponds to [array_size_behavior] being
-         [Resizable].)
+     (a) If the array size is not fixed, we have to check if the index has
+         overflowed; if it has, we have to double the size of the array.  (The
+         complex case corresponds to [array_sizing] being [Unknown_size].)
      (b) If the array kind is not statically known, we initially created an
          empty array; we have to check if we're on the first iteration and use
          the putative first element of the array as the placeholder value for
@@ -313,43 +354,51 @@ let make_uninitialized_array ~loc ~array_kind ~size =
           up by advancing the index of the element to update.
 *)
 let transl_arr_body
-      ~loc ~array_kind ~array_size_behavior ~array_size ~array ~index ~body
+      ~loc ~array_kind ~array_sizing ~array_size ~array ~index ~body
   =
   let (module O) = lambda_int_ops ~loc in
   let open O in
   (* CR aspectorzabusky: This used to use shadowing, but I think this is
      clearer? *)
-  let set_element_raw =
-    (* array.(index) <- body *)
-    Lprim(Parraysetu array_kind, [Lvar array; Lvar index; body], loc)
+  let set_element_raw elt =
+    (* array.(index) <- elt *)
+    Lprim(Parraysetu array_kind, [Lvar array; Lvar index; elt], loc)
+      (* CR aspectorzabusky: Is [array_kind] safe here, since it could be
+         [Pgenarray]?  Do we have to learn which it should be? *)
   in
-  let set_element_in_bounds = match array_size_behavior with
-    | Static_size ->
-        set_element_raw
-    | Resizable ->
+  let set_element_in_bounds elt = match array_sizing with
+    | Fixed_size _ ->
+        set_element_raw elt
+    | Unknown_size ->
         Lsequence(
           (* Double the size of the array if it's time *)
           Lifthenelse(Lvar index < Lvar array_size,
             lambda_unit,
             Lsequence(
               Lassign(array_size, i 2 * Lvar array_size),
-              (* CR aspectorzabusky: Is this the best way to double the size of
-                 an array? *)
+              (* This is probably not the optimal way to double the size of an
+                 array, but it's good enough for now. *)
               Lassign(array,
                       array_append_prim ~loc (Lvar array) (Lvar array)))),
-        set_element_raw)
+        set_element_raw elt)
   in
   let set_element_known_kind_in_bounds = match array_kind with
     | Pgenarray ->
         let is_first_iteration = (Lvar index = l0) in
-        (* CR aspectorzabusky: Why doesn't this check to see if we have a float
-           array? *)
-        let make_array =
-          Lassign(array, make_array_prim ~loc (Lvar array_size) body)
+        let elt = Ident.create_local "elt" in
+        let make_array = match array_sizing with
+          | Fixed_size _ ->
+              make_array_prim ~loc (Lvar array_size) (Lvar elt)
+          | Unknown_size ->
+              make_initial_resizable_array ~loc Pgenarray (Lvar elt)
         in
-        Lifthenelse(is_first_iteration, make_array, set_element_in_bounds)
+        (* Is Pgenval safe here? *)
+        Llet(Strict, Pgenval, elt, body,
+             Lifthenelse(is_first_iteration,
+               Lassign(array, make_array),
+               set_element_in_bounds (Lvar elt)))
     | Pintarray | Paddrarray | Pfloatarray ->
-        set_element_in_bounds
+        set_element_in_bounds body
   in
   Lsequence(
     set_element_known_kind_in_bounds,
@@ -365,36 +414,32 @@ let sub_array_prim ~loc arr ~pos ~len =
 
 let transl_array_comprehension
       ~transl_exp ~scopes ~loc ~array_kind { comp_body; comp_clauses } =
-  let array_size = Ident.create_local "array_size" in
-  let index      = Ident.create_local "index" in
-  let array      = Ident.create_local "array" in
-  let { array_size_behavior; starting_size; make_comprehension } =
+  let { array_sizing; make_comprehension } =
     transl_arr_clauses ~transl_exp ~scopes ~loc comp_clauses
   in
-  let comprehension_bindings =
-    [ binding Variable Pintval array_size starting_size
-    ; binding Variable Pintval index      (int 0)
-    ; binding Variable Pgenval array
-        (make_uninitialized_array ~loc ~array_kind ~size:(Lvar array_size))
-    ]
+  let { array; array_size; array_bindings } =
+    transl_arr_init_array ~loc ~array_kind ~array_sizing
+  in
+  let index, index_var, index_binding =
+    id_var_binding Variable Pintval "index" (int 0)
   in
   gen_bindings
-    comprehension_bindings
+    (array_bindings @ [index_binding])
     (Lsequence(
        make_comprehension
          (transl_arr_body
             ~loc
             ~array_kind
             ~array_size
-            ~array_size_behavior
+            ~array_sizing
             ~array
             ~index
             ~body:(transl_exp ~scopes comp_body)),
-       match array_size_behavior with
-       | Static_size ->
+       match array_sizing with
+       | Fixed_size _ ->
            Lvar array
-       | Resizable ->
-           (sub_array_prim ~loc (Lvar array) ~pos:(int 0) ~len:(Lvar index))))
+       | Unknown_size ->
+           (sub_array_prim ~loc (Lvar array) ~pos:(int 0) ~len:index_var)))
 
 let transl_list_comprehension ~transl_exp:_ ~scopes:_ ~loc:_ _comprehension =
   lambda_unit
