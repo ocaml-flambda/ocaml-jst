@@ -242,7 +242,6 @@ type translated_clauses =
 
 let transl_arr_clauses ~transl_exp ~loc ~scopes = function
   | [Texp_comp_for bindings] ->
-      (* CR aspectorzabusky: There are still bugs with binding structure here *)
       let transl_clause, var_bindings =
         transl_arr_for_and_clause ~transl_exp ~loc ~scopes bindings
       in
@@ -394,7 +393,7 @@ let transl_arr_body
           | Unknown_size ->
               make_initial_resizable_array ~loc Pgenarray (Lvar elt)
         in
-        (* Is Pgenval safe here? *)
+        (* CR aspectorzabusky: Is Pgenval safe here? *)
         Llet(Strict, Pgenval, elt, body,
              Lifthenelse(is_first_iteration,
                Lassign(array, make_array),
