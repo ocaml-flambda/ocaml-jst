@@ -119,6 +119,13 @@ exception Undefined_recursive_module of (string * int * int)
    is evaluated. The arguments are the location of the definition in
    the source code (file name, line number, column number). *)
 
+exception Array_comprehension_length_overflow
+(** Exception raised when an array comprehension has a known (non-dynamic)
+   length that is too large for an integer such that computing this size
+   overflows.  Array comprehensions can also raise [Invalid_argument] if they
+   try to create an array that is larger than [Sys.max_array_length], either
+   ahead of time when the array has a known size or dynamically. *)
+
 (** {1 Comparisons} *)
 
 external ( = ) : 'a -> 'a -> bool = "%equal"

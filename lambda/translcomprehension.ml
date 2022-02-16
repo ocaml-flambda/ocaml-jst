@@ -77,21 +77,6 @@ let lambda_int_ops ~loc : (module Lambda_int_ops) = (module struct
   let l1 = i 1
 end)
 
-(* CR aspectorzabusky: Raise something real *)
-let asz_bad_exn = int 737
-
-(* [safe_mul_assign ~loc ~product x y] generates lambda code that computes
-   [product := x * y] but fails if the multiplication overflowed *)
-let safe_mul_assign ~loc ~product x y =
-  let (module O) = lambda_int_ops ~loc in
-  let open O in
-  Lsequence(
-    Lassign(product, x * y),
-    Lifthenelse(y = i 0 || Lvar product / y = x,
-                lambda_unit,
-                Lprim(Praise Raise_regular, [asz_bad_exn], loc)))
-let _asz = safe_mul_assign
-
 (* CR aspectorzabusky: Should these hold less information and then have us
    construct the [binding] later? *)
 type array_iterator_let_bindings =
@@ -110,6 +95,30 @@ let array_iterator_let_bindings =
           [start_binding; stop_binding]
       | Array_let_bindings { iter_arr_binding; iter_len_binding } ->
           [iter_arr_binding; iter_len_binding])
+
+(* CR aspectorzabusky: Raise something real *)
+let asz_bad_exn ~(loc : Lambda.scoped_location) =
+  let scopes = Debuginfo.Scoped_location.empty_scopes in
+  let to_location = Debuginfo.Scoped_location.to_location in
+  let slot =
+    transl_extension_path Loc_unknown
+      Env.initial_safe_string Predef.path_assert_failure
+  in
+  let (fname, line, char) =
+    "FNAME", 42, 666
+  in
+  let uloc = to_location loc in
+  let event_after ~scopes:_ _exp lam =
+    lam
+  in
+  Lprim(Praise Raise_regular, [event_after ~scopes lambda_unit
+    (Lprim(Pmakeblock(0, Immutable, None),
+          [slot;
+           Lconst(Const_block(0,
+              [Const_base(Const_string (fname, uloc, None));
+               Const_base(Const_int line);
+               Const_base(Const_int char)]))], loc))], loc)
+
 
 let transl_arr_fixed_binding_size ~loc = function
   | Range_let_bindings { start_binding; stop_binding; direction }  ->
@@ -130,18 +139,37 @@ let transl_arr_fixed_binding_size ~loc = function
               the bounds are in the right order.) *)
            Lifthenelse(Lvar range_size > l0,
              Lvar range_size,
-             Lprim(Praise Raise_regular, [asz_bad_exn], loc)))),
+             Lprim(Praise Raise_regular, [asz_bad_exn ~loc], loc)))),
         (* The range is empty *)
         int 0)
   | Array_let_bindings { iter_arr_binding = _; iter_len_binding } ->
       Lvar iter_len_binding.var
 
-let transl_arr_fixed_bindings_size ~loc iterators =
+(* [safe_mul_nonneg ~loc x y] computes the product [x * y] of two nonnegative
+   integers and fails if this overflowed *)
+let safe_mul ~loc x y =
   let (module O) = lambda_int_ops ~loc in
   let open O in
-  let sizes = List.map (transl_arr_fixed_binding_size ~loc) iterators in
-  (* CR aspectorzabusky: check for overflow *)
-  List.fold_left ( * ) l1 sizes
+  let x,       x_binding       = var_binding Strict Pintval "x"       x       in
+  let y,       y_binding       = var_binding Strict Pintval "y"       y       in
+  let product, product_binding = var_binding Alias  Pintval "product" (x * y) in
+  gen_bindings [x_binding; y_binding; product_binding]
+    (Lifthenelse(y = l0 || product / y = x,
+       product,
+       Lprim(Praise Raise_regular, [asz_bad_exn ~loc], loc)))
+
+(* [safe_product_nonneg ~loc xs] computes the product of all the lambda terms in
+   [xs] assuming they are all nonnegative integers, failing if any product
+   overflows *)
+let safe_product_nonneg ~loc = function
+  | (x :: xs) -> List.fold_left (safe_mul ~loc) x xs
+  | []        -> int 1
+    (* The empty list case can't happen with list comprehensions; we could raise
+       an error here instead of returning 1 *)
+
+let transl_arr_fixed_bindings_size ~loc iterators =
+  safe_product_nonneg ~loc
+    (List.map (transl_arr_fixed_binding_size ~loc) iterators)
 
 let transl_arr_iterator ~transl_exp ~scopes ~loc = function
   | Texp_comp_range { ident; pattern = _; start; stop; direction } ->
