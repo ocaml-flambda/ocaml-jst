@@ -243,7 +243,9 @@ let transl_arr_clause ~transl_exp ~loc ~scopes = function
   | Texp_comp_when cond ->
       fun body -> Lifthenelse(transl_exp ~scopes cond, body, lambda_unit)
 
-(* A small power of two *)
+(* A small power of two; this both "feels nice" and means that we only exceed
+   [Sys.max_array_length] when it's time to do so, under the assumption that
+   said limit is of the form 2^x-1. *)
 let starting_resizable_array_size = 8
 
 (* If the array comprehension is of the form
