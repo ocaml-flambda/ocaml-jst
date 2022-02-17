@@ -79,24 +79,78 @@ let lambda_int_ops ~loc : (module Lambda_int_ops) = (module struct
   let l1 = i 1
 end)
 
+module Sizing : sig
+  type fixed   = private Fixed
+  type unknown = private Unknown
+
+  type _ choice =
+    | Fixed_size   : fixed   choice
+    | Unknown_size : unknown choice
+
+  type (_, 'a) option =
+    | Some : 'a -> (fixed, 'a) option
+    | None : (unknown, _) option
+end = struct
+  type fixed   = Fixed   [@@warning "-37"]
+  type unknown = Unknown [@@warning "-37"]
+
+  type _ choice =
+    | Fixed_size   : fixed   choice
+    | Unknown_size : unknown choice
+
+  type (_, 'a) option =
+    | Some : 'a -> (fixed, 'a) option
+    | None : (unknown, _) option
+end
+
+let wibble (type sz) ~(sizing:sz Sizing.choice) let_kind value_kind name value
+  : lambda * (sz, binding) Sizing.option =
+  match sizing with
+  | Fixed_size ->
+      let var, binding = var_binding let_kind value_kind name value in
+      var, Some binding
+  | Unknown_size ->
+      value, None
+
+type range_let_bindings =
+  { start_binding : binding
+  ; stop_binding  : binding
+  ; direction     : direction_flag }
+
 (* CR aspectorzabusky: Should these hold less information and then have us
    construct the [binding] later? *)
-type array_iterator_let_bindings =
+type 'sz array_iterator_let_bindings =
   | Range_let_bindings of
-      { start_binding : binding
-      ; stop_binding  : binding
-      ; direction     : direction_flag }
+      ('sz,  range_let_bindings) Sizing.option
   | Array_let_bindings of
       { iter_arr_binding : binding
-      ; iter_len_binding : binding }
+      ; iter_len_binding : ('sz, binding) Sizing.option }
 
-let array_iterator_let_bindings =
-  List.concat_map
-    (function
-      | Range_let_bindings { start_binding; stop_binding } ->
-          [start_binding; stop_binding]
-      | Array_let_bindings { iter_arr_binding; iter_len_binding } ->
-          [iter_arr_binding; iter_len_binding])
+let range_let_bindings (type sz)
+      ~(start_binding : (sz, binding) Sizing.option)
+      ~(stop_binding  : (sz, binding) Sizing.option)
+      ~direction : sz array_iterator_let_bindings =
+  match start_binding, stop_binding with
+  | Some start_binding, Some stop_binding ->
+      Range_let_bindings (Some { start_binding; stop_binding; direction })
+  | None, None ->
+      Range_let_bindings None
+
+let array_iterator_let_bindings bindings =
+  let get_bindings (type sz) : sz array_iterator_let_bindings -> binding list =
+    function
+    | Range_let_bindings
+        (Some { start_binding; stop_binding; direction = _ })
+      ->
+        [start_binding; stop_binding]
+    | Range_let_bindings None ->
+        []
+    | Array_let_bindings { iter_arr_binding; iter_len_binding } ->
+        iter_arr_binding :: match iter_len_binding with
+                            | Some iter_len_binding -> [iter_len_binding]
+                            | None                  -> []
+  in
+  List.concat_map get_bindings bindings
 
 let raise_array_overflow_exn ~loc =
   (* CR aspectorzabusky: Is this idiomatic?  Should the argument to [string] (a
@@ -118,8 +172,9 @@ let raise_array_overflow_exn ~loc =
                loc)],
         loc)
 
-let transl_arr_fixed_binding_size ~loc = function
-  | Range_let_bindings { start_binding; stop_binding; direction }  ->
+let transl_arr_fixed_binding_size ~loc
+  : Sizing.fixed array_iterator_let_bindings -> _ = function
+  | Range_let_bindings (Some { start_binding; stop_binding; direction })  ->
       let (module O) = lambda_int_ops ~loc in
       let open O in
       let start = Lvar start_binding.var in
@@ -140,7 +195,7 @@ let transl_arr_fixed_binding_size ~loc = function
              raise_array_overflow_exn ~loc))),
         (* The range is empty *)
         int 0)
-  | Array_let_bindings { iter_arr_binding = _; iter_len_binding } ->
+  | Array_let_bindings { iter_arr_binding = _; iter_len_binding = Some iter_len_binding } ->
       Lvar iter_len_binding.var
 
 (* [safe_mul_nonneg ~loc x y] computes the product [x * y] of two nonnegative
@@ -169,31 +224,31 @@ let transl_arr_fixed_bindings_size ~loc iterators =
   safe_product_nonneg ~loc
     (List.map (transl_arr_fixed_binding_size ~loc) iterators)
 
-let transl_arr_iterator ~transl_exp ~scopes ~loc = function
+let transl_arr_iterator ~sizing ~transl_exp ~scopes ~loc = function
   | Texp_comp_range { ident; pattern = _; start; stop; direction } ->
       let transl_bound name bound =
-        var_binding Strict Pintval name (transl_exp ~scopes bound)
+        wibble ~sizing Strict Pintval name (transl_exp ~scopes bound)
       in
-      let start_var, start_binding = transl_bound "start" start in
-      let stop_var,  stop_binding  = transl_bound "stop"  stop  in
+      let start, start_binding = transl_bound "start" start in
+      let stop,  stop_binding  = transl_bound "stop"  stop  in
       let mk_iterator body =
-        Lfor(ident, start_var, stop_var, direction, body)
+        Lfor(ident, start, stop, direction, body)
       in
-      mk_iterator, Range_let_bindings { start_binding; stop_binding; direction }
+      mk_iterator, range_let_bindings ~start_binding ~stop_binding ~direction
   | Texp_comp_in { pattern; sequence = iter_arr } ->
       let iter_arr_var, iter_arr_binding =
         var_binding Strict Pgenval "iter_arr" (transl_exp ~scopes iter_arr)
       in
       let iter_arr_kind = Typeopt.array_kind iter_arr in
-      let iter_len_var, iter_len_binding =
-        var_binding Alias Pintval
+      let iter_len, iter_len_binding =
+        wibble ~sizing Alias Pintval
           "iter_len"
           (Lprim(Parraylength iter_arr_kind, [iter_arr_var], loc))
       in
       let iter_ix = Ident.create_local "iter_ix" in
       let mk_iterator body =
         (* for iter_ix = 0 to Array.length iter_arr - 1 ... *)
-        Lfor(iter_ix, int 0, Lprim(Psubint, [iter_len_var; int 1], loc), Upto,
+        Lfor(iter_ix, int 0, Lprim(Psubint, [iter_len; int 1], loc), Upto,
              Matching.for_let
                ~scopes
                pattern.pat_loc
@@ -230,16 +285,23 @@ let transl_nested transl =
     Fun.id
 
 (* Separated out for the known fixed size case *)
-let transl_arr_for_and_clause ~transl_exp ~loc ~scopes =
-  transl_nested_with_bindings (transl_arr_binding ~transl_exp ~loc ~scopes)
+let transl_arr_for_and_clause ~sizing ~transl_exp ~loc ~scopes =
+  transl_nested_with_bindings
+    (transl_arr_binding ~sizing ~transl_exp ~loc ~scopes)
 
 let transl_arr_clause ~transl_exp ~loc ~scopes = function
   | Texp_comp_for bindings ->
       let transl_clause, var_bindings =
-        transl_arr_for_and_clause ~transl_exp ~loc ~scopes bindings
-      in fun body -> gen_bindings
-                       (array_iterator_let_bindings var_bindings)
-                       (transl_clause body)
+        transl_arr_for_and_clause
+          ~sizing:Unknown_size
+          ~transl_exp
+          ~loc
+          ~scopes
+          bindings
+      in
+      fun body -> gen_bindings
+                    (array_iterator_let_bindings var_bindings)
+                    (transl_clause body)
   | Texp_comp_when cond ->
       fun body -> Lifthenelse(transl_exp ~scopes cond, body, lambda_unit)
 
@@ -270,7 +332,12 @@ type translated_clauses =
 let transl_arr_clauses ~transl_exp ~loc ~scopes = function
   | [Texp_comp_for bindings] ->
       let transl_clause, var_bindings =
-        transl_arr_for_and_clause ~transl_exp ~loc ~scopes bindings
+        transl_arr_for_and_clause
+          ~sizing:Fixed_size
+          ~transl_exp
+          ~loc
+          ~scopes
+          bindings
       in
       let starting_size = transl_arr_fixed_bindings_size ~loc var_bindings in
       { array_sizing       = Fixed_size starting_size
