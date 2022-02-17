@@ -46,8 +46,6 @@ exception End_of_file = End_of_file
 exception Division_by_zero = Division_by_zero
 exception Sys_blocked_io = Sys_blocked_io
 exception Undefined_recursive_module = Undefined_recursive_module
-exception Array_comprehension_length_overflow =
-  Not_found
 
 (* Composition operators *)
 

@@ -56,7 +56,6 @@ val path_floatarray: Path.t
 val path_match_failure: Path.t
 val path_assert_failure : Path.t
 val path_undefined_recursive_module : Path.t
-val path_array_comprehension_length_overflow : Path.t
 
 val ident_false : Ident.t
 val ident_true : Ident.t
