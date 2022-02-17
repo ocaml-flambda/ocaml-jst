@@ -33,6 +33,8 @@ let int n = Lconst (const_int n)
 
 let float f = Lconst (Const_base (Const_float (Float.to_string f)))
 
+let string ~loc s = Lconst (Const_base (Const_string(s, loc, None)))
+
 module type Lambda_int_ops = sig
   [@@@warning "-32"]
 
@@ -96,29 +98,25 @@ let array_iterator_let_bindings =
       | Array_let_bindings { iter_arr_binding; iter_len_binding } ->
           [iter_arr_binding; iter_len_binding])
 
-(* CR aspectorzabusky: Raise something real *)
-let asz_bad_exn ~(loc : Lambda.scoped_location) =
-  let scopes = Debuginfo.Scoped_location.empty_scopes in
-  let to_location = Debuginfo.Scoped_location.to_location in
+let raise_array_overflow_exn ~loc =
+  (* CR aspectorzabusky: Is this idiomatic?  Should the argument to [string] (a
+     string constant) just get [Location.none] instead? *)
+  let loc' = Debuginfo.Scoped_location.to_location loc in
   let slot =
-    transl_extension_path Loc_unknown
-      Env.initial_safe_string Predef.path_assert_failure
+    transl_extension_path
+      loc
+      Env.initial_safe_string
+      Predef.path_invalid_argument
   in
-  let (fname, line, char) =
-    "FNAME", 42, 666
-  in
-  let uloc = to_location loc in
-  let event_after ~scopes:_ _exp lam =
-    lam
-  in
-  Lprim(Praise Raise_regular, [event_after ~scopes lambda_unit
-    (Lprim(Pmakeblock(0, Immutable, None),
-          [slot;
-           Lconst(Const_block(0,
-              [Const_base(Const_string (fname, uloc, None));
-               Const_base(Const_int line);
-               Const_base(Const_int char)]))], loc))], loc)
-
+  (* CR aspectorzabusky: Should I call [Translprim.event_after] here?
+     [Translcore.asssert_failed] does (via a local intermediary). *)
+  Lprim(Praise Raise_regular,
+        [Lprim(Pmakeblock(0, Immutable, None),
+               [slot; (string ~loc:loc' "Array.make")],
+                (* CR aspectorzabusky: Is "Array.make" the right argument?
+                   That's not *really* what's failing... *)
+               loc)],
+        loc)
 
 let transl_arr_fixed_binding_size ~loc = function
   | Range_let_bindings { start_binding; stop_binding; direction }  ->
@@ -139,7 +137,7 @@ let transl_arr_fixed_binding_size ~loc = function
               the bounds are in the right order.) *)
            Lifthenelse(Lvar range_size > l0,
              Lvar range_size,
-             Lprim(Praise Raise_regular, [asz_bad_exn ~loc], loc)))),
+             raise_array_overflow_exn ~loc))),
         (* The range is empty *)
         int 0)
   | Array_let_bindings { iter_arr_binding = _; iter_len_binding } ->
@@ -156,7 +154,7 @@ let safe_mul ~loc x y =
   gen_bindings [x_binding; y_binding; product_binding]
     (Lifthenelse(y = l0 || product / y = x,
        product,
-       Lprim(Praise Raise_regular, [asz_bad_exn ~loc], loc)))
+       raise_array_overflow_exn ~loc))
 
 (* [safe_product_nonneg ~loc xs] computes the product of all the lambda terms in
    [xs] assuming they are all nonnegative integers, failing if any product
