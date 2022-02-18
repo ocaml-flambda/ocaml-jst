@@ -2,253 +2,326 @@ open Lambda
 open Typedtree
 open Asttypes
 
-type binding =
-  { let_kind : let_kind;
-    value_kind : value_kind;
-    var : Ident.t;
-    init : lambda }
+(** Convenience functions for working with the Lambda AST *)
+module Lambda_utils = struct
+  (** Creating AST fragments *)
+  module Make = struct
+    (** Lambda integer literals *)
+    let int n = Lconst (const_int n)
 
-let binding let_kind value_kind var init =
-  {let_kind; value_kind; var; init}
+    (** Lambda float literals; be careful with unusual values, as this calls
+        [Float.to_string] *)
+    let float f = Lconst (Const_base (Const_float (Float.to_string f)))
 
-let id_binding let_kind value_kind name init =
-  let id = Ident.create_local name in
-  id, binding let_kind value_kind id init
+    (** Lambda string literals; these require a location, and are constructed as
+        "quoted strings", not {fancy|delimited strings|fancy}. *)
+    let string ~loc s = Lconst (Const_base (Const_string(s, loc, None)))
+  end
 
-let id_var_binding let_kind value_kind name init =
-  let id, binding = id_binding let_kind value_kind name init in
-  id, Lvar id, binding
+  (** Nicer OCaml syntax for constructing Lambda ASTs that operate on integers;
+      created by [int_ops], which includes the necessary location in all the
+      operations *)
+  module type Int_ops = sig
+    (* We want to expose all the operators so we don't have to think about which
+       ones to add and remove as we change the rest of the file *)
+    [@@@warning "-32"]
 
-let var_binding let_kind value_kind name init =
-  let _id, var, binding = id_var_binding let_kind value_kind name init in
-  var, binding
+    (** Integer arithmetic *)
 
-let gen_binding {let_kind; value_kind; var; init} body =
-  Llet(let_kind, value_kind, var, init, body)
+    val ( + ) : lambda -> lambda -> lambda
+    val ( - ) : lambda -> lambda -> lambda
+    val ( * ) : lambda -> lambda -> lambda
+    val ( / ) : lambda -> lambda -> lambda
 
-let gen_bindings bindings body =
-  List.fold_right gen_binding bindings body
+    (** Integer comparisons *)
 
-let int n = Lconst (const_int n)
+    val ( = )  : lambda -> lambda -> lambda
+    val ( <> ) : lambda -> lambda -> lambda
+    val ( < )  : lambda -> lambda -> lambda
+    val ( > )  : lambda -> lambda -> lambda
+    val ( <= ) : lambda -> lambda -> lambda
+    val ( >= ) : lambda -> lambda -> lambda
 
-let float f = Lconst (Const_base (Const_float (Float.to_string f)))
+    (** Boolean logical operators *)
 
-let string ~loc s = Lconst (Const_base (Const_string(s, loc, None)))
+    val ( && ) : lambda -> lambda -> lambda
+    val ( || ) : lambda -> lambda -> lambda
 
-module type Lambda_int_ops = sig
-  [@@@warning "-32"]
+    (** Integer literals *)
+    val l0 : lambda
+    val l1 : lambda
+    val i  : int -> lambda
+  end
 
-  val ( + ) : lambda -> lambda -> lambda
-  val ( - ) : lambda -> lambda -> lambda
-  val ( * ) : lambda -> lambda -> lambda
-  val ( / ) : lambda -> lambda -> lambda
+  (** Construct an [Int_ops] module at the given location *)
+  let int_ops ~loc : (module Int_ops) = (module struct
+    let binop prim l r = Lprim(prim, [l; r], loc)
 
-  val ( = )  : lambda -> lambda -> lambda
-  val ( <> ) : lambda -> lambda -> lambda
-  val ( < )  : lambda -> lambda -> lambda
-  val ( > )  : lambda -> lambda -> lambda
-  val ( <= ) : lambda -> lambda -> lambda
-  val ( >= ) : lambda -> lambda -> lambda
+    let ( + )  = binop Paddint
+    let ( - )  = binop Psubint
+    let ( * )  = binop Pmulint
+    let ( / )  = binop (Pdivint Unsafe)
+    let ( = )  = binop (Pintcomp Ceq)
+    let ( <> ) = binop (Pintcomp Cne)
+    let ( < )  = binop (Pintcomp Clt)
+    let ( > )  = binop (Pintcomp Cgt)
+    let ( <= ) = binop (Pintcomp Cle)
+    let ( >= ) = binop (Pintcomp Cge)
+    let ( && ) = binop Psequor
+    let ( || ) = binop Psequor
 
-  val ( && ) : lambda -> lambda -> lambda
-  val ( || ) : lambda -> lambda -> lambda
-
-  val l0 : lambda
-  val l1 : lambda
-  val i  : int -> lambda
+    let i n = Lconst (const_int n)
+    let l0 = i 0
+    let l1 = i 1
+  end)
 end
 
-let lambda_int_ops ~loc : (module Lambda_int_ops) = (module struct
-  let binop prim l r = Lprim(prim, [l; r], loc)
+(** Sometimes the generated code for array comprehensions reuses certain
+    expressions more than once, and sometimes it uses them exactly once. We want
+    to avoid using let bindings in the case where the expressions are used
+    exactly once, so this module lets us check statically whether the let
+    bindings have been created.
 
-  let ( + )  = binop Paddint
-  let ( - )  = binop Psubint
-  let ( * )  = binop Pmulint
-  let ( / )  = binop (Pdivint Unsafe)
-  let ( = )  = binop (Pintcomp Ceq)
-  let ( <> ) = binop (Pintcomp Cne)
-  let ( < )  = binop (Pintcomp Clt)
-  let ( > )  = binop (Pintcomp Cgt)
-  let ( <= ) = binop (Pintcomp Cle)
-  let ( >= ) = binop (Pintcomp Cge)
-  let ( && ) = binop Psequor
-  let ( || ) = binop Psequor
+    The precise context is that the endpoints of integer ranges and the lengths
+    of arrays are used once (as `for` loop endpoints) in the case where the
+    array size is not fixed and the array has to be grown dynamically; however,
+    they are used multiple times if the array size is fixed, as they are used to
+    precompute the size of the newly-allocated array.  Because, in the
+    fixed-size case, we need both the bare fact that the bindings exist as well
+    as to do computation on these bindings, we can't simply maintain a list of
+    bindings; thus, this module, allowing us to work with
+    [(Usage.once, Let_binding.t) Usage.if_reused] in the dynamic-size case and
+    [(Usage.many, Let_binding.t) Usage.if_reused] in the fixed-size case (as
+    as similar [Usage.if_reused] types wrapping other binding-representing
+    values). *)
+module Usage = struct
+  (** A two-state (boolean) type-level enum indicating whether a value is used
+      exactly [once] or can be used [many] times *)
 
-  let i n = Lconst (const_int n)
-  let l0 = i 0
-  let l1 = i 1
-end)
+  type once = private Once [@@warning "-37"]
+  type many = private Many [@@warning "-37"]
 
-module Sizing : sig
-  type fixed   = private Fixed
-  type unknown = private Unknown
+  (** The singleton reifying the above type-level enum, indicating whether
+      values are to be used exactly [Once] or can be reused [Many] times *)
+  type _ t =
+    | Once : once t
+    | Many : many t
 
-  type _ choice =
-    | Fixed_size   : fixed   choice
-    | Unknown_size : unknown choice
-
-  type (_, 'a) option =
-    | Some : 'a -> (fixed, 'a) option
-    | None : (unknown, _) option
-end = struct
-  type fixed   = Fixed   [@@warning "-37"]
-  type unknown = Unknown [@@warning "-37"]
-
-  type _ choice =
-    | Fixed_size   : fixed   choice
-    | Unknown_size : unknown choice
-
-  type (_, 'a) option =
-    | Some : 'a -> (fixed, 'a) option
-    | None : (unknown, _) option
+  (** An option-like type for storing extra data that's necessary exactly when a
+      value is to be reused [many] times *)
+  type (_, 'a) if_reused =
+    | Used_once : (once, _) if_reused
+    | Reusable  : 'a -> (many, 'a) if_reused
 end
 
-let wibble (type sz) ~(sizing:sz Sizing.choice) let_kind value_kind name value
-  : lambda * (sz, binding) Sizing.option =
-  match sizing with
-  | Fixed_size ->
-      let var, binding = var_binding let_kind value_kind name value in
-      var, Some binding
-  | Unknown_size ->
-      value, None
+(** First-class let bindings; we sometimes need to collect these while
+    translating array comprehension clauses and bind them later *)
+module Let_binding = struct
+  (** The first-class (in OCaml) type of let bindings *)
+  type t =
+    { let_kind   : let_kind
+    ; value_kind : value_kind
+    ; id         : Ident.t
+    ; init       : lambda }
 
-type range_let_bindings =
-  { start_binding : binding
-  ; stop_binding  : binding
-  ; direction     : direction_flag }
+  (** Create a let binding *)
+  let make let_kind value_kind id init =
+    {let_kind; value_kind; id; init}
 
-(* CR aspectorzabusky: Should these hold less information and then have us
-   construct the [binding] later? *)
-type 'sz array_iterator_let_bindings =
-  | Range_let_bindings of
-      ('sz,  range_let_bindings) Sizing.option
-  | Array_let_bindings of
-      { iter_arr_binding : binding
-      ; iter_len_binding : ('sz, binding) Sizing.option }
+  (** Create a a fresh local identifier to bind (from a string), and return that
+      it along with the corresponding let binding *)
+  let make_id let_kind value_kind name init =
+    let id = Ident.create_local name in
+    id, make let_kind value_kind id init
 
-let range_let_bindings (type sz)
-      ~(start_binding : (sz, binding) Sizing.option)
-      ~(stop_binding  : (sz, binding) Sizing.option)
-      ~direction : sz array_iterator_let_bindings =
-  match start_binding, stop_binding with
-  | Some start_binding, Some stop_binding ->
-      Range_let_bindings (Some { start_binding; stop_binding; direction })
-  | None, None ->
-      Range_let_bindings None
+  (** Create a a fresh local identifier to bind (from a string), and return that
+      it along with the Lambda variable (with [Lvar]) for it and the
+      corresponding let binding *)
+  let make_id_var let_kind value_kind name init =
+    let id, binding = make_id let_kind value_kind name init in
+    id, Lvar id, binding
 
-let array_iterator_let_bindings bindings =
-  let get_bindings (type sz) : sz array_iterator_let_bindings -> binding list =
-    function
-    | Range_let_bindings
-        (Some { start_binding; stop_binding; direction = _ })
-      ->
-        [start_binding; stop_binding]
-    | Range_let_bindings None ->
-        []
-    | Array_let_bindings { iter_arr_binding; iter_len_binding } ->
-        iter_arr_binding :: match iter_len_binding with
-                            | Some iter_len_binding -> [iter_len_binding]
-                            | None                  -> []
-  in
-  List.concat_map get_bindings bindings
+  (** Create a a fresh local identifier to bind (from a string), and return its
+      corresponding Lambda variable (with [Lvar]) and let binding *)
+  let make_var let_kind value_kind name init =
+    let _id, var, binding = make_id_var let_kind value_kind name init in
+    var, binding
 
-let raise_array_overflow_exn ~loc =
-  (* CR aspectorzabusky: Is this idiomatic?  Should the argument to [string] (a
-     string constant) just get [Location.none] instead? *)
-  let loc' = Debuginfo.Scoped_location.to_location loc in
-  let slot =
-    transl_extension_path
-      loc
-      Env.initial_safe_string
-      Predef.path_invalid_argument
-  in
-  (* CR aspectorzabusky: Should I call [Translprim.event_after] here?
-     [Translcore.asssert_failed] does (via a local intermediary). *)
-  Lprim(Praise Raise_regular,
-        [Lprim(Pmakeblock(0, Immutable, None),
-               [slot; (string ~loc:loc' "Array.make")],
-                (* CR aspectorzabusky: Is "Array.make" the right argument?
-                   That's not *really* what's failing... *)
-               loc)],
-        loc)
+  (** Create a Lambda let-binding (with [Llet]) from a first-class let
+      binding *)
+  let let_one {let_kind; value_kind; id; init} body =
+    Llet(let_kind, value_kind, id, init, body)
 
-let transl_arr_fixed_binding_size ~loc
-  : Sizing.fixed array_iterator_let_bindings -> _ = function
-  | Range_let_bindings (Some { start_binding; stop_binding; direction })  ->
-      let (module O) = lambda_int_ops ~loc in
-      let open O in
-      let start = Lvar start_binding.var in
-      let stop  = Lvar stop_binding.var in
-      let low, high = match direction with
-        | Upto   -> start, stop
-        | Downto -> stop,  start
-      in
-      Lifthenelse(low < high,
-        (* The range has content *)
-        (let range_size = Ident.create_local "range_size" in
-         Llet(Alias, Pintval, range_size, (high - low) + l1,
-           (* If the computed size of the range is nonpositive, there was
-              overflow.  (The zero case is checked for when we check to see if
-              the bounds are in the right order.) *)
-           Lifthenelse(Lvar range_size > l0,
-             Lvar range_size,
-             raise_array_overflow_exn ~loc))),
-        (* The range is empty *)
-        int 0)
-  | Array_let_bindings { iter_arr_binding = _; iter_len_binding = Some iter_len_binding } ->
-      Lvar iter_len_binding.var
+  (** Create Lambda let-bindings (with [Llet]) from multiple first-class let
+      bindings *)
+  let let_all = List.fold_right let_one
 
-(* [safe_mul_nonneg ~loc x y] computes the product [x * y] of two nonnegative
-   integers and fails if this overflowed *)
-let safe_mul ~loc x y =
-  let (module O) = lambda_int_ops ~loc in
-  let open O in
-  let x,       x_binding       = var_binding Strict Pintval "x"       x       in
-  let y,       y_binding       = var_binding Strict Pintval "y"       y       in
-  let product, product_binding = var_binding Alias  Pintval "product" (x * y) in
-  gen_bindings [x_binding; y_binding; product_binding]
-    (Lifthenelse(y = l0 || product / y = x,
-       product,
-       raise_array_overflow_exn ~loc))
+  (** Creates a new let binding only if necessary: if the value is to be used
+      (as per [usage]) [Once], then we don't need to create a binding, so we
+      just return it.  However, if the value is to be reused [Many] times, then
+      we create a binding with a fresh variable and return the variable (as a
+      lambda term).  Thus, in an environment where the returned binding is used,
+      the lambda term refers to the same value in either case. *)
+  let make_if_reused (type u)
+        ~(usage:u Usage.t) let_kind value_kind name value
+      : lambda * (u, t) Usage.if_reused =
+    match usage with
+    | Once ->
+        value, Used_once
+    | Many ->
+        let var, binding = make_var let_kind value_kind name value in
+        var, Reusable binding
+end
 
-(* [safe_product_nonneg ~loc xs] computes the product of all the lambda terms in
-   [xs] assuming they are all nonnegative integers, failing if any product
-   overflows *)
-let safe_product_nonneg ~loc = function
-  | (x :: xs) -> List.fold_left (safe_mul ~loc) x xs
-  | []        -> int 1
-    (* The empty list case can't happen with list comprehensions; we could raise
-       an error here instead of returning 1 *)
+module Precompute_array_size = struct
+  open Lambda_utils.Make
 
-let transl_arr_fixed_bindings_size ~loc iterators =
-  safe_product_nonneg ~loc
-    (List.map (transl_arr_fixed_binding_size ~loc) iterators)
+  (** Generates the lambda expression that throws the exception once we've
+      determined that precomputing the array size has overflowed.  The check for
+      overflow is done elsewhere, this just throws the exception
+      unconditionally. *)
+  let raise_overflow_exn ~loc =
+    (* CR aspectorzabusky: Is this idiomatic?  Should the argument to [string]
+       (a string constant) just get [Location.none] instead? *)
+    let loc' = Debuginfo.Scoped_location.to_location loc in
+    let slot =
+      transl_extension_path
+        loc
+        Env.initial_safe_string
+        Predef.path_invalid_argument
+    in
+    (* CR aspectorzabusky: Should I call [Translprim.event_after] here?
+       [Translcore.asssert_failed] does (via a local intermediary). *)
+    Lprim(Praise Raise_regular,
+          [Lprim(Pmakeblock(0, Immutable, None),
+                 [slot; (string ~loc:loc' "Array.make")],
+                  (* CR aspectorzabusky: Is "Array.make" the right argument?
+                     That's not *really* what's failing... *)
+                 loc)],
+          loc)
 
-let transl_arr_iterator ~sizing ~transl_exp ~scopes ~loc = function
+  (** [safe_mul_nonneg ~loc x y] generates the lambda expression that computes
+      the product [x * y] of two nonnegative integers and fails if this
+      overflowed *)
+  let safe_mul_nonneg ~loc x y =
+    let open (val Lambda_utils.int_ops ~loc) in
+    let x, x_binding =
+      Let_binding.make_var Strict Pintval "x"       x
+    in
+    let y, y_binding =
+      Let_binding.make_var Strict Pintval "y"       y
+    in
+    let product, product_binding =
+      Let_binding.make_var Alias  Pintval "product" (x * y)
+    in
+    Let_binding.let_all [x_binding; y_binding; product_binding]
+      (Lifthenelse(y = l0 || product / y = x,
+         product,
+         raise_overflow_exn ~loc))
+
+  (** [safe_product_nonneg ~loc xs] generates the lambda expression that
+      computes the product of all the lambda terms in [xs] assuming they are all
+      nonnegative integers, failing if any product overflows *)
+  let safe_product_nonneg ~loc = function
+    | (x :: xs) -> List.fold_left (safe_mul_nonneg ~loc) x xs
+    | []        -> int 1
+      (* The empty list case can't happen with list comprehensions; we could
+         an error here instead of returning 1 *)
+
+  module Let_bindings = struct
+    type range =
+      { start     : Let_binding.t
+      ; stop      : Let_binding.t
+      ; direction : direction_flag }
+
+    type 'u array_iterator =
+      | Range of ('u, range) Usage.if_reused
+      | Array of { iter_arr : Let_binding.t
+                 ; iter_len : ('u, Let_binding.t) Usage.if_reused }
+
+    let range (type u)
+          ~(start : (u, Let_binding.t) Usage.if_reused)
+          ~(stop  : (u, Let_binding.t) Usage.if_reused)
+          ~direction
+        : u array_iterator =
+      match start, stop with
+      | Used_once, Used_once ->
+          Range Used_once
+      | Reusable start, Reusable stop ->
+          Range (Reusable { start; stop; direction })
+
+    let get (type u) : u array_iterator -> Let_binding.t list = function
+      | Range (Reusable {start; stop; direction = _}) ->
+          [start; stop]
+      | Range Used_once ->
+          []
+      | Array {iter_arr; iter_len} ->
+          iter_arr :: match iter_len with
+                      | Reusable iter_len -> [iter_len]
+                      | Used_once         -> []
+
+    let get_all bindings = List.concat_map get bindings
+
+    let size ~loc : Usage.many array_iterator -> lambda = function
+      | Range (Reusable { start; stop; direction })  ->
+          let open (val Lambda_utils.int_ops ~loc) in
+          let start = Lvar start.id in
+          let stop  = Lvar stop.id in
+          let low, high = match direction with
+            | Upto   -> start, stop
+            | Downto -> stop,  start
+          in
+          Lifthenelse(low < high,
+            (* The range has content *)
+            (let range_size = Ident.create_local "range_size" in
+             Llet(Alias, Pintval, range_size, (high - low) + l1,
+               (* If the computed size of the range is nonpositive, there was
+                  overflow.  (The zero case is checked for when we check to see
+                  if the bounds are in the right order.) *)
+               Lifthenelse(Lvar range_size > l0,
+                 Lvar range_size,
+                 raise_overflow_exn ~loc))),
+            (* The range is empty *)
+            l0)
+      | Array { iter_arr = _; iter_len = Reusable iter_len } ->
+          Lvar iter_len.id
+
+    let total_size ~loc (iterators : Usage.many array_iterator list) =
+      safe_product_nonneg ~loc (List.map (size ~loc) iterators)
+  end
+end
+
+let transl_arr_iterator ~usage ~transl_exp ~scopes ~loc = function
   | Texp_comp_range { ident; pattern = _; start; stop; direction } ->
       let transl_bound name bound =
-        wibble ~sizing Strict Pintval name (transl_exp ~scopes bound)
+        Let_binding.make_if_reused ~usage Strict Pintval
+          name (transl_exp ~scopes bound)
       in
       let start, start_binding = transl_bound "start" start in
       let stop,  stop_binding  = transl_bound "stop"  stop  in
       let mk_iterator body =
         Lfor(ident, start, stop, direction, body)
       in
-      mk_iterator, range_let_bindings ~start_binding ~stop_binding ~direction
+      mk_iterator, Precompute_array_size.Let_bindings.range
+                     ~start:start_binding
+                     ~stop:stop_binding
+                     ~direction
   | Texp_comp_in { pattern; sequence = iter_arr } ->
       let iter_arr_var, iter_arr_binding =
-        var_binding Strict Pgenval "iter_arr" (transl_exp ~scopes iter_arr)
+        Let_binding.make_var Strict Pgenval
+          "iter_arr" (transl_exp ~scopes iter_arr)
       in
       let iter_arr_kind = Typeopt.array_kind iter_arr in
       let iter_len, iter_len_binding =
-        wibble ~sizing Alias Pintval
+        Let_binding.make_if_reused ~usage Alias Pintval
           "iter_len"
           (Lprim(Parraylength iter_arr_kind, [iter_arr_var], loc))
       in
       let iter_ix = Ident.create_local "iter_ix" in
       let mk_iterator body =
+        let open (val Lambda_utils.int_ops ~loc) in
         (* for iter_ix = 0 to Array.length iter_arr - 1 ... *)
-        Lfor(iter_ix, int 0, Lprim(Psubint, [iter_len; int 1], loc), Upto,
+        Lfor(iter_ix, l0, iter_len - l1, Upto,
              Matching.for_let
                ~scopes
                pattern.pat_loc
@@ -258,7 +331,9 @@ let transl_arr_iterator ~sizing ~transl_exp ~scopes ~loc = function
                pattern
                body)
       in
-      mk_iterator, Array_let_bindings { iter_arr_binding; iter_len_binding }
+      mk_iterator, Precompute_array_size.Let_bindings.Array
+                     { iter_arr = iter_arr_binding
+                     ; iter_len = iter_len_binding }
 
 let transl_arr_binding
       ~transl_exp
@@ -508,7 +583,7 @@ let transl_array_comprehension
   let index, index_var, index_binding =
     id_var_binding Variable Pintval "index" (int 0)
   in
-  gen_bindings
+  Binding.let_all
     (outer_bindings @ [array_binding; index_binding])
     (Lsequence(
        make_comprehension
