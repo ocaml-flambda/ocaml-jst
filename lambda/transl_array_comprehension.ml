@@ -124,6 +124,9 @@ module Lambda_utils = struct
     (* CR aspectorzabusky: I wish there were a better way to provide parameter
        names *)
 
+    (* CR aspectorzabusky: These primitives are now created unconditionally on
+       compiler startup.  Is that okay? *)
+
     let make_vect =
       let make_vect = binary "caml_make_vect" in
       fun ~loc ~length ~init -> make_vect ~loc length init
