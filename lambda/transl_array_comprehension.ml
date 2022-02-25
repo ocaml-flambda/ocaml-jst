@@ -183,12 +183,6 @@ module Usage = struct
     | Once -> Used_once
     | Many -> Reusable x
 
-  (** Convert an [if_reused] to an [option], forgetting about the [once]/[many]
-      distinction. *)
-  let option_of_reused (type u) : (u, 'a) if_reused -> 'a option = function
-    | Used_once  -> None
-    | Reusable x -> Some x
-
   (** Convert an [if_reused] to a [list], forgetting about the [once]/[many]
       distinction; the list is empty in the [Used_once] case and a singleton in
       the [Reusable] case. *)
