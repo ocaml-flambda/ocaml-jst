@@ -8,6 +8,9 @@ module Comprehensions : sig
     | In of Parsetree.expression
       (** "in EXPR" *)
 
+  (* CR aspectorzabusky: I wonder if the [pattern] should be merged with [iterator], like
+     it is in [Typedtree], since we can't even represent non--variable-or-underscore
+     patterns for for loops in Lambda. *)
   type clause_binding =
     { pattern    : Parsetree.pattern
     ; iterator   : iterator
