@@ -465,11 +465,11 @@ and transl_exp0 ~in_new_scope ~scopes e =
   | Texp_array_comprehension comp ->
       let loc = of_location ~scopes e.exp_loc in
       let array_kind = Typeopt.array_kind e in
-      Translcomprehension.transl_array_comprehension
+      Transl_array_comprehension.comprehension
         ~transl_exp ~scopes ~loc ~array_kind comp
   | Texp_list_comprehension comp ->
       let loc = of_location ~scopes e.exp_loc in
-      Translcomprehension.transl_list_comprehension
+      Transl_list_comprehension.comprehension
         ~transl_exp ~scopes ~loc comp
   | Texp_for(param, _, low, high, dir, body) ->
       Lfor(param, transl_exp ~scopes low, transl_exp ~scopes high, dir,
