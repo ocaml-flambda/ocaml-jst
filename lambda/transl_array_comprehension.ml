@@ -780,7 +780,7 @@ let transl_arr_body ~loc ~array_kind ~array_sizing ~array ~index ~body =
     preallocating the generated array; otherwise, it dynamically resizes the
     generated array, cutting it back down to size at the end.
 
-    The only variables this term refer to are those that come from the array
+    The only variables this term refers to are those that come from the array
     comprehension itself; some C primitives are referenced, but no standard
     library functions. *)
 let comprehension
