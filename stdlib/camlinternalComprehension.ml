@@ -1,11 +1,14 @@
 open! Stdlib
 
-let rev = List.rev;;
+type 'a rev_dlist = 'a list -> 'a list
 
-let map_cons f l acc =
+let rev = List.rev
+
+(* Can be thought of as the combination of [map] and composition *)
+let rev_dlist_concat_map f l acc =
   List.fold_left (fun acc el -> f el acc) acc l
 
-let map_from_to_cons f from to_ acc =
+let rev_dlist_concat_iterate_up f from to_ acc =
   let rec loop f from to_ acc =
     if to_ < from
     then acc
@@ -14,7 +17,7 @@ let map_from_to_cons f from to_ acc =
   loop f from to_ acc
 ;;
 
-let map_from_downto_cons f from to_ acc =
+let rev_dlist_concat_iterate_down f from to_ acc =
   let rec loop f from to_ acc =
     if to_ > from
     then acc

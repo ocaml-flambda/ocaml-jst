@@ -3464,13 +3464,26 @@ lambda/transl_array_comprehension.cmx : \
     lambda/transl_array_comprehension.cmi
 lambda/transl_array_comprehension.cmi : \
     typing/typedtree.cmi \
+    parsing/location.cmi \
     lambda/lambda.cmi \
     lambda/debuginfo.cmi
 lambda/transl_list_comprehension.cmo : \
+    typing/typeopt.cmi \
+    typing/typedtree.cmi \
+    lambda/transl_array_comprehension.cmi \
+    lambda/matching.cmi \
     lambda/lambda.cmi \
+    typing/ident.cmi \
+    parsing/asttypes.cmi \
     lambda/transl_list_comprehension.cmi
 lambda/transl_list_comprehension.cmx : \
+    typing/typeopt.cmx \
+    typing/typedtree.cmx \
+    lambda/transl_array_comprehension.cmx \
+    lambda/matching.cmx \
     lambda/lambda.cmx \
+    typing/ident.cmx \
+    parsing/asttypes.cmi \
     lambda/transl_list_comprehension.cmi
 lambda/transl_list_comprehension.cmi : \
     typing/typedtree.cmi \
