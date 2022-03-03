@@ -4,11 +4,28 @@ open Asttypes
 
 (* CR aspectorzabusky: Needs to be factored out properly so this module doesn't
    have to depend on [Transl_array_comprehension] *)
-module Cps_utils = Transl_array_comprehension.Cps_utils
-
-(* CR aspectorzabusky: Needs to be factored out properly so this module doesn't
-   have to depend on [Transl_array_comprehension] *)
 open Transl_array_comprehension.Lambda_utils.Make
+
+(* CR aspectorzabusky: Should get unified with
+   [Transl_array_comprehension.Lambda_utils] *)
+module Lambda_utils = struct
+  let apply
+        ?(tailcall    = Default_tailcall)
+        ?(inlined     = Default_inlined)
+        ?(specialised = Default_specialise)
+        ?probe
+        ~loc
+        func
+        args =
+    Lapply { ap_loc         = loc
+           ; ap_func        = func
+           ; ap_args        = args
+           ; ap_tailcall    = tailcall
+           ; ap_inlined     = inlined
+           ; ap_specialised = specialised
+           ; ap_probe       = probe
+           }
+end
 
 (* CR aspectorzabusky: I couldn't get this to build if these were run as soon as
    this file was processed *)
@@ -26,90 +43,98 @@ let ( rev
   , transl "rev_dlist_concat_iterate_down" )
 ;;
 
-type comprehension_chunk_data =
-  { accumulator : lambda ; make_body : lambda -> lambda }
+type translated_iterator =
+  { builder : lambda Lazy.t
+  ; builder_args : expression list
+  ; element : Ident.t
+  ; element_kind : value_kind
+  ; add_bindings : lambda -> lambda
+  }
 
-let iterator ~transl_exp ~scopes ~loc iterator =
-  let inner_acc = Ident.create_local "accumulator" in
-  let make_iterator
-        ~builder ~builder_args ~element ~element_kind ~make_body next =
-    let iteration body =
-      let body_func =
-        Lfunction { kind   = Curried
-                  ; params = [element, element_kind ; inner_acc, Pgenval]
-                  ; return = Pgenval
-                  ; attr   = default_function_attribute
-                  ; loc    = loc
-                  ; body   = make_body (next.make_body body)
-                  }
-      in
-      Lapply { ap_loc         = loc
-             ; ap_func        = Lazy.force builder
-             ; ap_args        = body_func :: (builder_args @ [next.accumulator])
-             ; ap_tailcall    = Default_tailcall
-             ; ap_inlined     = Default_inlined
-             ; ap_specialised = Default_specialise
-             ; ap_probe       = None
-             }
-    in
-    { accumulator = Lvar inner_acc; make_body = iteration }
-  in
-  match iterator with
+let iterator ~scopes = function
   | Texp_comp_range { ident; pattern = _; start; stop; direction } ->
-      make_iterator
-        ~builder:(match direction with
+      { builder      = (match direction with
           | Upto   -> rev_dlist_concat_iterate_up
           | Downto -> rev_dlist_concat_iterate_down)
-        ~builder_args:(List.map (transl_exp ~scopes) [start; stop])
-        ~element:ident
-        ~element_kind:Pintval
-        ~make_body:Fun.id
+      ; builder_args = [start; stop]
+      ; element      = ident
+      ; element_kind = Pintval
+      ; add_bindings = Fun.id
+      }
   | Texp_comp_in { pattern; sequence } ->
-      let element = Ident.create_local "element" in
-      make_iterator
-        ~builder:rev_dlist_concat_map
-        ~builder_args:[transl_exp ~scopes sequence]
-        ~element
-        ~element_kind:(Typeopt.value_kind pattern.pat_env pattern.pat_type)
-        ~make_body:
-          (Matching.for_let ~scopes pattern.pat_loc (Lvar element) pattern)
+      (* Create a fresh variable to use as the function argument *)
+      let element      = Ident.create_local "element" in
+      { builder      = rev_dlist_concat_map
+      ; builder_args = [sequence]
+      ; element
+      ; element_kind = Typeopt.value_kind pattern.pat_env pattern.pat_type
+      ; add_bindings =
+          Matching.for_let ~scopes pattern.pat_loc (Lvar element) pattern
+      }
 
-let binding
-      ~transl_exp
-      ~scopes
-      ~loc
-      { comp_cb_iterator; comp_cb_attributes = _ } =
+let binding ~scopes { comp_cb_iterator; comp_cb_attributes = _ } =
   (* CR aspectorzabusky: What do we do with attributes here? *)
-  iterator ~transl_exp ~loc ~scopes comp_cb_iterator
+  iterator ~scopes comp_cb_iterator
 
-let clause ~transl_exp ~scopes ~loc = function
-  | Texp_comp_for bindings ->
-      Cps_utils.compose_map (binding ~transl_exp ~loc ~scopes) bindings
-  | Texp_comp_when cond ->
-      fun { accumulator; make_body } ->
-        { accumulator
-        ; make_body = fun body ->
-            Lifthenelse(transl_exp ~scopes cond, make_body body, accumulator) }
+let rec translate_bindings
+          ~transl_exp ~scopes ~loc ~inner_body ~accumulator = function
+  | cur_binding :: bindings ->
+      let { builder ; builder_args ; element ; element_kind ; add_bindings } =
+        binding ~scopes cur_binding
+      in
+      let body_func =
+        let inner_acc = Ident.create_local "accumulator" in
+        Lfunction
+          { kind   = Curried
+          ; params = [element, element_kind; inner_acc, Pgenval]
+          ; return = Pgenval
+          ; attr   = default_function_attribute
+          ; loc
+          ; body   =
+              add_bindings
+                (translate_bindings
+                   ~transl_exp ~scopes ~loc
+                   ~inner_body ~accumulator:(Lvar inner_acc) bindings)
+          }
+      in
+      let args =
+        body_func ::
+        (List.map (transl_exp ~scopes) builder_args @
+         [accumulator])
+      in
+      Lambda_utils.apply ~loc (Lazy.force builder) args
+  | [] ->
+      inner_body ~accumulator
+
+let rec translate_clauses
+          ~transl_exp ~scopes ~loc ~comprehension_body ~accumulator = function
+  | clause :: clauses ->
+      let body ~accumulator =
+        translate_clauses ~transl_exp ~scopes ~loc
+          ~comprehension_body ~accumulator clauses
+      in begin
+        match clause with
+        | Texp_comp_for bindings ->
+            translate_bindings
+              ~transl_exp ~scopes ~loc ~inner_body:body ~accumulator bindings
+        | Texp_comp_when cond ->
+            Lifthenelse(transl_exp ~scopes cond,
+                        body ~accumulator,
+                        accumulator)
+      end
+  | [] ->
+      comprehension_body ~accumulator
 
 let comprehension ~transl_exp ~scopes ~loc { comp_body; comp_clauses } =
-  let { accumulator = innermost_acc; make_body = make_comprehension } =
-    Cps_utils.compose_map
-      (clause ~transl_exp ~scopes ~loc)
+  let rev_comprehension =
+    translate_clauses ~transl_exp ~scopes ~loc
+      ~comprehension_body:(fun ~accumulator ->
+        Lprim(
+          (* ( :: ) *)
+          Pmakeblock(0, Immutable, None),
+          [transl_exp ~scopes comp_body; accumulator],
+          loc))
+      ~accumulator:(int 0 (* Actually [[]], the empty list *))
       comp_clauses
-      { accumulator = int 0 (* Actually [[]], the empty list *)
-      ; make_body   = fun innermost_acc ->
-          Lprim(
-            (* ( :: ) *)
-            Pmakeblock(0, Immutable, None),
-            [(transl_exp ~scopes comp_body); innermost_acc],
-            loc)
-      }
   in
-  Lapply { ap_loc         = loc
-         ; ap_func        = Lazy.force rev
-         ; ap_args        = [make_comprehension innermost_acc]
-         ; ap_tailcall    = Default_tailcall
-         ; ap_inlined     = Default_inlined
-         ; ap_specialised = Default_specialise
-         ; ap_probe       = None
-         }
+  Lambda_utils.apply ~loc (Lazy.force rev) [rev_comprehension]

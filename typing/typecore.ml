@@ -5229,7 +5229,7 @@ and type_comprehension_expr ~loc ~env ~ty_expected cexpr =
      ; exp_extra      = []
      ; exp_type       = instance (container_type comp_body.exp_type)
      ; exp_attributes = [] (* CR aspectorzabusky: These should come from somewhere *)
-     ; exp_env        = env (* CR aspectorzabusky: Should this be [env] or [new_env]? *) }
+     ; exp_env        = env }
 
 and type_comprehension_clauses ~loc ~env ~container_type clauses =
   List.fold_left_map
