@@ -12,8 +12,8 @@ val comprehension
   -> comprehension
   -> lambda
 
-(* CR aspectorzabusky: Needs to be factored out so it can be shared properly with
-   [Transl_list_comprehension] *)
+(* CR aspectorzabusky: Needs to be factored out so it can be shared properly
+   with [Transl_list_comprehension] *)
 module Lambda_utils : sig
   module Make : sig
     val int    : int -> lambda
@@ -79,8 +79,8 @@ module Lambda_utils : sig
   end
 end
 
-(* CR aspectorzabusky: Needs to be factored out so it can be shared properly with
-   [Transl_list_comprehension] *)
+(* CR aspectorzabusky: Needs to be factored out so it can be shared properly
+   with [Transl_list_comprehension] *)
 module Cps_utils : sig
   (** [compose_map f xs] applies [f] to every element of [xs], obtaining a list
       of functions, and then composes these functions (from left to right).
