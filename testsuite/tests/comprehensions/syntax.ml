@@ -1,6 +1,7 @@
 (* TEST
    include ocamlcommon *)
 
+let () = Clflags.add_extension "comprehensions"
 
 let printf = Printf.printf
 
