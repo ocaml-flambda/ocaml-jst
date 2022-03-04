@@ -422,6 +422,21 @@ let maybe_add_pattern_variables_ghost loc_let env pv =
        end
     ) pv env
 
+let iter_pattern_variables_type f : pattern_variable list -> unit =
+  List.iter (fun {pv_type; _} -> f pv_type)
+
+let add_pattern_variables ?check ?check_as env pv =
+  List.fold_right
+    (fun {pv_id; pv_type; pv_loc; pv_as_var; pv_attributes} env ->
+       let check = if pv_as_var then check_as else check in
+       Env.add_value ?check pv_id
+         {val_type = pv_type; val_kind = Val_reg; Types.val_loc = pv_loc;
+          val_attributes = pv_attributes;
+          val_uid = Uid.mk ~current_unit:(Env.get_unit_name ());
+         } env
+    )
+    pv env
+
 let enter_variable ?(is_module=false) ?(is_as_variable=false) loc name ty
     attrs =
   if List.exists (fun {pv_id; _} -> Ident.name pv_id = name.txt)
@@ -615,24 +630,25 @@ let split_cases env cases =
     | vp, ep -> add_case vals case vp, add_case exns case ep
   ) cases ([], [])
 
-(* CR aspectorzabusky: Should we specialize the warning? *)
 let type_for_loop_like_index ~error ~loc ~env ~param ty =
   match param.ppat_desc with
-  | Ppat_any -> Ident.create_local "_for", env
+  | Ppat_any -> Ident.create_local "_for", None
   | Ppat_var {txt} ->
-      Env.enter_value txt
-        {val_type = instance ty;
-          val_attributes = [];
-          val_kind = Val_reg;
-          val_loc = loc;
-          val_uid = Uid.mk ~current_unit:(Env.get_unit_name ());
-        } env
-        ~check:(fun s -> Warnings.Unused_for_index s)
+      let var = Ident.create_local txt in
+      var, Some { pv_id         = var
+                ; pv_type       = instance ty
+                ; pv_loc        = loc
+                ; pv_as_var     = false
+                ; pv_attributes = [] }
   | _ ->
       raise (Error (param.ppat_loc, env, error))
 
-let type_for_loop_index =
-  type_for_loop_like_index ~error:Invalid_for_loop_index
+let type_for_loop_index ~loc ~env ~param ty =
+  let check s = Warnings.Unused_for_index s in
+  let var, pv =
+    type_for_loop_like_index ~error:Invalid_for_loop_index ~loc ~env ~param ty
+  in
+  var, add_pattern_variables ~check ~check_as:check env (Option.to_list pv)
 
 let type_comprehension_for_range_iterator_index =
   type_for_loop_like_index ~error:Invalid_comprehension_for_range_iterator_index
@@ -1951,21 +1967,6 @@ let check_unused ?(lev=get_current_level ()) env expected_ty cases =
           raise (Error (spat.ppat_loc, env, Unrefuted_pattern pat))
       | r -> r)
     cases
-
-let iter_pattern_variables_type f : pattern_variable list -> unit =
-  List.iter (fun {pv_type; _} -> f pv_type)
-
-let add_pattern_variables ?check ?check_as env pv =
-  List.fold_right
-    (fun {pv_id; pv_type; pv_loc; pv_as_var; pv_attributes} env ->
-       let check = if pv_as_var then check_as else check in
-       Env.add_value ?check pv_id
-         {val_type = pv_type; val_kind = Val_reg; Types.val_loc = pv_loc;
-          val_attributes = pv_attributes;
-          val_uid = Uid.mk ~current_unit:(Env.get_unit_name ());
-         } env
-    )
-    pv env
 
 let type_pattern category ~lev env spat expected_ty =
   reset_pattern true;
@@ -5240,11 +5241,13 @@ and type_comprehension_clauses ~loc ~env ~container_type clauses =
 and type_comprehension_clause ~loc ~container_type env
   : Extensions.Comprehensions.clause -> _ = function
   | For bindings ->
-      let env, tbindings =
-        List.fold_left_map
-          (type_comprehension_binding ~loc ~container_type)
-          env
-          bindings
+      let tbindings, pvss =
+        List.split @@
+        List.map (type_comprehension_binding ~loc ~container_type ~env) bindings
+      in
+      let env =
+        let check s = Warnings.Unused_var s in
+        add_pattern_variables ~check ~check_as:check env (List.concat pvss)
       in
       env, Texp_comp_for tbindings
   | When cond ->
@@ -5259,31 +5262,12 @@ and type_comprehension_clause ~loc ~container_type env
 and type_comprehension_binding
       ~loc
       ~container_type
-      env
+      ~env
       Extensions.Comprehensions.{ pattern; iterator; attributes } =
-  let comp_cb_iterator, env =
+  let comp_cb_iterator, pvs =
     type_comprehension_iterator ~loc ~env ~container_type pattern iterator
   in
-  (* CR aspectorzabusky: What is this doing? *)
-  let pv = !pattern_variables in
-  pattern_variables := [];
-  let env =
-    List.fold_right
-      (fun {pv_id; pv_type; pv_loc; pv_as_var=_; pv_attributes} env ->
-         Env.add_value
-           pv_id
-           { val_type = pv_type;
-             val_attributes = pv_attributes;
-             val_kind = Val_reg;
-             val_loc = pv_loc;
-             val_uid = Uid.mk ~current_unit:(Env.get_unit_name ()) }
-           env
-           (*Perhaps this should be Unused_var_strict if some of the pattern
-             is used.*)
-           ~check:(fun s -> Warnings.Unused_var s))
-      pv env
-  in
-  env, { comp_cb_iterator ; comp_cb_attributes = attributes }
+  { comp_cb_iterator ; comp_cb_attributes = attributes }, pvs
 
 and type_comprehension_iterator ~loc ~env ~container_type pattern
   : Extensions.Comprehensions.iterator -> _ = function
@@ -5293,14 +5277,15 @@ and type_comprehension_iterator ~loc ~env ~container_type pattern
       in
       let start = tbound ~explanation:Comprehension_for_start start in
       let stop  = tbound ~explanation:Comprehension_for_stop  stop  in
-      let ident, new_env =
+      let ident, opv =
         type_comprehension_for_range_iterator_index
           ~loc
           ~env
           ~param:pattern
           Predef.type_int
       in
-      Texp_comp_range { ident; pattern; start; stop; direction }, new_env
+      ( Texp_comp_range { ident; pattern; start; stop; direction }
+      , Option.to_list opv )
   | In seq ->
       let item_ty = newvar () in
       let seq_ty = instance (container_type item_ty) in
@@ -5318,7 +5303,9 @@ and type_comprehension_iterator ~loc ~env ~container_type pattern
           pattern
           item_ty
       in
-      Texp_comp_in { pattern; sequence }, env
+      let pvs = !pattern_variables in
+      pattern_variables := [];
+      Texp_comp_in { pattern; sequence }, pvs
 
 (* Typing of toplevel bindings *)
 
