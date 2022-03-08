@@ -1635,10 +1635,40 @@ and extension_expr ctxt f (x : Extensions.extension_expr) =
   match x with
   | Eexp_comprehension comp -> comprehension_expr ctxt f comp
 
-and comprehension_expr _ctxt f (x : Extensions.Comprehensions.comprehension_expr) =
+and comprehension_expr ctxt f (x : Extensions.Comprehensions.comprehension_expr) =
   match x with
-  | Cexp_list_comprehension  _ -> pp f "[ COMP ]"
-  | Cexp_array_comprehension _ -> pp f "[| COMP |]"
+  | Cexp_list_comprehension  comp -> pp f "[%a]"   (comprehension ctxt) comp
+  | Cexp_array_comprehension comp -> pp f "[|%a|]" (comprehension ctxt) comp
+
+and comprehension ctxt f x =
+  let Extensions.Comprehensions.{ body; clauses } = x in
+  pp f "%a %a"
+    (simple_expr ctxt) body
+    (list ~sep:" " (comprehension_clause ctxt)) clauses
+
+and comprehension_clause ctxt f (x : Extensions.Comprehensions.clause) =
+  match x with
+  | For bindings ->
+      list ~first:"for " ~sep:" and " (comprehension_binding ctxt) f bindings
+  | When cond ->
+      pp f "when %a" (simple_expr ctxt) cond
+
+and comprehension_binding ctxt f x =
+  let Extensions.Comprehensions.{ pattern = pat; iterator; attributes = attrs } = x in
+  pp f "%a%a %a"
+    (attributes ctxt) attrs
+    (pattern ctxt) pat
+    (comprehension_iterator ctxt) iterator
+
+and comprehension_iterator ctxt f (x : Extensions.Comprehensions.iterator) =
+  match x with
+  | Range { start; stop; direction } ->
+      pp f "= %a %a%a"
+        (simple_expr ctxt) start
+        direction_flag direction
+        (simple_expr ctxt) stop
+  | In seq ->
+      pp f "in %a" (simple_expr ctxt) seq
 
 let toplevel_phrase f x =
   match x with
