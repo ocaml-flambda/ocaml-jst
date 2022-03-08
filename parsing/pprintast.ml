@@ -1649,7 +1649,7 @@ and comprehension ctxt f x =
 and comprehension_clause ctxt f (x : Extensions.Comprehensions.clause) =
   match x with
   | For bindings ->
-      list ~first:"for " ~sep:" and " (comprehension_binding ctxt) f bindings
+      pp f "for %a" (list ~sep:" and " (comprehension_binding ctxt)) bindings
   | When cond ->
       pp f "when %a" (expression ctxt) cond
 
