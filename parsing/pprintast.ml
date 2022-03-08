@@ -1643,7 +1643,7 @@ and comprehension_expr ctxt f (x : Extensions.Comprehensions.comprehension_expr)
 and comprehension ctxt f x =
   let Extensions.Comprehensions.{ body; clauses } = x in
   pp f "%a %a"
-    (simple_expr ctxt) body
+    (expression ctxt) body
     (list ~sep:" " (comprehension_clause ctxt)) clauses
 
 and comprehension_clause ctxt f (x : Extensions.Comprehensions.clause) =
@@ -1651,7 +1651,7 @@ and comprehension_clause ctxt f (x : Extensions.Comprehensions.clause) =
   | For bindings ->
       list ~first:"for " ~sep:" and " (comprehension_binding ctxt) f bindings
   | When cond ->
-      pp f "when %a" (simple_expr ctxt) cond
+      pp f "when %a" (expression ctxt) cond
 
 and comprehension_binding ctxt f x =
   let Extensions.Comprehensions.{ pattern = pat; iterator; attributes = attrs } = x in
@@ -1664,11 +1664,11 @@ and comprehension_iterator ctxt f (x : Extensions.Comprehensions.iterator) =
   match x with
   | Range { start; stop; direction } ->
       pp f "= %a %a%a"
-        (simple_expr ctxt) start
+        (expression ctxt) start
         direction_flag direction
-        (simple_expr ctxt) stop
+        (expression ctxt) stop
   | In seq ->
-      pp f "in %a" (simple_expr ctxt) seq
+      pp f "in %a" (expression ctxt) seq
 
 let toplevel_phrase f x =
   match x with

@@ -1,8 +1,7 @@
 reprint error:
 [(j,i) for j = 0 to i when (i >= 4) && (j >= 4) for i = 0 to 9 when (i mod 2 = 0)]
   became
-[(j, i) when ((i mod 2) = 0) i = 0 to 9 when ((i >= 4) && (j >= 4)) j = 0 to
-i]
+[(j, i) when (i mod 2) = 0 i = 0 to 9 when (i >= 4) && (j >= 4) j = 0 to i]
 
 -----
 
