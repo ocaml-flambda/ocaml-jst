@@ -1637,21 +1637,25 @@ and extension_expr ctxt f (x : Extensions.extension_expr) =
 
 and comprehension_expr ctxt f (x : Extensions.Comprehensions.comprehension_expr) =
   match x with
-  | Cexp_list_comprehension  comp -> pp f "[%a]"   (comprehension ctxt) comp
-  | Cexp_array_comprehension comp -> pp f "[|%a|]" (comprehension ctxt) comp
+  | Cexp_list_comprehension  comp ->
+      comprehension ctxt f ~open_:"[" ~close:"]" comp
+  | Cexp_array_comprehension comp ->
+      comprehension ctxt f ~open_:"[|" ~close:"|]" comp
 
-and comprehension ctxt f x =
+and comprehension ctxt f ~open_ ~close x =
   let Extensions.Comprehensions.{ body; clauses } = x in
-  pp f "%a %a"
+  pp f "@[<hv0>@[<hv2>%s%a@ @[<hv2>%a@]%s@]@]"
+    open_
     (expression ctxt) body
-    (list ~sep:" " (comprehension_clause ctxt)) clauses
+    (list ~sep:"@ " (comprehension_clause ctxt)) clauses
+    close
 
 and comprehension_clause ctxt f (x : Extensions.Comprehensions.clause) =
   match x with
   | For bindings ->
-      pp f "for %a" (list ~sep:" and " (comprehension_binding ctxt)) bindings
+      pp f "@[for %a@]" (list ~sep:"@]@ @[and " (comprehension_binding ctxt)) bindings
   | When cond ->
-      pp f "when %a" (expression ctxt) cond
+      pp f "@[when %a@]" (expression ctxt) cond
 
 and comprehension_binding ctxt f x =
   let Extensions.Comprehensions.{ pattern = pat; iterator; attributes = attrs } = x in
@@ -1663,7 +1667,7 @@ and comprehension_binding ctxt f x =
 and comprehension_iterator ctxt f (x : Extensions.Comprehensions.iterator) =
   match x with
   | Range { start; stop; direction } ->
-      pp f "= %a %a%a"
+      pp f "=@ %a %a%a"
         (expression ctxt) start
         direction_flag direction
         (expression ctxt) stop
