@@ -32,6 +32,11 @@ module QuickCheck = struct
     | OK
     | Failed_with of 'a
 
+  type 'a crash =
+    { crashexample : 'a
+    ; exception_   : exn
+    ; tests        : int }
+
   type ('a, 'b) failure =
     { counterexample : 'a
     ; data           : 'b
@@ -40,25 +45,28 @@ module QuickCheck = struct
 
   type ('a, 'b) result =
     | Passed
-    | Failed of ('a, 'b) failure
+    | Failed  of ('a, 'b) failure
+    | Crashed of 'a crash
 
+  (* This swallows exceptions, which I *think* is OK *)
   let rec find_counterexample prop = function
     | [] -> None
     | x :: xs ->
         match prop x with
         | Failed_with data -> Some (x, data)
-        | OK               -> find_counterexample prop xs
+        | OK | exception _ -> find_counterexample prop xs
 
   let rec minimize shrink prop failure =
     match find_counterexample prop (shrink failure.counterexample) with
     | Some (counterexample, data) ->
         minimize shrink prop
           { failure with counterexample; data; shrinks = failure.shrinks + 1 }
-    | None ->
+    | None | exception _ ->
         failure
 
   let test (type a b) n gen shrink prop =
     let exception Counterexample of (a, b) failure in
+    let exception Crashexample   of a crash in
     match
       for tests = 1 to n do
         let x = gen () in
@@ -68,10 +76,13 @@ module QuickCheck = struct
             raise (Counterexample
                      (minimize shrink prop
                         { counterexample = x; data; tests; shrinks = 0 }))
+        | exception exception_ ->
+            raise (Crashexample { crashexample = x; exception_; tests })
       done
     with
     | ()                               -> Passed
-    | exception Counterexample failure -> Failed failure
+    | exception Counterexample failure -> Failed  failure
+    | exception Crashexample   failure -> Crashed failure
 
   module Generator = struct
     let replicateG n g =
@@ -236,8 +247,8 @@ module Comprehension = struct
       Util.take_while (fun p' -> p <> p') all_predicates
 
     let clause = function
-      | For bs     -> List.map (fun bs -> For bs) (nonempty_list binding bs)
-      | When(p, x) -> List.map (fun p -> When(p, x)) (predicate p)
+      | For bs     -> List.map (fun bs -> For bs)     (nonempty_list binding bs)
+      | When(p, x) -> List.map (fun p  -> When(p, x)) (predicate p)
 
     let comprehension {vars = _; clauses} =
       List.filter_map (fun clauses ->
@@ -419,39 +430,59 @@ module Main = struct
              then OK
              else Failed_with {ocaml_list; ocaml_array; python})))
 
-  let main_comprehensions_agree max_tests =
-    let seed = Util.random_seed () in
+  let print_failure_or_crash ~what ~seed ~comprehension ~data ~tests ~shrinks =
+    let print_comprehension tag align o =
+      let spaced_out s  = String.make (String.length s) ' ' in
+      let input_prefix  = "  " ^ tag            ^ ": " ^ align in
+      let output_prefix = "  " ^ spaced_out tag ^ "  " ^ align in
+      print_endline (input_prefix  ^ Comprehension.to_string o comprehension);
+      Option.iter
+        (fun data -> print_endline (output_prefix ^ "  = " ^ output_for o data))
+        data
+    in
+    let seed_guts =
+      seed |> Array.map Int.to_string |> Array.to_list |> String.concat "; "
+    in
+    let n_tests = match tests with
+      | 1 -> "1 test"
+      | _ -> Int.to_string tests ^ " tests"
+    in
+    let and_k_shrinks = match shrinks with
+      | 0 -> ""
+      | 1 -> " and 1 shrink"
+      | _ -> " and " ^ Int.to_string shrinks ^ " shrinks"
+    in
+    Format.printf "Failed with seed [|%s|]!\n" seed_guts;
+    Format.printf "%s (after %s%s):\n" what n_tests and_k_shrinks;
+    print_comprehension "OCaml list" " " OCaml_list;
+    print_comprehension "OCaml array" "" OCaml_array;
+    print_comprehension "Python" "     " Python
+
+  let main_comprehensions_agree ?(seed = Util.random_seed()) max_tests =
     Random.full_init seed;
     match test_comprehensions_agree max_tests with
     | Passed ->
         print_endline ("OK, passed " ^ Int.to_string max_tests ^ " tests.")
     | Failed { counterexample; data; tests; shrinks } ->
-        let print_comprehension tag align o =
-          let spaced_out s  = String.make (String.length s) ' ' in
-          let input_prefix  = "  " ^ tag            ^ ": " ^ align in
-          let output_prefix = "  " ^ spaced_out tag ^ "  " ^ align in
-          print_endline
-            (input_prefix  ^ Comprehension.to_string o counterexample);
-          print_endline
-            (output_prefix ^ "  = " ^ output_for o data)
-        in
-        let seed_guts =
-          seed |> Array.map Int.to_string |> Array.to_list |> String.concat "; "
-        in
-        let n_tests = match tests with
-          | 1 -> "1 test"
-          | _ -> Int.to_string tests ^ " tests"
-        in
-        let and_k_shrinks = match shrinks with
-          | 0 -> ""
-          | 1 -> " and 1 shrink"
-          | _ -> " and " ^ Int.to_string shrinks ^ " shrinks"
-        in
-        Format.printf "Failed with seed [|%s|]!\n" seed_guts;
-        Format.printf "Counterexample (after %s%s):\n" n_tests and_k_shrinks;
-        print_comprehension "OCaml list" " " OCaml_list;
-        print_comprehension "OCaml array" "" OCaml_array;
-        print_comprehension "Python" "     " Python
+        print_failure_or_crash
+          ~what:"Counterexample"
+          ~seed
+          ~comprehension:counterexample
+          ~data:(Some data)
+          ~tests
+          ~shrinks
+    | Crashed { crashexample; exception_; tests } ->
+        print_failure_or_crash
+          ~what:"Exception"
+          ~seed
+          ~comprehension:crashexample
+          ~data:None
+          ~tests
+          ~shrinks:0;
+        Format.printf "  Exception:\n%s\n"
+          (exception_
+           |> Printexc.to_string
+           |> Str.global_replace (Str.regexp "\n") "\n    ")
 end
 
-let () = Main.main_comprehensions_agree 10_000
+(* let () = Main.main_comprehensions_agree ~seed:[|52; 255; 237; 237; 128; 54; 184; 197; 81; 51; 0; 54|] 10_000 *)
