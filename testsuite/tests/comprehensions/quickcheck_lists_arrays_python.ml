@@ -32,16 +32,16 @@ module QuickCheck = struct
     | OK
     | Failed_with of 'a
 
-  type 'a crash =
-    { crashexample : 'a
-    ; exception_   : exn
-    ; tests        : int }
-
   type ('a, 'b) failure =
     { counterexample : 'a
     ; data           : 'b
     ; tests          : int
     ; shrinks        : int }
+
+  type 'a crash =
+    { crashexample : 'a
+    ; exception_   : exn
+    ; tests        : int }
 
   type ('a, 'b) result =
     | Passed
@@ -123,6 +123,11 @@ module QuickCheck = struct
       Util.guard (i < 0 && i <> Int.min_int) (-i) @
       Util.guard (i <> 0)                    0    @
       halves (i/2)
+
+    (* Allow either one or two shrinks from the given shrinker *)
+    let shrink2 shrink x =
+      let shrink1 = shrink x in
+      shrink1 @ List.concat_map shrink shrink1
   end
 end
 
@@ -228,20 +233,14 @@ module Comprehension = struct
           Util.guard
             (match direction with Downto -> true | To -> false)
             (Range { start = stop; direction = To; stop = start }) @
-          List.concat_map (fun start ->
-            List.map (fun stop ->
-              Range { start; direction; stop }
-            ) (int stop)
-          ) (int start)
+          List.map (fun start -> Range { start; direction; stop }) (int start) @
+          List.map (fun stop  -> Range { start; direction; stop }) (int stop)
       | Sequence seq ->
-         List.map (fun seq -> Sequence seq) (list int seq)
+          List.map (fun seq -> Sequence seq) (list int seq)
 
-    let binding {var = x; iterator = i} =
-      List.concat_map (fun var ->
-        List.map (fun iterator ->
-          {var; iterator}
-        ) (iterator i)
-      ) (pattern_var x)
+    let binding ({var = x; iterator = i} as b) =
+      List.map (fun iterator -> {b with iterator}) (iterator    i) @
+      List.map (fun var      -> {b with var})      (pattern_var x)
 
     let predicate p =
       Util.take_while (fun p' -> p <> p') all_predicates
@@ -267,6 +266,11 @@ module Comprehension = struct
         | [] -> None
         | clauses -> Some {vars; clauses}
       ) (nonempty_list clause clauses)
+
+    (* Shrinking twice simplifies both bugs this found on its first go-round,
+       since it can shrink both the endpoints of a to/downto range and it can
+       shrink two parallel variable names at once. *)
+    let comprehension = QuickCheck.Shrinker.shrink2 comprehension
   end
 
   module To_string = struct
@@ -387,7 +391,7 @@ module Interactive_command = struct
 
   let ocaml ~f =
     command
-      "/usr/local/home/aspectorzabusky/repos/ocaml-jst/ocaml"
+      "../../../ocaml"
       [ "-extension"; "comprehensions"
       ; "-noprompt"; "-no-version"
       ; "-w"; "no-unused-var" ]
@@ -400,7 +404,7 @@ module Interactive_command = struct
     command
       "/usr/bin/python3"
       ["-qic"; "import sys\nsys.ps1 = ''"]
-      ~setup:(fun output -> ())
+      ~setup:(Fun.const ())
       ~input:input_line
       ~output:Fun.id
       ~f
@@ -485,4 +489,4 @@ module Main = struct
            |> Str.global_replace (Str.regexp "\n") "\n    ")
 end
 
-(* let () = Main.main_comprehensions_agree ~seed:[|52; 255; 237; 237; 128; 54; 184; 197; 81; 51; 0; 54|] 10_000 *)
+let () = Main.main_comprehensions_agree 1_000
