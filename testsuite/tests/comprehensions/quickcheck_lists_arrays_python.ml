@@ -483,7 +483,7 @@ module Main = struct
           ~data:None
           ~tests
           ~shrinks:0;
-        Format.printf "  Exception:\n%s\n"
+        Format.printf "  Exception:\n    %s\n"
           (exception_
            |> Printexc.to_string
            |> Str.global_replace (Str.regexp "\n") "\n    ")

@@ -374,7 +374,7 @@ module Iterator_bindings = struct
           | Upto   -> start, stop
           | Downto -> stop,  start
         in
-        Lifthenelse(low < high,
+        Lifthenelse(low <= high,
           (* The range has content *)
           (let range_size = Ident.create_local "range_size" in
            Llet(Alias, Pintval, range_size, (high - low) + l1,

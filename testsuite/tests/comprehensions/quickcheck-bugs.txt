@@ -1,3 +1,5 @@
+At 1d55c78ff:
+
 Failed with seed [|168; 101; 179; 1; 180; 143; 98; 130; 177; 81; 38; 158|]!
 Counterexample (after 34 tests and 9 shrinks):
   OCaml list:  [() for _ = 0 to 0]
