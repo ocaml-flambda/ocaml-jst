@@ -96,7 +96,7 @@ module QuickCheck = struct
     let pick xs =
       List.nth xs (Random.int (List.length xs))
 
-    let small_int () = Random.int 11 - 5 (* [-5,5] *)
+    let small_int () = Random.int 7 - 3 (* [-3,3] *)
   end
 
   module Shrinker = struct
@@ -183,7 +183,9 @@ module Comprehension = struct
       then Range { start     = small_int ()
                  ; direction = if Random.bool () then To else Downto
                  ; stop      = small_int () }
-      else Sequence (replicateG (Random.int 11) small_int)
+      else Sequence (replicateG (Random.int 8) small_int)
+      (* Both Ranges and Sequences can range from length 0 to 7 (inclusive),
+         although with different probabilities *)
 
     let predicate () =
       match Random.int 5 with
