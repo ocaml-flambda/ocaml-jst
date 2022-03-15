@@ -88,6 +88,15 @@ module QuickCheck = struct
     let replicateG n g =
       Array.make n Fun.id |> Array.to_list |> List.map (fun _ -> g ())
 
+    let pick_without_replacement xs =
+      let rec go i xs = match i, xs with
+        | 0, x :: xs -> x, xs
+        | i, x :: xs -> let y, ys = go (i-1) xs
+                        in y, x :: ys
+        | _, []      -> assert false
+      in
+      go (Random.int (List.length xs)) xs
+
     let pick xs =
       List.nth xs (Random.int (List.length xs))
 
@@ -134,11 +143,14 @@ end
 module Comprehension = struct
   module Var = struct
     type t = string
+
+    let equal = String.equal
     module Set = Set.Make(String)
 
-    let pattern_vars =
-      let a = Char.code 'a' in
-      "_" :: List.init 26 (fun i -> String.make 1 (Char.chr (a + i)))
+    let vars =
+      List.init 26 (fun i -> String.make 1 (Char.chr (Char.code 'a' + i)))
+    let wildcard = "_"
+    let pattern_vars = wildcard :: vars
   end
 
   type direction =
@@ -164,13 +176,11 @@ module Comprehension = struct
     | For  of binding list
     | When of predicate * Var.t
 
-  (* We assume the body is a tuple of all the variables *)
-  type t = { vars : Var.Set.t ; clauses : clause list }
+  (* We assume the body is a tuple of all the variables in the environment *)
+  type t = { env : Var.Set.t ; clauses : clause list }
 
   module Generator = struct
     open QuickCheck.Generator
-
-    let var () = pick Var.pattern_vars
 
     let iterator () =
       if Random.bool ()
@@ -178,8 +188,6 @@ module Comprehension = struct
                  ; direction = if Random.bool () then To else Downto
                  ; stop      = small_int () }
       else Sequence (replicateG (Random.int 11) small_int)
-
-    let binding () = { var = var (); iterator = iterator () }
 
     let predicate () =
       match Random.int 5 with
@@ -190,37 +198,50 @@ module Comprehension = struct
       | 4 -> Odd
       | _ -> assert false
 
-    let bindings_vars bs =
-      bs
-      |> List.filter_map (function
-        | {var = "_"; _} -> None
-        | {var; _}       -> Some var)
-      |> Var.Set.of_list
-
+    (* Generates bindings that don't share variables *)
     let bindings sz =
-      let bs = replicateG (Random.int sz + 1) binding in
-      bs, bindings_vars bs
+      let rec go ~bindings ~available ~used = function
+        | 0 ->
+            (* We reverse the list because [_] becomes slightly more likely for
+               later-generated values, and this shifts them towards the end of
+               the for-and clause *)
+            List.rev bindings, used
+        | n ->
+            let var, available = pick_without_replacement available in
+            let available, used =
+              if Var.equal var Var.wildcard
+              then Var.wildcard :: available, used
+              else available, Var.Set.add var used
+            in
+            let bindings = { var; iterator = iterator () } :: bindings in
+            go ~bindings ~available ~used (n-1)
+      in
+      go
+        ~bindings:[]
+        ~available:Var.pattern_vars
+        ~used:Var.Set.empty
+        (Random.int sz + 1)
 
-    let clause vars sz =
-      if not (Var.Set.is_empty vars) && Random.int 4 < 1 then
-        When(predicate (), pick (Var.Set.elements vars)), vars
+    let clause env sz =
+      if not (Var.Set.is_empty env) && Random.int 4 < 1 then
+        When(predicate (), pick (Var.Set.elements env)), env
       else
-        let bs, vars' = bindings sz in
-        For bs, Var.Set.union vars vars'
+        let bs, env' = bindings sz in
+        For bs, Var.Set.union env env'
 
     let comprehension () =
       let clause_n = Random.int 5 + 1 (* [1,5] *) in
       let for_max  = (7 - clause_n) (* [2,6] *) in
-      let rec go vars i =
+      let rec go env i =
         if i = clause_n then
-          [], vars
+          [], env
         else
-          let b,  vars' = clause vars for_max in
-          let bs, vars'' = go (Var.Set.union vars vars') (i+1) in
-          b :: bs, vars''
+          let b,  env' = clause env for_max in
+          let bs, env'' = go (Var.Set.union env env') (i+1) in
+          b :: bs, env''
       in
-      let clauses, vars = go Var.Set.empty 0 in
-      {vars; clauses}
+      let clauses, env = go Var.Set.empty 0 in
+      {env; clauses}
   end
 
   module Shrinker = struct
@@ -249,23 +270,31 @@ module Comprehension = struct
       | For bs     -> List.map (fun bs -> For bs)     (nonempty_list binding bs)
       | When(p, x) -> List.map (fun p  -> When(p, x)) (predicate p)
 
-    let comprehension {vars = _; clauses} =
-      List.filter_map (fun clauses ->
-        (* Brute force to figure out the deleted bindings *)
-        let vars, oclauses =
-          List.fold_left_map
-            (fun vars clause ->
-               match clause with
-               | When (p,x) when not (Var.Set.mem x vars) -> vars, None
-               | When _ -> vars, Some clause
-               | For bs -> Generator.bindings_vars bs, Some clause)
-            Var.Set.empty
-            clauses
-        in
-        match List.filter_map Fun.id oclauses with
-        | [] -> None
-        | clauses -> Some {vars; clauses}
-      ) (nonempty_list clause clauses)
+    let bindings_env bs =
+      bs
+      |> List.filter_map (function
+        | {var = "_"; _} -> None
+        | {var; _}       -> Some var)
+      |> Var.Set.of_list
+
+    let comprehension {env = _; clauses} =
+      List.filter_map
+        (fun clauses ->
+           (* Brute force to figure out the deleted bindings *)
+           let env, oclauses =
+             List.fold_left_map
+               (fun env clause ->
+                  match clause with
+                  | When (p,x) when not (Var.Set.mem x env) -> env, None
+                  | When _ -> env, Some clause
+                  | For bs -> bindings_env bs, Some clause)
+               Var.Set.empty
+               clauses
+           in
+           match List.filter_map Fun.id oclauses with
+           | []      -> None
+           | clauses -> Some {env; clauses})
+        (nonempty_list clause clauses)
 
     (* Shrinking twice simplifies both bugs this found on its first go-round,
        since it can shrink both the endpoints of a to/downto range and it can
@@ -332,9 +361,12 @@ module Comprehension = struct
                  ^ tuple ([Int.to_string start; Int.to_string stop] @ step))
         | Sequence seq ->
             let sep = (if ocaml o then ";" else ",") ^ " " in
-            tokens
-              [ "in"
-              ; seq |> List.map Int.to_string |> String.concat sep |> sequence o ]
+            let seq = seq
+                      |> List.map Int.to_string
+                      |> String.concat sep
+                      |> sequence o
+            in
+            tokens ["in"; seq]
       in
       tokens [var; iter]
 
@@ -347,11 +379,11 @@ module Comprehension = struct
       | When(pred, x) ->
           tokens [(if ocaml o then "when" else "if"); x; predicate o pred]
 
-    let comprehension o {vars; clauses} =
+    let comprehension o {env; clauses} =
       let clauses = if ocaml o then List.rev clauses else clauses in
       sequence o
         (tokens
-          (tuple (Var.Set.elements vars) :: List.map (clause o) clauses))
+          (tuple (Var.Set.elements env) :: List.map (clause o) clauses))
   end
 
   let generator = Generator.comprehension
@@ -361,7 +393,9 @@ end
 
 module Interactive_command = struct
   let command cmd args ~setup ~input ~output ~f =
-    let inch, outch = Unix.open_process_args cmd (Array.of_list (cmd :: args)) in
+    let inch, outch =
+      Unix.open_process_args cmd (Array.of_list (cmd :: args))
+    in
     let output str = Util.output_line outch (output str) in
     let interact str =
       output str;
@@ -395,7 +429,8 @@ module Interactive_command = struct
       [ "-extension"; "comprehensions"
       ; "-noprompt"; "-no-version"
       ; "-w"; "no-unused-var" ]
-      ~setup:(fun output -> output ("#print_length " ^ Int.to_string Int.max_int))
+      ~setup:(fun output ->
+        output ("#print_length " ^ Int.to_string Int.max_int))
       ~input:input_ocaml_list_or_array_as_python_list
       ~output:(fun str -> str ^ ";;")
       ~f
@@ -427,6 +462,7 @@ module Main = struct
       Interactive_command.python ~f:(fun python ->
         QuickCheck.test max_tests Comprehension.generator Comprehension.shrinker
           (fun c ->
+             print_endline (Comprehension.to_string OCaml_list  c);
              let ocaml_list  = ocaml  (Comprehension.to_string OCaml_list  c) in
              let ocaml_array = ocaml  (Comprehension.to_string OCaml_array c) in
              let python      = python (Comprehension.to_string Python      c) in

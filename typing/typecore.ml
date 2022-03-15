@@ -139,6 +139,7 @@ type error =
   | Letop_type_clash of string * Ctype.Unification_trace.t
   | Andop_type_clash of string * Ctype.Unification_trace.t
   | Bindings_type_clash of Ctype.Unification_trace.t
+  | Multiply_bound_comprehension_variables of string list
 
 exception Error of Location.t * Env.t * error
 exception Error_forward of Location.error
@@ -5246,9 +5247,47 @@ and type_comprehension_clause ~loc ~container_type env
         List.split @@
         List.map (type_comprehension_binding ~loc ~container_type ~env) bindings
       in
+      (* CR aspectorzabusky: Is there a nicer way to test for redundant
+         variables?  I think it's as efficient as the [Multiply_bound_variable]
+         check, although that one is checked earlier, as it's a linear scan on
+         *each* variable. *)
+      let pvs = List.concat pvss in
+      (* Get the location of the *last* duplicate of the given variable *)
+      let rec duplicate_loc id dup_loc rest = function
+        | [] -> dup_loc, List.rev rest
+        | pv :: pvs ->
+            let dup_loc, rest =
+              (* CR aspectorzabusky: Can I use [Ident.equal] here, or do I need
+                 [Ident.name id = Ident.name pv.pv_id]? *)
+              if Ident.equal id pv.pv_id
+              then Some pv.pv_loc, rest
+              else dup_loc,        pv :: rest
+            in
+            duplicate_loc id dup_loc rest pvs
+      in
+      let rec duplicates dup_loc dups = function
+        | [] -> dup_loc, List.rev dups
+        | pv :: pvs ->
+            let id = pv.pv_id in
+            match duplicate_loc id None [] pvs with
+            | None, pvs ->
+                duplicates dup_loc dups pvs
+            | Some dup_loc, pvs ->
+                duplicates (Some dup_loc) (Ident.name id :: dups) pvs
+      in
+      begin
+        match duplicates None [] pvs with
+        | None,         [] -> ()
+        | Some dup_loc, (_ :: _ as dups) ->
+            raise
+              (Error(dup_loc, env, Multiply_bound_comprehension_variables dups))
+        | None, _ :: _ | Some _, [] ->
+            fatal_error "Comprehension for-and duplicate variable check \
+                         returned inconsistent results"
+      end;
       let env =
         let check s = Warnings.Unused_var s in
-        add_pattern_variables ~check ~check_as:check env (List.concat pvss)
+        add_pattern_variables ~check ~check_as:check env pvs
       in
       env, Texp_comp_for tbindings
   | When cond ->
@@ -5819,6 +5858,26 @@ let report_error ~loc env = function
           fprintf ppf "These bindings have type")
         (function ppf ->
           fprintf ppf "but bindings were expected of type")
+  | Multiply_bound_comprehension_variables names ->
+      let plural = match names with
+        | [_] -> false
+        | _   -> true
+      in
+      Location.errorf ~loc
+        "The variable%s%s %s bound several times in this comprehension's \
+         for-and binding"
+        (if plural then "s" else "")
+        (let rec go sep = function
+           | [] -> ""
+           | name :: names ->
+               let sep' = match names with
+                 | [_] -> sep ^ "and "
+                 | _ -> ", "
+               in
+               sep ^ name ^ go sep' names
+         in go " " names)
+        (if plural then "are" else "is")
+
 
 let report_error ~loc env err =
   Printtyp.wrap_printing_env ~error:true env

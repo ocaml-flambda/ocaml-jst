@@ -197,6 +197,7 @@ type error =
   | Letop_type_clash of string * Ctype.Unification_trace.t
   | Andop_type_clash of string * Ctype.Unification_trace.t
   | Bindings_type_clash of Ctype.Unification_trace.t
+  | Multiply_bound_comprehension_variables of string list
 
 exception Error of Location.t * Env.t * error
 exception Error_forward of Location.error
