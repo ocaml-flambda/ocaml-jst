@@ -17,3 +17,15 @@ Counterexample (after 7 tests and 21 shrinks):
                  = [0]
   Python:      [a for a in [0] for a in [1]]
                  = [1]
+
+At e5eb7b49b:
+
+Failed with seed [|142; 97; 122; 155; 28; 84; 175; 61; 151; 172; 80; 253|]!
+Counterexample (after 278 tests and 18 shrinks):
+  OCaml list:  [(a, b) for a in [b] and b = 0 downto -1 for _ in [0; 0] for b in [0]]
+                 = [(0, 0), (0, -1), (0, 0), (0, -1)]
+  OCaml array: [|(a, b) for a in [|b|] and b = 0 downto -1 for _ in [|0; 0|] for b in [|0|]|]
+                 = [(0, 0), (0, -1), (0, 0), (0, -1)]
+  Python:      [(a, b) for b in [0] for _ in [0, 0] for a in [b] for b in range(0, -2, -1)]
+                 = [(0, 0), (0, -1), (-1, 0), (-1, -1)]
+
