@@ -1,4 +1,4 @@
-(* -*- compile-command: "ocamlc str.cma unix.cma quickcheck_lists_arrays_python.ml -o quickcheck-lists-arrays-python && ./quickcheck-lists-arrays-python"; -*- *)
+(* -*- compile-command: "ocamlc -w +A-40-42-44 str.cma unix.cma quickcheck_lists_arrays_python.ml -o quickcheck-lists-arrays-python && ./quickcheck-lists-arrays-python"; -*- *)
 
 module No_polymorphic_compare = struct
   let ( = )      = Int.equal
@@ -11,6 +11,29 @@ end
 open No_polymorphic_compare
 
 module Util = struct
+  module List_monad = struct
+    let pure x = [x]
+    let bind xs f = List.concat_map f xs
+
+    let (let*)      = bind
+    let (let+) xs f = List.map f xs
+
+    (* I think this is right *)
+    let (and*) xs ys =
+      let* x = xs in
+      let+ y = ys in
+      x,y
+    let (and+) = (and*)
+
+    let rec traverse f = function
+      | [] ->
+          pure []
+      | x :: xs ->
+          let+ y  = f x
+          and+ ys = traverse f xs in
+          y :: ys
+  end
+
   let rec take_while p = function
     | x :: xs when p x -> x :: take_while p xs
     | _ -> []
@@ -99,24 +122,25 @@ module QuickCheck = struct
     let small_int () = Random.int 7 - 3 (* [-3,3] *)
   end
 
-  module Shrinker = struct
+  module Shrink = struct
     let rec del1_and_shrink1 shrink = function
-      | [] -> [], []
+      | [] ->
+          [], []
       | x :: xs ->
           let del, shrunk = del1_and_shrink1 shrink xs in
-          ( xs :: List.map (fun xs' -> x :: xs') del
-          , List.map (fun x'  -> x' :: xs)  (shrink x) @
-            List.map (fun xs' -> x  :: xs') shrunk )
+          let cons_x xs' = x :: xs' in
+          ( xs                                        :: List.map cons_x del
+          , List.map (fun x'  -> x' :: xs) (shrink x) @  List.map cons_x shrunk
+          )
 
     let nonempty_list shrink xs =
-      let del, shrunk = del1_and_shrink1 shrink xs in
-      List.filter (function [] -> false | _ :: _ -> true) del @ shrunk
+      match del1_and_shrink1 shrink xs with
+      | [[]], shrunk -> shrunk
+      | del,  shrunk -> del @ shrunk
 
-    let list shrink = function
-      | [] -> []
-      | xs ->
-          let del, shrunk = del1_and_shrink1 shrink xs in
-          [] :: (del @ shrunk)
+    let list shrink xs =
+      let del, shrunk = del1_and_shrink1 shrink xs in
+      del @ shrunk
 
     (* From Haskell's QuickCheck: make it positive, 0, then smaller by jumping
        half the distance each time *)
@@ -142,6 +166,7 @@ module Comprehension = struct
 
     let equal = String.equal
     module Set = Set.Make(String)
+    module Map = Map.Make(String)
 
     let vars =
       List.init 26 (fun i -> String.make 1 (Char.chr (Char.code 'a' + i)))
@@ -149,13 +174,19 @@ module Comprehension = struct
     let pattern_vars = wildcard :: vars
   end
 
+  type int_term =
+    | Literal  of int
+    | Variable of Var.t
+
   type direction =
     | To
     | Downto
 
   type iterator =
-    | Range    of { start : int; direction : direction; stop : int }
-    | Sequence of int list
+    | Range    of { start     : int_term
+                  ; direction : direction
+                  ; stop      : int_term  }
+    | Sequence of int_term list
 
   type binding = { var : Var.t; iterator : iterator }
 
@@ -178,12 +209,20 @@ module Comprehension = struct
   module Generator = struct
     open QuickCheck.Generator
 
-    let iterator () =
+    let in_scope_var env = pick (Var.Set.elements env)
+
+    let int_term env =
+      if not (Var.Set.is_empty env) && Random.int 10 < 1 then
+        Variable (in_scope_var env)
+      else
+        Literal (small_int ())
+
+    let iterator env =
       if Random.bool ()
-      then Range { start     = small_int ()
+      then Range { start     = int_term env
                  ; direction = if Random.bool () then To else Downto
-                 ; stop      = small_int () }
-      else Sequence (replicateG (Random.int 8) small_int)
+                 ; stop      = int_term env }
+      else Sequence (replicateG (Random.int 8) (fun () -> int_term env))
       (* Both Ranges and Sequences can range from length 0 to 7 (inclusive),
          although with different probabilities *)
 
@@ -197,7 +236,7 @@ module Comprehension = struct
       | _ -> assert false
 
     (* Generates bindings that don't share variables *)
-    let bindings sz =
+    let bindings env sz =
       let rec go ~bindings ~available ~used = function
         | 0 ->
             (* We reverse the list because [_] becomes slightly more likely for
@@ -211,7 +250,7 @@ module Comprehension = struct
               then Var.wildcard :: available, used
               else available, Var.Set.add var used
             in
-            let bindings = { var; iterator = iterator () } :: bindings in
+            let bindings = { var; iterator = iterator env } :: bindings in
             go ~bindings ~available ~used (n-1)
       in
       go
@@ -222,9 +261,9 @@ module Comprehension = struct
 
     let clause env sz =
       if not (Var.Set.is_empty env) && Random.int 4 < 1 then
-        When(predicate (), pick (Var.Set.elements env)), env
+        When(predicate (), in_scope_var env), env
       else
-        let bs, env' = bindings sz in
+        let bs, env' = bindings env sz in
         For bs, Var.Set.union env env'
 
     let comprehension () =
@@ -242,20 +281,32 @@ module Comprehension = struct
       {env; clauses}
   end
 
-  module Shrinker = struct
-    open QuickCheck.Shrinker
+  module Shrink = struct
+    open QuickCheck.Shrink
+
+    (* [-3,3], in increasing order of "complexity" *)
+     let all_small_ints =
+      let pos = List.init 3 (( + ) 1) in
+      let neg = List.map Int.neg pos in
+      0 :: (pos @ neg)
+
+    let all_small_int_lits = List.map (fun n -> Literal n) all_small_ints
 
     let pattern_var x = Util.take_while (fun p -> x <> p) Var.pattern_vars
+
+    let int_term = function
+      | Literal  n -> List.map (fun n -> Literal n) (int n)
+      | Variable _ -> all_small_int_lits
 
     let iterator = function
       | Range { start; direction; stop } ->
           Util.guard
             (match direction with Downto -> true | To -> false)
             (Range { start = stop; direction = To; stop = start }) @
-          List.map (fun start -> Range { start; direction; stop }) (int start) @
-          List.map (fun stop  -> Range { start; direction; stop }) (int stop)
+          List.map (fun start -> Range { start; direction; stop }) (int_term start) @
+          List.map (fun stop  -> Range { start; direction; stop }) (int_term stop)
       | Sequence seq ->
-          List.map (fun seq -> Sequence seq) (list int seq)
+          List.map (fun seq -> Sequence seq) (list int_term seq)
 
     let binding ({var = x; iterator = i} as b) =
       List.map (fun iterator -> {b with iterator}) (iterator    i) @
@@ -264,40 +315,182 @@ module Comprehension = struct
     let predicate p =
       Util.take_while (fun p' -> p <> p') all_predicates
 
-    let clause = function
-      | For bs     -> List.map (fun bs -> For bs)     (nonempty_list binding bs)
-      | When(p, x) -> List.map (fun p  -> When(p, x)) (predicate p)
-
     let bindings_env bs =
       bs
-      |> List.filter_map (function
-        | {var = "_"; _} -> None
-        | {var; _}       -> Some var)
+      |> List.filter_map (fun {var; _} ->
+        if Var.equal var Var.wildcard
+        then None
+        else Some var)
       |> Var.Set.of_list
 
-    let comprehension {env = _; clauses} =
+    let clauses_env =
+      List.fold_left
+        (fun env -> function
+           | For bs -> Var.Set.union (bindings_env bs) env
+           | When _ -> env)
+        Var.Set.empty
+
+    module Substitution : sig
+      type binding =
+        | Deleted
+        | Renamed of Var.t
+
+      type t
+
+      val identity   : t
+      val delete     : Var.t -> t
+      val rename     : Var.t -> Var.t -> t
+      val delete_env : Var.Set.t -> t
+
+      val shadow_all : Var.Set.t -> t -> t
+
+      val apply      : t -> Var.t -> binding option
+    end = struct
+      type binding =
+        | Deleted
+        | Renamed of Var.t
+
+      type t = binding Var.Map.t
+
+      let identity   = Var.Map.empty
+      let delete x   = Var.Map.singleton x Deleted
+      let rename x y = Var.Map.singleton x (Renamed y)
+
+      let delete_env env =
+        Var.Map.of_seq (Seq.map (fun x -> x, Deleted) (Var.Set.to_seq env))
+
+      let shadow_all env =
+        Var.Map.filter (fun x _ -> not (Var.Set.mem x env))
+
+      let apply subst x = Var.Map.find_opt x subst
+    end
+
+    let parallel_bindings bs =
+      (* I think preventing name collisions genuinely requires a separate
+         traversal *)
+      let env = bindings_env bs in
+      let rec del1_shrink1 = function
+        | [] ->
+            [], []
+        | ({var = x; iterator = i} as b) :: bs ->
+            let del, shrunk = del1_shrink1 bs in
+            let cons_b (bs', subst) = b :: bs', subst in
+            ( (bs, Substitution.delete x) :: List.map cons_b del
+            , List.map
+                (fun iterator -> {b with iterator} :: bs, Substitution.identity)
+                (iterator i) @
+              List.filter_map
+                (fun var ->
+                   if Var.Set.mem var env
+                   then None
+                   else Some ({b with var} :: bs,
+                              if Var.equal var Var.wildcard
+                              then Substitution.delete x
+                              else Substitution.rename x var))
+                (pattern_var x) @
+              List.map cons_b shrunk )
+      in
+      match del1_shrink1 bs with
+      | [[], _], shrunk -> shrunk
+      | del,     shrunk -> del @ shrunk
+
+    module Substitute = struct
+      open Util.List_monad
+
+      let list elt subst = traverse (elt subst)
+
+      let int_term subst = function
+        | Literal  n -> pure (Literal n)
+        | Variable x -> match Substitution.apply subst x with
+          | None              -> pure (Variable x)
+          | Some Deleted      -> all_small_int_lits
+          | Some (Renamed x') -> pure (Variable x')
+
+      let iterator subst = function
+        | Range { start; direction; stop } ->
+            let+ start = int_term subst start
+            and+ stop  = int_term subst stop in
+            Range { start; direction; stop }
+        | Sequence seq ->
+            let+ seq = list int_term subst seq in
+            Sequence seq
+
+      let rec parallel_bindings subst = function
+        | [] ->
+            (pure [], Var.Set.empty)
+        | ({var; iterator = i} as b) :: bs ->
+            let bss, env = parallel_bindings subst bs in
+            ( (let+ iterator = iterator subst i
+               and+ bs       = bss in
+               {b with iterator} :: bs)
+            , Var.Set.add var env )
+
+      let rec clauses subst = function
+        | [] ->
+            pure []
+        | For bs :: cs ->
+            let bss, env = parallel_bindings subst bs in
+            let subst    = Substitution.shadow_all env subst in
+            let+ cs = clauses subst cs
+            and+ bs = bss in
+            For bs :: cs
+        | (When(pred, x) as c) :: cs ->
+            let css = clauses subst cs in
+            match Substitution.apply subst x with
+            | None ->
+                let+ cs = css in
+                c :: cs
+            | Some Deleted ->
+                css
+            | Some (Renamed x') ->
+                let+ cs = css in
+                When(pred, x') :: cs
+    end
+
+    let clauses cs =
+      let rec del1_shrink1 = function
+        | [] ->
+            [], []
+        | (For bs as c) :: cs ->
+            let env = bindings_env bs in
+            let bss_substs = parallel_bindings bs in
+            let del, shrunk = del1_shrink1 cs in
+            let cons_c cs' = c :: cs' in
+            ( Substitute.clauses (Substitution.delete_env env) cs @
+              List.map cons_c del
+            , (let open Util.List_monad in
+               let* bs, subst = bss_substs in
+               let+ cs        = Substitute.clauses subst cs in
+               For bs :: cs) @
+              List.map cons_c shrunk )
+        | (When(pred, x) as c) :: cs ->
+            (* By the time we get here, [x] is guaranteed to be in scope;
+               otherwise, [Substitute.clauses] would have deleted it *)
+            let del, shrunk = del1_shrink1 cs in
+            let cons_c cs' = c :: cs' in
+            ( cs :: List.map cons_c del
+            , List.map (fun pred -> When(pred, x) :: cs) (predicate pred) @
+              List.map cons_c shrunk )
+      in
+      match del1_shrink1 cs with
+      | [[]], shrunk -> shrunk
+      | del,  shrunk -> del @ shrunk
+
+    let comprehension {env = _; clauses = cs} =
+      (* I don't think there's a nice way to either (1) rule out empty lists of
+         clauses ahead of time, or (2) compute the environment along the way, so
+         we handle both directly via post-processing here. *)
       List.filter_map
         (fun clauses ->
-           (* Brute force to figure out the deleted bindings *)
-           let env, oclauses =
-             List.fold_left_map
-               (fun env clause ->
-                  match clause with
-                  | When (p,x) when not (Var.Set.mem x env) -> env, None
-                  | When _ -> env, Some clause
-                  | For bs -> bindings_env bs, Some clause)
-               Var.Set.empty
-               clauses
-           in
-           match List.filter_map Fun.id oclauses with
-           | []      -> None
-           | clauses -> Some {env; clauses})
-        (nonempty_list clause clauses)
+           match clauses with
+           | []     -> None
+           | _ :: _ -> Some { env = clauses_env clauses; clauses })
+        (clauses cs)
 
     (* Shrinking twice simplifies both bugs this found on its first go-round,
-       since it can shrink both the endpoints of a to/downto range and it can
+       since this way we can shrink both the endpoints of a to/downto range or
        shrink two parallel variable names at once. *)
-    let comprehension = QuickCheck.Shrinker.shrink2 comprehension
+    let comprehension = QuickCheck.Shrink.shrink2 comprehension
   end
 
   module To_string = struct
@@ -327,6 +520,18 @@ module Comprehension = struct
     let eq   o = if ocaml o then "="   else "=="
     let neq  o = if ocaml o then "<>"  else "!="
 
+    let int_term = function
+      | Literal  n -> Int.to_string n
+      | Variable x -> x
+
+    let succ_int_term = function
+      | Literal  n -> Int.to_string (n + 1)
+      | Variable x -> x ^ "+1"
+
+    let pred_int_term = function
+      | Literal  n -> Int.to_string (n - 1)
+      | Variable x -> x ^ "-1"
+
     let predicate o = function
       | Positive -> "> 0"
       | Negative -> "< 0"
@@ -346,21 +551,21 @@ module Comprehension = struct
         | Range {start; direction; stop} ->
             if ocaml o then
               tokens [ "="
-                     ; Int.to_string start
+                     ; int_term start
                      ; ocaml_direction direction
-                     ; Int.to_string stop ]
+                     ; int_term stop ]
             else
-              let start, stop, step = match direction with
-                | To     -> start, stop+1, []
-                | Downto -> start, stop-1, ["-1"]
+              let stop, step = match direction with
+                | To     -> succ_int_term stop, []
+                | Downto -> pred_int_term stop, ["-1"]
               in
               python_binding
                 ("range"
-                 ^ tuple ([Int.to_string start; Int.to_string stop] @ step))
+                 ^ tuple ([int_term start; stop] @ step))
         | Sequence seq ->
             let sep = (if ocaml o then ";" else ",") ^ " " in
             let seq = seq
-                      |> List.map Int.to_string
+                      |> List.map int_term
                       |> String.concat sep
                       |> sequence o
             in
@@ -385,7 +590,7 @@ module Comprehension = struct
   end
 
   let generator = Generator.comprehension
-  let shrinker  = Shrinker.comprehension
+  let shrink    = Shrink.comprehension
   let to_string = To_string.comprehension
 end
 
@@ -481,7 +686,7 @@ module Main = struct
     let ( = ) = String.equal in
     Interactive_command.ocaml ~f:(fun ocaml ->
       Interactive_command.python ~f:(fun python ->
-        QuickCheck.test max_tests Comprehension.generator Comprehension.shrinker
+        QuickCheck.test max_tests Comprehension.generator Comprehension.shrink
           (fun c ->
              let ocaml_list  = ocaml  (Comprehension.to_string OCaml_list  c) in
              let ocaml_array = ocaml  (Comprehension.to_string OCaml_array c) in
