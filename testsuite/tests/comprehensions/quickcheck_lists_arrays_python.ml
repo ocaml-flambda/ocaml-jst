@@ -40,6 +40,14 @@ module Util = struct
 
   let guard c x = if c then [x] else []
 
+  let max x y = if x > y then x else y
+
+  let range_to start stop =
+    List.init (max 0 (stop - start + 1)) (fun i -> start + i)
+
+  let range_downto start stop =
+    List.init (max 0 (start - stop + 1)) (fun i -> start - i)
+
   (* For repeatability *)
   external random_seed : unit -> int array = "caml_sys_random_seed"
 
@@ -300,11 +308,24 @@ module Comprehension = struct
 
     let iterator = function
       | Range { start; direction; stop } ->
+          [Sequence [start]; Sequence [stop]] @
           Util.guard
             (match direction with Downto -> true | To -> false)
             (Range { start = stop; direction = To; stop = start }) @
-          List.map (fun start -> Range { start; direction; stop }) (int_term start) @
-          List.map (fun stop  -> Range { start; direction; stop }) (int_term stop)
+          List.map
+            (fun start -> Range { start; direction; stop })
+            (int_term start) @
+          List.map
+            (fun stop  -> Range { start; direction; stop })
+            (int_term stop) @
+          (match start, stop with
+           | Literal start, Literal stop ->
+               let range = match direction with
+                 | To     -> Util.range_to
+                 | Downto -> Util.range_downto
+               in
+               [Sequence (List.map (fun n -> Literal n) (range start stop))]
+           | Variable _, _ | _, Variable _ -> [])
       | Sequence seq ->
           List.map (fun seq -> Sequence seq) (list int_term seq)
 
