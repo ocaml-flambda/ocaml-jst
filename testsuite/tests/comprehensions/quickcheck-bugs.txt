@@ -29,3 +29,22 @@ Counterexample (after 278 tests and 18 shrinks):
   Python:      [(a, b) for b in [0] for _ in [0, 0] for a in [b] for b in range(0, -2, -1)]
                  = [(0, 0), (0, -1), (-1, 0), (-1, -1)]
 
+At 31b67c5b4:
+
+Failed with seed [|2; 25; 41; 142; 226; 237; 161; 140; 246; 91; 12; 1|]!
+Counterexample (after 132 tests and 8 shrinks):
+  OCaml list:  [(a, b) for b in [0] and a in [b] for b in [1]]
+                 = [(1, 0)]
+  OCaml array: [|(a, b) for b in [|0|] and a in [|b|] for b in [|1|]|]
+                 = [(1, 0)]
+  Python:      [(a, b) for b in [1] for b in [0] for a in [b]]
+                 = [(0, 0)]
+
+Failed with seed [|117; 25; 28; 120; 84; 206; 151; 246; 132; 131; 111; 48|]!
+Counterexample (after 115 tests and 12 shrinks):
+  OCaml list:  [a for a in [0] when a > 0 for a in [1] and _ in [0; 0]]
+                 = [0, 0]
+  OCaml array: [|a for a in [|0|] when a > 0 for a in [|1|] and _ in [|0; 0|]|]
+                 = [0, 0]
+  Python:      [a for a in [1] for _ in [0, 0] if a > 0 for a in [0]]
+                 = [0]
