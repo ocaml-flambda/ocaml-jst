@@ -521,7 +521,6 @@ module Comprehension = struct
 
     let parenthesize = surround "(" ")"
     let bracket      = surround "[" "]"
-    let spaced       = surround " " " "
 
     let tokens = String.concat " "
 
