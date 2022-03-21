@@ -48,3 +48,16 @@ Counterexample (after 115 tests and 12 shrinks):
                  = [0, 0]
   Python:      [a for a in [1] for _ in [0, 0] if a > 0 for a in [0]]
                  = [0]
+
+At 6412c6f2b:
+
+Failed with seed [|79; 139; 212; 231; 212; 222; 247; 124; 169; 69; 240; 138|]!
+Counterexample (after 10 tests and 16 shrinks):
+  OCaml list:  [a for a in [a; 1] for a in [0] and _ in [0; 0]]
+                 = [0, 1, 0, 1]
+  OCaml array: [|a for a in [|a; 1|] for a in [|0|] and _ in [|0; 0|]|]
+                 = [0, 1, 0, 1]
+  Haskell:     [a | a <- [0], _ <- [0, 0], a <- [a, 1]]
+                 = [0, 1, 0, 1]
+  Python:      [a for a in [0] for _ in [0, 0] for a in [a, 1]]
+                 = [0, 1, 1, 1]
