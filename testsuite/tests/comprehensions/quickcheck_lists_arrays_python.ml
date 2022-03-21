@@ -1,4 +1,4 @@
-(* -*- compile-command: "ocamlc -w +A-40-42-44 str.cma unix.cma quickcheck_lists_arrays_python.ml -o quickcheck-lists-arrays-python && ./quickcheck-lists-arrays-python"; -*- *)
+(* -*- compile-command: "ocamlc -w +A-4-40-42-44 str.cma unix.cma quickcheck_lists_arrays_python.ml -o quickcheck-lists-arrays-python && ./quickcheck-lists-arrays-python"; -*- *)
 
 module No_polymorphic_compare = struct
   let ( = )      = Int.equal
@@ -168,20 +168,92 @@ module QuickCheck = struct
   end
 end
 
+module Var : sig
+  type t = string
+
+  val equal : t -> t -> bool
+
+  val vars : t list
+  val wildcard : t
+  val pattern_vars : t list
+end = struct
+  type t = string
+
+  let equal = String.equal
+
+  let vars =
+    List.init 26 (fun i -> String.make 1 (Char.chr (Char.code 'a' + i)))
+  let wildcard = "_"
+  let pattern_vars = wildcard :: vars
+end
+
+module Environment : sig
+  type t
+
+  val empty : t
+  val of_variables : Var.t list -> t
+
+  val add   : Var.t -> t -> t
+  val union : t -> t -> t
+
+  val is_empty : t -> bool
+  val is_bound : Var.t -> t -> bool
+  val is_free  : Var.t -> t -> bool
+
+  val variables     : t -> Var.t list
+  val variables_seq : t -> Var.t Seq.t
+end = struct
+  include Set.Make(String)
+
+  let of_variables  = of_list
+  let is_bound      = mem
+  let is_free x env = not (is_bound x env)
+  let variables     = elements
+  let variables_seq = to_seq
+end
+
+module Substitution : sig
+  type binding =
+    | Deleted
+    | Renamed of Var.t
+
+  type t
+
+  val identity   : t
+  val delete     : Var.t -> t
+  val rename     : Var.t -> Var.t -> t
+  val delete_env : Environment.t -> t
+  val rename_env : Environment.t -> (Var.t -> Var.t) -> t
+
+  val shadow_env : Environment.t -> t -> t
+
+  val apply : t -> Var.t -> binding option
+end = struct
+  type binding =
+    | Deleted
+    | Renamed of Var.t
+
+  include Map.Make(String)
+
+  type nonrec t = binding t
+
+  let identity   = empty
+  let delete x   = singleton x Deleted
+  let rename x y = singleton x (Renamed y)
+
+  let create_with_env f env =
+    of_seq (Seq.map (fun x -> x, f x) (Environment.variables_seq env))
+
+  let delete_env = create_with_env (Fun.const Deleted)
+
+  let rename_env env f = create_with_env (fun x -> Renamed (f x)) env
+
+  let shadow_env env = filter (fun x _ -> Environment.is_free x env)
+
+  let apply subst x = find_opt x subst
+end
+
 module Comprehension = struct
-  module Var = struct
-    type t = string
-
-    let equal = String.equal
-    module Set = Set.Make(String)
-    module Map = Map.Make(String)
-
-    let vars =
-      List.init 26 (fun i -> String.make 1 (Char.chr (Char.code 'a' + i)))
-    let wildcard = "_"
-    let pattern_vars = wildcard :: vars
-  end
-
   type int_term =
     | Literal  of int
     | Variable of Var.t
@@ -212,15 +284,46 @@ module Comprehension = struct
     | When of predicate * Var.t
 
   (* We assume the body is a tuple of all the variables in the environment *)
-  type t = { env : Var.Set.t ; clauses : clause list }
+  type t = { env : Environment.t ; clauses : clause list }
+
+  module Bound_vars = struct
+    let bindings bs =
+      bs |>
+      List.filter_map (fun {var; iterator = _} ->
+        if Var.equal var Var.wildcard
+        then None
+        else Some var) |>
+      Environment.of_variables
+
+    let clauses =
+      List.fold_left
+        (fun env -> function
+           | For bs -> Environment.union (bindings bs) env
+           | When _ -> env)
+        Environment.empty
+  end
+
+  module Free_vars = struct
+    let parallel_bindings bs =
+      bs |>
+      List.concat_map (fun {iterator; var = _} ->
+        List.filter_map
+          (function
+            | Variable x -> Some x
+            | Literal  _ -> None)
+          (match iterator with
+           | Range { start; direction = _; stop } -> [start; stop]
+           | Sequence seq                         -> seq)) |>
+      Environment.of_variables
+  end
 
   module Generator = struct
     open QuickCheck.Generator
 
-    let in_scope_var env = pick (Var.Set.elements env)
+    let in_scope_var env = pick (Environment.variables env)
 
     let int_term env =
-      if not (Var.Set.is_empty env) && Random.int 10 < 1 then
+      if not (Environment.is_empty env) && Random.int 10 < 1 then
         Variable (in_scope_var env)
       else
         Literal (small_int ())
@@ -256,7 +359,7 @@ module Comprehension = struct
             let available, used =
               if Var.equal var Var.wildcard
               then Var.wildcard :: available, used
-              else available, Var.Set.add var used
+              else available, Environment.add var used
             in
             let bindings = { var; iterator = iterator env } :: bindings in
             go ~bindings ~available ~used (n-1)
@@ -264,15 +367,15 @@ module Comprehension = struct
       go
         ~bindings:[]
         ~available:Var.pattern_vars
-        ~used:Var.Set.empty
+        ~used:Environment.empty
         (Random.int sz + 1)
 
     let clause env sz =
-      if not (Var.Set.is_empty env) && Random.int 4 < 1 then
+      if not (Environment.is_empty env) && Random.int 4 < 1 then
         When(predicate (), in_scope_var env), env
       else
         let bs, env' = bindings env sz in
-        For bs, Var.Set.union env env'
+        For bs, Environment.union env env'
 
     let comprehension () =
       let clause_n = Random.int 5 + 1 (* [1,5] *) in
@@ -282,10 +385,10 @@ module Comprehension = struct
           [], env
         else
           let b,  env'  = clause env for_max in
-          let bs, env'' = go (Var.Set.union env env') (i+1) in
+          let bs, env'' = go (Environment.union env env') (i+1) in
           b :: bs, env''
       in
-      let clauses, env = go Var.Set.empty 0 in
+      let clauses, env = go Environment.empty 0 in
       {env; clauses}
   end
 
@@ -336,60 +439,10 @@ module Comprehension = struct
     let predicate p =
       Util.take_while (fun p' -> p <> p') all_predicates
 
-    let bindings_env bs =
-      bs
-      |> List.filter_map (fun {var; _} ->
-        if Var.equal var Var.wildcard
-        then None
-        else Some var)
-      |> Var.Set.of_list
-
-    let clauses_env =
-      List.fold_left
-        (fun env -> function
-           | For bs -> Var.Set.union (bindings_env bs) env
-           | When _ -> env)
-        Var.Set.empty
-
-    module Substitution : sig
-      type binding =
-        | Deleted
-        | Renamed of Var.t
-
-      type t
-
-      val identity   : t
-      val delete     : Var.t -> t
-      val rename     : Var.t -> Var.t -> t
-      val delete_env : Var.Set.t -> t
-
-      val shadow_all : Var.Set.t -> t -> t
-
-      val apply      : t -> Var.t -> binding option
-    end = struct
-      type binding =
-        | Deleted
-        | Renamed of Var.t
-
-      type t = binding Var.Map.t
-
-      let identity   = Var.Map.empty
-      let delete x   = Var.Map.singleton x Deleted
-      let rename x y = Var.Map.singleton x (Renamed y)
-
-      let delete_env env =
-        Var.Map.of_seq (Seq.map (fun x -> x, Deleted) (Var.Set.to_seq env))
-
-      let shadow_all env =
-        Var.Map.filter (fun x _ -> not (Var.Set.mem x env))
-
-      let apply subst x = Var.Map.find_opt x subst
-    end
-
     let parallel_bindings bs =
       (* I think preventing name collisions genuinely requires a separate
          traversal *)
-      let env = bindings_env bs in
+      let env = Bound_vars.bindings bs in
       let rec del1_shrink1 = function
         | [] ->
             [], []
@@ -402,7 +455,7 @@ module Comprehension = struct
                 (iterator i) @
               List.filter_map
                 (fun var ->
-                   if Var.Set.mem var env
+                   if Environment.is_bound var env
                    then None
                    else Some ({b with var} :: bs,
                               if Var.equal var Var.wildcard
@@ -415,6 +468,8 @@ module Comprehension = struct
       | [[], _], shrunk -> shrunk
       | del,     shrunk -> del @ shrunk
 
+    (* Shrinking-specific substitution: deleted variables become every possible
+       value *)
     module Substitute = struct
       open Util.List_monad
 
@@ -429,43 +484,43 @@ module Comprehension = struct
 
       let iterator subst = function
         | Range { start; direction; stop } ->
-            let+ start = int_term subst start
-            and+ stop  = int_term subst stop in
-            Range { start; direction; stop }
+          let+ start = int_term subst start
+          and+ stop  = int_term subst stop in
+          Range { start; direction; stop }
         | Sequence seq ->
-            let+ seq = list int_term subst seq in
-            Sequence seq
+          let+ seq = list int_term subst seq in
+          Sequence seq
 
       let rec parallel_bindings subst = function
         | [] ->
-            (pure [], Var.Set.empty)
+          (pure [], Environment.empty)
         | ({var; iterator = i} as b) :: bs ->
-            let bss, env = parallel_bindings subst bs in
-            ( (let+ iterator = iterator subst i
-               and+ bs       = bss in
-               {b with iterator} :: bs)
-            , Var.Set.add var env )
+          let bss, env = parallel_bindings subst bs in
+          ( (let+ iterator = iterator subst i
+             and+ bs       = bss in
+             {b with iterator} :: bs)
+          , Environment.add var env )
 
       let rec clauses subst = function
         | [] ->
-            pure []
+          pure []
         | For bs :: cs ->
-            let bss, env = parallel_bindings subst bs in
-            let subst    = Substitution.shadow_all env subst in
-            let+ cs = clauses subst cs
-            and+ bs = bss in
-            For bs :: cs
+          let bss, env = parallel_bindings subst bs in
+          let subst    = Substitution.shadow_env env subst in
+          let+ cs = clauses subst cs
+          and+ bs = bss in
+          For bs :: cs
         | (When(pred, x) as c) :: cs ->
-            let css = clauses subst cs in
-            match Substitution.apply subst x with
-            | None ->
-                let+ cs = css in
-                c :: cs
-            | Some Deleted ->
-                css
-            | Some (Renamed x') ->
-                let+ cs = css in
-                When(pred, x') :: cs
+          let css = clauses subst cs in
+          match Substitution.apply subst x with
+          | None ->
+            let+ cs = css in
+            c :: cs
+          | Some Deleted ->
+            css
+          | Some (Renamed x') ->
+            let+ cs = css in
+            When(pred, x') :: cs
     end
 
     let clauses cs =
@@ -473,7 +528,7 @@ module Comprehension = struct
         | [] ->
             [], []
         | (For bs as c) :: cs ->
-            let env = bindings_env bs in
+            let env = Bound_vars.bindings bs in
             let bss_substs = parallel_bindings bs in
             let del, shrunk = del1_shrink1 cs in
             let cons_c cs' = c :: cs' in
@@ -505,7 +560,7 @@ module Comprehension = struct
         (fun clauses ->
            match clauses with
            | []     -> None
-           | _ :: _ -> Some { env = clauses_env clauses; clauses })
+           | _ :: _ -> Some { env = Bound_vars.clauses clauses; clauses })
         (clauses cs)
 
     (* Shrinking twice simplifies both bugs this found on its first go-round,
@@ -515,30 +570,42 @@ module Comprehension = struct
   end
 
   module To_string = struct
-    type format = OCaml_list | OCaml_array | Python
+    type format = OCaml_list | OCaml_array | Haskell | Python
 
     let surround o c s = o ^ s ^ c
 
     let parenthesize = surround "(" ")"
     let bracket      = surround "[" "]"
+    let spaced       = surround " " " "
 
-    let tokens = String.concat " "
+    let tokens          = String.concat " "
+    let comma_separated = String.concat ", "
+
+    let comprehension_clauses o = match o with
+      | OCaml_list | OCaml_array | Python -> tokens
+      | Haskell                           -> comma_separated
 
     let tuple = function
       | [tok] -> tok
-      | toks  -> toks |> String.concat ", " |> parenthesize
-
-    let ocaml = function
-      | OCaml_list | OCaml_array -> true
-      | Python -> false
+      | toks  -> toks |> comma_separated |> parenthesize
 
     let sequence = function
-      | OCaml_list | Python -> bracket
-      | OCaml_array         -> surround "[|" "|]"
+      | OCaml_list | Haskell | Python -> bracket
+      | OCaml_array                   -> surround "[|" "|]"
 
-    let mod_ o = if ocaml o then "mod" else "%"
-    let eq   o = if ocaml o then "="   else "=="
-    let neq  o = if ocaml o then "<>"  else "!="
+    let mod_ = function
+      | OCaml_list | OCaml_array -> "mod"
+      | Haskell                  -> "`mod`"
+      | Python                   -> "%"
+
+    let eq = function
+      | OCaml_list | OCaml_array -> "="
+      | Haskell | Python         -> "=="
+
+    let neq = function
+      | OCaml_list | OCaml_array -> "<>"
+      | Haskell                  -> "/="
+      | Python                   -> "!="
 
     let int_term = function
       | Literal  n -> Int.to_string n
@@ -552,61 +619,191 @@ module Comprehension = struct
       | Literal  n -> Int.to_string (n - 1)
       | Variable x -> x ^ "-1"
 
+    let modulo_check o tgt = [mod_ o; "2"; eq o; tgt]
+
     let predicate o = function
-      | Positive -> "> 0"
-      | Negative -> "< 0"
-      | Nonzero  -> tokens [neq o; "0"]
-      | Even     -> tokens [mod_ o; "2"; eq o; "0"]
-      | Odd      -> tokens [mod_ o; "2"; eq o; "0"]
+      | Positive -> [], [">";   "0"]
+      | Negative -> [], ["<";   "0"]
+      | Nonzero  -> [], [neq o; "0"]
+      | Even -> begin
+          match o with
+          | OCaml_list | OCaml_array -> ["abs"],  modulo_check o "0"
+          | Haskell                  -> ["even"], []
+          | Python                   -> [],       modulo_check o "0"
+        end
+      | Odd -> begin
+          match o with
+          | OCaml_list | OCaml_array -> ["abs"], modulo_check o "1"
+          | Haskell                  -> ["odd"], []
+          | Python                   -> [],      modulo_check o "1"
+        end
 
     let ocaml_direction = function
       | To     -> "to"
       | Downto -> "downto"
 
-    let python_binding seq =
-      "in " ^ seq
-
     let binding o {var; iterator} =
       let iter = match iterator with
-        | Range {start; direction; stop} ->
-            if ocaml o then
-              tokens [ "="
-                     ; int_term start
-                     ; ocaml_direction direction
-                     ; int_term stop ]
-            else
-              let stop, step = match direction with
-                | To     -> succ_int_term stop, []
-                | Downto -> pred_int_term stop, ["-1"]
-              in
-              python_binding
-                ("range"
-                 ^ tuple ([int_term start; stop] @ step))
+        | Range {start; direction; stop} -> begin
+            match o with
+            | OCaml_list | OCaml_array ->
+                tokens [ "="
+                       ; int_term start
+                       ; ocaml_direction direction
+                       ; int_term stop ]
+            | Haskell ->
+                let step = match start, direction with
+                  | _,          To     -> ""
+                  | Literal  n, Downto -> "," ^ Int.to_string (n-1)
+                  | Variable x, Downto -> "," ^ x ^ "-1"
+                in
+                let format_dotdot = match stop with
+                  | Literal n when n < 0 -> spaced
+                  | _                    -> Fun.id
+                in
+                tokens [ "<-"
+                       ; "[" ^
+                           int_term start ^ step ^
+                           format_dotdot ".." ^
+                           int_term stop ^
+                         "]" ]
+            | Python ->
+                let stop, step = match direction with
+                  | To     -> succ_int_term stop, []
+                  | Downto -> pred_int_term stop, ["-1"]
+                in
+                "in range" ^ tuple ([int_term start; stop] @ step)
+          end
         | Sequence seq ->
-            let sep = (if ocaml o then ";" else ",") ^ " " in
+            let sep = match o with
+              | OCaml_list | OCaml_array -> ";"
+              | Haskell | Python -> ","
+            in
             let seq = seq
                       |> List.map int_term
-                      |> String.concat sep
+                      |> String.concat (sep ^ " ")
                       |> sequence o
             in
-            tokens ["in"; seq]
+            let bind = match o with
+              | OCaml_list | OCaml_array | Python -> "in"
+              | Haskell                           -> "<-"
+            in
+            tokens [bind; seq]
       in
       tokens [var; iter]
 
+    (* In Haskell and Python, parallel bindings are interpreted as sequential
+       bindings.  This is fine unless (1) a variable [x] is in scope for the
+       parallel bindings, (2) one of the parallel bindings binds [x] to
+       something new, and (3) [x] is used on the right-hand side of a later
+       binding.  In this case, Python will see the new binding of [x], which
+       will shadow the old one; in OCaml, as these are all in parallel, this is
+       not the case.  This function renames all such variables to [outer_x], and
+       returns the python string that binds them. *)
+    let protect_parallel_bindings let_clause bindings =
+      let (_bound_vars, _free_vars, outer_lets), bindings =
+        List.fold_left_map
+          (fun (shadowed, free_vars, outer_lets) {var; iterator} ->
+             let protect free_vars = function
+               | Variable x when Environment.is_bound x shadowed ->
+                   let outer = "outer_" ^ x in
+                   let free_vars, outer_let =
+                     if Environment.is_bound x free_vars
+                     then free_vars,
+                          None
+                     else Environment.add x free_vars,
+                          Some (let_clause outer x)
+                   in
+                   Variable outer, free_vars, outer_let
+               | t ->
+                   t, free_vars, None
+             in
+             let iterator, free_vars, outer_lets' =
+               match iterator with
+               | Range { start; direction; stop } ->
+                   let start, free_vars, start_outer =
+                     protect free_vars start
+                   in
+                   let stop, free_vars, stop_outer =
+                     protect free_vars stop
+                   in
+                   let outer_lets' =
+                     List.filter_map Fun.id [start_outer; stop_outer]
+                   in
+                   Range { start; direction; stop }, free_vars, outer_lets'
+               | Sequence seq ->
+                   let rev_seq, free_vars, outer_lets' =
+                     List.fold_left
+                       (fun (rev_ts, free_vars, outer_lets') t ->
+                          let t, free_vars, outer = protect free_vars t in
+                          t :: rev_ts,
+                          free_vars,
+                          Option.fold
+                            ~none:Fun.id ~some:List.cons outer outer_lets')
+                       ([], free_vars, [])
+                       seq
+                   in
+                   Sequence (List.rev rev_seq), free_vars, outer_lets'
+             in
+             ( ( Environment.add var shadowed
+               , free_vars
+               , outer_lets' :: outer_lets )
+             , {var; iterator} ))
+          (Environment.empty, Environment.empty, [])
+          bindings
+      in
+      let outer_lets =
+        let rec rev_rev_concat acc = function
+          | []        -> acc
+          | xs :: xss -> rev_rev_concat (List.rev_append xs acc) xss
+        in rev_rev_concat [] outer_lets
+      in
+      outer_lets, bindings
+
     let clause o = function
       | For bindings ->
-          tokens [ "for"
-                 ; bindings
-                   |> List.map (binding o)
-                   |> String.concat (if ocaml o then " and " else " for ") ]
+          let intro, sep, (extra_clauses, bindings) =
+            match o with
+            | OCaml_list | OCaml_array ->
+                ["for"], " and ", ([], bindings)
+            | Haskell ->
+                [],
+                ", ",
+                protect_parallel_bindings
+                  (fun x e -> tokens ["let"; x; "="; e])
+                  bindings
+            | Python ->
+                ["for"],
+                " for ",
+                protect_parallel_bindings
+                  (fun x e -> tokens ["for"; x; "in"; parenthesize (e ^ ",")])
+                  bindings
+          in
+          comprehension_clauses o
+            (extra_clauses @
+             intro @
+             [bindings |> List.map (binding o) |> String.concat sep])
       | When(pred, x) ->
-          tokens [(if ocaml o then "when" else "if"); x; predicate o pred]
+          let kwd = match o with
+            | OCaml_list | OCaml_array -> ["when"]
+            | Haskell                  -> []
+            | Python                   -> ["if"]
+          in
+          let pred_pre, pred_post = predicate o pred in
+          tokens (kwd @ pred_pre @ (x :: pred_post))
 
     let comprehension o {env; clauses} =
-      let clauses = if ocaml o then List.rev clauses else clauses in
-      sequence o
-        (tokens
-          (tuple (Var.Set.elements env) :: List.map (clause o) clauses))
+      let clauses = match o with
+        | OCaml_list | OCaml_array -> List.rev clauses
+        | Haskell | Python         -> clauses
+      in
+      let body    = tuple (Environment.variables env) in
+      let clauses = comprehension_clauses o (List.map (clause o) clauses) in
+      let sep     = match o with
+        | OCaml_list | OCaml_array | Python -> " "
+        | Haskell                           -> " | "
+      in
+      sequence o (body ^ sep ^ clauses)
   end
 
   let generator = Generator.comprehension
@@ -667,6 +864,9 @@ module Interactive_command = struct
     |> Str.global_replace (Str.regexp "|")      ""
     |> Str.global_replace (Str.regexp ";")      ","
 
+  let input_haskell_list_as_python_list i =
+    i |> input_line |> Str.global_replace (Str.regexp ",") ", "
+
   let ocaml ~f =
     command
       "../../../ocaml"
@@ -689,33 +889,55 @@ module Interactive_command = struct
       ~input:input_line
       ~output:Fun.id
       ~f
+
+  (* If GHCi isn't on a tty, it doesn't display a prompt, AFAICT *)
+  let haskell ~f =
+    command
+      "/usr/bin/ghci"
+      ["-v0"; "-ignore-dot-ghci"]
+      ~setup:(Fun.const ())
+      ~input:input_haskell_list_as_python_list
+      ~output:Fun.id
+      ~f
 end
 
 module Main = struct
   type output = { ocaml_list  : string
                 ; ocaml_array : string
+                ; haskell     : string
                 ; python      : string }
 
   let output_for o output =
     match (o : Comprehension.To_string.format) with
     | OCaml_list  -> output.ocaml_list
     | OCaml_array -> output.ocaml_array
+    | Haskell     -> output.haskell
     | Python      -> output.python
 
   let test_comprehensions_agree max_tests =
     let ( = ) = String.equal in
-    Interactive_command.ocaml ~f:(fun ocaml ->
-      Interactive_command.python ~f:(fun python ->
-        QuickCheck.test max_tests Comprehension.generator Comprehension.shrink
-          (fun c ->
-             let ocaml_list  = ocaml  (Comprehension.to_string OCaml_list  c) in
-             let ocaml_array = ocaml  (Comprehension.to_string OCaml_array c) in
-             let python      = python (Comprehension.to_string Python      c) in
-             if ocaml_list = ocaml_array && ocaml_array = python
-             then OK
-             else Failed_with {ocaml_list; ocaml_array; python})))
+    Interactive_command.ocaml   ~f:(fun ocaml ->
+    Interactive_command.haskell ~f:(fun haskell ->
+    Interactive_command.python  ~f:(fun python ->
+      QuickCheck.test max_tests Comprehension.generator Comprehension.shrink
+        (fun c ->
+           let giz t co x =
+             print_endline (t ^ " " ^ x);
+             let y = co x in
+             print_endline ("  " ^ y);
+             y
+           in
+           let ocaml_list  = giz "OL" ocaml   (Comprehension.to_string OCaml_list  c) in
+           let ocaml_array = ocaml   (Comprehension.to_string OCaml_array c) in
+           let haskell     = giz "Hs" haskell (Comprehension.to_string Haskell     c) in
+           let python      = giz "Py" python  (Comprehension.to_string Python      c) in
+           if ocaml_list  = ocaml_array &&
+              ocaml_array = haskell     &&
+              haskell     = python
+           then OK
+           else Failed_with {ocaml_list; ocaml_array; haskell; python}))))
 
-  let main_comprehensions_agree ?(seed = Util.random_seed()) max_tests =
+  let main_comprehensions_agree ?(seed = Util.random_seed ()) max_tests =
     Random.full_init seed;
     match test_comprehensions_agree max_tests with
     | Passed ->
@@ -731,11 +953,11 @@ module Main = struct
               "Exception",
               (fun ~output_prefix:_ _ -> ()),
               (fun () ->
-                 Format.printf "  Exception:\n    %s\n"
+                 Format.printf "  Exception:\n    %s\n%!"
                    (exn
                     |> Printexc.to_string
                     |> Str.global_replace (Str.regexp "\n") "\n    "))
-        in
+       in
         let print_comprehension tag align o =
           let spaced_out s  = String.make (String.length s) ' ' in
           let input_prefix  = "  " ^ tag            ^ ": " ^ align in
@@ -757,9 +979,10 @@ module Main = struct
           | _ -> " and " ^ Int.to_string shrinks ^ " shrinks"
         in
         Format.printf "Failed with seed [|%s|]!\n" seed_guts;
-        Format.printf "%s (after %s%s):\n" what n_tests and_k_shrinks;
+        Format.printf "%s (after %s%s):\n%!" what n_tests and_k_shrinks;
         print_comprehension "OCaml list" " " OCaml_list;
         print_comprehension "OCaml array" "" OCaml_array;
+        print_comprehension "Haskell" "    " Haskell;
         print_comprehension "Python" "     " Python;
         print_extra_information ()
 end
