@@ -921,16 +921,10 @@ module Main = struct
     Interactive_command.python  ~f:(fun python ->
       QuickCheck.test max_tests Comprehension.generator Comprehension.shrink
         (fun c ->
-           let giz t co x =
-             print_endline (t ^ " " ^ x);
-             let y = co x in
-             print_endline ("  " ^ y);
-             y
-           in
-           let ocaml_list  = giz "OL" ocaml   (Comprehension.to_string OCaml_list  c) in
+           let ocaml_list  = ocaml   (Comprehension.to_string OCaml_list  c) in
            let ocaml_array = ocaml   (Comprehension.to_string OCaml_array c) in
-           let haskell     = giz "Hs" haskell (Comprehension.to_string Haskell     c) in
-           let python      = giz "Py" python  (Comprehension.to_string Python      c) in
+           let haskell     = haskell (Comprehension.to_string Haskell     c) in
+           let python      = python  (Comprehension.to_string Python      c) in
            if ocaml_list  = ocaml_array &&
               ocaml_array = haskell     &&
               haskell     = python
