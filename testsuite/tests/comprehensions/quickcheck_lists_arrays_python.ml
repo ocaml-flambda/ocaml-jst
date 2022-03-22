@@ -1,4 +1,4 @@
-(* -*- compile-command: "ocamlc -w +A-4-40-42-44 str.cma unix.cma quickcheck_lists_arrays_python.ml -o quickcheck-lists-arrays-python && ./quickcheck-lists-arrays-python"; -*- *)
+(* -*- compile-command: "ocamlopt -w +A-4-40-42-44 str.cmxa unix.cmxa quickcheck_lists_arrays_python.ml -o quickcheck-lists-arrays-python && ./quickcheck-lists-arrays-python"; -*- *)
 
 module No_polymorphic_compare = struct
   let ( = )      = Int.equal
