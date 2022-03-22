@@ -124,8 +124,7 @@ module QuickCheck = struct
       in
       go (Random.int (List.length xs)) xs
 
-    let pick xs =
-      List.nth xs (Random.int (List.length xs))
+    let pick xs = List.nth xs (Random.int (List.length xs))
 
     let small_int () = Random.int 7 - 3 (* [-3,3] *)
   end
@@ -470,43 +469,43 @@ module Comprehension = struct
 
       let iterator subst = function
         | Range { start; direction; stop } ->
-          let+ start = int_term subst start
-          and+ stop  = int_term subst stop in
-          Range { start; direction; stop }
+            let+ start = int_term subst start
+            and+ stop  = int_term subst stop in
+            Range { start; direction; stop }
         | Sequence seq ->
-          let+ seq = list int_term subst seq in
-          Sequence seq
+            let+ seq = list int_term subst seq in
+            Sequence seq
 
       let rec parallel_bindings subst = function
         | [] ->
-          (pure [], Environment.empty)
+            (pure [], Environment.empty)
         | ({var; iterator = i} as b) :: bs ->
-          let bss, env = parallel_bindings subst bs in
-          ( (let+ iterator = iterator subst i
-             and+ bs       = bss in
-             {b with iterator} :: bs)
-          , Environment.add var env )
+            let bss, env = parallel_bindings subst bs in
+            ( (let+ iterator = iterator subst i
+               and+ bs       = bss in
+               {b with iterator} :: bs)
+            , Environment.add var env )
 
       let rec clauses subst = function
         | [] ->
-          pure []
+            pure []
         | For bs :: cs ->
-          let bss, env = parallel_bindings subst bs in
-          let subst    = Substitution.shadow_env env subst in
-          let+ cs = clauses subst cs
-          and+ bs = bss in
-          For bs :: cs
+            let bss, env = parallel_bindings subst bs in
+            let subst    = Substitution.shadow_env env subst in
+            let+ cs = clauses subst cs
+            and+ bs = bss in
+            For bs :: cs
         | (When(pred, x) as c) :: cs ->
-          let css = clauses subst cs in
-          match Substitution.apply subst x with
-          | None ->
-            let+ cs = css in
-            c :: cs
-          | Some Deleted ->
-            css
-          | Some (Renamed x') ->
-            let+ cs = css in
-            When(pred, x') :: cs
+            let css = clauses subst cs in
+            match Substitution.apply subst x with
+            | None ->
+                let+ cs = css in
+                c :: cs
+            | Some Deleted ->
+                css
+            | Some (Renamed x') ->
+                let+ cs = css in
+                When(pred, x') :: cs
     end
 
     let clauses cs =
