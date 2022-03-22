@@ -303,20 +303,6 @@ module Comprehension = struct
         Environment.empty
   end
 
-  module Free_vars = struct
-    let parallel_bindings bs =
-      bs |>
-      List.concat_map (fun {iterator; var = _} ->
-        List.filter_map
-          (function
-            | Variable x -> Some x
-            | Literal  _ -> None)
-          (match iterator with
-           | Range { start; direction = _; stop } -> [start; stop]
-           | Sequence seq                         -> seq)) |>
-      Environment.of_variables
-  end
-
   module Generator = struct
     open QuickCheck.Generator
 
