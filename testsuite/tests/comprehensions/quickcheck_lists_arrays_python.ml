@@ -1030,33 +1030,33 @@ module Main = struct
                     |> Printexc.to_string
                     |> Str.global_replace (Str.regexp "\n") "\n    "))
        in
-        let print_comprehension tag align o =
-          let spaced_out s  = String.make (String.length s) ' ' in
-          let input_prefix  = "  " ^ tag            ^ ": " ^ align in
-          let output_prefix = "  " ^ spaced_out tag ^ "  " ^ align in
-          print_endline
-            (input_prefix  ^ Comprehension.to_string o counterexample);
-          print_result_for ~output_prefix o
-        in
-        let seed_guts =
-          seed |> Array.map Int.to_string |> Array.to_list |> String.concat "; "
-        in
-        let n_tests = match tests with
-          | 1 -> "1 test"
-          | _ -> Int.to_string tests ^ " tests"
-        in
-        let and_k_shrinks = match shrinks with
-          | 0 -> ""
-          | 1 -> " and 1 shrink"
-          | _ -> " and " ^ Int.to_string shrinks ^ " shrinks"
-        in
-        Format.printf "Failed with seed [|%s|]!\n" seed_guts;
-        Format.printf "%s (after %s%s):\n%!" what n_tests and_k_shrinks;
-        print_comprehension "OCaml list" " " OCaml_list;
-        print_comprehension "OCaml array" "" OCaml_array;
-        print_comprehension "Haskell" "    " Haskell;
-        print_comprehension "Python" "     " Python;
-        print_extra_information ()
+       let print_comprehension tag align o =
+         let spaced_out s  = String.make (String.length s) ' ' in
+         let input_prefix  = "  " ^ tag            ^ ": " ^ align in
+         let output_prefix = "  " ^ spaced_out tag ^ "  " ^ align in
+         print_endline
+           (input_prefix  ^ Comprehension.to_string o counterexample);
+         print_result_for ~output_prefix o
+       in
+       let seed_guts =
+         seed |> Array.map Int.to_string |> Array.to_list |> String.concat "; "
+       in
+       let n_tests = match tests with
+         | 1 -> "1 test"
+         | _ -> Int.to_string tests ^ " tests"
+       in
+       let and_k_shrinks = match shrinks with
+         | 0 -> ""
+         | 1 -> " and 1 shrink"
+         | _ -> " and " ^ Int.to_string shrinks ^ " shrinks"
+       in
+       Format.printf "Failed with seed [|%s|]!\n" seed_guts;
+       Format.printf "%s (after %s%s):\n%!" what n_tests and_k_shrinks;
+       print_comprehension "OCaml list" " " OCaml_list;
+       print_comprehension "OCaml array" "" OCaml_array;
+       print_comprehension "Haskell" "    " Haskell;
+       print_comprehension "Python" "     " Python;
+       print_extra_information ()
 end
 
 let () = Main.main_comprehensions_agree 1_000
