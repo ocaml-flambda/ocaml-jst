@@ -638,14 +638,14 @@ module Comprehension = struct
                        ; ocaml_direction direction
                        ; int_term stop ]
             | Haskell ->
+                let step_sep, format_dotdot = match stop with
+                  | Literal n when n < 0 -> " ", spaced
+                  | _                    -> "",  Fun.id
+                in
                 let step = match start, direction with
                   | _,          To     -> ""
-                  | Literal  n, Downto -> "," ^ Int.to_string (n-1)
-                  | Variable x, Downto -> "," ^ x ^ "-1"
-                in
-                let format_dotdot = match stop with
-                  | Literal n when n < 0 -> spaced
-                  | _                    -> Fun.id
+                  | Literal  n, Downto -> "," ^ step_sep ^ Int.to_string (n-1)
+                  | Variable x, Downto -> "," ^ step_sep ^ x ^ "-1"
                 in
                 tokens [ "<-"
                        ; "[" ^
