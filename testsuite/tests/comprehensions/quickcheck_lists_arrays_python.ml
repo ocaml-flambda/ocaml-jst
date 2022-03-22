@@ -812,9 +812,19 @@ module Interactive_command = struct
     | result      -> cleanup (); result
     | exception e -> cleanup (); raise e
 
-  (* This is necessary because long lists cause the default printer to stack
-     overflow.  It gets the indentation wonky, but that doesn't really matter
-     here *)
+  (* We need to read every comprehension's output in a character-wise identical
+     way.  We settle on Python's list syntax: square brackets (no pipes),
+     comma-separated, with spaces after all the commas.  This choice is because
+     (1) it's easier to replace all of OCaml's semicolons with commas than it it
+     is to replace *some* of Haskell/Python's commas with semicolons; and (2) it
+     looks nicer to have spaces after commas (like Python, as well as OCaml)
+     than to not do so (like Haskell).  *)
+
+  (* This custom printer is necessary because long lists cause the default
+     printer to stack overflow.  It gets the indentation wonky, but that doesn't
+     really matter here.  Since we're writing our own, we use commas as a
+     separator here, a la Python, rather than relying on the substitution later.
+     (We do still have to substitute later, though, for arrays.) *)
   let ocaml_code_pp_list_as_python = {|
     let pp_list pp_elt fmt xs =
       let buf = Buffer.create 256 in
@@ -867,15 +877,6 @@ module Interactive_command = struct
       ~output:(fun str -> str ^ ";;")
       ~f
 
-  let python ~f =
-    command
-      "/usr/bin/python3"
-      ["-qic"; "import sys\nsys.ps1 = ''"]
-      ~setup:(Fun.const ())
-      ~input:input_line
-      ~output:Fun.id
-      ~f
-
   (* If GHCi isn't on a tty, it doesn't display a prompt, AFAICT *)
   let haskell ~f =
     command
@@ -883,6 +884,15 @@ module Interactive_command = struct
       ["-v0"; "-ignore-dot-ghci"]
       ~setup:(Fun.const ())
       ~input:input_haskell_list_as_python_list
+      ~output:Fun.id
+      ~f
+
+  let python ~f =
+    command
+      "/usr/bin/python3"
+      ["-qic"; "import sys\nsys.ps1 = ''"]
+      ~setup:(Fun.const ())
+      ~input:input_line
       ~output:Fun.id
       ~f
 end
