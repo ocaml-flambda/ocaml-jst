@@ -170,6 +170,9 @@ end
 module Var : sig
   type t = string
 
+  module Set : Set.S with type elt := t
+  module Map : Map.S with type key := t
+
   val equal : t -> t -> bool
 
   val vars : t list
@@ -177,6 +180,9 @@ module Var : sig
   val pattern_vars : t list
 end = struct
   type t = string
+
+  module Set = Set.Make(String)
+  module Map = Map.Make(String)
 
   let equal = String.equal
 
@@ -202,7 +208,7 @@ module Environment : sig
   val variables     : t -> Var.t list
   val variables_seq : t -> Var.t Seq.t
 end = struct
-  include Set.Make(String)
+  include Var.Set
 
   let of_variables  = of_list
   let is_bound      = mem
@@ -232,7 +238,7 @@ end = struct
     | Deleted
     | Renamed of Var.t
 
-  include Map.Make(String)
+  include Var.Map
 
   type nonrec t = binding t
 
@@ -678,13 +684,15 @@ module Comprehension = struct
       tokens [var; iter]
 
     (* In Haskell and Python, parallel bindings are interpreted as sequential
-       bindings.  This is fine unless (1) a variable [x] is in scope for the
-       parallel bindings, (2) one of the parallel bindings binds [x] to
-       something new, and (3) [x] is used on the right-hand side of a later
-       binding.  In this case, Python will see the new binding of [x], which
-       will shadow the old one; in OCaml, as these are all in parallel, this is
-       not the case.  This function renames all such variables to [outer_x], and
-       returns the python string that binds them. *)
+       bindings.  Python has other problems, so we need a heavier hammer (see
+       [Make_all_variables_unique]), but for Haskell, this is the only
+       difference we need to address.  It doesn't cause problems unless (1) a
+       variable [x] is in scope for the parallel bindings, (2) one of the
+       parallel bindings binds [x] to something new, and (3) [x] is used on the
+       right-hand side of a later binding.  In this case, Haskell will see the
+       new binding of [x], which will shadow the old one; in OCaml, as these are
+       all in parallel, this is not the case.  This function renames all such
+       variables to [outer_x], with the given let-binding construct. *)
     let protect_parallel_bindings let_clause bindings =
       let (_bound_vars, _free_vars, outer_lets), bindings =
         List.fold_left_map
@@ -745,6 +753,82 @@ module Comprehension = struct
       in
       outer_lets, bindings
 
+    (* Python doesn't shadow variables which have the same name, it reuses the
+       same mutable cell.  Thus, in the Python list comprehension
+       [[a for a in [0] for _ in [0, 0] for a in [a, 1]]], the second [a]
+       clobbers the first, and the result is [[0, 1, 1, 1]] instead of (as it
+       would be in OCaml or Haskell) [[0, 1, 0, 1]].  To avoid this, we make
+       every variable in a Python comprehension unique; the above comprehension
+       would become [[a for a2 in [0] for _ in [0, 0] for a in [a2, 1]]]. *)
+    module Make_all_variables_unique = struct
+      module Rename = struct
+        let var renaming x =
+          Option.value ~default:x (Var.Map.find_opt x renaming)
+
+        let int_term renaming = function
+          | Literal  n -> Literal n
+          | Variable x -> Variable (var renaming x)
+
+        let iterator renaming = function
+          | Range { start; direction; stop } ->
+              Range { start     = int_term renaming start
+                    ; direction
+                    ; stop      = int_term renaming stop }
+          | Sequence seq ->
+              Sequence (List.map (int_term renaming) seq)
+      end
+
+      let duplicate_bindings clauses =
+        let merge_counts f =
+          List.fold_left
+            (fun m x -> Var.Map.union (fun _ n1 n2 -> Some (n1 + n2)) (f x) m)
+            Var.Map.empty
+        in
+        Var.Map.filter
+          (fun _ n -> n > 1)
+          (merge_counts
+             (function
+               | For bs ->
+                   merge_counts (fun {var; _} -> Var.Map.singleton var 1) bs
+               | When _ ->
+                   Var.Map.empty)
+             clauses)
+
+      let bindings dups renaming =
+        List.fold_left_map
+          (fun (dups, renaming') {var; iterator} ->
+            let iterator = Rename.iterator renaming iterator in
+            match Var.Map.find_opt var dups with
+            | Some n ->
+                let var' = var ^ Int.to_string n in
+                let renaming' = Var.Map.add var var' renaming' in
+                let dups =
+                  Var.Map.update
+                    var
+                    (function
+                      | Some 2 -> None
+                      | Some n -> Some (n-1)
+                      | None   -> assert false)
+                    dups
+                in
+                (dups, renaming'), {var = var'; iterator}
+            | None ->
+                (dups, Var.Map.remove var renaming'), {var; iterator})
+          (dups, renaming)
+
+      let clauses cs =
+        cs |>
+        List.fold_left_map
+          (fun ((dups, renaming) as acc) -> function
+             | For bs ->
+                 let (dups, renaming), bs = bindings dups renaming bs in
+                 (dups, renaming), For bs
+             | When(pred, x) ->
+                 acc, When(pred, Rename.var renaming x))
+          (duplicate_bindings cs, Var.Map.empty) |>
+        snd
+    end
+
     let clause o = function
       | For bindings ->
           let intro, sep, (extra_clauses, bindings) =
@@ -758,11 +842,9 @@ module Comprehension = struct
                   (fun x e -> tokens ["let"; x; "="; e])
                   bindings
             | Python ->
-                ["for"],
-                " for ",
-                protect_parallel_bindings
-                  (fun x e -> tokens ["for"; x; "in"; parenthesize (e ^ ",")])
-                  bindings
+                (* [Make_all_variables_unique] has already been applied, so we
+                   don't need to call [protect_parallel_bindings] *)
+                ["for"], " for ", ([], bindings)
           in
           comprehension_clauses o
             (extra_clauses @
@@ -780,7 +862,8 @@ module Comprehension = struct
     let comprehension o {env; clauses} =
       let clauses = match o with
         | OCaml_list | OCaml_array -> List.rev clauses
-        | Haskell | Python         -> clauses
+        | Haskell                  -> clauses
+        | Python                   -> Make_all_variables_unique.clauses clauses
       in
       let body    = tuple (Environment.variables env) in
       let clauses = comprehension_clauses o (List.map (clause o) clauses) in
