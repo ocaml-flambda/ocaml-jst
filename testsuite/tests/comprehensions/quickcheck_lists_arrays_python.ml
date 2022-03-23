@@ -77,39 +77,165 @@ module QuickCheck = struct
     | Passed
     | Failed  of ('a, 'b) failure
 
-  let rec find_counterexample prop = function
+  module Print (Printf : sig
+      type destination
+      type result
+      val printf : destination -> ('a, destination, result) format -> 'a
+    end) =
+  struct
+    (* This only works with some words but that's ok *)
+    let quantity dst (n, thing) =
+      Printf.printf dst "%d %s%s" n thing (if n = 1 then "" else "s")
+
+    let tests dst tests = quantity dst (tests,   "test")
+
+    let and_shrinks dst = function
+      | 0       -> Printf.printf dst ""
+      | shrinks -> Printf.printf dst " and %a" quantity (shrinks, "shrink")
+
+    let and_shrinks_and_iteration dst = function
+      | shrinks, 0 ->
+          and_shrinks dst shrinks
+      | shrinks, iteration ->
+          Printf.printf dst " and %d.%d shrinks" shrinks iteration
+  end
+
+  module SPrint = Print (struct
+      type destination = unit
+      type result      = string
+      let printf ()    = Printf.sprintf
+    end)
+
+  module FPrint = Print (struct
+      type destination = out_channel
+      type result      = unit
+      let printf       = Printf.fprintf
+    end)
+
+  module Reporter = struct
+    type t =
+      { report_test      : int -> unit
+      ; report_shrink    : tests:int -> shrinks:int -> iteration:int -> unit
+      ; finish_reporting : unit -> unit
+      }
+
+    let silent =
+      { report_test      = Fun.const ()
+      ; report_shrink    = (fun ~tests:_ ~shrinks:_ ~iteration:_ -> ())
+      ; finish_reporting = Fun.const ()
+      }
+
+    let main oc =
+      (* This line-clearing technique was taken from Haskell's QuickCheck *)
+      let string_as_char s c = String.make (String.length s) c in
+      let backspace_prev_line = ref "" in
+      let clear_prev_line () =
+        Printf.printf "%s%s"
+          (string_as_char !backspace_prev_line ' ')
+          !backspace_prev_line
+      in
+      let report fstr =
+        Printf.ksprintf
+          (fun line ->
+             clear_prev_line ();
+             let backspace_this_line = string_as_char line '\b' in
+             Printf.fprintf oc "%s%s%!" line backspace_this_line;
+             backspace_prev_line := backspace_this_line)
+          fstr
+      in
+      { report_test   = (fun tests ->
+          report "(%a...)" SPrint.tests tests)
+      ; report_shrink = (fun ~tests ~shrinks ~iteration ->
+          report "Failed!  (%a%a...)"
+            SPrint.tests                     tests
+            SPrint.and_shrinks_and_iteration (shrinks, iteration))
+      ; finish_reporting = (fun () ->
+          clear_prev_line ();
+          flush oc)
+      }
+  end
+
+  let rec find_counterexample ~report iteration prop = function
     | [] -> None
     | x :: xs ->
+        report ~iteration;
         match prop x with
-        | OK               -> find_counterexample prop xs
+        | OK               -> find_counterexample ~report (iteration+1) prop xs
         | Failed_with data -> Some (x, Data data)
         | exception exn    -> Some (x, Exception exn)
 
-  let rec minimize shrink prop failure =
-    match find_counterexample prop (shrink failure.counterexample) with
+  let find_counterexample ?(report = fun ~iteration:_ -> ()) prop =
+    find_counterexample ~report 0 prop
+
+  let rec minimize
+            ?(report = fun ~shrinks:_ ~iteration:_ -> ()) shrink prop failure =
+    match
+      find_counterexample ~report:(report ~shrinks:failure.shrinks)
+        prop (shrink failure.counterexample)
+    with
     | Some (counterexample, data) ->
-        minimize shrink prop
+        minimize ~report shrink prop
           { failure with counterexample; data; shrinks = failure.shrinks + 1 }
     | None ->
         failure
 
-  let test (type a b) n gen shrink prop =
+  let test (type a b) ?(reporter = Reporter.silent) n gen shrink prop =
     let exception Counterexample of (a, b) failure in
-    match
-      for tests = 1 to n do
-        let x = gen () in
-        let stop_with_this_counterexample data =
-          raise (Counterexample
-                   { counterexample = x; data = data; tests; shrinks = 0 })
-        in
-        match prop x with
-        | OK               -> ()
-        | Failed_with data -> stop_with_this_counterexample (Data      data)
-        | exception exn    -> stop_with_this_counterexample (Exception exn)
-      done
-    with
-    | ()                               -> Passed
-    | exception Counterexample failure -> Failed (minimize shrink prop failure)
+    let result =
+      match
+        for tests = 1 to n do
+          reporter.report_test tests;
+          let x = gen () in
+          let stop_with_this_counterexample data =
+            raise (Counterexample
+                     { counterexample = x; data = data; tests; shrinks = 0 })
+          in
+          match prop x with
+          | OK               -> ()
+          | Failed_with data -> stop_with_this_counterexample (Data      data)
+          | exception exn    -> stop_with_this_counterexample (Exception exn)
+        done
+      with
+      | () ->
+          Passed
+      | exception Counterexample failure ->
+          Failed (minimize ~report:(reporter.report_shrink ~tests:failure.tests)
+                    shrink prop failure)
+    in
+    reporter.finish_reporting ();
+    result
+
+  let main
+        ?(seed = Util.random_seed ()) ?(output = stdout)
+        max_tests gen shrink print_failure prop =
+    let printf fstr = Printf.fprintf output fstr in
+    Random.full_init seed;
+    match test ~reporter:(Reporter.main output) max_tests gen shrink prop with
+    | Passed ->
+        printf "OK, passed %a.\n" FPrint.tests max_tests
+    | Failed { counterexample; data; tests; shrinks } ->
+        let what, odata, print_extra_information = match data with
+          | Data data ->
+              "Counterexample",
+              Some data,
+              (fun () -> ())
+          | Exception exn ->
+              "Exception",
+              None,
+              (fun () ->
+                 printf "  Exception:\n    %s\n"
+                   (exn
+                    |> Printexc.to_string
+                    |> Str.global_replace (Str.regexp "\n") "\n    "))
+       in
+       printf "Failed with seed [|%s|]!\n"
+         (String.concat "; " (Array.to_list (Array.map Int.to_string seed)));
+       printf "%s (after %a%a):\n"
+         what
+         FPrint.tests       tests
+         FPrint.and_shrinks shrinks;
+       print_failure output counterexample odata;
+       print_extra_information ()
 
   module Generator = struct
     let replicateG n g =
@@ -903,21 +1029,21 @@ module Interactive_command = struct
      than to not do so (like Haskell).  *)
 
   (* This custom printer is necessary because long lists cause the default
-     printer to stack overflow.  It gets the indentation wonky, but that doesn't
-     really matter here.  Since we're writing our own, we use commas as a
+     printer to stack overflow.  Since we're writing our own, we use commas as a
      separator here, a la Python, rather than relying on the substitution later.
      (We do still have to substitute later, though, for arrays.) *)
   let ocaml_code_pp_list_as_python = {|
     let pp_list pp_elt fmt xs =
       let buf = Buffer.create 256 in
-      let fbuf = Format.formatter_of_buffer buf in
-      Format.pp_set_max_indent fbuf Int.max_int;
       let rec fill_buf prefix = function
         | x :: xs ->
-            Format.fprintf fbuf "%s%a" prefix pp_elt x;
+            let fbuf = Format.formatter_of_buffer buf in
+            Format.pp_set_max_indent fbuf Int.max_int;
+            Buffer.add_string buf prefix;
+            Format.fprintf fbuf "%a%!" pp_elt x;
             fill_buf ", " xs
         | [] ->
-            Format.pp_print_flush fbuf ();
+            ();
       in
       Buffer.add_char buf '[';
       fill_buf "" xs;
@@ -992,12 +1118,33 @@ module Main = struct
     | Haskell     -> output.haskell
     | Python      -> output.python
 
-  let test_comprehensions_agree max_tests =
+  let print_counterexample oc counterexample data =
+    let printf format_string = Printf.fprintf oc format_string in
+    let output_for, printf_for_data = match data with
+      | Some data -> (fun o -> output_for o data), printf
+      | None      -> (fun _ -> ""),                Printf.ifprintf oc
+    in
+    let print_comprehension tag align o =
+      let counterexample_str = Comprehension.to_string o counterexample in
+      let indent = String.make (String.length tag) ' ' in
+      printf          "  %s:%s %s\n"      tag    align counterexample_str;
+      printf_for_data "  %s %s   = %s\n"  indent align (output_for o)
+    in
+    print_comprehension "OCaml list" " " OCaml_list;
+    print_comprehension "OCaml array" "" OCaml_array;
+    print_comprehension "Haskell" "    " Haskell;
+    print_comprehension "Python" "     " Python
+
+  let different_comprehensions_agree ?seed ?output max_tests =
     let ( = ) = String.equal in
     Interactive_command.ocaml   ~f:(fun ocaml ->
     Interactive_command.haskell ~f:(fun haskell ->
     Interactive_command.python  ~f:(fun python ->
-      QuickCheck.test max_tests Comprehension.generator Comprehension.shrink
+      QuickCheck.main
+        ?seed ?output
+        max_tests
+        Comprehension.generator Comprehension.shrink
+        print_counterexample
         (fun c ->
            let ocaml_list  = ocaml   (Comprehension.to_string OCaml_list  c) in
            let ocaml_array = ocaml   (Comprehension.to_string OCaml_array c) in
@@ -1008,55 +1155,6 @@ module Main = struct
               haskell     = python
            then OK
            else Failed_with {ocaml_list; ocaml_array; haskell; python}))))
-
-  let main_comprehensions_agree ?(seed = Util.random_seed ()) max_tests =
-    Random.full_init seed;
-    match test_comprehensions_agree max_tests with
-    | Passed ->
-        print_endline ("OK, passed " ^ Int.to_string max_tests ^ " tests.")
-    | Failed { counterexample; data; tests; shrinks } ->
-        let what, print_result_for, print_extra_information = match data with
-          | Data data     ->
-              "Counterexample",
-              (fun ~output_prefix o ->
-                 print_endline (output_prefix ^ "  = " ^ output_for o data)),
-              (fun () -> ())
-          | Exception exn ->
-              "Exception",
-              (fun ~output_prefix:_ _ -> ()),
-              (fun () ->
-                 Format.printf "  Exception:\n    %s\n%!"
-                   (exn
-                    |> Printexc.to_string
-                    |> Str.global_replace (Str.regexp "\n") "\n    "))
-       in
-       let print_comprehension tag align o =
-         let spaced_out s  = String.make (String.length s) ' ' in
-         let input_prefix  = "  " ^ tag            ^ ": " ^ align in
-         let output_prefix = "  " ^ spaced_out tag ^ "  " ^ align in
-         print_endline
-           (input_prefix  ^ Comprehension.to_string o counterexample);
-         print_result_for ~output_prefix o
-       in
-       let seed_guts =
-         seed |> Array.map Int.to_string |> Array.to_list |> String.concat "; "
-       in
-       let n_tests = match tests with
-         | 1 -> "1 test"
-         | _ -> Int.to_string tests ^ " tests"
-       in
-       let and_k_shrinks = match shrinks with
-         | 0 -> ""
-         | 1 -> " and 1 shrink"
-         | _ -> " and " ^ Int.to_string shrinks ^ " shrinks"
-       in
-       Format.printf "Failed with seed [|%s|]!\n" seed_guts;
-       Format.printf "%s (after %s%s):\n%!" what n_tests and_k_shrinks;
-       print_comprehension "OCaml list" " " OCaml_list;
-       print_comprehension "OCaml array" "" OCaml_array;
-       print_comprehension "Haskell" "    " Haskell;
-       print_comprehension "Python" "     " Python;
-       print_extra_information ()
 end
 
-let () = Main.main_comprehensions_agree 1_000
+let () = Main.different_comprehensions_agree 1_000
