@@ -125,21 +125,44 @@ module QuickCheck = struct
       ; finish_reporting = Fun.const ()
       }
 
-    let main oc =
-      (* This line-clearing technique was taken from Haskell's QuickCheck *)
+    type interactive_output_mode =
+      | Backspace_moves
+      | Backspace_deletes
+
+    let interactive_output_mode oc =
+      match Unix.(isatty (descr_of_out_channel oc)) with
+      | true ->
+          Some (if Option.is_some (Sys.getenv_opt "INSIDE_EMACS") ||
+                   Option.is_some (Sys.getenv_opt "EMACS")
+                then Backspace_deletes
+                else Backspace_moves)
+      | false | exception _ ->
+          None
+
+    let interactive_main iom oc =
+      (* This line-clearing technique was taken from Haskell's QuickCheck,
+         although sadly it doesn't work in Emacs *)
       let string_as_char s c = String.make (String.length s) c in
       let backspace_prev_line = ref "" in
-      let clear_prev_line () =
-        Printf.printf "%s%s"
-          (string_as_char !backspace_prev_line ' ')
-          !backspace_prev_line
+      let clear_prev_line = match iom with
+        | Backspace_moves -> fun () ->
+            output_string oc (string_as_char !backspace_prev_line ' ');
+            output_string oc !backspace_prev_line
+        | Backspace_deletes -> fun () ->
+            output_string oc !backspace_prev_line
+      in
+      let move_cursor_for_this_line = match iom with
+        | Backspace_moves   -> output_string oc
+        | Backspace_deletes -> Fun.const ()
       in
       let report fstr =
         Printf.ksprintf
           (fun line ->
              clear_prev_line ();
              let backspace_this_line = string_as_char line '\b' in
-             Printf.fprintf oc "%s%s%!" line backspace_this_line;
+             output_string oc line;
+             move_cursor_for_this_line backspace_this_line;
+             flush oc;
              backspace_prev_line := backspace_this_line)
           fstr
       in
@@ -153,6 +176,10 @@ module QuickCheck = struct
           clear_prev_line ();
           flush oc)
       }
+
+    let main oc = match interactive_output_mode oc with
+      | Some iom -> interactive_main iom oc
+      | None     -> silent
   end
 
   let rec find_counterexample ~report iteration prop = function
