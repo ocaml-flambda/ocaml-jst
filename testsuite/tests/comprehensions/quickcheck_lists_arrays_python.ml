@@ -254,15 +254,15 @@ module QuickCheck = struct
                    (exn
                     |> Printexc.to_string
                     |> Str.global_replace (Str.regexp "\n") "\n    "))
-       in
-       printf "Failed with seed [|%s|]!\n"
-         (String.concat "; " (Array.to_list (Array.map Int.to_string seed)));
-       printf "%s (after %a%a):\n"
-         what
-         FPrint.tests       tests
-         FPrint.and_shrinks shrinks;
-       print_failure output counterexample odata;
-       print_extra_information ()
+        in
+        printf "Failed with seed [|%s|]!\n"
+          (String.concat "; " (Array.to_list (Array.map Int.to_string seed)));
+        printf "%s (after %a%a):\n"
+          what
+          FPrint.tests       tests
+          FPrint.and_shrinks shrinks;
+        print_failure output counterexample odata;
+        print_extra_information ()
 
   module Generator = struct
     let replicateG n g =
