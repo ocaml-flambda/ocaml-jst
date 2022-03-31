@@ -397,7 +397,6 @@ module Extension = struct
     ; Polymorphic_parameters
     ]
 
-  let extensions = ref ([] : t list)   (* -extension *)
   let equal (a : t) (b : t) = (a = b)
 
   let to_string = function
@@ -407,7 +406,7 @@ module Extension = struct
     | Polymorphic_parameters -> "polymorphic_parameters"
     | Immutable_arrays -> "immutable_arrays_experimental"
 
-  let of_string = function
+  let of_string extn = match String.lowercase_ascii extn with
     | "comprehensions_experimental" -> Some Comprehensions
     | "local" -> Some Local
     | "include_functor" -> Some Include_functor
@@ -415,37 +414,59 @@ module Extension = struct
     | "immutable_arrays_experimental" -> Some Immutable_arrays
     | _ -> None
 
-  let disable_all_extensions = ref false             (* -disable-all-extensions *)
+  let of_string_exn extn =
+    match of_string extn with
+    | Some extn -> extn
+    | None -> raise (Arg.Bad(Printf.sprintf "Extension %s is not known" extn))
 
-  let disable_all () =
-    disable_all_extensions := true;
-    match !extensions with
-    | [] -> ()
-    | ls ->
+  (* Mutable state.  Invariants:
+     (1) [extensions] contains at most one copy of each extension.
+     (2) [!disallow_extensions] iff [!extensions = []]. *)
+  let extensions          = ref default_extensions (* -extension *)
+  let disallow_extensions = ref false              (* -disable-all-extensions *)
+
+  let set extn ~enabled =
+    if !disallow_extensions then
       raise (Arg.Bad(Printf.sprintf
-        "Compiler flag -disable-all-extensions is incompatible with \
-         the enabled extensions: %s"
-        (String.concat "," (List.map to_string ls))))
-
-  let enable_t extension =
-    if not (List.exists (equal extension) !extensions) then
-      extensions := extension :: !extensions
-
-  let enable extn =
-    if !disable_all_extensions then
-      raise (Arg.Bad(Printf.sprintf
-        "Cannot enable extension %s: \
+        "Cannot %s extension %s: \
          incompatible with compiler flag -disable-all-extensions"
-        extn));
-    match of_string (String.lowercase_ascii extn) with
-    | Some extension -> enable_t extension
-    | None ->
-        raise (Arg.Bad (Printf.sprintf "Unknown extension \"%s\"" extn))
+        (if enabled then "enable" else "disable")
+        (to_string extn)));
+    if enabled then begin
+      if not (List.exists (equal extn) !extensions) then
+        extensions := extn :: !extensions
+    end else
+      (* Like [filter (( <> ) extn)], but stop after deleting the first one *)
+      let rec del = function
+        | [] -> []
+        | extn' :: extns when equal extn extn' -> extns
+        | extn' :: extns -> extn' :: del extns
+      in
+      extensions := del !extensions
 
-  let is_enabled ext =
-    not !disable_all_extensions
-    && (List.mem ext default_extensions
-        || List.mem ext !extensions)
+  let enable  = set ~enabled:true
+  let disable = set ~enabled:false
+
+  let is_enabled extn = not !disallow_extensions && List.mem extn !extensions
+
+  let with_set extn ~enabled f =
+    let current_extensions = !extensions in
+    Fun.protect ~finally:(fun () -> extensions := current_extensions) (fun () ->
+      set extn ~enabled;
+      f ())
+
+  let with_enabled  = with_set ~enabled:true
+  let with_disabled = with_set ~enabled:false
+
+  let disallow_extensions () =
+    match !extensions with
+    | [] ->
+        disallow_extensions := true
+    | extns ->
+        raise (Arg.Bad(Printf.sprintf
+          "Compiler flag -disable-all-extensions is incompatible with \
+           the enabled extensions: %s"
+          (String.concat "," (List.map to_string extns))))
 end
 
 let dump_into_file = ref false (* -dump-into-file *)

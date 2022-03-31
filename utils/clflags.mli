@@ -205,7 +205,9 @@ val set_dumped_pass : string -> bool -> unit
 val dump_into_file : bool ref
 val dump_dir : string option ref
 
+(** Language extensions *)
 module Extension : sig
+  (** The type of language extensions *)
   type t =
     | Comprehensions
     | Local
@@ -213,15 +215,37 @@ module Extension : sig
     | Polymorphic_parameters
     | Immutable_arrays
 
+  (** Equality on language extensions *)
+  val equal : t -> t -> bool
+
+  (** A list of all possible language extensions *)
   val all : t list
 
-  val enable : string -> unit
-  val enable_t : t -> unit
-  val is_enabled : t -> bool
-  val disable_all : unit -> unit
-
+  (** Print and parse language extensions; parsing is case-insensitive *)
   val to_string : t -> string
   val of_string : string -> t option
+  val of_string_exn : string -> t
+
+  (** Enable and disable language extensions; these operations are idempotent *)
+  val set : t -> enabled:bool -> unit
+  val enable : t -> unit
+  val disable : t -> unit
+
+  (** Check if a language extension is currently enabled *)
+  val is_enabled : t -> bool
+
+  (** Tooling support: Temporarily enable and disable language extensions; these
+      operations are idempotent *)
+  val with_set : t -> enabled:bool -> (unit -> unit) -> unit
+  val with_enabled : t -> (unit -> unit) -> unit
+  val with_disabled : t -> (unit -> unit) -> unit
+
+  (** Permanently ban all extensions; used for [-disable-all-extensions] to
+      ensure that some code is 100% extension-free.  Causes any uses of [set],
+      [enable], [disable], and their [with_] variants to raise, and will raise
+      if any extensions have already been enabled.  [is_enabled] will still work,
+      and will always return [false].*)
+  val disallow_extensions : unit -> unit
 end
 
 (* Support for flags that can also be set from an environment variable *)

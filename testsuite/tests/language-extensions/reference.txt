@@ -1,0 +1,88 @@
+# no extensions enabled [local disabled]:
+<syntax error>
+
+# "local" extension enabled [local enabled]:
+fun (local_ x) -> x
+
+# "local" extension still enabled [local enabled]:
+fun (local_ x) -> x
+
+# "local" extension disabled [local disabled]:
+<syntax error>
+
+# "local" extension still disabled [local disabled]:
+<syntax error>
+
+# "local" extension enabled via [set] [local enabled]:
+fun (local_ x) -> x
+
+# "local" extension still enabled, via [set] and [enable] [local enabled]:
+fun (local_ x) -> x
+
+# "local" extension disabled via [set] [local disabled]:
+<syntax error>
+
+# "local" extension still disabled, via [set] and [disable] [local disabled]:
+<syntax error>
+
+# "local" extension enabled locally and disabled globally [local enabled]:
+fun (local_ x) -> x
+
+# "local" extension disabled locally and globally [local disabled]:
+<syntax error>
+
+# "local" extension enabled locally via [with_set] and disabled globally [local enabled]:
+fun (local_ x) -> x
+
+# "local" extension disabled locally via [with_set] and also globally [local disabled]:
+<syntax error>
+
+# "local" extension disabled locally and enabled globally [local disabled]:
+<syntax error>
+
+# "local" extension enabled locally and globally [local enabled]:
+fun (local_ x) -> x
+
+# "local" extension disabled locally via [with_set] and enabled globally [local disabled]:
+<syntax error>
+
+# "local" extension disabled locally via [with_set] and also globally [local enabled]:
+fun (local_ x) -> x
+
+# can't disallow extensions while an extension is enabled [local enabled]:
+Failed to disallow all extensions, with the following error:
+Compiler flag -disable-all-extensions is incompatible with the enabled extensions: local
+
+# can disallow extensions while no extensions are enabled [local disabled]:
+Successfully disallowed all extensions
+
+# can disallow extensions while extensions are already disallowed [local disabled]:
+Successfully disallowed all extensions
+
+# can't call [set ~enabled:true] when extensions are disallowed [local disabled]:
+Failed: Cannot enable extension local: incompatible with compiler flag -disable-all-extensions
+
+# can't call [set ~enabled:false] when extensions are disallowed [local disabled]:
+Failed: Cannot disable extension local: incompatible with compiler flag -disable-all-extensions
+
+# can't call [enable] when extensions are disallowed [local disabled]:
+Failed: Cannot enable extension local: incompatible with compiler flag -disable-all-extensions
+
+# can't call [disable] when extensions are disallowed [local disabled]:
+Failed: Cannot disable extension local: incompatible with compiler flag -disable-all-extensions
+
+# can't call [with_set ~enabled:true] when extensions are disallowed [local disabled]:
+Failed: Cannot enable extension local: incompatible with compiler flag -disable-all-extensions
+
+# can't call [with_set ~enabled:false] when extensions are disallowed [local disabled]:
+Failed: Cannot disable extension local: incompatible with compiler flag -disable-all-extensions
+
+# can't call [with_enabled] when extensions are disallowed [local disabled]:
+Failed: Cannot enable extension local: incompatible with compiler flag -disable-all-extensions
+
+# can't call [with_disabled] when extensions are disallowed [local disabled]:
+Failed: Cannot disable extension local: incompatible with compiler flag -disable-all-extensions
+
+# [is_enabled] returns [false] when extensions are disallowed [local disabled]:
+"local" is correctly disabled
+
