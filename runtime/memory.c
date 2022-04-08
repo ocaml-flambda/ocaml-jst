@@ -606,7 +606,6 @@ struct modify_log_entry {
   value old_value;
 };
 
-#define MODIFY_LOG_SIZE 1024
 
 void caml_modify_batch (void)
 {
@@ -626,13 +625,21 @@ void caml_modify_batch (void)
      below changes!
   */
 
-  uintnat i, log_index;
+  intnat i, index;
   value *fp;
   value old, val;
 
-  log_index = Caml_state->modify_log_index;
-  for (i = 0; i < log_index; i++){
+  index = (intnat) Caml_state -> modify_log_index;
+#if 0
+fprintf (stderr, "modify_batch: index = %ld\n", index);
+#endif
+  for (i = CAML_MODIFY_LOG_SIZE - 1; i >= index; i--){
     fp = Caml_state->modify_log[i].field_pointer;
+#if 0
+fprintf (stderr, "%d: fp = %p  old=%p=%ld", i, fp, (void *)Caml_state->modify_log[i].old_value, Caml_state->modify_log[i].old_value);
+if (fp == NULL){ fprintf (stderr, "\n"); continue; }
+fprintf (stderr, "  new=%p=%ld\n", (void*) *fp, *fp);
+#endif
     if (Is_young((value)fp)){
       /* The modified object resides in the minor heap.
          Conditions 1 and 2 cannot occur. */
@@ -657,7 +664,10 @@ void caml_modify_batch (void)
       }
     }
   }
-  Caml_state->modify_log_index = 0;
+  Caml_state->modify_log_index = CAML_MODIFY_LOG_SIZE;
+#if 0
+fprintf (stderr, "modify_batch: done\n");
+#endif
 }
 
 /* This version of [caml_modify] may additionally be used to mutate
@@ -803,22 +813,36 @@ CAMLprim value caml_local_stack_offset(value blk)
 
 CAMLexport CAMLweakdef void caml_modify (value *fp, value val)
 {
-  if (Caml_state->modify_log_index == MODIFY_LOG_SIZE){
+  if (Caml_state->modify_log_index == 0){
     caml_modify_batch ();
   }
+  -- Caml_state->modify_log_index;
   Caml_state->modify_log[Caml_state->modify_log_index].field_pointer = fp;
   Caml_state->modify_log[Caml_state->modify_log_index].old_value = *fp;
-  ++ Caml_state->modify_log_index;
   *fp = val;
 }
 
 void caml_init_modify (void)
 {
   Caml_state->modify_log =
-    caml_stat_alloc_noexc (MODIFY_LOG_SIZE * sizeof (struct modify_log_entry));
+    caml_stat_alloc_noexc (CAML_MODIFY_LOG_SIZE
+                           * sizeof (struct modify_log_entry));
   if(Caml_state->modify_log == NULL)
     caml_fatal_error("not enough memory for the modify log");
-  Caml_state->modify_log_index = 0;
+#if 0
+  #define Debug_tag(x) (INT64_LITERAL(0xD700D7D7D700D6D7u) \
+                      | ((uintnat) (x) << 16) \
+                      | ((uintnat) (x) << 48))
+  {
+    int i;
+    for (i = 0; i < CAML_MODIFY_LOG_SIZE; i++){
+      Caml_state->modify_log[i].field_pointer = (void *) Debug_tag(0x20);
+      Caml_state->modify_log[i].old_value = Debug_tag(0x21);
+      /* XXX FIXME move these constants to misc.h */
+    }
+  }
+#endif
+  Caml_state->modify_log_index = CAML_MODIFY_LOG_SIZE;
 }
 
 /* Global memory pool.

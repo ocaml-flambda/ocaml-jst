@@ -716,6 +716,9 @@ let emit_instr env fallthrough i =
       | Double ->
           I.movsd (arg i 0) (addressing addr REAL8 i 1)
       end
+  | Lop(Imodify) ->
+      emit_call "caml_modify_asm";
+      I.mov (arg i 1) (mem64 QWORD 0 (arg64 i 0))
   | Lop(Ialloc { bytes = n; dbginfo; mode = Alloc_heap }) ->
       assert (n <= (Config.max_young_wosize + 1) * Arch.size_addr);
       if env.f.fun_fast then begin
@@ -1210,7 +1213,7 @@ let probe_env p =
   env.stack_offset <- p.probe_stack_offset;
   (* Account for the return address that is now pushed on the stack. *)
   env.stack_offset <- env.stack_offset + 8;
-  env  
+  env
 
 let emit_probe_handler_wrapper p =
   let wrap_label = probe_handler_wrapper_name p.probe_label in

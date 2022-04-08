@@ -112,6 +112,10 @@ let pseudoregs_for_operation op arg res =
       ([| rax; rcx |], [| rax |])
   | Iintop(Imod) ->
       ([| rax; rcx |], [| rdx |])
+  (* For Imodify, the assembly stub (caml_modify_asm) needs the first
+     argument in rax. *)
+  | Imodify ->
+      ([| rax; arg.(1) |], res)
   (* Other instructions are regular *)
   | _ -> raise Use_default
 

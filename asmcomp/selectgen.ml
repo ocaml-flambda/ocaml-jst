@@ -94,6 +94,7 @@ let oper_result_type = function
       | Single | Double -> typ_float
       | _ -> typ_int
       end
+  | Cmodify -> typ_void
   | Calloc _ -> typ_val
   | Cstore (_c, _) -> typ_void
   | Caddi | Csubi | Cmuli | Cmulhi | Cdivi | Cmodi |
@@ -351,7 +352,7 @@ method is_simple_expr = function
   | Cop(op, args, _) ->
       begin match op with
         (* The following may have side effects *)
-      | Capply _ | Cextcall _ | Calloc _ | Cstore _
+      | Capply _ | Cextcall _ | Calloc _ | Cmodify | Cstore _
       | Craise _ | Ccheckbound
       | Cprobe _ | Cprobe_is_enabled _ | Copaque -> false
       | Cbeginregion | Cendregion -> false (* avoid reordering *)
@@ -396,7 +397,7 @@ method effects_of exp =
       | Capply _ | Cextcall _ | Cprobe _ | Copaque -> EC.arbitrary
       | Calloc Alloc_heap -> EC.none
       | Calloc Alloc_local -> EC.coeffect_only Coeffect.Arbitrary
-      | Cstore _ -> EC.effect_only Effect.Arbitrary
+      | Cmodify | Cstore _ -> EC.effect_only Effect.Arbitrary
       | Cbeginregion | Cendregion -> EC.arbitrary
       | Craise _ | Ccheckbound -> EC.effect_only Effect.Raise
       | Cload (_, Asttypes.Immutable) -> EC.none
@@ -495,6 +496,7 @@ method select_operation op args _dbg =
         (Istore(chunk, addr, is_assign), [arg2; eloc])
         (* Inversion addr/datum in Istore *)
       end
+  | (Cmodify, _) -> Imodify, args
   | (Calloc mode, _) -> (Ialloc {bytes = 0; dbginfo = []; mode}), args
   | (Caddi, _) -> self#select_arith_comm Iadd args
   | (Csubi, _) -> self#select_arith Isub args

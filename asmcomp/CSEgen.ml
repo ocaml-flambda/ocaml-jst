@@ -228,6 +228,7 @@ method class_of_operation op =
   | Istackoffset _ -> Op_other
   | Iload(_,_,mut) -> Op_load mut
   | Istore(_,_,asg) -> Op_store asg
+  | Imodify -> Op_store true
   | Ialloc _ | Ipoll _ -> assert false     (* treated specially *)
   | Iintop(Icheckbound) -> Op_checkbound
   | Iintop _ -> Op_pure

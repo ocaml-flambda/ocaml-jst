@@ -446,7 +446,6 @@ CFI_ENDPROC
 ENDFUNCTION(G(caml_allocN))
 
 
-
 FUNCTION(G(caml_call_local_realloc))
         CFI_STARTPROC
     /* Touch the stack to trigger a recoverable segfault
@@ -538,6 +537,117 @@ FUNCTION(G(caml_call_local_realloc))
         ret
 CFI_ENDPROC
 ENDFUNCTION(G(caml_call_local_realloc))
+	
+/* Write barrier and assignment to heap blocks.
+   Clobbers %r10 and %r11.
+   The address must be in %rax, and the write into memory must be
+   done right after the call to this function.
+ */
+FUNCTION(G(caml_modify_asm))
+CFI_STARTPROC
+        movq    Caml_state(modify_log_index), %r11
+        test    %r11, %r11
+        jnz     LBL(113)
+
+        /* Test stack alignment and call slowpath or align_stack accordingly */
+        testq   $15, %rsp
+        jnz     LBL(114)
+        call    LBL(modify_slowpath)
+        jb      LBL(115)
+LBL(114):
+        call    LBL(modify_align_stack)
+LBL(115):
+
+        movq    Caml_state(modify_log_index), %r11
+LBL(113):
+        decq    %r11
+        movq    %r11, Caml_state(modify_log_index)
+        shlq    $4, %r11
+        movq    Caml_state(modify_log), %r10
+        addq    %r11, %r10
+        movq    %rax, 0(%r10)
+        movq    (%rax), %r11
+        movq    %r11, 8(%r10)
+        ret
+CFI_ENDPROC
+
+/* %rsp must be 16-aligned before the call instruction that calls this function
+*/
+LBL(modify_slowpath):
+        CFI_STARTPROC
+        /* save all caller-save registers */
+        pushq   %rax; CFI_ADJUST (8); CFI_OFFSET(rax, -16);
+        pushq   %rdx; CFI_ADJUST (8); CFI_OFFSET(rdx, -24);
+        pushq   %rcx; CFI_ADJUST (8); CFI_OFFSET(rcx, -32);
+        pushq   %r8; CFI_ADJUST (8); CFI_OFFSET(r8, -40);
+        pushq   %r9; CFI_ADJUST (8); CFI_OFFSET(r9, -48);
+#if defined(SYS_mingw64) || defined(SYS_cygwin)
+        subq    $(6*16), %rsp; CFI_ADJUST (6*16)
+#else
+        pushq   %rdi; CFI_ADJUST (8); CFI_OFFSET(rdi, -56);
+        pushq   %rsi; CFI_ADJUST (8); CFI_OFFSET(rsi, -64);
+        subq    $(16*16), %rsp; CFI_ADJUST (16*16)
+        movsd   %xmm6, 6*16(%rsp)
+        movsd   %xmm7, 7*16(%rsp)
+        movsd   %xmm8, 8*16(%rsp)
+        movsd   %xmm9, 9*16(%rsp)
+        movsd   %xmm10, 10*16(%rsp)
+        movsd   %xmm11, 11*16(%rsp)
+        movsd   %xmm12, 12*16(%rsp)
+        movsd   %xmm13, 13*16(%rsp)
+        movsd   %xmm14, 14*16(%rsp)
+        movsd   %xmm15, 15*16(%rsp)
+#endif
+        movsd   %xmm0, 0*16(%rsp)
+        movsd   %xmm1, 1*16(%rsp)
+        movsd   %xmm2, 2*16(%rsp)
+        movsd   %xmm3, 3*16(%rsp)
+        movsd   %xmm4, 4*16(%rsp)
+        movsd   %xmm5, 5*16(%rsp)
+
+        PREPARE_FOR_C_CALL
+        call    GCALL(caml_modify_batch)
+        CLEANUP_AFTER_C_CALL
+
+        /* restore all caller-save registers */
+        movsd   5*16(%rsp), %xmm5
+        movsd   4*16(%rsp), %xmm4
+        movsd   3*16(%rsp), %xmm3
+        movsd   2*16(%rsp), %xmm2
+        movsd   1*16(%rsp), %xmm1
+        movsd   0*16(%rsp), %xmm0
+#if defined(SYS_mingw64) || defined(SYS_cygwin)
+        addq    $(6*16), %rsp; CFI_ADJUST (-6*16)
+#else
+        movsd   15*16(%rsp), %xmm15
+        movsd   14*16(%rsp), %xmm14
+        movsd   13*16(%rsp), %xmm13
+        movsd   12*16(%rsp), %xmm12
+        movsd   11*16(%rsp), %xmm11
+        movsd   10*16(%rsp), %xmm10
+        movsd   9*16(%rsp), %xmm9
+        movsd   8*16(%rsp), %xmm8
+        movsd   7*16(%rsp), %xmm7
+        movsd   6*16(%rsp), %xmm6
+        addq    $(16*16), %rsp; CFI_ADJUST (-16*16)
+        popq    %rsi; CFI_ADJUST (-8); CFI_SAME_VALUE(rsi);
+        popq    %rdi; CFI_ADJUST (-8); CFI_SAME_VALUE(rdi);
+#endif
+        popq    %r9; CFI_ADJUST (-8); CFI_SAME_VALUE(r9);
+        popq    %r8; CFI_ADJUST (-8); CFI_SAME_VALUE(r8);
+        popq    %rcx; CFI_ADJUST (-8); CFI_SAME_VALUE(rcx);
+        popq    %rdx; CFI_ADJUST (-8); CFI_SAME_VALUE(rdx);
+        popq    %rax; CFI_ADJUST (-8); CFI_SAME_VALUE(rax);
+        ret
+        CFI_ENDPROC
+
+LBL(modify_align_stack):
+        CFI_STARTPROC
+        call    LBL(modify_slowpath)
+        ret
+        CFI_ENDPROC
+
+ENDFUNCTION(G(caml_modify_asm))
 
 /* Call a C function from OCaml */
 

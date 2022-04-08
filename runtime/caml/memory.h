@@ -54,9 +54,11 @@ CAMLextern value caml_alloc_local(mlsize_t, tag_t);
 CAMLextern void caml_adjust_gc_speed (mlsize_t, mlsize_t);
 CAMLextern void caml_alloc_dependent_memory (mlsize_t bsz);
 CAMLextern void caml_free_dependent_memory (mlsize_t bsz);
+
 CAMLextern void caml_modify (value *, value);
 CAMLextern void caml_modify_batch (void);
 CAMLextern void caml_init_modify (void);
+
 CAMLextern void caml_initialize (value *, value);
 CAMLextern value caml_check_urgent_gc (value);
 CAMLextern color_t caml_allocation_color (void *hp);
@@ -64,6 +66,10 @@ CAMLextern color_t caml_allocation_color (void *hp);
 CAMLextern char *caml_alloc_for_heap (asize_t request);   /* Size in bytes. */
 CAMLextern void caml_free_for_heap (char *mem);
 CAMLextern int caml_add_to_heap (char *mem);
+#define CAML_MODIFY_LOG_SIZE 1024
+Caml_inline int caml_modify_log_is_empty (void) {
+  return Caml_state->modify_log_index == CAML_MODIFY_LOG_SIZE;
+}
 #endif /* CAML_INTERNALS */
 
 CAMLextern int caml_huge_fallback_count;

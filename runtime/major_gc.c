@@ -804,7 +804,7 @@ static void mark_slice (intnat work)
       if (work > 0){
         caml_gc_subphase = Subphase_mark_main;
       }
-    }else if (Caml_state->modify_log_index != 0){
+    }else if (!caml_modify_log_is_empty ()){
       CAML_EV_BEGIN(EV_MODIFY_BATCH);
       caml_modify_batch ();
       CAML_EV_END(EV_MODIFY_BATCH);
