@@ -181,7 +181,8 @@ and expression_desc =
             let rec P1 = E1 and ... and Pn = EN in E   (flag = Recursive)
          *)
   | Texp_function of { arg_label : arg_label; param : Ident.t;
-      cases : value case list; partial : partial; region : bool }
+      cases : value case list; partial : partial;
+      region : bool; warnings : Warnings.state; }
         (** [Pexp_fun] and [Pexp_function] both translate to [Texp_function].
             See {!Parsetree} for more details.
 
@@ -190,6 +191,8 @@ and expression_desc =
 
             partial =
               [Partial] if the pattern match is partial
+              [Total_w68_error] otherwise if warning 68 is enabled as an error
+              [Total_w68_active] otherwise if warning 68 is enabled
               [Total] otherwise.
          *)
   | Texp_apply of expression * (arg_label * apply_arg) list * apply_position
@@ -278,6 +281,7 @@ and expression_desc =
       param : Ident.t;
       body : value case;
       partial : partial;
+      warnings : Warnings.state;
     }
   | Texp_unreachable
   | Texp_extension_constructor of Longident.t loc * Path.t
