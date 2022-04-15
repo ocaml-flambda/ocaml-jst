@@ -410,7 +410,6 @@ void caml_empty_minor_heap (void)
     Caml_state->in_minor_collection = 1;
     caml_gc_message (0x02, "<");
     caml_modify_batch ();
-    caml_modify_flush_cache ();
     CAML_EV_BEGIN(EV_MINOR_LOCAL_ROOTS);
     caml_oldify_local_roots();
     CAML_EV_END(EV_MINOR_LOCAL_ROOTS);
@@ -469,6 +468,7 @@ void caml_empty_minor_heap (void)
       / Caml_state->minor_heap_wsz;
     Caml_state->young_ptr = Caml_state->young_alloc_end;
     clear_table ((struct generic_table *) Caml_state->ref_table);
+    caml_modify_flush_cache ();
     clear_table ((struct generic_table *) Caml_state->ephe_ref_table);
     clear_table ((struct generic_table *) Caml_state->custom_table);
     Caml_state->extra_heap_resources_minor = 0;

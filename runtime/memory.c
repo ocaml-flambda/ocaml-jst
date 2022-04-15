@@ -673,11 +673,14 @@ void caml_modify_batch (void)
         modify_cache[h].in_ref_table = 0;
         old = Caml_state->modify_log[i].old_value;
         if (Is_block(old)) {
-          /* If [old] is a pointer within the minor heap, we already
-             have a major->minor pointer and [fp] is already in the
-             remembered set.  Conditions 1 and 2 cannot occur. */
+          /* If [old] is a pointer into the minor heap:
+             - Condition 2 cannot occur.
+             - Condition 1 can only occur when overwriting a non-minor
+               pointer with a minor pointer. The batch entry for that
+               write will have added this field to [ref_table] so we
+               don't need to do it here.
+          */
           if (Is_young(old)){
-            modify_cache[h].in_ref_table = 1;
             continue;
           }
           /* Here, [old] can be a pointer within the major heap.

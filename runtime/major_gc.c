@@ -405,6 +405,7 @@ static void start_cycle (void)
   caml_gc_message (0x01, "Starting new major GC cycle\n");
   marked_words = 0;
   caml_darken_all_roots_start ();
+  caml_modify_flush_cache ();
   caml_gc_phase = Phase_mark;
   heap_wsz_at_cycle_start = Caml_state->stat_heap_wsz;
   caml_gc_subphase = Subphase_mark_roots;
@@ -806,7 +807,6 @@ static void mark_slice (intnat work)
       }
     }else if (!caml_modify_log_is_empty ()){
       caml_modify_batch ();
-      caml_modify_flush_cache ();
     } else if (*ephes_to_check != (value) NULL) {
       /* Continue to scan the list of ephe */
       mark_ephe_aux(stk,&work,&slice_pointers);
