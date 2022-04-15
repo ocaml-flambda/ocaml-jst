@@ -805,9 +805,8 @@ static void mark_slice (intnat work)
         caml_gc_subphase = Subphase_mark_main;
       }
     }else if (!caml_modify_log_is_empty ()){
-      CAML_EV_BEGIN(EV_MODIFY_BATCH);
       caml_modify_batch ();
-      CAML_EV_END(EV_MODIFY_BATCH);
+      caml_modify_flush_cache ();
     } else if (*ephes_to_check != (value) NULL) {
       /* Continue to scan the list of ephe */
       mark_ephe_aux(stk,&work,&slice_pointers);

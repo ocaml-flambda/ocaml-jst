@@ -57,6 +57,7 @@ CAMLextern void caml_free_dependent_memory (mlsize_t bsz);
 
 CAMLextern void caml_modify (value *, value);
 CAMLextern void caml_modify_batch (void);
+CAMLextern void caml_modify_flush_cache (void);
 CAMLextern void caml_init_modify (void);
 
 CAMLextern void caml_initialize (value *, value);
