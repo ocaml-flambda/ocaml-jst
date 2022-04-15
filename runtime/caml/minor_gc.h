@@ -18,7 +18,6 @@
 
 #include "address_class.h"
 #include "config.h"
-#include "eventlog.h"
 
 /* Global variables moved to Caml_state in 4.10 */
 #define caml_young_start (Caml_state_field(young_start))
@@ -35,7 +34,7 @@
   (Caml_state_field(extra_heap_resources_minor))
 
 
-#define CAML_TABLE_STRUCT(t, cachesize) { \
+#define CAML_TABLE_STRUCT(t) { \
   t *base;                     \
   t *end;                      \
   t *threshold;                \
@@ -43,21 +42,16 @@
   t *limit;                    \
   asize_t size;                \
   asize_t reserve;             \
-  t cache[cachesize];          \
 }
 
-#define CAML_REF_CACHE_SIZE_BITS 10
-#define CAML_REF_CACHE_SIZE (1 << CAML_REF_CACHE_SIZE_BITS)
-#define CAML_REF_CACHE_MASK (CAML_REF_CACHE_SIZE - 1)
-
-struct caml_ref_table CAML_TABLE_STRUCT(value *, CAML_REF_CACHE_SIZE);
+struct caml_ref_table CAML_TABLE_STRUCT(value *);
 
 struct caml_ephe_ref_elt {
   value ephe;      /* an ephemeron in major heap */
   mlsize_t offset; /* the offset that points in the minor heap  */
 };
 
-struct caml_ephe_ref_table CAML_TABLE_STRUCT(struct caml_ephe_ref_elt, 1);
+struct caml_ephe_ref_table CAML_TABLE_STRUCT(struct caml_ephe_ref_elt);
 
 struct caml_custom_elt {
   value block;     /* The finalized block in the minor heap. */
@@ -65,7 +59,7 @@ struct caml_custom_elt {
   mlsize_t max;
 };
 
-struct caml_custom_table CAML_TABLE_STRUCT(struct caml_custom_elt, 1);
+struct caml_custom_table CAML_TABLE_STRUCT(struct caml_custom_elt);
 /* Table of custom blocks in the minor heap that contain finalizers
    or GC speed parameters. */
 
@@ -104,15 +98,6 @@ void caml_alloc_minor_tables (void);
 
 Caml_inline void add_to_ref_table (struct caml_ref_table *tbl, value *p)
 {
-  uintnat hash = ((uintnat) p / sizeof (value)) & CAML_REF_CACHE_MASK;
-
-  if (p == tbl->cache[hash]){
-    CAML_EV_COUNTER (EV_C_CAML_REF_CACHE_HIT, 1);
-    return;
-  }else{
-    CAML_EV_COUNTER (EV_C_CAML_REF_CACHE_MISS, 1);
-    tbl->cache[hash] = p;
-  }
   if (tbl->ptr >= tbl->limit){
     CAMLassert (tbl->ptr == tbl->limit);
     caml_realloc_ref_table (tbl);

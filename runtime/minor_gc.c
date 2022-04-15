@@ -61,7 +61,7 @@
             + or [Caml_state->young_trigger].
 */
 
-struct generic_table CAML_TABLE_STRUCT(char, 1);
+struct generic_table CAML_TABLE_STRUCT(char);
 
 void caml_alloc_minor_tables ()
 {
@@ -136,15 +136,6 @@ static void clear_table (struct generic_table *tbl)
     tbl->limit = tbl->threshold;
 }
 
-static void clear_table_cache (struct caml_ref_table *tbl)
-{
-  uintnat i;
-
-  for (i = 0; i < CAML_REF_CACHE_SIZE; i++){
-    tbl->cache[i] = NULL;
-  }
-}
-
 void caml_set_minor_heap_size (asize_t bsz)
 {
   char *new_heap;
@@ -186,7 +177,6 @@ void caml_set_minor_heap_size (asize_t bsz)
   caml_memprof_renew_minor_sample();
 
   reset_table ((struct generic_table *) Caml_state->ref_table);
-  clear_table_cache (Caml_state->ref_table);
   reset_table ((struct generic_table *) Caml_state->ephe_ref_table);
   reset_table ((struct generic_table *) Caml_state->custom_table);
 }
@@ -480,7 +470,6 @@ void caml_empty_minor_heap (void)
       / Caml_state->minor_heap_wsz;
     Caml_state->young_ptr = Caml_state->young_alloc_end;
     clear_table ((struct generic_table *) Caml_state->ref_table);
-    clear_table_cache (Caml_state->ref_table);
     clear_table ((struct generic_table *) Caml_state->ephe_ref_table);
     clear_table ((struct generic_table *) Caml_state->custom_table);
     Caml_state->extra_heap_resources_minor = 0;
