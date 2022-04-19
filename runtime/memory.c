@@ -657,6 +657,9 @@ void caml_modify_batch (void)
       h = ((uintnat) fp * MODIFY_CACHE_HASH_FACTOR) >> MODIFY_CACHE_SHIFT;
       if (modify_cache[h].field_pointer == fp){
         CAML_EV_COUNTER (EV_C_CAML_MODIFY_CACHE_HIT, 1);
+#ifdef DEBUG
+      fprintf (stderr, "hit h=%04lx fp=%p\n", h, fp);
+#endif
         /* Writing again to an already-modified field:
            condition 2 cannot occur. */
         if (!modify_cache[h].in_ref_table){
@@ -669,6 +672,9 @@ void caml_modify_batch (void)
         }
       }else{
         CAML_EV_COUNTER (EV_C_CAML_MODIFY_CACHE_MISS, 1);
+#ifdef DEBUG
+      fprintf (stderr, "miss h=%04lx cache=%p fp=%p\n", h, modify_cache[h], fp);
+#endif
         modify_cache[h].field_pointer = fp;
         modify_cache[h].in_ref_table = 0;
         old = Caml_state->modify_log[i].old_value;
@@ -855,6 +861,9 @@ CAMLexport CAMLweakdef void caml_modify (value *fp, value val)
 void caml_modify_flush_cache (void)
 {
   int i;
+#ifdef DEBUG
+  fprintf (stderr, "caml_modify_cache_flush\n");
+#endif
   for (i = 0; i < MODIFY_CACHE_SIZE; i++){
     modify_cache[i].field_pointer = NULL;
   }
