@@ -28,7 +28,6 @@ open Debuginfo.Scoped_location
 type error =
     Free_super_var
   | Unreachable_reached
-  | Local_allocs_not_enabled
 
 exception Error of Location.t * error
 
@@ -95,20 +94,24 @@ let extract_float = function
     Const_base(Const_float f) -> f
   | _ -> fatal_error "Translcore.extract_float"
 
-let transl_alloc_mode loc alloc_mode : Lambda.alloc_mode =
+let transl_alloc_mode alloc_mode : Lambda.alloc_mode =
   match Btype.Alloc_mode.constrain_lower alloc_mode with
   | Global -> Alloc_heap
   | Local ->
-     if not (Clflags.Extension.is_enabled Local) then
-       raise (Error (loc, Local_allocs_not_enabled));
-     Alloc_local
+     if Config.stack_allocation then Alloc_local
+     else Alloc_heap
 
-let transl_value_mode loc mode =
+let transl_alloc_mode_assignment alloc_mode =
+  match Btype.Alloc_mode.constrain_lower alloc_mode with
+  | Global -> Assignment
+  | Local -> Local_assignment
+
+let transl_value_mode mode =
   let alloc_mode = Btype.Value_mode.regional_to_global_alloc mode in
-  transl_alloc_mode loc alloc_mode
+  transl_alloc_mode alloc_mode
 
-let transl_exp_mode e = transl_value_mode e.exp_loc e.exp_mode
-let transl_pat_mode p = transl_value_mode p.pat_loc p.pat_mode
+let transl_exp_mode e = transl_value_mode e.exp_mode
+let transl_pat_mode p = transl_value_mode p.pat_mode
 
 let transl_apply_position position =
   match position with
@@ -296,7 +299,7 @@ let rec iter_exn_names f pat =
 let transl_ident loc env ty path desc kind =
   match desc.val_kind, kind with
   | Val_prim p, Id_prim pmode ->
-      let poly_mode = transl_alloc_mode (to_location loc) pmode in
+      let poly_mode = transl_alloc_mode pmode in
       Translprim.transl_primitive loc p env ty ~poly_mode (Some path)
   | Val_anc _, Id_value ->
       raise(Error(to_location loc, Free_super_var))
@@ -304,7 +307,7 @@ let transl_ident loc env ty path desc kind =
       transl_value_path loc env path
   |  _ -> fatal_error "Translcore.transl_exp: bad Texp_ident"
 
-let can_apply_primitive loc p pmode pos args =
+let can_apply_primitive p pmode pos args =
   let is_omitted = function
     | Arg _ -> false
     | Omitted _ -> true
@@ -317,7 +320,7 @@ let can_apply_primitive loc p pmode pos args =
     else if pos = Typedtree.Nontail then true
     else begin
       let return_mode = Ctype.prim_mode pmode p.prim_native_repr_res in
-      (transl_alloc_mode loc return_mode = Alloc_heap)
+      (transl_alloc_mode return_mode = Alloc_heap)
     end
   end
 
@@ -360,7 +363,7 @@ and transl_exp0 ~in_new_scope ~scopes e =
   | Texp_apply({ exp_desc = Texp_ident(path, _, {val_kind = Val_prim p},
                                        Id_prim pmode);
                 exp_type = prim_type } as funct, oargs, pos)
-    when can_apply_primitive e.exp_loc p pmode pos oargs ->
+    when can_apply_primitive p pmode pos oargs ->
       let argl, extra_args = cut p.prim_arity oargs in
       let arg_exps =
          List.map (function _, Arg x -> x | _ -> assert false) argl
@@ -371,7 +374,7 @@ and transl_exp0 ~in_new_scope ~scopes e =
         if extra_args = [] then transl_apply_position pos
         else Rc_normal
       in
-      let prim_mode = transl_alloc_mode e.exp_loc pmode in
+      let prim_mode = transl_alloc_mode pmode in
       let lam =
         Translprim.transl_primitive_application
           (of_location ~scopes e.exp_loc) p e.exp_env prim_type prim_mode
@@ -503,9 +506,7 @@ and transl_exp0 ~in_new_scope ~scopes e =
   | Texp_setfield(arg, _, lbl, newval) ->
       let mode =
         let arg_mode = Btype.Value_mode.regional_to_local_alloc arg.exp_mode in
-        match Btype.Alloc_mode.constrain_lower arg_mode with
-        | Global -> Assignment
-        | Local -> Local_assignment
+        transl_alloc_mode_assignment arg_mode
       in
       let access =
         match lbl.lbl_repres with
@@ -969,10 +970,9 @@ and transl_apply ~scopes
         let id_arg = Ident.create_local "param" in
         let body =
           let loc = map_scopes enter_partial_or_eta_wrapper loc in
-          let sloc = to_location loc in
-          let mode = transl_alloc_mode sloc mode_closure in
-          let arg_mode = transl_alloc_mode sloc mode_arg in
-          let ret_mode = transl_alloc_mode sloc mode_ret in
+          let mode = transl_alloc_mode mode_closure in
+          let arg_mode = transl_alloc_mode mode_arg in
+          let ret_mode = transl_alloc_mode mode_ret in
           let body = build_apply handle [Lvar id_arg] loc Rc_normal ret_mode l in
           let nlocal =
             match join_mode mode (join_mode arg_mode ret_mode) with
@@ -1019,7 +1019,7 @@ and transl_curried_function
                exp_env; exp_type; exp_loc; exp_mode}}]
       when arity < max_arity ->
       let arg_mode = transl_pat_mode pat in
-      let curry_mode = transl_value_mode exp_loc exp_mode in
+      let curry_mode = transl_value_mode exp_mode in
       (* Lfunctions must have local returns after the first local arg/ret *)
       if not (sub_mode mode curry_mode && sub_mode arg_mode curry_mode) then
         (* Cannot curry here *)
@@ -1068,11 +1068,11 @@ and transl_tupled_function
       ~scopes ~arity ~mode ~region loc return
       repr partial (param:Ident.t) cases =
   match cases with
-  | {c_lhs={pat_desc = Tpat_tuple pl; pat_loc; pat_mode }} :: _
+  | {c_lhs={pat_desc = Tpat_tuple pl; pat_mode }} :: _
     when !Clflags.native_code
       && arity = 1
       && mode = Alloc_heap
-      && transl_value_mode pat_loc pat_mode = Alloc_heap
+      && transl_value_mode pat_mode = Alloc_heap
       && List.length pl <= (Lambda.max_arity ()) ->
       begin try
         let size = List.length pl in
@@ -1516,8 +1516,6 @@ let report_error ppf = function
         "Ancestor names can only be used to select inherited methods"
   | Unreachable_reached ->
       fprintf ppf "Unreachable expression was reached"
-  | Local_allocs_not_enabled ->
-      fprintf ppf "Local allocation required but '-extension local' not enabled"
 
 let () =
   Location.register_error_of_exn

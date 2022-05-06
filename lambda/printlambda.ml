@@ -603,11 +603,9 @@ let rec lam ppf = function
   | Lfunction{kind; params; return; body; attr; mode; region} ->
       let pr_params ppf params =
         match kind with
-        | Curried {nlocal} ->
-            let first_local = List.length params - nlocal in
-            List.iteri (fun i (param, k) ->
-                fprintf ppf "@ %a%a%s" Ident.print param value_kind k
-                  (if first_local <= i then "[->L]" else "")) params
+        | Curried _ ->
+            List.iter (fun (param, k) ->
+                fprintf ppf "@ %a%a" Ident.print param value_kind k) params
         | Tupled ->
             fprintf ppf " (";
             let first = ref true in

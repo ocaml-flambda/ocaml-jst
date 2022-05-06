@@ -1,0 +1,34 @@
+          small: 4 words allocated
+       dupsmall: 4 words allocated
+            big: 301 words allocated
+         dupbig: 301 words allocated
+          float: 4 words allocated
+      projfloat: 14 words allocated
+       dupfloat: 4 words allocated
+    polyvariant: 7 words allocated
+      extension: 7 words allocated
+        arith32: 3 words allocated
+     arithfloat: 2 words allocated
+        closure: 4 words allocated
+    currylocal1: 5 words allocated
+    currylocal2: 5 words allocated
+    currylocal3: 4 words allocated
+      partprim1: 5 words allocated
+      partprim2: 5 words allocated
+       intarray: 2 words allocated
+      addrarray: 2 words allocated
+     floatarray: 2 words allocated
+ flatfloatarray: OK
+     shortarray: 2 words allocated
+      longarray: 385 words allocated
+  floatgenarray: 4 words allocated
+    longfgarray: 770 words allocated
+     maniparray: 9 words allocated
+    manipfarray: 9 words allocated
+            ref: 2 words allocated
+          bytes: OK
+     stringbint: 22 words allocated
+  bigstringbint: 22 words allocated
+       verylong: OK
+       manylong: 38500 words allocated
+    optionalarg: 2 words allocated
