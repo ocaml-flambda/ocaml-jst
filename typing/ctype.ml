@@ -3463,7 +3463,7 @@ let rec moregen inst_nongen variance type_pairs env t1 t2 =
                     moregen_param_list inst_nongen variance type_pairs env
                       decl.type_variance tl1 tl2
                 | exception Not_found ->
-                    moregen_list inst_nongen variance type_pairs env tl1 tl2
+                    moregen_list inst_nongen Invariant type_pairs env tl1 tl2
             end
           | (Tpackage (p1, n1, tl1), Tpackage (p2, n2, tl2)) ->
               begin try
