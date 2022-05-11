@@ -421,7 +421,7 @@ module Extension = struct
 
   (* Mutable state.  Invariants:
      (1) [extensions] contains at most one copy of each extension.
-     (2) [!disallow_extensions] iff [!extensions = []]. *)
+     (2) [!disallow_extensions] implies [!extensions = []]. *)
   let extensions          = ref default_extensions (* -extension *)
   let disallow_extensions = ref false              (* -disable-all-extensions *)
 
@@ -447,13 +447,21 @@ module Extension = struct
   let enable  = set ~enabled:true
   let disable = set ~enabled:false
 
-  let is_enabled extn = not !disallow_extensions && List.mem extn !extensions
+  let is_enabled extn = List.mem extn !extensions
 
+  (* It might make sense to ban [set], [enable], [disable], and
+     [disallow_extensions] inside [f], but it's not clear that it's worth the
+     hassle *)
   let with_set extn ~enabled f =
-    let current_extensions = !extensions in
-    Fun.protect ~finally:(fun () -> extensions := current_extensions) (fun () ->
-      set extn ~enabled;
-      f ())
+    let current_extensions          = !extensions in
+    let current_disallow_extensions = !disallow_extensions in
+    Fun.protect
+      ~finally:(fun () ->
+        extensions          := current_extensions;
+        disallow_extensions := current_disallow_extensions)
+      (fun () ->
+         set extn ~enabled;
+         f ())
 
   let with_enabled  = with_set ~enabled:true
   let with_disabled = with_set ~enabled:false

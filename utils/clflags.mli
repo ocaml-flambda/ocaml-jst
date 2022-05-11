@@ -235,7 +235,10 @@ module Extension : sig
   val is_enabled : t -> bool
 
   (** Tooling support: Temporarily enable and disable language extensions; these
-      operations are idempotent *)
+      operations are idempotent.  Calls to [set], [enable], and [disable], and
+      [disallow_extensions] inside the body of the function argument will also
+      be rolled back when the function finishes, but this behavior may change;
+      nest multiple [with_*] functions instead.  *)
   val with_set : t -> enabled:bool -> (unit -> unit) -> unit
   val with_enabled : t -> (unit -> unit) -> unit
   val with_disabled : t -> (unit -> unit) -> unit
