@@ -87,7 +87,7 @@ let rec apply_coercion loc strict restr arg =
             Lprim(mod_field pos,[Lvar id], loc)
         in
         let lam =
-          Lprim(Pmakeblock(0, Immutable, None, Alloc_heap),
+          Lprim(Pmakeblock(0, Immutable, None, alloc_heap),
                 List.map (apply_coercion_field loc get_field) pos_cc_list,
                 loc)
         in
@@ -126,7 +126,7 @@ and apply_coercion_result loc strict funct params args cc_res =
                         is_a_functor = true;
                         stub = true; };
                loc = loc;
-               mode = Alloc_heap;
+               mode = alloc_heap;
                region = true;
                body = apply_coercion
                    loc Strict cc_res
@@ -135,7 +135,7 @@ and apply_coercion_result loc strict funct params args cc_res =
                       ap_func=Lvar id;
                       ap_args=List.rev args;
                       ap_region_close=Rc_normal;
-                      ap_mode=Alloc_heap;
+                      ap_mode=alloc_heap;
                       ap_tailcall=Default_tailcall;
                       ap_inlined=Default_inlined;
                       ap_specialised=Default_specialise;
@@ -400,7 +400,7 @@ let eval_rec_bindings bindings cont =
              ap_func=mod_prim "init_mod";
              ap_args=[loc; shape];
              ap_region_close=Rc_normal;
-             ap_mode=Alloc_heap;
+             ap_mode=alloc_heap;
              ap_tailcall=Default_tailcall;
              ap_inlined=Default_inlined;
              ap_specialised=Default_specialise;
@@ -429,7 +429,7 @@ let eval_rec_bindings bindings cont =
           ap_func=mod_prim "update_mod";
           ap_args=[shape; Lvar id; rhs];
           ap_region_close=Rc_normal;
-          ap_mode=Alloc_heap;
+          ap_mode=alloc_heap;
           ap_tailcall=Default_tailcall;
           ap_inlined=Default_inlined;
           ap_specialised=Default_specialise;
@@ -538,7 +538,7 @@ let rec compile_functor ~scopes mexp coercion root_path loc =
       stub = false;
     };
     loc;
-    mode = Alloc_heap;
+    mode = alloc_heap;
     region = true;
     body;
   }
@@ -569,7 +569,7 @@ and transl_module ~scopes cc rootpath mexp =
            ap_func=transl_module ~scopes Tcoerce_none None funct;
            ap_args=[transl_module ~scopes ccarg None arg];
            ap_region_close=Rc_normal;
-           ap_mode=Alloc_heap;
+           ap_mode=alloc_heap;
            ap_tailcall=Default_tailcall;
            ap_inlined=inlined_attribute;
            ap_specialised=Default_specialise;
@@ -590,7 +590,7 @@ and transl_structure ~scopes loc fields cc rootpath final_env = function
       let body, size =
         match cc with
           Tcoerce_none ->
-            Lprim(Pmakeblock(0, Immutable, None, Alloc_heap),
+            Lprim(Pmakeblock(0, Immutable, None, alloc_heap),
                   List.map (fun id -> Lvar id) (List.rev fields), loc),
               List.length fields
         | Tcoerce_structure(pos_cc_list, id_pos_list) ->
@@ -606,7 +606,7 @@ and transl_structure ~scopes loc fields cc rootpath final_env = function
             in
             let ids = List.fold_right Ident.Set.add fields Ident.Set.empty in
             let lam =
-              Lprim(Pmakeblock(0, Immutable, None, Alloc_heap),
+              Lprim(Pmakeblock(0, Immutable, None, alloc_heap),
                   List.map
                     (fun (pos, cc) ->
                       match cc with
@@ -1129,7 +1129,7 @@ let transl_store_structure ~scopes glob map prims aliases str =
             Lsequence(lam,
                       Llet(Strict, Pgenval, id,
                            Lambda.subst no_env_update subst
-                             (Lprim(Pmakeblock(0, Immutable, None, Alloc_heap),
+                             (Lprim(Pmakeblock(0, Immutable, None, alloc_heap),
                                     List.map (fun id -> Lvar id)
                                       (defined_idents str.str_items), loc)),
                            Lsequence(store_ident loc id,
@@ -1161,7 +1161,7 @@ let transl_store_structure ~scopes glob map prims aliases str =
             Lsequence(lam,
                       Llet(Strict, Pgenval, id,
                            Lambda.subst no_env_update subst
-                             (Lprim(Pmakeblock(0, Immutable, None, Alloc_heap),
+                             (Lprim(Pmakeblock(0, Immutable, None, alloc_heap),
                                     List.map field map, loc)),
                            Lsequence(store_ident loc id,
                                      transl_store ~scopes rootpath
@@ -1517,7 +1517,7 @@ let toploop_getvalue id =
     ap_args=[Lconst(Const_base(
       Const_string (toplevel_name id, Location.none, None)))];
     ap_region_close=Rc_normal;
-    ap_mode=Alloc_heap;
+    ap_mode=alloc_heap;
     ap_tailcall=Default_tailcall;
     ap_inlined=Default_inlined;
     ap_specialised=Default_specialise;
@@ -1535,7 +1535,7 @@ let toploop_setvalue id lam =
          Const_string(toplevel_name id, Location.none, None)));
        lam];
     ap_region_close=Rc_normal;
-    ap_mode=Alloc_heap;
+    ap_mode=alloc_heap;
     ap_tailcall=Default_tailcall;
     ap_inlined=Default_inlined;
     ap_specialised=Default_specialise;
@@ -1697,13 +1697,13 @@ let transl_package_flambda component_names coercion =
   in
   size,
   apply_coercion Loc_unknown Strict coercion
-    (Lprim(Pmakeblock(0, Immutable, None, Alloc_heap),
+    (Lprim(Pmakeblock(0, Immutable, None, alloc_heap),
            List.map get_component component_names,
            Loc_unknown))
 
 let transl_package component_names target_name coercion =
   let components =
-    Lprim(Pmakeblock(0, Immutable, None, Alloc_heap),
+    Lprim(Pmakeblock(0, Immutable, None, alloc_heap),
           List.map get_component component_names, Loc_unknown) in
   Lprim(Psetglobal target_name,
         [apply_coercion Loc_unknown Strict coercion components],
@@ -1741,7 +1741,7 @@ let transl_store_package component_names target_name coercion =
          0 component_names)
   | Tcoerce_structure (pos_cc_list, _id_pos_list) ->
       let components =
-        Lprim(Pmakeblock(0, Immutable, None, Alloc_heap),
+        Lprim(Pmakeblock(0, Immutable, None, alloc_heap),
               List.map get_component component_names,
               Loc_unknown)
       in

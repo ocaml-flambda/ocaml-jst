@@ -75,7 +75,7 @@ let transl_extension_constructor ~scopes env path ext =
       (* Extension constructors are currently always Alloc_heap.
          They could be Alloc_local, but that would require changes
          to pattern typing, as patterns can close over them. *)
-      Lprim (Pmakeblock (Obj.object_tag, Immutable_unique, None, Alloc_heap),
+      Lprim (Pmakeblock (Obj.object_tag, Immutable_unique, None, alloc_heap),
         [Lconst (Const_base (Const_string (name, ext.ext_loc, None)));
          Lprim (prim_fresh_oo_id, [Lconst (const_int 0)], loc)],
         loc)
@@ -94,17 +94,10 @@ let extract_float = function
     Const_base(Const_float f) -> f
   | _ -> fatal_error "Translcore.extract_float"
 
-let transl_alloc_mode alloc_mode : Lambda.alloc_mode =
+let transl_alloc_mode alloc_mode =
   match Btype.Alloc_mode.constrain_lower alloc_mode with
-  | Global -> Alloc_heap
-  | Local ->
-     if Config.stack_allocation then Alloc_local
-     else Alloc_heap
-
-let transl_alloc_mode_assignment alloc_mode =
-  match Btype.Alloc_mode.constrain_lower alloc_mode with
-  | Global -> Assignment
-  | Local -> Local_assignment
+  | Global -> alloc_heap
+  | Local -> alloc_local
 
 let transl_value_mode mode =
   let alloc_mode = Btype.Value_mode.regional_to_global_alloc mode in
@@ -116,7 +109,9 @@ let transl_pat_mode p = transl_value_mode p.pat_mode
 let transl_apply_position position =
   match position with
   | Nontail -> Rc_normal
-  | Tail -> Rc_close_at_apply
+  | Tail ->
+    if Config.stack_allocation then Rc_close_at_apply
+    else Rc_normal
 
 let may_allocate_in_region lam =
   let rec loop = function
@@ -164,7 +159,8 @@ let maybe_region lam =
     | lam ->
        Lambda.shallow_map ~tail:remove_tail_markers ~non_tail:Fun.id lam
   in
-  if may_allocate_in_region lam then Lregion lam
+  if not Config.stack_allocation then lam
+  else if may_allocate_in_region lam then Lregion lam
   else remove_tail_markers lam
 
 (* Push the default values under the functional abstractions *)
@@ -273,7 +269,7 @@ let assert_failed ~scopes exp =
   in
   let loc = of_location ~scopes exp.exp_loc in
   Lprim(Praise Raise_regular, [event_after ~scopes exp
-    (Lprim(Pmakeblock(0, Immutable, None, Alloc_heap),
+    (Lprim(Pmakeblock(0, Immutable, None, alloc_heap),
           [slot;
            Lconst(Const_block(0,
               [Const_base(Const_string (fname, exp.exp_loc, None));
@@ -320,7 +316,7 @@ let can_apply_primitive p pmode pos args =
     else if pos = Typedtree.Nontail then true
     else begin
       let return_mode = Ctype.prim_mode pmode p.prim_native_repr_res in
-      (transl_alloc_mode return_mode = Alloc_heap)
+      is_heap_mode (transl_alloc_mode return_mode)
     end
   end
 
@@ -506,7 +502,7 @@ and transl_exp0 ~in_new_scope ~scopes e =
   | Texp_setfield(arg, _, lbl, newval) ->
       let mode =
         let arg_mode = Btype.Value_mode.regional_to_local_alloc arg.exp_mode in
-        transl_alloc_mode_assignment arg_mode
+        Assignment (transl_alloc_mode arg_mode)
       in
       let access =
         match lbl.lbl_repres with
@@ -534,7 +530,7 @@ and transl_exp0 ~in_new_scope ~scopes e =
           raise Not_constant
         end;
         (* Pduparray only works in Alloc_heap mode *)
-        if mode <> Alloc_heap then raise Not_constant;
+        if is_local_mode mode then raise Not_constant;
         begin match List.map extract_constant ll with
         | exception Not_constant when kind = Pfloatarray ->
             (* We cannot currently lift [Pintarray] arrays safely in Flambda
@@ -627,7 +623,7 @@ and transl_exp0 ~in_new_scope ~scopes e =
               [transl_class_path loc e.exp_env cl], loc);
         ap_args=[lambda_unit];
         ap_region_close=pos;
-        ap_mode=Alloc_heap;
+        ap_mode=alloc_heap;
         ap_tailcall=Default_tailcall;
         ap_inlined=Default_inlined;
         ap_specialised=Default_specialise;
@@ -653,7 +649,7 @@ and transl_exp0 ~in_new_scope ~scopes e =
              ap_func=Translobj.oo_prim "copy";
              ap_args=[self];
              ap_region_close=Rc_normal;
-             ap_mode=Alloc_heap;
+             ap_mode=alloc_heap;
              ap_tailcall=Default_tailcall;
              ap_inlined=Default_inlined;
              ap_specialised=Default_specialise;
@@ -698,7 +694,7 @@ and transl_exp0 ~in_new_scope ~scopes e =
       else begin
         Lifthenelse
           (transl_exp ~scopes cond,
-           lambda_unit, 
+           lambda_unit,
            assert_failed ~scopes e,
            Pintval (* unit *))
       end
@@ -706,7 +702,7 @@ and transl_exp0 ~in_new_scope ~scopes e =
       (* when e needs no computation (constants, identifiers, ...), we
          optimize the translation just as Lazy.lazy_from_val would
          do *)
-      assert (transl_exp_mode e = Alloc_heap);
+      assert (is_heap_mode (transl_exp_mode e));
       begin match Typeopt.classify_lazy_argument e with
       | `Constant_or_function ->
         (* A constant expr (of type <> float if [Config.flat_float_array] is
@@ -717,7 +713,7 @@ and transl_exp0 ~in_new_scope ~scopes e =
              block will never be shortcutted since it points to a float
              and Config.flat_float_array is true. *)
          Lprim(Pmakeblock(Obj.forward_tag, Immutable, None,
-                          Alloc_heap),
+                          alloc_heap),
                 [transl_exp ~scopes e], of_location ~scopes e.exp_loc)
       | `Identifier `Forward_value ->
          (* CR-someday mshinwell: Consider adding a new primitive
@@ -728,7 +724,7 @@ and transl_exp0 ~in_new_scope ~scopes e =
             value may subsequently turn into an immediate... *)
          Lprim (Popaque,
                 [Lprim(Pmakeblock(Obj.forward_tag, Immutable, None,
-                                  Alloc_heap),
+                                  alloc_heap),
                        [transl_exp ~scopes e],
                        of_location ~scopes e.exp_loc)],
                 of_location ~scopes e.exp_loc)
@@ -742,11 +738,11 @@ and transl_exp0 ~in_new_scope ~scopes e =
                              return = Pgenval;
                              attr = default_function_attribute;
                              loc = of_location ~scopes e.exp_loc;
-                             mode = Alloc_heap;
+                             mode = alloc_heap;
                              region = true;
                              body = maybe_region (transl_exp ~scopes e)} in
           Lprim(Pmakeblock(Config.lazy_tag, Mutable, None,
-                           Alloc_heap), [fn],
+                           alloc_heap), [fn],
                 of_location ~scopes e.exp_loc)
       end
   | Texp_object (cs, meths) ->
@@ -812,7 +808,7 @@ and transl_exp0 ~in_new_scope ~scopes e =
           body;
           loc = of_location ~scopes exp.exp_loc;
           attr;
-          mode=Alloc_heap;
+          mode=alloc_heap;
           region=true;
         }
       in
@@ -820,7 +816,7 @@ and transl_exp0 ~in_new_scope ~scopes e =
         { ap_func = Lvar funcid;
           ap_args = List.map (fun id -> Lvar id) arg_idents;
           ap_region_close = Rc_normal;
-          ap_mode = Alloc_heap;
+          ap_mode = alloc_heap;
           ap_loc = of_location e.exp_loc ~scopes;
           ap_tailcall = Default_tailcall;
           ap_inlined = Never_inlined;
@@ -906,7 +902,7 @@ and transl_apply ~scopes
       ?(inlined = Default_inlined)
       ?(specialised = Default_specialise)
       ?(position=Rc_normal)
-      ?(mode=Alloc_heap)
+      ?(mode=alloc_heap)
       lam sargs loc
   =
   let lapply funct args loc pos mode =
@@ -1071,8 +1067,8 @@ and transl_tupled_function
   | {c_lhs={pat_desc = Tpat_tuple pl; pat_mode }} :: _
     when !Clflags.native_code
       && arity = 1
-      && mode = Alloc_heap
-      && transl_value_mode pat_mode = Alloc_heap
+      && is_heap_mode mode
+      && is_heap_mode (transl_value_mode pat_mode)
       && List.length pl <= (Lambda.max_arity ()) ->
       begin try
         let size = List.length pl in
@@ -1119,7 +1115,7 @@ and transl_function0
       match cases with
       | [] ->
         (* With Camlp4, a pattern matching might be empty *)
-        Alloc_heap, Pgenval
+        alloc_heap, Pgenval
       | {c_lhs=pat} :: other_cases ->
         (* All the patterns might not share the same types. We must take the
            union of the patterns types *)
@@ -1137,7 +1133,7 @@ and transl_function0
     in
     let region = region || not (may_allocate_in_region body) in
     let nlocal =
-      if not region then 1
+      if Config.stack_allocation && not region then 1
       else match join_mode mode arg_mode with
         | Alloc_local -> 1
         | Alloc_heap -> 0
@@ -1224,7 +1220,7 @@ and transl_let ~scopes ?(add_regions=false) ?(in_structure=false)
       fun body -> Lletrec(lam_bds, body)
 
 and transl_setinstvar ~scopes loc self var expr =
-  Lprim(Psetfield_computed (maybe_pointer expr, Assignment),
+  Lprim(Psetfield_computed (maybe_pointer expr, Assignment alloc_heap),
     [self; var; transl_exp ~scopes expr], loc)
 
 and transl_record ~scopes loc env mode fields repres opt_init_expr =
@@ -1232,7 +1228,7 @@ and transl_record ~scopes loc env mode fields repres opt_init_expr =
   (* Determine if there are "enough" fields (only relevant if this is a
      functional-style record update *)
   let no_init = match opt_init_expr with None -> true | _ -> false in
-  if no_init || size < Config.max_young_wosize || mode = Lambda.Alloc_local
+  if no_init || size < Config.max_young_wosize || is_local_mode mode
   then begin
     (* Allocate new record with given fields (and remaining fields
        taken from init_expr if any *)
@@ -1256,7 +1252,7 @@ and transl_record ~scopes loc env mode fields repres opt_init_expr =
                  | Record_float ->
                     (* This allocation is always deleted,
                        so it's simpler to leave it Alloc_heap *)
-                    Pfloatfield (i, sem, Alloc_heap) in
+                    Pfloatfield (i, sem, alloc_heap) in
                Lprim(access, [Lvar init_id],
                      of_location ~scopes loc),
                field_kind
@@ -1314,11 +1310,15 @@ and transl_record ~scopes loc env mode fields repres opt_init_expr =
             match repres with
               Record_regular
             | Record_inlined _ ->
-                Psetfield(lbl.lbl_pos, maybe_pointer expr, Assignment)
+                let ptr = maybe_pointer expr in
+                Psetfield(lbl.lbl_pos, ptr, Assignment alloc_heap)
             | Record_unboxed _ -> assert false
-            | Record_float -> Psetfloatfield (lbl.lbl_pos, Assignment)
+            | Record_float ->
+                Psetfloatfield (lbl.lbl_pos, Assignment alloc_heap)
             | Record_extension _ ->
-                Psetfield(lbl.lbl_pos + 1, maybe_pointer expr, Assignment)
+                let pos = lbl.lbl_pos + 1 in
+                let ptr = maybe_pointer expr in
+                Psetfield(pos, ptr, Assignment alloc_heap)
           in
           Lsequence(Lprim(upd, [Lvar copy_id; transl_exp ~scopes expr],
                           of_location ~scopes loc),
@@ -1327,7 +1327,7 @@ and transl_record ~scopes loc env mode fields repres opt_init_expr =
     begin match opt_init_expr with
       None -> assert false
     | Some init_expr ->
-        assert (mode = Lambda.Alloc_heap); (* Pduprecord must be Alloc_heap *)
+        assert (is_heap_mode mode); (* Pduprecord must be Alloc_heap *)
         Llet(Strict, Pgenval, copy_id,
              Lprim(Pduprecord (repres, size), [transl_exp ~scopes init_expr],
                    of_location ~scopes loc),
@@ -1449,7 +1449,7 @@ and transl_letop ~scopes loc env let_ ands param case partial =
                ap_func = op;
                ap_args=[Lvar left_id; Lvar right_id];
                ap_region_close=Rc_normal;
-               ap_mode=Alloc_heap;
+               ap_mode=alloc_heap;
                ap_tailcall = Default_tailcall;
                ap_inlined = Default_inlined;
                ap_specialised = Default_specialise;
@@ -1469,20 +1469,20 @@ and transl_letop ~scopes loc env let_ ands param case partial =
       event_function ~scopes case.c_rhs
         (function repr ->
            transl_curried_function ~scopes case.c_rhs.exp_loc return_kind
-             repr ~mode:Alloc_heap ~region:true partial param [case])
+             repr ~mode:alloc_heap ~region:true partial param [case])
     in
     let attr = default_function_attribute in
     let loc = of_location ~scopes case.c_rhs.exp_loc in
     let body = maybe_region body in
     Lfunction{kind; params; return; body; attr; loc;
-              mode=Alloc_heap; region=true}
+              mode=alloc_heap; region=true}
   in
   Lapply{
     ap_loc = of_location ~scopes loc;
     ap_func = op;
     ap_args=[exp; func];
     ap_region_close=Rc_normal;
-    ap_mode=Alloc_heap;
+    ap_mode=alloc_heap;
     ap_tailcall = Default_tailcall;
     ap_inlined = Default_inlined;
     ap_specialised = Default_specialise;

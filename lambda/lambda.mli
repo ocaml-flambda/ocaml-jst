@@ -34,9 +34,17 @@ type immediate_or_pointer =
   | Immediate
   | Pointer
 
+type alloc_mode = private
+  | Alloc_heap
+  | Alloc_local
+
+val alloc_heap : alloc_mode
+
+(* Actually [Alloc_heap] if [Config.stack_allocation] is [false] *)
+val alloc_local : alloc_mode
+
 type initialization_or_assignment =
-  | Assignment
-  | Local_assignment (* mutations of blocks that may be locally allocated *)
+  | Assignment of alloc_mode
   (* Initialization of in heap values, like [caml_initialize] C primitive.  The
      field should not have been read before and initialization should happen
      only once. *)
@@ -52,10 +60,6 @@ type is_safe =
 type field_read_semantics =
   | Reads_agree
   | Reads_vary
-
-type alloc_mode =
-  | Alloc_heap
-  | Alloc_local
 
 (* Tail calls can close their enclosing region early *)
 type region_close =
@@ -489,6 +493,8 @@ val max_arity : unit -> int
 val join_mode : alloc_mode -> alloc_mode -> alloc_mode
 val sub_mode : alloc_mode -> alloc_mode -> bool
 val eq_mode : alloc_mode -> alloc_mode -> bool
+val is_local_mode : alloc_mode -> bool
+val is_heap_mode : alloc_mode -> bool
 
 val primitive_may_allocate : primitive -> alloc_mode option
   (** Whether and where a primitive may allocate.

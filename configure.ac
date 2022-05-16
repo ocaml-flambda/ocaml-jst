@@ -1872,7 +1872,8 @@ AS_IF([test x"$DEFAULT_STRING" = "xunsafe"],
   [default_safe_string=true])
 
 AS_IF([test x"$enable_stack_allocation" = "xyes"],
-  [stack_allocation=true],
+  [AC_DEFINE([STACK_ALLOCATION])
+   stack_allocation=true],
   [stack_allocation=false])
 
 oc_cflags="$common_cflags $internal_cflags"

@@ -3,8 +3,9 @@
    ** native
       reference = "${test_source_directory}/alloc.stack.reference"
    * no-stack-allocation
-   ** native
-      reference = "${test_source_directory}/alloc.heap.reference"
+   ** flat-float-array
+   *** native
+       reference = "${test_source_directory}/alloc.heap.reference"
  *)
 
 type t = int

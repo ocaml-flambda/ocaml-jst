@@ -1598,7 +1598,7 @@ Optional Features:
   --disable-function-sections
                           do not emit each function in a separate section
   --enable-stack-allocation
-                          allocate local values on a stack
+                          enable stack allocation of local values
   --enable-shared[=PKGS]  build shared libraries [default=yes]
   --enable-static[=PKGS]  build static libraries [default=yes]
   --enable-fast-install[=PKGS]
@@ -17151,7 +17151,9 @@ else
 fi
 
 if test x"$enable_stack_allocation" = "xyes"; then :
-  stack_allocation=true
+  $as_echo "#define STACK_ALLOCATION 1" >>confdefs.h
+
+   stack_allocation=true
 else
   stack_allocation=false
 fi
