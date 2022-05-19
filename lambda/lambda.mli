@@ -44,6 +44,8 @@ val alloc_heap : alloc_mode
 val alloc_local : alloc_mode
 
 type initialization_or_assignment =
+  (* [Assignment Alloc_local] is a mutation of a block that may be heap or local.
+     [Assignment Alloc_heap] is a mutation of a block that's definitely heap. *)
   | Assignment of alloc_mode
   (* Initialization of in heap values, like [caml_initialize] C primitive.  The
      field should not have been read before and initialization should happen

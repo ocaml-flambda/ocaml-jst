@@ -145,9 +145,12 @@ let may_allocate_in_region lam =
       | Levent _ | Lifused _) as lam ->
        Lambda.iter_head_constructor loop lam
   in
-  match loop lam with
-  | () -> false
-  | exception Exit -> true
+  if not Config.stack_allocation then false
+  else begin
+    match loop lam with
+    | () -> false
+    | exception Exit -> true
+  end
 
 let maybe_region lam =
   let rec remove_tail_markers = function
@@ -1098,9 +1101,12 @@ and transl_tupled_function
           List.map (fun kind -> Ident.create_local "param", kind) kinds
         in
         let params = List.map fst tparams in
-        ((Tupled, tparams, return, region),
-         Matching.for_tupled_function ~scopes loc return params
-           (transl_tupled_cases ~scopes pats_expr_list) partial)
+        let body =
+          Matching.for_tupled_function ~scopes loc return params
+            (transl_tupled_cases ~scopes pats_expr_list) partial
+        in
+        let region = region || not (may_allocate_in_region body) in
+        ((Tupled, tparams, return, region), body)
     with Matching.Cannot_flatten ->
       transl_function0 ~scopes loc ~mode ~region
         return repr partial param cases
@@ -1133,7 +1139,7 @@ and transl_function0
     in
     let region = region || not (may_allocate_in_region body) in
     let nlocal =
-      if Config.stack_allocation && not region then 1
+      if not region then 1
       else match join_mode mode arg_mode with
         | Alloc_local -> 1
         | Alloc_heap -> 0
