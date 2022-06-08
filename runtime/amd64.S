@@ -560,9 +560,8 @@ LBL(115):
 
         movq    Caml_state(modify_log_index), %r11
 LBL(113):
-        decq    %r11
+        subq    $16, %r11
         movq    %r11, Caml_state(modify_log_index)
-        shlq    $4, %r11
         movq    Caml_state(modify_log), %r10
         addq    %r11, %r10
         movq    %rax, 0(%r10)

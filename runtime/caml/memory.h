@@ -68,8 +68,13 @@ CAMLextern char *caml_alloc_for_heap (asize_t request);   /* Size in bytes. */
 CAMLextern void caml_free_for_heap (char *mem);
 CAMLextern int caml_add_to_heap (char *mem);
 #define CAML_MODIFY_LOG_SIZE 1024
+struct modify_log_entry {
+  value *field_pointer;
+  value old_value;
+};
 Caml_inline int caml_modify_log_is_empty (void) {
-  return Caml_state->modify_log_index == CAML_MODIFY_LOG_SIZE;
+  return Caml_state->modify_log_index / sizeof (struct modify_log_entry)
+    == CAML_MODIFY_LOG_SIZE;
 }
 #endif /* CAML_INTERNALS */
 

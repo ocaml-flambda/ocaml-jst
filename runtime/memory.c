@@ -601,15 +601,11 @@ CAMLexport CAMLweakdef void caml_initialize (value *fp, value val)
   }
 }
 
-struct modify_log_entry {
-  value *field_pointer;
-  value old_value;
-};
-
 #define MODIFY_CACHE_BITS 10
 #define MODIFY_CACHE_SIZE (1 << MODIFY_CACHE_BITS)
 #define MODIFY_CACHE_SHIFT (8 * sizeof (uintnat) - MODIFY_CACHE_BITS)
-#define MODIFY_CACHE_HASH_FACTOR 0x8765432120171129
+#define MODIFY_CACHE_HASH_FACTOR 11400714819323198485UL
+#define LOG_WORD_SIZE (sizeof (uintnat) / 4 + 1)
 
 struct modify_cache_entry {
   value *field_pointer;
@@ -617,6 +613,13 @@ struct modify_cache_entry {
 };
 
 static struct modify_cache_entry modify_cache [MODIFY_CACHE_SIZE];
+
+static inline uintnat modify_hash (value *fp)
+{
+  return (((uintnat) fp /*>> LOG_WORD_SIZE*/)
+          * MODIFY_CACHE_HASH_FACTOR)
+         >> MODIFY_CACHE_SHIFT;
+}
 
 void caml_modify_batch (void)
 {
@@ -644,7 +647,8 @@ void caml_modify_batch (void)
   uintnat h;
 
   CAML_EV_BEGIN(EV_MODIFY_BATCH);
-  index = (intnat) Caml_state -> modify_log_index;
+  index =
+    (intnat) (Caml_state->modify_log_index / sizeof (struct modify_log_entry));
   for (i = CAML_MODIFY_LOG_SIZE - 1; i >= index; i--){
     fp = Caml_state->modify_log[i].field_pointer;
     if (Is_young((value)fp)){
@@ -654,11 +658,12 @@ void caml_modify_batch (void)
     } else {
       /* The modified object resides in the major heap. */
       CAMLassert(Is_in_heap(fp));
-      h = ((uintnat) fp * MODIFY_CACHE_HASH_FACTOR) >> MODIFY_CACHE_SHIFT;
+      h = modify_hash (fp);
+      CAMLassert (fp != NULL);
       if (modify_cache[h].field_pointer == fp){
         CAML_EV_COUNTER (EV_C_CAML_MODIFY_CACHE_HIT, 1);
 #ifdef DEBUG
-      fprintf (stderr, "hit h=%04lx fp=%p\n", h, fp);
+        fprintf (stderr, "hit %04lx fp=%p\n", h, fp);
 #endif
         /* Writing again to an already-modified field:
            condition 2 cannot occur. */
@@ -673,7 +678,8 @@ void caml_modify_batch (void)
       }else{
         CAML_EV_COUNTER (EV_C_CAML_MODIFY_CACHE_MISS, 1);
 #ifdef DEBUG
-      fprintf (stderr, "miss h=%04lx cache=%p fp=%p\n", h, modify_cache[h], fp);
+        CAMLassert (fp != NULL);
+        fprintf (stderr, "miss %04lx cache=%p fp=%p\n", h, modify_cache[h].field_pointer, fp);
 #endif
         modify_cache[h].field_pointer = fp;
         modify_cache[h].in_ref_table = 0;
@@ -702,7 +708,8 @@ void caml_modify_batch (void)
       }
     }
   }
-  Caml_state->modify_log_index = CAML_MODIFY_LOG_SIZE;
+  Caml_state->modify_log_index =
+    CAML_MODIFY_LOG_SIZE * sizeof (struct modify_log_entry);
   CAML_EV_END(EV_MODIFY_BATCH);
 }
 
@@ -849,12 +856,15 @@ CAMLprim value caml_local_stack_offset(value blk)
 
 CAMLexport CAMLweakdef void caml_modify (value *fp, value val)
 {
+  uintnat i;
+
   if (Caml_state->modify_log_index == 0){
     caml_modify_batch ();
   }
-  -- Caml_state->modify_log_index;
-  Caml_state->modify_log[Caml_state->modify_log_index].field_pointer = fp;
-  Caml_state->modify_log[Caml_state->modify_log_index].old_value = *fp;
+  Caml_state->modify_log_index -= sizeof (struct modify_log_entry);
+  i = Caml_state->modify_log_index / sizeof (struct modify_log_entry);
+  Caml_state->modify_log[i].field_pointer = fp;
+  Caml_state->modify_log[i].old_value = *fp;
   *fp = val;
 }
 
@@ -889,7 +899,8 @@ void caml_init_modify (void)
     }
   }
 #endif
-  Caml_state->modify_log_index = CAML_MODIFY_LOG_SIZE;
+  Caml_state->modify_log_index =
+    CAML_MODIFY_LOG_SIZE * sizeof (struct modify_log_entry);
   caml_modify_flush_cache ();
 }
 
