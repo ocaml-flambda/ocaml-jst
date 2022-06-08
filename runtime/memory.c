@@ -601,7 +601,7 @@ CAMLexport CAMLweakdef void caml_initialize (value *fp, value val)
   }
 }
 
-#define MODIFY_CACHE_BITS 10
+#define MODIFY_CACHE_BITS 25
 #define MODIFY_CACHE_SIZE (1 << MODIFY_CACHE_BITS)
 #define MODIFY_CACHE_SHIFT (8 * sizeof (uintnat) - MODIFY_CACHE_BITS)
 #define MODIFY_CACHE_HASH_FACTOR 11400714819323198485UL
