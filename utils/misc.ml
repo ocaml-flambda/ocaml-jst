@@ -95,6 +95,15 @@ let rec split_last = function
       let (lst, last) = split_last tl in
       (hd :: lst, last)
 
+let take l_orig n =
+  let rec take l n acc =
+    if n <= 0 then List.rev acc else
+      match l with
+      | [] -> l_orig
+      | hd :: tl -> take tl (n-1) (hd :: acc)
+  in
+  take l_orig n []
+
 module Stdlib = struct
   module List = struct
     include List
