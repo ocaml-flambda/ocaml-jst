@@ -601,7 +601,7 @@ CAMLexport CAMLweakdef void caml_initialize (value *fp, value val)
   }
 }
 
-#define MODIFY_CACHE_BITS 25
+#define MODIFY_CACHE_BITS 10
 #define MODIFY_CACHE_SIZE (1 << MODIFY_CACHE_BITS)
 #define MODIFY_CACHE_SHIFT (8 * sizeof (uintnat) - MODIFY_CACHE_BITS)
 #define MODIFY_CACHE_HASH_FACTOR 11400714819323198485UL
@@ -647,10 +647,16 @@ void caml_modify_batch (void)
   uintnat h;
   char *mode = getenv ("CAML_MODIFY_BATCH_STOP");
 
-  if (mode != NULL && !strcmp (mode, "before")) exit (0);
   CAML_EV_BEGIN(EV_MODIFY_BATCH);
   index =
     (intnat) (Caml_state->modify_log_index / sizeof (struct modify_log_entry));
+  fprintf (stderr, "batch size = %ld index=%ld\n", CAML_MODIFY_LOG_SIZE - index, index);
+  fflush (stderr);
+  if (index == 0 && mode != NULL && !strcmp (mode, "before")){
+    fprintf (stderr, "stop before modify-batch\n");
+    fflush (stderr);
+    exit (0);
+  }
   for (i = CAML_MODIFY_LOG_SIZE - 1; i >= index; i--){
     fp = Caml_state->modify_log[i].field_pointer;
     if (Is_young((value)fp)){
@@ -713,7 +719,11 @@ void caml_modify_batch (void)
   Caml_state->modify_log_index =
     CAML_MODIFY_LOG_SIZE * sizeof (struct modify_log_entry);
   CAML_EV_END(EV_MODIFY_BATCH);
-  if (mode != NULL && !strcmp (mode, "after")) exit (0);
+  if (index == 0 && mode != NULL && !strcmp (mode, "after")){
+    fprintf (stderr, "stop after modify-batch\n");
+    fflush (stderr);
+    exit (0);
+  }
 }
 
 /* This version of [caml_modify] may additionally be used to mutate
