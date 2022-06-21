@@ -563,7 +563,6 @@ type lookup_error =
   | Generative_used_as_applicative of Longident.t
   | Illegal_reference_to_recursive_module
   | Cannot_scrape_alias of Longident.t * Path.t
-  | Local_value_escapes of Longident.t * [`Regionality | `Locality]
   | Local_value_used_in_closure of Longident.t
 
 type error =
@@ -3277,16 +3276,6 @@ let report_lookup_error _loc env ppf = function
       fprintf ppf
         "The module %a is an alias for module %a, which %s"
         !print_longident lid !print_path p cause
-  | Local_value_escapes(lid, reason) ->
-      let mode =
-        match reason with
-        | `Regionality -> ""
-        | `Locality -> "local "
-      in
-      fprintf ppf
-        "@[The %svalue %a cannot be used here@ \
-           as it escapes its region@]"
-        mode !print_longident lid
   | Local_value_used_in_closure lid ->
       fprintf ppf
         "@[The value %a is local, so cannot be used \
