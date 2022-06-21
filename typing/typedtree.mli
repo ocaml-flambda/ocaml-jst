@@ -191,8 +191,6 @@ and expression_desc =
 
             partial =
               [Partial] if the pattern match is partial
-              [Total_w68_error] otherwise if warning 68 is enabled as an error
-              [Total_w68_active] otherwise if warning 68 is enabled
               [Total] otherwise.
          *)
   | Texp_apply of expression * (arg_label * apply_arg) list * apply_position
