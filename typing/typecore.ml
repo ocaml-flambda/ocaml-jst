@@ -255,6 +255,12 @@ let mode_subcomponent expected_mode =
     mode = Value_mode.regional_to_global expected_mode.mode;
     tuple_modes = [] }
 
+let mode_nonlocal expected_mode =
+  { position = Nontail;
+    escaping_context = None;
+    mode = Value_mode.local_to_regional expected_mode.mode;
+    tuple_modes = [] }
+
 let mode_tailcall_function mode =
   { position = Nontail;
     escaping_context = Some Tailcall_function;
@@ -5162,19 +5168,19 @@ and type_label_exp create env (expected_mode : expected_mode) loc ty_expected
       raise (Error(lid.loc, env, Private_label(lid.txt, ty_expected)));
   let arg =
     let snap = if vars = [] then None else Some (Btype.snapshot ()) in
+    let rmode =
+      match label.lbl_repres with
+      | Record_unboxed _ -> expected_mode
+      | _ -> mode_subcomponent expected_mode
+    in
     let arg_mode =
-      match label.lbl_global, label.lbl_repres with
-      | Global, _ ->
+      match label.lbl_global with
+      | Global ->
          mode_global
-      | Nonlocal, _ ->
-         expected_mode.mode
-         |> Value_mode.regional_to_global
-         |> Value_mode.local_to_regional
-         |> mode_nontail
-      | Unrestricted, Record_unboxed _ ->
-         expected_mode
-      | Unrestricted, _ ->
-         mode_subcomponent expected_mode
+      | Nonlocal ->
+         mode_nonlocal rmode
+      | Unrestricted ->
+         rmode
     in
     let arg =
       type_argument env arg_mode sarg ty_arg (instance ty_arg)
