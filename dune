@@ -21,14 +21,8 @@
 (copy_files# typing/*.ml{,i})
 (copy_files# bytecomp/*.ml{,i})
 (copy_files# driver/*.ml{,i})
-;(copy_files# asmcomp/*.ml{,i})
-;(copy_files# asmcomp/debug/*.ml{,i})
 (copy_files# file_formats/*.ml{,i})
 (copy_files# lambda/*.ml{,i})
-;(copy_files# middle_end/*.ml{,i})
-;(copy_files# middle_end/closure/*.ml{,i})
-;(copy_files# middle_end/flambda/*.ml{,i})
-;(copy_files# middle_end/flambda/base_types/*.ml{,i})
 
 (library
  (name ocamlcommon)
@@ -120,6 +114,9 @@
  ))
  (libraries ocamlbytecomp ocamlcommon)
  (modules main_native))
+
+(include "jst-opt.dune")
+
 
 (data_only_dirs yacc)
 
