@@ -108,7 +108,8 @@ let transl_pat_mode p = transl_value_mode p.pat_mode
 
 let transl_apply_position position =
   match position with
-  | Nontail -> Rc_normal
+  | Default -> Rc_normal
+  | Nontail -> Rc_nontail
   | Tail ->
     if Config.stack_allocation then Rc_close_at_apply
     else Rc_normal
@@ -316,7 +317,7 @@ let can_apply_primitive p pmode pos args =
     let nargs = List.length args in
     if nargs = p.prim_arity then true
     else if nargs < p.prim_arity then false
-    else if pos = Typedtree.Nontail then true
+    else if pos <> Typedtree.Tail then true
     else begin
       let return_mode = Ctype.prim_mode pmode p.prim_native_repr_res in
       is_heap_mode (transl_alloc_mode return_mode)
@@ -901,6 +902,7 @@ and transl_tupled_cases ~scopes patl_expr_list =
   List.map (fun (patl, guard, expr) -> (patl, transl_guard ~scopes guard expr))
     patl_expr_list
 
+(* FIXME: Does this respect Rc_nontail? *)
 and transl_apply ~scopes
       ?(tailcall=Default_tailcall)
       ?(inlined = Default_inlined)

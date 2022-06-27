@@ -220,6 +220,7 @@ let simplify_exits lam =
   | Lprim(p, ll, loc) -> begin
     let ll = List.map simplif ll in
     match p, ll with
+    (* FIXME does this respect Rc_nontail? *)
         (* Simplify %revapply, for n-ary functions with n > 1 *)
       | Prevapply Rc_normal, [x; Lapply ap]
       | Prevapply Rc_normal, [x; Levent (Lapply ap,_)] ->
@@ -883,7 +884,7 @@ let simplify_local_functions lam =
     | Lapply {ap_func = Lvar id; ap_args; ap_region_close; _} ->
         let curr_scope =
           match ap_region_close with
-          | Rc_normal -> !current_scope
+          | Rc_normal | Rc_nontail -> !current_scope
           | Rc_close_at_apply -> !current_region_scope
         in
         begin match Hashtbl.find_opt slots id with
