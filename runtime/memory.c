@@ -646,10 +646,14 @@ void caml_modify_batch (void)
   value old, val;
   uintnat h;
   char *mode = getenv ("CAML_MODIFY_BATCH_STOP");
+  caml_domain_state *ds = Caml_state;
+  value y_start = (value) Caml_state->young_start;
+  value y_end = (value) Caml_state->young_end;
+#define L_is_young(v) ((v) > y_start && (v) < y_end)
 
   CAML_EV_BEGIN(EV_MODIFY_BATCH);
   index =
-    (intnat) (Caml_state->modify_log_index / sizeof (struct modify_log_entry));
+    (intnat) (ds->modify_log_index / sizeof (struct modify_log_entry));
   fprintf (stderr, "batch size = %ld index=%ld\n", CAML_MODIFY_LOG_SIZE - index, index);
   fflush (stderr);
   if (index == 0 && mode != NULL && !strcmp (mode, "before")){
@@ -658,8 +662,8 @@ void caml_modify_batch (void)
     exit (0);
   }
   for (i = CAML_MODIFY_LOG_SIZE - 1; i >= index; i--){
-    fp = Caml_state->modify_log[i].field_pointer;
-    if (Is_young((value)fp)){
+    fp = ds->modify_log[i].field_pointer;
+    if (L_is_young((value)fp)){
       /* The modified object resides in the minor heap.
          Conditions 1 and 2 cannot occur. */
       continue;
@@ -678,8 +682,8 @@ void caml_modify_batch (void)
         if (!modify_cache[h].in_ref_table){
           /* Check for condition 1. */
           val = *fp;
-          if (Is_block(val) && Is_young(val)) {
-            add_to_ref_table (Caml_state->ref_table, fp);
+          if (Is_block(val) && L_is_young(val)) {
+            add_to_ref_table (ds->ref_table, fp);
             modify_cache[h].in_ref_table = 1;
           }
         }
@@ -691,7 +695,7 @@ void caml_modify_batch (void)
 #endif
         modify_cache[h].field_pointer = fp;
         modify_cache[h].in_ref_table = 0;
-        old = Caml_state->modify_log[i].old_value;
+        old = ds->modify_log[i].old_value;
         if (Is_block(old)) {
           /* If [old] is a pointer into the minor heap:
              - Condition 2 cannot occur.
@@ -700,7 +704,7 @@ void caml_modify_batch (void)
                write will have added this field to [ref_table] so we
                don't need to do it here.
           */
-          if (Is_young(old)){
+          if (L_is_young(old)){
             continue;
           }
           /* Here, [old] can be a pointer within the major heap.
@@ -709,14 +713,14 @@ void caml_modify_batch (void)
         }
         /* Check for condition 1. */
         val = *fp;
-        if (Is_block(val) && Is_young(val)) {
-          add_to_ref_table (Caml_state->ref_table, fp);
+        if (Is_block(val) && L_is_young(val)) {
+          add_to_ref_table (ds->ref_table, fp);
           modify_cache[h].in_ref_table = 1;
         }
       }
     }
   }
-  Caml_state->modify_log_index =
+  ds->modify_log_index =
     CAML_MODIFY_LOG_SIZE * sizeof (struct modify_log_entry);
   CAML_EV_END(EV_MODIFY_BATCH);
   if (index == 0 && mode != NULL && !strcmp (mode, "after")){
