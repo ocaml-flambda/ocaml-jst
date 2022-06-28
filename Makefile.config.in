@@ -182,8 +182,7 @@ UNIX_OR_WIN32=@unix_or_win32@
 UNIXLIB=@unixlib@
 INSTALL_SOURCE_ARTIFACTS=@install_source_artifacts@
 
-#-Wa,-mbranches-within-32B-boundaries
-OC_CFLAGS=@oc_cflags@
+OC_CFLAGS=@oc_cflags@ -Wa,-mbranches-within-32B-boundaries
 CFLAGS?=@CFLAGS@
 OC_CPPFLAGS=@oc_cppflags@
 CPPFLAGS?=@CPPFLAGS@
