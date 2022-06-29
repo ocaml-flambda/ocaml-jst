@@ -583,7 +583,8 @@ let set_paths () =
   Dll.add_path load_path
 
 let initialize_toplevel_env () =
-  toplevel_env := Compmisc.initial_env()
+  toplevel_env := Compmisc.initial_env();
+  toplevel_sig := []
 
 (* The interactive loop *)
 
@@ -641,7 +642,7 @@ let run_script ppf name args =
   Compmisc.init_path ~dir:(Filename.dirname name) ();
                    (* Note: would use [Filename.abspath] here, if we had it. *)
   begin
-    try toplevel_env := Compmisc.initial_env()
+    try initialize_toplevel_env ()
     with Env.Error _ | Typetexp.Error _ as exn ->
       Location.report_exception ppf exn; raise (Compenv.Exit_with_status 2)
   end;
