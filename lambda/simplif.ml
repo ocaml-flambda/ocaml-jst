@@ -220,12 +220,12 @@ let simplify_exits lam =
   | Lprim(p, ll, loc) -> begin
     let ll = List.map simplif ll in
     match p, ll with
-    (* FIXME does this respect Rc_nontail? *)
         (* Simplify %revapply, for n-ary functions with n > 1 *)
-      | Prevapply Rc_normal, [x; Lapply ap]
-      | Prevapply Rc_normal, [x; Levent (Lapply ap,_)] ->
+      | Prevapply ((Rc_normal | Rc_nontail) as pos), [x; Lapply ap]
+      | Prevapply ((Rc_normal | Rc_nontail) as pos),
+        [x; Levent (Lapply ap,_)] ->
           Lapply {ap with ap_args = ap.ap_args @ [x]; ap_loc = loc;
-                          ap_region_close = Rc_normal}
+                          ap_region_close = pos}
       | Prevapply pos, [x; f] ->
           Lapply {
             ap_loc=loc;
@@ -239,10 +239,11 @@ let simplify_exits lam =
             ap_probe=None;
           }
         (* Simplify %apply, for n-ary functions with n > 1 *)
-      | Pdirapply Rc_normal, [Lapply ap; x]
-      | Pdirapply Rc_normal, [Levent (Lapply ap,_); x] ->
+      | Pdirapply ((Rc_normal | Rc_nontail) as pos), [Lapply ap; x]
+      | Pdirapply ((Rc_normal | Rc_nontail) as pos),
+        [Levent (Lapply ap,_); x] ->
           Lapply {ap with ap_args = ap.ap_args @ [x];
-                          ap_loc = loc; ap_region_close=Rc_normal}
+                          ap_loc = loc; ap_region_close=pos}
       | Pdirapply pos, [f; x] ->
           Lapply {
             ap_loc=loc;

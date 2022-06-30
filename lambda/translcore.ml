@@ -902,7 +902,6 @@ and transl_tupled_cases ~scopes patl_expr_list =
   List.map (fun (patl, guard, expr) -> (patl, transl_guard ~scopes guard expr))
     patl_expr_list
 
-(* FIXME: Does this respect Rc_nontail? *)
 and transl_apply ~scopes
       ?(tailcall=Default_tailcall)
       ?(inlined = Default_inlined)
@@ -917,7 +916,8 @@ and transl_apply ~scopes
         Lsend(k, lmet, lobj, args, pos, mode, loc)
     | Lsend(Cached, lmet, lobj, ([_; _] as largs), _, _, _), _ ->
         Lsend(Cached, lmet, lobj, largs @ args, pos, mode, loc)
-    | Lsend(k, lmet, lobj, largs, Rc_normal, _, _), Rc_normal ->
+    | Lsend(k, lmet, lobj, largs, (Rc_normal | Rc_nontail), _, _),
+      (Rc_normal | Rc_nontail) ->
         Lsend(k, lmet, lobj, largs @ args, pos, mode, loc)
     | Levent(
       Lsend((Self | Public) as k, lmet, lobj, [], _, _, _), _), _ ->
@@ -926,9 +926,11 @@ and transl_apply ~scopes
       Lsend(Cached, lmet, lobj, ([_; _] as largs), _, _, _), _), _ ->
         Lsend(Cached, lmet, lobj, largs @ args, pos, mode, loc)
     | Levent(
-      Lsend(k, lmet, lobj, largs, Rc_normal, _, _), _), Rc_normal ->
+      Lsend(k, lmet, lobj, largs, (Rc_normal | Rc_nontail), _, _), _),
+      (Rc_normal | Rc_nontail) ->
         Lsend(k, lmet, lobj, largs @ args, pos, mode, loc)
-    | Lapply ({ ap_region_close = Rc_normal } as ap), Rc_normal ->
+    | Lapply ({ ap_region_close = (Rc_normal | Rc_nontail) } as ap),
+      (Rc_normal | Rc_nontail) ->
         Lapply
           {ap with ap_args = ap.ap_args @ args; ap_loc = loc;
                    ap_region_close = pos; ap_mode = mode}
