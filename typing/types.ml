@@ -43,19 +43,26 @@ and type_desc =
 and arrow_desc =
   arg_label * alloc_mode * alloc_mode
 
-and alloc_mode_const = Global | Local
+and locality = Global | Local
 
-and alloc_mode_var = {
-  mutable upper: alloc_mode_const;
-  mutable lower: alloc_mode_const;
-  mutable vlower: alloc_mode_var list;
+and uniqueness = Unique | Shared
+
+and 'a mode_var = {
+  mutable upper: 'a;
+  mutable lower: 'a;
+  mutable vlower: 'a mode_var list;
   mutable mark: bool;
   mvid: int;
 }
 
+and 'a mode =
+  | Amode of 'a
+  | Amodevar of 'a mode_var
+
 and alloc_mode =
-  | Amode of alloc_mode_const
-  | Amodevar of alloc_mode_var
+  { locality : locality mode
+  ; uniqueness : uniqueness mode
+  }
 
 and row_desc =
     { row_fields: (label * row_field) list;
@@ -502,5 +509,6 @@ let signature_item_id = function
     -> id
 
 type value_mode =
-  { r_as_l : alloc_mode;
-    r_as_g : alloc_mode; }
+  { r_as_l : locality mode;
+    r_as_g : locality mode;
+    uniqueness : uniqueness mode }

@@ -258,13 +258,20 @@ val map_type_expr_cstr_args: (type_expr -> type_expr) ->
 
 module Alloc_mode : sig
 
-  (* Modes are ordered so that [global] is a submode of [local] *)
   type t = Types.alloc_mode
-  type const = Types.alloc_mode_const = Global | Local
+  (* Modes are ordered so that [global] is a submode of [local] *)
+  type locality = Types.locality = Global | Local
+  (* Modes are ordered so that [unique] is a submode of [shared] *)
+  type uniqueness = Types.uniqueness = Unique | Shared
+  type const = locality * uniqueness
 
   val global : t
 
   val local : t
+
+  val unique : t
+
+  val local_unique : t
 
   val of_const : const -> t
 
@@ -272,11 +279,13 @@ module Alloc_mode : sig
 
   val max_mode : t
 
-  val submode : t -> t -> (unit, unit) result
+  type error = [`Locality | `Uniqueness]
+
+  val submode : t -> t -> (unit, error) result
 
   val submode_exn : t -> t -> unit
 
-  val equate : t -> t -> (unit, unit) result
+  val equate : t -> t -> (unit, error) result
 
   val join_const : const -> const -> const
 
@@ -287,6 +296,9 @@ module Alloc_mode : sig
 
   (* Force a mode variable to its lower bound *)
   val constrain_lower : t -> const
+
+  (* Force a mode variable as shared and global *)
+  val constrain_global_shared : t -> const
 
   val newvar : unit -> t
 
@@ -302,10 +314,16 @@ end
 
 module Value_mode : sig
 
- type const =
+  (* Modes are ordered so that [unique] is a submode of [shared] *)
+  type uniqueness = Types.uniqueness = Unique | Shared
+
+  (* Modes are ordered so that [global] is a submode of [local] *)
+  type locality =
    | Global
    | Regional
    | Local
+
+  type const = locality * uniqueness
 
   type t = Types.value_mode
 
@@ -314,6 +332,12 @@ module Value_mode : sig
   val regional : t
 
   val local : t
+
+  val global_unique : t
+
+  val regional_unique : t
+
+  val local_unique : t
 
   val of_const : const -> t
 
@@ -371,7 +395,7 @@ module Value_mode : sig
   (** Maps [Regional] to [Local] and leaves the others unchanged. *)
   val regional_to_local_alloc : t -> Alloc_mode.t
 
-  type error = [`Regionality | `Locality]
+  type error = [`Regionality | `Locality | `Uniqueness]
 
   val submode : t -> t -> (unit, error) result
 
