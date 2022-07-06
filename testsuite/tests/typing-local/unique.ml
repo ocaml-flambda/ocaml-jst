@@ -1,9 +1,14 @@
 (* TEST
  * expect *)
 
+type 'a glob = { global_ contents: 'a } [@@unboxed]
+[%%expect{|
+type 'a glob = { global_ contents : 'a; } [@@unboxed]
+|}]
+
 let dup (unique_ x) = (x, x)
 [%%expect{|
-val dup : 'a -> 'a * 'a
+val dup : 'a -> 'a * 'a = <fun>
 |}]
 
 let dup (unique_ x) = unique_ (x, x)
@@ -11,7 +16,7 @@ let dup (unique_ x) = unique_ (x, x)
   Error: two uses of unique_ var
 |}]
 
-let dup (unique_ x : 'a) : 'a glob * 'a glob = unique_ (x, x)
+let dup (unique_ x : 'a) : 'a glob * 'a glob = unique_ ({x}, {x})
 [%%expect{|
 val dup : 'a -> 'a glob * 'a glob
 |}]
@@ -100,7 +105,7 @@ Error: Expected ('a -> unique_ 'b) but got (unique_ 'a -> unique_ 'b)
 
 type record_update = { x : int }
 [%%expect{|
-type record_update = { x : int }
+type record_update = { x : int; }
 |}]
 
 let update (unique_ r : record_update) = unique_ { unique_ r with x = 1 }
