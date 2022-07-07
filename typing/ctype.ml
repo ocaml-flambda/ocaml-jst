@@ -1543,6 +1543,8 @@ let instance_label fixed lbl =
 let prim_mode mvar = function
   | Primitive.Prim_global, _ -> Alloc_mode.global
   | Primitive.Prim_local, _ -> Alloc_mode.local
+  | Primitive.Prim_unique, _ -> Alloc_mode.unique
+  | Primitive.Prim_local_unique, _ -> Alloc_mode.local_unique
   | Primitive.Prim_poly, _ -> mvar
 
 let rec instance_prim_locals locals mvar macc finalret ty =
@@ -2625,7 +2627,7 @@ let unify_package env unify_list lv1 p1 n1 tl1 lv2 p2 n2 tl2 =
 let unify_alloc_mode a b =
   match Btype.Alloc_mode.equate a b with
   | Ok () -> ()
-  | Error () -> raise (Unify [])
+  | Error _e -> raise (Unify [])
 
 (* force unification in Reither when one side has a non-conjunctive type *)
 let rigid_variants = ref false
@@ -3408,7 +3410,7 @@ let moregen_alloc_mode v a1 a2 =
     | Bivariant -> Ok ()
   with
   | Ok () -> ()
-  | Error () -> raise (Unify [])
+  | Error _e -> raise (Unify [])
 
 let may_instantiate inst_nongen t1 =
   if inst_nongen then t1.level <> generic_level - 1
@@ -4433,7 +4435,7 @@ let subtype_error env trace =
 let subtype_alloc_mode env trace a1 a2 =
   match Btype.Alloc_mode.submode a1 a2 with
   | Ok () -> ()
-  | Error () -> subtype_error env trace
+  | Error _e -> subtype_error env trace
 
 let rec subtype_rec env trace t1 t2 cstrs =
   let t1 = repr t1 in

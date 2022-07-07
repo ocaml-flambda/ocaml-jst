@@ -427,6 +427,18 @@ let check_local ext_names other_names attr =
 let has_local attr =
   check_local ["extension.local"] ["ocaml.local"; "local"] attr
 
+let check_unique ext_names other_names attr =
+  if List.exists (check ext_names) attr then
+    if not (Clflags.Extension.is_enabled Unique) then
+      Error ()
+    else
+      Ok true
+  else
+    Ok (List.exists (check other_names) attr)
+
+let has_unique attr =
+  check_unique ["extension.unique"] ["ocaml.unique"; "unique"] attr
+
 let tailcall attr =
   let has_tail = List.exists (check ["ocaml.tail"; "tail"]) attr in
   let has_nontail = List.exists (check ["ocaml.nontail"; "nontail"]) attr in

@@ -347,7 +347,7 @@ let escape ~loc ~env m =
 let eqmode ~loc ~env m1 m2 err =
   match Btype.Alloc_mode.equate m1 m2 with
   | Ok () -> ()
-  | Error () -> raise (Error(loc, env, err))
+  | Error _e -> raise (Error(loc, env, err))
 
 type expected_pat_mode =
   { mode : Value_mode.t;
@@ -363,10 +363,10 @@ let allocations : Alloc_mode.t list ref = Local_store.s_ref []
 
 let reset_allocations () = allocations := []
 
-let register_allocation_mode alloc_mode =
-  match alloc_mode with
-  | Amode _const -> ()
-  | Amodevar _ -> allocations := alloc_mode :: !allocations
+let register_allocation_mode (alloc_mode : Alloc_mode.t) =
+  match alloc_mode.locality, alloc_mode.uniqueness with
+  | Amodevar _, _ | _, Amodevar _ -> allocations := alloc_mode :: !allocations
+  | Amode _c1, Amode _c2 -> ()
 
 let register_allocation_value_mode mode =
   register_allocation_mode
@@ -480,6 +480,40 @@ let has_local_attr_pat ppat =
 
 let has_local_attr_exp pexp =
   has_local_attr pexp.pexp_loc pexp.pexp_attributes
+
+let has_unique_attr loc attrs =
+  match Builtin_attributes.has_unique attrs with
+  | Ok l -> l
+  | Error () ->
+    raise(Typetexp.Error(loc, Env.empty, Unique_not_enabled))
+
+let has_unique_attr_pat ppat =
+  has_unique_attr ppat.ppat_loc ppat.ppat_attributes
+
+let has_unique_attr_exp pexp =
+  has_unique_attr pexp.pexp_loc pexp.pexp_attributes
+
+let type_mode_pat sp =
+  let locality_mode =
+    if has_local_attr_pat sp then Alloc_mode.Local
+    else Alloc_mode.Global
+  in
+  let uniqueness_mode =
+    if has_unique_attr_pat sp then Alloc_mode.Unique
+    else Alloc_mode.Shared
+  in
+  locality_mode, uniqueness_mode
+
+let type_mode_exp sp =
+  let locality_mode =
+    if has_local_attr_exp sp then Alloc_mode.Local
+    else Alloc_mode.Global
+  in
+  let uniqueness_mode =
+    if has_unique_attr_exp sp then Alloc_mode.Unique
+    else Alloc_mode.Shared
+  in
+  locality_mode, uniqueness_mode
 
 (* Typing of patterns *)
 
@@ -1709,12 +1743,8 @@ and type_pat_aux
       ({ptyp_desc=Ptyp_poly _} as sty)) ->
       (* explicitly polymorphic type *)
       assert construction_not_used_in_counterexamples;
-      let type_mode =
-        if has_local_attr_pat sp then Alloc_mode.Local
-        else Alloc_mode.Global
-      in
       let cty, ty, force =
-        Typetexp.transl_simple_type_delayed !env type_mode sty
+        Typetexp.transl_simple_type_delayed !env (type_mode_pat sp) sty
       in
       unify_pat_types ~refine lloc env ty (instance expected_ty);
       pattern_force := force :: !pattern_force;
@@ -2125,12 +2155,8 @@ and type_pat_aux
   | Ppat_constraint(sp', sty) ->
       (* Pretend separate = true *)
       begin_def();
-      let type_mode =
-        if has_local_attr_pat sp then Alloc_mode.Local
-        else Alloc_mode.Global
-      in
       let cty, ty, force =
-        Typetexp.transl_simple_type_delayed !env type_mode sty
+        Typetexp.transl_simple_type_delayed !env (type_mode_pat sp) sty
       in
       end_def();
       generalize_structure ty;
@@ -3113,7 +3139,7 @@ let create_package_type loc env (p, l) =
   let fields =
     List.map
       (fun (name, ct) ->
-         name, Typetexp.transl_simple_type env false Global ct)
+         name, Typetexp.transl_simple_type env false (Global, Unique) ct)
       l
   in
   let ty = newty (Tpackage (s,
@@ -3970,11 +3996,7 @@ and type_expect_
   | Pexp_constraint (sarg, sty) ->
       (* Pretend separate = true, 1% slowdown for lablgtk *)
       begin_def ();
-      let type_mode =
-        if has_local_attr_exp sexp then Alloc_mode.Local
-        else Alloc_mode.Global
-      in
-      let cty = Typetexp.transl_simple_type env false type_mode sty in
+      let cty = Typetexp.transl_simple_type env false (type_mode_exp sexp) sty in
       let ty = cty.ctyp_type in
       end_def ();
       generalize_structure ty;
@@ -3994,15 +4016,11 @@ and type_expect_
       (* Pretend separate = true, 1% slowdown for lablgtk *)
       (* Also see PR#7199 for a problem with the following:
          let separate = !Clflags.principal || Env.has_local_constraints env in*)
-      let type_mode =
-        if has_local_attr_exp sexp then Alloc_mode.Local
-        else Alloc_mode.Global
-      in
       let (arg, ty',cty,cty') =
         match sty with
         | None ->
             let (cty', ty', force) =
-              Typetexp.transl_simple_type_delayed env type_mode sty'
+              Typetexp.transl_simple_type_delayed env (type_mode_exp sexp) sty'
             in
             begin_def ();
             let arg = type_exp env expected_mode sarg in
@@ -4048,9 +4066,9 @@ and type_expect_
         | Some sty ->
             begin_def ();
             let (cty, ty, force) =
-              Typetexp.transl_simple_type_delayed env type_mode sty
+              Typetexp.transl_simple_type_delayed env (type_mode_exp sexp) sty
             and (cty', ty', force') =
-              Typetexp.transl_simple_type_delayed env type_mode sty'
+              Typetexp.transl_simple_type_delayed env (type_mode_exp sexp) sty'
             in
             begin try
               let force'' = subtype env ty ty' in
@@ -4391,7 +4409,7 @@ and type_expect_
         match sty with None -> repr ty_expected, None
         | Some sty ->
             let sty = Ast_helper.Typ.force_poly sty in
-            let cty = Typetexp.transl_simple_type env false Global sty in
+            let cty = Typetexp.transl_simple_type env false (Global, Unique) sty in
             repr cty.ctyp_type, Some cty
       in
       if !Clflags.principal then begin
@@ -4782,12 +4800,12 @@ and type_function ?in_function loc attrs env (expected_mode : expected_mode)
   if uncurried_function then begin
     begin match Btype.Alloc_mode.submode arg_mode ret_mode with
     | Ok () -> ()
-    | Error () ->
+    | Error _e ->
       raise (Error(loc_fun, env, Uncurried_function_escapes))
     end;
     begin match Btype.Alloc_mode.submode alloc_mode ret_mode with
     | Ok () -> ()
-    | Error () ->
+    | Error _e ->
       raise (Error(loc_fun, env, Uncurried_function_escapes))
     end
   end;
@@ -6806,6 +6824,7 @@ let report_error ~loc env = function
         match reason with
         | `Locality -> "local "
         | `Regionality -> ""
+        | `Uniqueness -> "unique "
       in
       Location.errorf ~loc ~sub "This %svalue escapes its region" mode
   | Param_mode_mismatch ty ->

@@ -976,15 +976,17 @@ let rec tree_of_typexp sch ty =
           else tree_of_typexp sch ty1 in
         let am =
           match Alloc_mode.check_const marg with
-          | Some Global -> Oam_global
-          | Some Local -> Oam_local
+          | Some (Global, Shared) -> Oam_global
+          | Some (Local, Shared) -> Oam_local
+          | Some (Global, Unique) -> Oam_unique
+          | Some (Local, Unique) -> Oam_local_unique
           | None -> Oam_unknown
         in
         let t2 = tree_of_typexp sch ty2 in
         let rm =
           match Alloc_mode.check_const mret with
-          | Some Global -> Oam_global
-          | Some Local -> Oam_local
+          | Some (Global, _u) -> Oam_global
+          | Some (Local, _u) -> Oam_local
           | None -> Oam_unknown
         in
         Otyp_arrow (lab, am, t1, rm, t2)

@@ -110,8 +110,8 @@ let prim_sys_argv =
   Primitive.simple ~name:"caml_sys_argv" ~arity:1 ~alloc:true
 
 let to_alloc_mode ~poly = function
-  | Prim_global, _ -> alloc_heap
-  | Prim_local, _ -> alloc_local
+  | Prim_global, _ | Prim_unique, _ -> alloc_heap
+  | Prim_local, _ | Prim_local_unique, _ -> alloc_local
   | Prim_poly, _ -> poly
 
 let lookup_primitive loc poly pos p =
@@ -714,8 +714,8 @@ let lambda_of_prim prim_name prim loc args arg_exps =
 let check_primitive_arity loc p =
   let mode =
     match p.prim_native_repr_res with
-    | Prim_global, _ | Prim_poly, _ -> alloc_heap
-    | Prim_local, _ -> alloc_local
+    | Prim_global, _ | Prim_poly, _ | Prim_unique, _ -> alloc_heap
+    | Prim_local, _ | Prim_local_unique, _ -> alloc_local
   in
   let prim = lookup_primitive loc mode Rc_normal p in
   let ok =

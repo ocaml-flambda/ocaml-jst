@@ -331,9 +331,12 @@ and expression i ppf x =
       (i+1) x.exp_extra
   in
   (match Btype.Value_mode.check_const x.exp_mode with
-  | Some Global -> line i ppf "value_mode global\n"
-  | Some Regional -> line i ppf "value_mode regional\n"
-  | Some Local -> line i ppf "value_mode local\n"
+  | Some (Global, Shared) -> line i ppf "value_mode global\n"
+  | Some (Regional, Shared) -> line i ppf "value_mode regional\n"
+  | Some (Local, Shared) -> line i ppf "value_mode local\n"
+  | Some (Global, Unique) -> line i ppf "value_mode global_unique\n"
+  | Some (Regional, Unique) -> line i ppf "value_mode regional_unique\n"
+  | Some (Local, Unique) -> line i ppf "value_mode local_unique\n"
   | None -> line i ppf "value_mode <modevar>\n");
   match x.exp_desc with
   | Texp_ident (li,_,_,_) -> line i ppf "Texp_ident %a\n" fmt_path li;

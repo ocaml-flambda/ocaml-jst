@@ -376,10 +376,10 @@ let set_dumped_pass s enabled =
   end
 
 module Extension = struct
-  type t = Comprehensions | Local
+  type t = Comprehensions | Local | Unique
 
-  let all = [ Comprehensions; Local ]
-  let default_extensions = [ Local ]
+  let all = [ Comprehensions; Local; Unique ]
+  let default_extensions = [ Local; Unique ]
 
   let extensions = ref ([] : t list)   (* -extension *)
   let equal (a : t) (b : t) = (a = b)
@@ -387,10 +387,12 @@ module Extension = struct
   let to_string = function
     | Comprehensions -> "comprehensions"
     | Local -> "local"
+    | Unique -> "unique"
 
   let of_string = function
     | "comprehensions" -> Comprehensions
     | "local" -> Local
+    | "unique" -> Unique
     | extn -> raise (Arg.Bad(Printf.sprintf "Extension %s is not known" extn))
 
   let disable_all_extensions = ref false             (* -disable-all-extensions *)
@@ -429,7 +431,6 @@ type 'a env_reader = {
   usage : string;
   env_var : string;
 }
-
 let color = ref None (* -color *)
 
 let color_reader = {

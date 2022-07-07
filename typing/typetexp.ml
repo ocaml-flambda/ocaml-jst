@@ -48,6 +48,7 @@ type error =
   | Opened_object of Path.t option
   | Not_an_object of type_expr
   | Local_not_enabled
+  | Unique_not_enabled
 
 exception Error of Location.t * Env.t * error
 exception Error_forward of Location.error
@@ -158,11 +159,15 @@ let transl_type_param env styp =
     (fun () -> transl_type_param env styp)
 
 let get_alloc_mode styp =
-  match Builtin_attributes.has_local styp.ptyp_attributes with
-  | Ok true -> Alloc_mode.Local
-  | Ok false -> Alloc_mode.Global
-  | Error () ->
+  match Builtin_attributes.has_local styp.ptyp_attributes, Builtin_attributes.has_unique styp.ptyp_attributes with
+  | Ok true, Ok true -> Alloc_mode.Local, Alloc_mode.Unique
+  | Ok false, Ok true -> Alloc_mode.Global, Alloc_mode.Unique
+  | Ok true, Ok false -> Alloc_mode.Local, Alloc_mode.Shared
+  | Ok false, Ok false -> Alloc_mode.Global, Alloc_mode.Shared
+  | Error (), _ ->
      raise (Error(styp.ptyp_loc, Env.empty, Local_not_enabled))
+  | _, Error () ->
+    raise (Error(styp.ptyp_loc, Env.empty, Unique_not_enabled))
 
 let rec extract_params styp =
   let final styp =
@@ -250,7 +255,7 @@ and transl_type_aux env policy mode styp =
       loop mode args
   | Ptyp_tuple stl ->
     assert (List.length stl >= 2);
-    let ctys = List.map (transl_type env policy Alloc_mode.Global) stl in
+    let ctys = List.map (transl_type env policy (Alloc_mode.Global, Alloc_mode.Unique)) stl in
     let ty = newty (Ttuple (List.map (fun ctyp -> ctyp.ctyp_type) ctys)) in
     ctyp (Ttyp_tuple ctys) ty
   | Ptyp_constr(lid, stl) ->
@@ -265,7 +270,7 @@ and transl_type_aux env policy mode styp =
         raise(Error(styp.ptyp_loc, env,
                     Type_arity_mismatch(lid.txt, decl.type_arity,
                                         List.length stl)));
-      let args = List.map (transl_type env policy Alloc_mode.Global) stl in
+      let args = List.map (transl_type env policy (Alloc_mode.Global, Alloc_mode.Unique)) stl in
       let params = instance_list decl.type_params in
       let unify_param =
         match decl.type_manifest with
@@ -326,7 +331,7 @@ and transl_type_aux env policy mode styp =
         raise(Error(styp.ptyp_loc, env,
                     Type_arity_mismatch(lid.txt, decl.type_arity,
                                         List.length stl)));
-      let args = List.map (transl_type env policy Alloc_mode.Global) stl in
+      let args = List.map (transl_type env policy (Alloc_mode.Global, Alloc_mode.Unique)) stl in
       let params = instance_list decl.type_params in
       List.iter2
         (fun (sty, cty) ty' ->
@@ -441,7 +446,7 @@ and transl_type_aux env policy mode styp =
             let tl =
               Builtin_attributes.warning_scope rf_attributes
                 (fun () ->
-                   List.map (transl_type env policy Alloc_mode.Global) stl)
+                   List.map (transl_type env policy (Alloc_mode.Global, Alloc_mode.Unique)) stl)
             in
             let f = match present with
               Some present when not (List.mem l.txt present) ->
@@ -458,7 +463,7 @@ and transl_type_aux env policy mode styp =
             add_typed_field styp.ptyp_loc l.txt f;
               Ttag (l,c,tl)
         | Rinherit sty ->
-            let cty = transl_type env policy Alloc_mode.Global sty in
+          let cty = transl_type env policy (Alloc_mode.Global, Alloc_mode.Unique) sty in
             let ty = cty.ctyp_type in
             let nm =
               match repr cty.ctyp_type with
@@ -550,7 +555,7 @@ and transl_type_aux env policy mode styp =
       let mty = !transl_modtype env mty in
       widen z;
       let ptys = List.map (fun (s, pty) ->
-                             s, transl_type env policy Alloc_mode.Global pty
+                             s, transl_type env policy (Alloc_mode.Global, Alloc_mode.Unique) pty
                           ) l in
       let path = !transl_modtype_longident styp.ptyp_loc env p.txt in
       let ty = newty (Tpackage (path,
@@ -587,14 +592,14 @@ and transl_fields env policy o fields =
     | Otag (s, ty1) -> begin
         let ty1 =
           Builtin_attributes.warning_scope of_attributes
-            (fun () -> transl_poly_type env policy Alloc_mode.Global ty1)
+            (fun () -> transl_poly_type env policy (Alloc_mode.Global, Alloc_mode.Unique) ty1)
         in
         let field = OTtag (s, ty1) in
         add_typed_field ty1.ctyp_loc s.txt ty1.ctyp_type;
         field
       end
     | Oinherit sty -> begin
-        let cty = transl_type env policy Alloc_mode.Global sty in
+        let cty = transl_type env policy (Alloc_mode.Global, Alloc_mode.Unique) sty in
         let nm =
           match repr cty.ctyp_type with
             {desc=Tconstr(p, _, _)} -> Some p
@@ -693,7 +698,8 @@ let transl_simple_type env fixed mode styp =
 let transl_simple_type_univars env styp =
   univars := []; used_variables := TyVarMap.empty; pre_univars := [];
   begin_def ();
-  let typ = transl_type env Univars Alloc_mode.Global styp in
+  let typ = transl_type env Univars
+              (Alloc_mode.Global, Alloc_mode.Unique) styp in
   (* Only keep already global variables in used_variables *)
   let new_variables = !used_variables in
   used_variables := TyVarMap.empty;
@@ -736,7 +742,7 @@ let transl_simple_type_delayed env mode styp =
 let transl_type_scheme env styp =
   reset_type_variables();
   begin_def();
-  let typ = transl_simple_type env false Alloc_mode.Global styp in
+  let typ = transl_simple_type env false (Alloc_mode.Global, Alloc_mode.Unique) styp in
   end_def();
   generalize typ.ctyp_type;
   typ
@@ -845,6 +851,9 @@ let report_error env ppf = function
   | Local_not_enabled ->
       fprintf ppf "@[The local extension is disabled@ \
                      To enable it, pass the '-extension local' flag@]"
+  | Unique_not_enabled ->
+    fprintf ppf "@[The unique extension is disabled@ \
+                 To enable it, pass the '-extension unique' flag@]"
 
 let () =
   Location.register_error_of_exn

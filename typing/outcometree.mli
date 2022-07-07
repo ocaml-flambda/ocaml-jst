@@ -91,6 +91,8 @@ and out_variant =
 and out_alloc_mode =
   | Oam_local
   | Oam_global
+  | Oam_local_unique
+  | Oam_unique
   | Oam_unknown
 
 type out_class_type =

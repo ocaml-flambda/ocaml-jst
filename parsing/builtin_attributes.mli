@@ -100,4 +100,6 @@ val has_nonlocal: Parsetree.attributes -> bool
    are present despite the extension being disabled *)
 val has_local: Parsetree.attributes -> (bool,unit) result
 
+val has_unique: Parsetree.attributes -> (bool,unit) result
+
 val tailcall : Parsetree.attributes -> ([`Tail|`Nontail] option, [`Conflict]) result

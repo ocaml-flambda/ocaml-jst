@@ -20,12 +20,12 @@ open Types
 val valid_tyvar_name : string -> bool
 
 val transl_simple_type:
-        Env.t -> bool -> alloc_mode_const
+        Env.t -> bool -> (locality * uniqueness)
         -> Parsetree.core_type -> Typedtree.core_type
 val transl_simple_type_univars:
         Env.t -> Parsetree.core_type -> Typedtree.core_type
 val transl_simple_type_delayed
-  :  Env.t -> alloc_mode_const
+  :  Env.t -> (locality * uniqueness)
   -> Parsetree.core_type
   -> Typedtree.core_type * type_expr * (unit -> unit)
         (* Translate a type, but leave type variables unbound. Returns
@@ -65,6 +65,7 @@ type error =
   | Opened_object of Path.t option
   | Not_an_object of type_expr
   | Local_not_enabled
+  | Unique_not_enabled
 
 exception Error of Location.t * Env.t * error
 

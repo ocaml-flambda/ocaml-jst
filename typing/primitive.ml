@@ -32,6 +32,8 @@ type coeffects = No_coeffects | Has_coeffects
 type mode =
   | Prim_local
   | Prim_global
+  | Prim_unique
+  | Prim_local_unique
   | Prim_poly
 
 type description =
@@ -250,7 +252,7 @@ let print p osig_val_decl =
   in
   let attrs_of_mode_and_repr (m, repr) =
     (match m with
-     | Prim_local | Prim_global -> []
+     | Prim_local | Prim_global | Prim_unique | Prim_local_unique -> []
      | Prim_poly -> [oattr_local_opt])
     @
     (match repr with
@@ -283,7 +285,7 @@ let native_name_is_external p =
 let inst_mode mode p =
   let inst_repr = function
     | Prim_poly, r -> mode, r
-    | (Prim_global|Prim_local) as m, r -> m, r
+    | (Prim_global|Prim_local|Prim_unique|Prim_local_unique) as m, r -> m, r
   in
   { p with
     prim_native_repr_args = List.map inst_repr p.prim_native_repr_args;

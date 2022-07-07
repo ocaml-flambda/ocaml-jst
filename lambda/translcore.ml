@@ -96,8 +96,8 @@ let extract_float = function
 
 let transl_alloc_mode alloc_mode =
   match Btype.Alloc_mode.constrain_lower alloc_mode with
-  | Global -> alloc_heap
-  | Local -> alloc_local
+  | Global, _ -> alloc_heap
+  | Local, _ -> alloc_local
 
 let transl_value_mode mode =
   let alloc_mode = Btype.Value_mode.regional_to_global_alloc mode in
