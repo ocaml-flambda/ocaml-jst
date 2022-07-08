@@ -5428,11 +5428,6 @@ and type_application env app_loc (expected_mode : expected_mode) position funct 
         type_omitted_parameters expected_mode env
           ty_ret mode_ret args
       in
-      if (not !Clflags.real_paths) then begin
-        Format.eprintf "Expected: %a\n%!"
-          Value_mode.print expected_mode.mode;
-        Format.eprintf "Ret Mode: %a\n%!"
-          Alloc_mode.print mode_ret; end;
       submode ~loc:app_loc ~env
         (Value_mode.of_alloc mode_ret) expected_mode;
       args, ty_ret, position

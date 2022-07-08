@@ -1168,21 +1168,21 @@ module Uniqueness_mode = struct
    *     | Amodevar v :: ms -> aux (v :: vars) ms
    *   in aux [] ms *)
 
-  (* let newvar () = Amodevar (fresh ())
-   *
-   * let newvar_below = function
-   *   | Amode Unique -> Amode Unique, false
-   *   | m ->
-   *     let v = newvar () in
-   *     submode_exn v m;
-   *     v, true
-   *
-   * let newvar_above = function
-   *   | Amode Shared -> Amode Shared, false
-   *   | m ->
-   *     let v = newvar () in
-   *     submode_exn m v;
-   *     v, true *)
+  let newvar () = Amodevar (fresh ())
+
+  let newvar_below = function
+    | Amode Unique -> Amode Unique, false
+    | m ->
+      let v = newvar () in
+      submode_exn v m;
+      v, true
+
+  let newvar_above = function
+    | Amode Shared -> Amode Shared, false
+    | m ->
+      let v = newvar () in
+      submode_exn m v;
+      v, true
 end
 
 module Alloc_mode = struct
@@ -1246,16 +1246,16 @@ module Alloc_mode = struct
 
   let newvar () =
     { locality = Locality_mode.newvar ();
-      uniqueness = Amode Shared }
+      uniqueness = Uniqueness_mode.newvar () }
 
-  let newvar_below { locality; uniqueness = _ } =
+  let newvar_below { locality; uniqueness } =
     let l = Locality_mode.newvar_below locality in
-    let u = Amode Shared, false in
+    let u = Uniqueness_mode.newvar_below uniqueness in
     { locality = fst l; uniqueness = fst u }, snd l || snd u
 
-  let newvar_above { locality; uniqueness = _ } =
+  let newvar_above { locality; uniqueness } =
     let l = Locality_mode.newvar_above locality in
-    let u = Amode Shared, false in
+    let u = Uniqueness_mode.newvar_above uniqueness in
     { locality = fst l; uniqueness = fst u }, snd l || snd u
 
   let check_const { locality; uniqueness } =
@@ -1440,7 +1440,7 @@ module Value_mode = struct
   let newvar () =
     let r_as_l = Locality_mode.newvar () in
     let r_as_g = Locality_mode.newvar () in
-    let uniqueness = Amode Shared in
+    let uniqueness = Uniqueness_mode.newvar () in
     Locality_mode.submode_exn r_as_g r_as_l;
     { r_as_l; r_as_g; uniqueness }
 
