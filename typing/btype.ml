@@ -1200,7 +1200,7 @@ module Alloc_mode = struct
   let unique = of_const (Global, Unique)
   let local_unique = of_const (Local, Unique)
 
-  let min_mode = global (* TODO unique *)
+  let min_mode = unique
 
   let max_mode = local
 
@@ -1226,7 +1226,8 @@ module Alloc_mode = struct
     end
     | Error () -> Error `Locality
 
-  let join_const (l1, _u1) (l2, _u2) = (Locality_mode.join_const l1 l2, Shared)
+  let join_const (l1, u1) (l2, u2) =
+    (Locality_mode.join_const l1 l2, Uniqueness_mode.join_const u1 u2)
 
   let join ms =
     { locality = Locality_mode.join (List.map (fun t -> t.locality) ms);
@@ -1440,28 +1441,27 @@ module Value_mode = struct
     { r_as_l; r_as_g; uniqueness }
 
   let check_const t =
-    match Locality_mode.check_const t.r_as_l with
+    let locality = match Locality_mode.check_const t.r_as_l with
     | None -> None
     | Some r_as_l ->
       match Locality_mode.check_const t.r_as_g with
       | None -> None
-      | Some r_as_g -> match Uniqueness_mode.check_const t.uniqueness with
-        | None -> None
-        | Some uniqueness ->
-        Some (of_alloc_consts ~r_as_l ~r_as_g, uniqueness)
+      | Some r_as_g -> Some (of_alloc_consts ~r_as_l ~r_as_g)
+    and uniqueness = Uniqueness_mode.check_const t.uniqueness in
+    locality, uniqueness
 
   let print_const ppf = function
-    | Global, Shared -> Format.fprintf ppf "Global, Shared"
-    | Regional, Shared -> Format.fprintf ppf "Regional, Shared"
-    | Local, Shared -> Format.fprintf ppf "Local, Shared"
-    | Global, Unique -> Format.fprintf ppf "Global, Unique"
-    | Regional, Unique -> Format.fprintf ppf "Regional, Unique"
-    | Local, Unique -> Format.fprintf ppf "Local, Unique"
+    | Global -> Format.fprintf ppf "Global"
+    | Regional -> Format.fprintf ppf "Regional"
+    | Local -> Format.fprintf ppf "Local"
 
   let print ppf t =
     match check_const t with
-    | Some const -> print_const ppf const
-    | None ->
+    | Some l, Some u ->
+      print_const ppf l;
+      Format.fprintf ppf ", ";
+      Uniqueness_mode.print_const ppf u
+    | _, _ ->
         Format.fprintf ppf
           "@[<2>r_as_l: %a@ r_as_g: %a@ uniqueness: %a@]"
           Locality_mode.print t.r_as_l

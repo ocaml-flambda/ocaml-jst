@@ -322,20 +322,16 @@ and print_out_arg am ppf ty =
 (* If mode and rm do not match up, print the arrow according to rm. *)
 and print_out_ret mode rm ppf ty =
   let same_locality = match fst mode, fst rm with
-    | Olm_local, Olm_local
-    | Olm_global, Olm_global
-    | Olm_unknown, _
-    | _, Olm_unknown -> true
-    | _, _ -> false
+    | Olm_local, Olm_global -> false
+    | Olm_global, Olm_local -> false
+    | _, _ -> true
   and same_uniqueness = match snd mode, snd rm with
-    | Oum_unique, Oum_unique
-    | Oum_shared, Oum_shared
-    | Oum_unknown, _
-    | _, Oum_unknown -> true
-    | _, _ -> false in
+    | Oum_unique, Oum_shared -> false
+    | Oum_shared, Oum_unique -> false
+    | _, _ -> true in
   if same_locality && same_uniqueness
   then print_out_type_1 rm ppf ty
-  else match fst rm, snd rm with
+  else match rm with
     | Olm_local, Oum_unique -> print_out_type_local_unique rm ppf ty
     | Olm_local, _ -> print_out_type_local rm ppf ty
     | _, Oum_unique -> print_out_type_unique rm ppf ty

@@ -421,7 +421,7 @@ module Value_mode : sig
 
   val newvar : unit -> t
 
-  val check_const : t -> const option
+  val check_const : t -> locality option * uniqueness option
 
   val print : Format.formatter -> t -> unit
 
