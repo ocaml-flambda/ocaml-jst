@@ -159,15 +159,17 @@ let transl_type_param env styp =
     (fun () -> transl_type_param env styp)
 
 let get_alloc_mode styp =
-  match Builtin_attributes.has_local styp.ptyp_attributes, Builtin_attributes.has_unique styp.ptyp_attributes with
-  | Ok true, Ok true -> Alloc_mode.Local, Alloc_mode.Unique
-  | Ok false, Ok true -> Alloc_mode.Global, Alloc_mode.Unique
-  | Ok true, Ok false -> Alloc_mode.Local, Alloc_mode.Shared
-  | Ok false, Ok false -> Alloc_mode.Global, Alloc_mode.Shared
-  | Error (), _ ->
-     raise (Error(styp.ptyp_loc, Env.empty, Local_not_enabled))
-  | _, Error () ->
-    raise (Error(styp.ptyp_loc, Env.empty, Unique_not_enabled))
+  let l = match Builtin_attributes.has_local styp.ptyp_attributes with
+    | Ok true -> Alloc_mode.Local
+    | Ok false -> Alloc_mode.Global
+    | Error () ->
+      raise (Error(styp.ptyp_loc, Env.empty, Local_not_enabled))
+  and u = match Builtin_attributes.has_unique styp.ptyp_attributes with
+    | Ok true -> Alloc_mode.Unique
+    | Ok false -> Alloc_mode.Shared
+    | Error () ->
+      raise (Error(styp.ptyp_loc, Env.empty, Unique_not_enabled))
+  in l, u
 
 let rec extract_params styp =
   let final styp =

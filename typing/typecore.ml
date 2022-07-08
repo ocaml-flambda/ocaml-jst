@@ -2971,9 +2971,11 @@ let rec type_approx env sexp =
   match sexp.pexp_desc with
     Pexp_let (_, _, e) -> type_approx env e
   | Pexp_fun (p, _, spat, e) ->
-      let marg =
-        if has_local_attr_pat spat then Alloc_mode.local
-        else Alloc_mode.newvar ()
+      let marg = match has_local_attr_pat spat, has_unique_attr_pat spat with
+        | true, true -> Alloc_mode.local_unique
+        | true, false -> Alloc_mode.local
+        | false, true -> Alloc_mode.unique
+        | false, false -> Alloc_mode.newvar ()
       in
       let mret = Alloc_mode.newvar () in
       let ty = if is_optional p then type_option (newvar ()) else newvar () in
@@ -3484,18 +3486,20 @@ and type_expect_
           [Vb.mk spat smatch] sbody
       in
       let has_local = has_local_attr_pat spat in
+      let has_unique = has_unique_attr_pat spat in
       type_function ?in_function loc sexp.pexp_attributes env
                     expected_mode ty_expected_explained
-                    l has_local [Exp.case pat body]
+                    l has_local has_unique [Exp.case pat body]
   | Pexp_fun (l, None, spat, sbody) ->
       let has_local = has_local_attr_pat spat in
+      let has_unique = has_unique_attr_pat spat in
       type_function ?in_function loc sexp.pexp_attributes env
-                    expected_mode ty_expected_explained l has_local
+                    expected_mode ty_expected_explained l has_local has_unique
                     [Ast_helper.Exp.case spat sbody]
   | Pexp_function caselist ->
       type_function ?in_function
         loc sexp.pexp_attributes env expected_mode
-        ty_expected_explained Nolabel false caselist
+        ty_expected_explained Nolabel false false caselist
   | Pexp_apply
       ({ pexp_desc = Pexp_extension({txt = "extension.local"}, PStr []) },
        [Nolabel, sbody]) ->
@@ -4764,7 +4768,7 @@ and type_binding_op_ident env s =
   path, desc
 
 and type_function ?in_function loc attrs env (expected_mode : expected_mode)
-      ty_expected_explained l has_local caselist =
+      ty_expected_explained l has_local has_unique caselist =
   let { ty = ty_expected; explanation } = ty_expected_explained in
   register_allocation expected_mode;
   let alloc_mode = Value_mode.regional_to_global_alloc expected_mode.mode in
@@ -4794,9 +4798,14 @@ and type_function ?in_function loc attrs env (expected_mode : expected_mode)
                                           ty_fun,
                                           explanation)))
   in
-  if has_local then
-    eqmode ~loc ~env arg_mode Alloc_mode.local
-      (Param_mode_mismatch ty_expected');
+  if has_local || has_unique then begin
+    let mode = match has_local, has_unique with
+      | true, true -> Alloc_mode.local_unique
+      | true, false -> Alloc_mode.local
+      | false, true -> Alloc_mode.unique
+      | false, false -> assert false in
+    eqmode ~loc ~env arg_mode mode
+      (Param_mode_mismatch ty_expected') end;
   if uncurried_function then begin
     begin match Btype.Alloc_mode.submode arg_mode ret_mode with
     | Ok () -> ()
