@@ -1160,13 +1160,13 @@ module Uniqueness_mode = struct
     | Unique -> unique
     | Shared -> shared
 
-  (* let join ms =
-   *   let rec aux vars = function
-   *     | [] -> joinvars vars
-   *     | Amode Unique :: ms -> aux vars ms
-   *     | Amode Shared :: _ -> Amode Shared
-   *     | Amodevar v :: ms -> aux (v :: vars) ms
-   *   in aux [] ms *)
+  let join ms =
+    let rec aux vars = function
+      | [] -> joinvars vars
+      | Amode Unique :: ms -> aux vars ms
+      | Amode Shared :: _ -> Amode Shared
+      | Amodevar v :: ms -> aux (v :: vars) ms
+    in aux [] ms
 
   let newvar () = Amodevar (fresh ())
 
@@ -1231,7 +1231,7 @@ module Alloc_mode = struct
 
   let join ms =
     { locality = Locality_mode.join (List.map (fun t -> t.locality) ms);
-      uniqueness = Amode Shared }
+      uniqueness = Uniqueness_mode.join (List.map (fun (t : t) -> t.uniqueness) ms) }
 
   let constrain_upper {locality; uniqueness = _} =
     Locality_mode.constrain_upper locality, Shared
@@ -1418,7 +1418,7 @@ module Value_mode = struct
   let join ts =
     let r_as_l = Locality_mode.join (List.map (fun t -> t.r_as_l) ts) in
     let r_as_g = Locality_mode.join (List.map (fun t -> t.r_as_g) ts) in
-    let uniqueness = Amode Shared in
+    let uniqueness = Uniqueness_mode.join (List.map (fun t -> t.uniqueness) ts) in
     { r_as_l; r_as_g; uniqueness }
 
   let constrain_upper t =
