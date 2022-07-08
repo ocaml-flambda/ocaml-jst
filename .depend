@@ -1525,6 +1525,7 @@ typing/typedecl_variance.cmi : \
     typing/env.cmi \
     parsing/asttypes.cmi
 typing/typedtree.cmo : \
+    utils/warnings.cmi \
     typing/types.cmi \
     typing/primitive.cmi \
     typing/path.cmi \
@@ -1536,6 +1537,7 @@ typing/typedtree.cmo : \
     parsing/asttypes.cmi \
     typing/typedtree.cmi
 typing/typedtree.cmx : \
+    utils/warnings.cmx \
     typing/types.cmx \
     typing/primitive.cmx \
     typing/path.cmx \
@@ -1547,6 +1549,7 @@ typing/typedtree.cmx : \
     parsing/asttypes.cmi \
     typing/typedtree.cmi
 typing/typedtree.cmi : \
+    utils/warnings.cmi \
     typing/types.cmi \
     typing/primitive.cmi \
     typing/path.cmi \
@@ -3564,6 +3567,7 @@ lambda/translcomprehension.cmi : \
     lambda/lambda.cmi \
     lambda/debuginfo.cmi
 lambda/translcore.cmo : \
+    utils/warnings.cmi \
     typing/types.cmi \
     typing/typeopt.cmi \
     typing/typedtree.cmi \
@@ -3593,6 +3597,7 @@ lambda/translcore.cmo : \
     parsing/asttypes.cmi \
     lambda/translcore.cmi
 lambda/translcore.cmx : \
+    utils/warnings.cmx \
     typing/types.cmx \
     typing/typeopt.cmx \
     typing/typedtree.cmx \
