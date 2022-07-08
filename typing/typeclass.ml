@@ -360,7 +360,7 @@ let virtual_method val_env meths self_type lab priv sty loc =
      Ctype.filter_self_method val_env lab priv meths self_type
   in
   let sty = Ast_helper.Typ.force_poly sty in
-  let cty = transl_simple_type val_env false (Global, Unique) sty in
+  let cty = transl_simple_type val_env false (Global, Shared) sty in
   let ty = cty.ctyp_type in
   begin
     try Ctype.unify val_env ty ty' with Ctype.Unify trace ->
@@ -395,15 +395,15 @@ so that we can get an immediate value. Is that correct ? Ask Jacques. *)
       !delayed_meth_specs;
       returned_cty
   | _ ->
-      let cty = transl_simple_type val_env false (Global, Unique) sty in
+      let cty = transl_simple_type val_env false (Global, Shared) sty in
       let ty = cty.ctyp_type in
       unif ty;
       cty
 
 let type_constraint val_env sty sty' loc =
-  let cty  = transl_simple_type val_env false (Global, Unique) sty in
+  let cty  = transl_simple_type val_env false (Global, Shared) sty in
   let ty = cty.ctyp_type in
-  let cty' = transl_simple_type val_env false (Global, Unique) sty' in
+  let cty' = transl_simple_type val_env false (Global, Shared) sty' in
   let ty' = cty'.ctyp_type in
   begin
     try Ctype.unify val_env ty ty' with Ctype.Unify trace ->
@@ -458,7 +458,7 @@ and class_type_field_aux env self_type meths
        val_sig, concr_meths, inher)
 
   | Pctf_val ({txt=lab}, mut, virt, sty) ->
-      let cty = transl_simple_type env false (Global, Unique) sty in
+      let cty = transl_simple_type env false (Global, Shared) sty in
       let ty = cty.ctyp_type in
       (mkctf (Tctf_val (lab, mut, virt, cty)) :: fields,
       add_val lab (mut, virt, ty) val_sig, concr_meths, inher)
@@ -489,7 +489,7 @@ and class_type_field_aux env self_type meths
 
 and class_signature env {pcsig_self=sty; pcsig_fields=sign} =
   let meths = ref Meths.empty in
-  let self_cty = transl_simple_type env false (Global, Unique) sty in
+  let self_cty = transl_simple_type env false (Global, Shared) sty in
   let self_cty = { self_cty with
     ctyp_type = Ctype.expand_head env self_cty.ctyp_type } in
   let self_type =  self_cty.ctyp_type in
@@ -552,7 +552,7 @@ and class_type_aux env scty =
                                                    List.length styl)));
       let ctys = List.map2
         (fun sty ty ->
-          let cty' = transl_simple_type env false (Global, Unique) sty in
+          let cty' = transl_simple_type env false (Global, Shared) sty in
           let ty' = cty'.ctyp_type in
           begin
            try Ctype.unify env ty' ty with Ctype.Unify trace ->
@@ -570,7 +570,7 @@ and class_type_aux env scty =
       cltyp (Tcty_signature clsig) typ
 
   | Pcty_arrow (l, sty, scty) ->
-      let cty = transl_simple_type env false (Global, Unique) sty in
+      let cty = transl_simple_type env false (Global, Shared) sty in
       let ty = cty.ctyp_type in
       let ty =
         if Btype.is_optional l
@@ -658,7 +658,7 @@ and class_field_aux self_loc cl_num self_type meths vars
 
   | Pcf_val (lab, mut, Cfk_virtual styp) ->
       if !Clflags.principal then Ctype.begin_def ();
-      let cty = Typetexp.transl_simple_type val_env false (Global, Unique) styp in
+      let cty = Typetexp.transl_simple_type val_env false (Global, Shared) styp in
       let ty = cty.ctyp_type in
       if !Clflags.principal then begin
         Ctype.end_def ();
@@ -734,7 +734,7 @@ and class_field_aux self_loc cl_num self_type meths vars
                 | Some sty ->
                     let sty = Ast_helper.Typ.force_poly sty in
                     let cty' =
-                      Typetexp.transl_simple_type val_env false (Global, Unique) sty
+                      Typetexp.transl_simple_type val_env false (Global, Shared) sty
                     in
                     let ty' = cty'.ctyp_type in
               Ctype.unify val_env ty' ty
@@ -963,7 +963,7 @@ and class_expr_aux cl_num val_env met_env scl =
       if Path.same decl.cty_path unbound_class then
         raise(Error(scl.pcl_loc, val_env, Unbound_class_2 lid.txt));
       let tyl = List.map
-          (fun sty -> transl_simple_type val_env false (Global, Unique) sty)
+          (fun sty -> transl_simple_type val_env false (Global, Shared) sty)
           styl
       in
       let (params, clty) =

@@ -1093,6 +1093,10 @@ module Locality_mode = struct
   let max_mode = local
   let min_mode = global
 
+  let of_const = function
+    | Global -> global
+    | Local -> local
+
   let join ms =
     let rec aux vars = function
       | [] -> joinvars vars
@@ -1152,29 +1156,33 @@ module Uniqueness_mode = struct
   let max_mode = shared
   let min_mode = unique
 
-  let join ms =
-    let rec aux vars = function
-      | [] -> joinvars vars
-      | Amode Unique :: ms -> aux vars ms
-      | Amode Shared :: _ -> Amode Shared
-      | Amodevar v :: ms -> aux (v :: vars) ms
-    in aux [] ms
+  let of_const = function
+    | Unique -> unique
+    | Shared -> shared
 
-  let newvar () = Amodevar (fresh ())
+  (* let join ms =
+   *   let rec aux vars = function
+   *     | [] -> joinvars vars
+   *     | Amode Unique :: ms -> aux vars ms
+   *     | Amode Shared :: _ -> Amode Shared
+   *     | Amodevar v :: ms -> aux (v :: vars) ms
+   *   in aux [] ms *)
 
-  let newvar_below = function
-    | Amode Unique -> Amode Unique, false
-    | m ->
-      let v = newvar () in
-      submode_exn v m;
-      v, true
-
-  let newvar_above = function
-    | Amode Shared -> Amode Shared, false
-    | m ->
-      let v = newvar () in
-      submode_exn m v;
-      v, true
+  (* let newvar () = Amodevar (fresh ())
+   *
+   * let newvar_below = function
+   *   | Amode Unique -> Amode Unique, false
+   *   | m ->
+   *     let v = newvar () in
+   *     submode_exn v m;
+   *     v, true
+   *
+   * let newvar_above = function
+   *   | Amode Shared -> Amode Shared, false
+   *   | m ->
+   *     let v = newvar () in
+   *     submode_exn m v;
+   *     v, true *)
 end
 
 module Alloc_mode = struct
@@ -1185,18 +1193,14 @@ module Alloc_mode = struct
   type const = locality * uniqueness
   type t = Types.alloc_mode
 
-  let global = { locality = Amode Global; uniqueness = Amode Shared }
-  let local = { locality = Amode Local; uniqueness = Amode Shared }
-  let unique = { locality = Amode Global; uniqueness = Amode Unique }
-  let local_unique = { locality = Amode Local; uniqueness = Amode Unique }
+  let of_const (l, u) = { locality = Locality_mode.of_const l; uniqueness = Uniqueness_mode.of_const u }
 
-  let of_const = function
-    | Global, Shared -> global
-    | Global, Unique -> unique
-    | Local, Shared -> local
-    | Local, Unique -> local_unique
+  let global = of_const (Global, Shared)
+  let local = of_const (Local, Shared)
+  let unique = of_const (Global, Unique)
+  let local_unique = of_const (Local, Unique)
 
-  let min_mode = unique
+  let min_mode = global (* TODO unique *)
 
   let max_mode = local
 
@@ -1222,36 +1226,36 @@ module Alloc_mode = struct
     end
     | Error () -> Error `Locality
 
-  let join_const (l1, u1) (l2, u2) = (Locality_mode.join_const l1 l2, Uniqueness_mode.join_const u1 u2)
+  let join_const (l1, _u1) (l2, _u2) = (Locality_mode.join_const l1 l2, Shared)
 
   let join ms =
     { locality = Locality_mode.join (List.map (fun t -> t.locality) ms);
-      uniqueness = Uniqueness_mode.join (List.map (fun (t : t) -> t.uniqueness) ms)}
+      uniqueness = Amode Shared }
 
-  let constrain_upper {locality; uniqueness} =
-    Locality_mode.constrain_upper locality,
-    Uniqueness_mode.constrain_upper uniqueness
+  let constrain_upper {locality; uniqueness = _} =
+    Locality_mode.constrain_upper locality, Shared
+  (* Uniqueness_mode.constrain_upper uniqueness *)
 
-  let constrain_lower {locality; uniqueness} =
-    Locality_mode.constrain_lower locality,
-    Uniqueness_mode.constrain_lower uniqueness
+  let constrain_lower {locality; uniqueness = _} =
+    Locality_mode.constrain_lower locality, Shared
+  (* Uniqueness_mode.constrain_lower uniqueness *)
 
-  let constrain_global_shared {locality; uniqueness} =
-    Locality_mode.constrain_lower locality,
-    Uniqueness_mode.constrain_upper uniqueness
+  let constrain_global_shared {locality; uniqueness = _} =
+    Locality_mode.constrain_lower locality, Shared
+  (* Uniqueness_mode.constrain_upper uniqueness *)
 
   let newvar () =
     { locality = Locality_mode.newvar ();
-      uniqueness = Uniqueness_mode.newvar () }
+      uniqueness = Amode Shared }
 
-  let newvar_below { locality; uniqueness } =
+  let newvar_below { locality; uniqueness = _ } =
     let l = Locality_mode.newvar_below locality in
-    let u = Uniqueness_mode.newvar_below uniqueness in
+    let u = Amode Shared, false in
     { locality = fst l; uniqueness = fst u }, snd l || snd u
 
-  let newvar_above { locality; uniqueness } =
+  let newvar_above { locality; uniqueness = _ } =
     let l = Locality_mode.newvar_above locality in
-    let u = Uniqueness_mode.newvar_above uniqueness in
+    let u = Amode Shared, false in
     { locality = fst l; uniqueness = fst u }, snd l || snd u
 
   let check_const { locality; uniqueness } =
@@ -1263,8 +1267,10 @@ module Alloc_mode = struct
     | None -> None
 
   let print ppf { locality; uniqueness } =
-    Locality_mode.print ppf locality;
-    Uniqueness_mode.print ppf uniqueness
+    Format.fprintf ppf
+      "@[<2>%a, %a@]"
+      Locality_mode.print locality
+      Uniqueness_mode.print uniqueness
 
 (*
   let pp_c ppf = function
@@ -1416,25 +1422,25 @@ module Value_mode = struct
   let join ts =
     let r_as_l = Locality_mode.join (List.map (fun t -> t.r_as_l) ts) in
     let r_as_g = Locality_mode.join (List.map (fun t -> t.r_as_g) ts) in
-    let uniqueness = Uniqueness_mode.join (List.map (fun t -> t.uniqueness) ts) in
+    let uniqueness = Amode Shared in
     { r_as_l; r_as_g; uniqueness }
 
   let constrain_upper t =
     let r_as_l = Locality_mode.constrain_upper t.r_as_l in
     let r_as_g = Locality_mode.constrain_upper t.r_as_g in
-    let uniqueness = Uniqueness_mode.constrain_upper t.uniqueness in
+    let uniqueness = Shared in
     of_alloc_consts ~r_as_l ~r_as_g, uniqueness
 
   let constrain_lower t =
     let r_as_l = Locality_mode.constrain_lower t.r_as_l in
     let r_as_g = Locality_mode.constrain_lower t.r_as_g in
-    let uniqueness = Uniqueness_mode.constrain_lower t.uniqueness in
+    let uniqueness = Shared in
     of_alloc_consts ~r_as_l ~r_as_g, uniqueness
 
   let newvar () =
     let r_as_l = Locality_mode.newvar () in
     let r_as_g = Locality_mode.newvar () in
-    let uniqueness = Uniqueness_mode.newvar () in
+    let uniqueness = Amode Shared in
     Locality_mode.submode_exn r_as_g r_as_l;
     { r_as_l; r_as_g; uniqueness }
 

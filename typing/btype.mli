@@ -255,6 +255,16 @@ val map_type_expr_cstr_args: (type_expr -> type_expr) ->
   (constructor_arguments -> constructor_arguments)
 
 
+module Locality_mode : sig
+  type const = Types.locality = Global | Local
+  val min_const : const
+  val max_const : const
+  val le_const : const -> const -> bool
+  val join_const : const -> const -> const
+  val meet_const : const -> const -> const
+  val print_const : Format.formatter -> const -> unit
+  val of_const : const -> locality mode
+end
 
 module Alloc_mode : sig
 

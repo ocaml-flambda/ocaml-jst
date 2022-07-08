@@ -3139,7 +3139,7 @@ let create_package_type loc env (p, l) =
   let fields =
     List.map
       (fun (name, ct) ->
-         name, Typetexp.transl_simple_type env false (Global, Unique) ct)
+         name, Typetexp.transl_simple_type env false (Global, Shared) ct)
       l
   in
   let ty = newty (Tpackage (s,
@@ -4409,7 +4409,7 @@ and type_expect_
         match sty with None -> repr ty_expected, None
         | Some sty ->
             let sty = Ast_helper.Typ.force_poly sty in
-            let cty = Typetexp.transl_simple_type env false (Global, Unique) sty in
+            let cty = Typetexp.transl_simple_type env false (Global, Shared) sty in
             repr cty.ctyp_type, Some cty
       in
       if !Clflags.principal then begin
@@ -5374,7 +5374,7 @@ and type_apply_arg env ~funct ~index ~position ~partial_app (lbl, arg) =
       (lbl, Arg arg)
   | Omitted _ as arg -> (lbl, arg)
 
-and type_application env app_loc expected_mode position funct funct_mode sargs =
+and type_application env app_loc (expected_mode : expected_mode) position funct funct_mode sargs =
   let is_ignore funct =
     is_prim ~name:"%ignore" funct &&
     (try ignore (filter_arrow env (instance funct.exp_type) Nolabel); true
@@ -5428,6 +5428,11 @@ and type_application env app_loc expected_mode position funct funct_mode sargs =
         type_omitted_parameters expected_mode env
           ty_ret mode_ret args
       in
+      if (not !Clflags.real_paths) then begin
+        Format.eprintf "Expected: %a\n%!"
+          Value_mode.print expected_mode.mode;
+        Format.eprintf "Ret Mode: %a\n%!"
+          Alloc_mode.print mode_ret; end;
       submode ~loc:app_loc ~env
         (Value_mode.of_alloc mode_ret) expected_mode;
       args, ty_ret, position
