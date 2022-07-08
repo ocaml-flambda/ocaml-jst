@@ -43,11 +43,11 @@ let value_descriptions ~loc env name
           raise Dont_match;
         let mode1 : Primitive.mode =
           match Btype.Alloc_mode.check_const mode1 with
-          | Some (Global, Shared) -> Prim_global
-          | Some (Local, Shared) -> Prim_local
-          | Some (Global, Unique) -> Prim_unique
-          | Some (Local, Unique) -> Prim_local_unique
-          | None -> Prim_poly
+          | (Some Global, Some Shared) -> Prim_global
+          | (Some Local, Some Shared) -> Prim_local
+          | (Some Global, Some Unique) -> Prim_unique
+          | (Some Local, Some Unique) -> Prim_local_unique
+          | (_, _) -> Prim_poly
         in
         let p1 = Primitive.inst_mode mode1 p1 in
         if p1 = p2 then Tcoerce_none else raise Dont_match

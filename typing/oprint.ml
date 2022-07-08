@@ -258,17 +258,24 @@ let pr_var = Pprintast.tyvar
 let pr_vars =
   print_list pr_var (fun ppf -> fprintf ppf "@ ")
 
-let join_modes rm1 am2 =
-  match rm1, am2 with
-  | Oam_local_unique, _ -> Oam_local_unique
-  | _, Oam_local_unique -> Oam_local_unique
-  | Oam_unique, _ -> Oam_unique
-  | _, Oam_unique -> Oam_unique
-  | Oam_local, _ -> Oam_local
-  | _, Oam_local -> Oam_local
-  | Oam_unknown, _ -> Oam_unknown
-  | _, Oam_unknown -> Oam_unknown
-  | Oam_global, Oam_global -> Oam_global
+let join_locality lm1 lm2 =
+  match lm1, lm2 with
+  | Olm_local, _ -> Olm_local
+  | _, Olm_local -> Olm_local
+  | Olm_unknown, _ -> Olm_unknown
+  | _, Olm_unknown -> Olm_unknown
+  | Olm_global, Olm_global -> Olm_global
+
+let join_uniqueness um1 um2 =
+  match um1, um2 with
+  | Oum_unique, _ -> Oum_unique
+  | _, Oum_unique -> Oum_unique
+  | Oum_unknown, _ -> Oum_unknown
+  | _, Oum_unknown -> Oum_unknown
+  | Oum_shared, Oum_shared -> Oum_shared
+
+let join_modes (lm1, um1) (lm2, um2) =
+  join_locality lm1 lm2, join_uniqueness um1 um2
 
 let rec print_out_type_0 mode ppf =
   function
@@ -294,41 +301,45 @@ and print_out_type_1 mode ppf =
       pp_close_box ppf ()
   | ty ->
     match mode with
-    | Oam_local ->
-        print_out_type_local mode ppf ty
-    | Oam_unique ->
-      print_out_type_unique mode ppf ty
-    | Oam_local_unique ->
+    | Olm_local, Oum_unique ->
       print_out_type_local_unique mode ppf ty
-    | Oam_unknown -> print_out_type_2 mode ppf ty
-    | Oam_global -> print_out_type_2 mode ppf ty
+    | Olm_local, _ ->
+        print_out_type_local mode ppf ty
+    | _, Oum_unique ->
+      print_out_type_unique mode ppf ty
+    | _, _ -> print_out_type_2 mode ppf ty
 
 and print_out_arg am ppf ty =
   match am with
-  | Oam_local ->
-      print_out_type_local am ppf ty
-  | Oam_local_unique ->
+  | Olm_local, Oum_unique ->
     print_out_type_local_unique am ppf ty
-  | Oam_unique ->
+  | Olm_local, _ ->
+    print_out_type_local am ppf ty
+  | _, Oum_unique ->
     print_out_type_unique am ppf ty
-  | Oam_global -> print_out_type_2 am ppf ty
-  | Oam_unknown -> print_out_type_2 am ppf ty
+  | _, _ -> print_out_type_2 am ppf ty
 
+(* If mode and rm do not match up, print the arrow according to rm. *)
 and print_out_ret mode rm ppf ty =
-  match mode, rm with
-  | Oam_local, Oam_local
-  | Oam_local_unique, Oam_local_unique
-  | Oam_unique, Oam_unique
-  | Oam_global, Oam_global
-  | Oam_unknown, _
-  | _, Oam_unknown -> print_out_type_1 rm ppf ty
-  | _, Oam_local ->
-      print_out_type_local rm ppf ty
-  | _, Oam_unique ->
-    print_out_type_unique rm ppf ty
-  | _, Oam_local_unique ->
-    print_out_type_local_unique rm ppf ty
-  | _, Oam_global -> print_out_type_2 rm ppf ty
+  let same_locality = match fst mode, fst rm with
+    | Olm_local, Olm_local
+    | Olm_global, Olm_global
+    | Olm_unknown, _
+    | _, Olm_unknown -> true
+    | _, _ -> false
+  and same_uniqueness = match snd mode, snd rm with
+    | Oum_unique, Oum_unique
+    | Oum_shared, Oum_shared
+    | Oum_unknown, _
+    | _, Oum_unknown -> true
+    | _, _ -> false in
+  if same_locality && same_uniqueness
+  then print_out_type_1 rm ppf ty
+  else match fst rm, snd rm with
+    | Olm_local, Oum_unique -> print_out_type_local_unique rm ppf ty
+    | Olm_local, _ -> print_out_type_local rm ppf ty
+    | _, Oum_unique -> print_out_type_unique rm ppf ty
+    | _, _ -> print_out_type_2 rm ppf ty
 
 and print_out_type_local m ppf ty =
   if Clflags.Extension.is_enabled Local then begin
@@ -349,7 +360,7 @@ and print_out_type_unique m ppf ty =
   end
 
 and print_out_type_local_unique m ppf ty =
-  if Clflags.Extension.is_enabled Local then begin
+  if Clflags.Extension.is_enabled Local && Clflags.Extension.is_enabled Unique then begin
     pp_print_string ppf "local_";
     pp_print_space ppf ();
     pp_print_string ppf "unique_";
@@ -421,9 +432,9 @@ and print_out_type_3 mode ppf =
       fprintf ppf "@[<1>(%a [@@%s])@]"
         (print_out_type_0 mode) t attr.oattr_name
 and print_out_type ppf typ =
-  print_out_type_0 Oam_global ppf typ
+  print_out_type_0 (Olm_global, Oum_shared) ppf typ
 and print_simple_out_type ppf typ =
-  print_out_type_3 Oam_global ppf typ
+  print_out_type_3 (Olm_global, Oum_shared) ppf typ
 and print_record_decl ppf lbls =
   fprintf ppf "{%a@;<1 -2>}"
     (print_list_init print_out_label (fun ppf -> fprintf ppf "@ ")) lbls
@@ -517,7 +528,7 @@ let rec print_out_class_type ppf =
       fprintf ppf "@[%a%a@]" pr_tyl tyl print_ident id
   | Octy_arrow (lab, ty, cty) ->
       fprintf ppf "@[%s%a ->@ %a@]" (if lab <> "" then lab ^ ":" else "")
-        (print_out_type_2 Oam_global) ty print_out_class_type cty
+        (print_out_type_2 (Olm_global, Oum_shared)) ty print_out_class_type cty
   | Octy_signature (self_ty, csil) ->
       let pr_param ppf =
         function

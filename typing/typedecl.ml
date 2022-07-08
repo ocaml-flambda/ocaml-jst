@@ -1302,11 +1302,11 @@ let make_native_repr env core_type ty ~global_repr =
 
 let prim_const_mode m =
   match Btype.Alloc_mode.check_const m with
-  | Some (Global, Shared) -> Prim_global
-  | Some (Local, Shared) -> Prim_local
-  | Some (Global, Unique) -> Prim_unique
-  | Some (Local, Unique) -> Prim_local_unique
-  | None -> assert false
+  | (Some Global, Some Shared) -> Prim_global
+  | (Some Local, Some Shared) -> Prim_local
+  | (Some Global, Some Unique) -> Prim_unique
+  | (Some Local, Some Unique) -> Prim_local_unique
+  | (_, _) -> assert false
 
 let rec parse_native_repr_attributes env core_type ty rmode ~global_repr =
   match core_type.ptyp_desc, (Ctype.repr ty).desc,

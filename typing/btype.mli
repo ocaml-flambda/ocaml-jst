@@ -316,7 +316,7 @@ module Alloc_mode : sig
 
   val newvar_above : t -> t * bool
 
-  val check_const : t -> const option
+  val check_const : t -> locality option * uniqueness option
 
   val print : Format.formatter -> t -> unit
 

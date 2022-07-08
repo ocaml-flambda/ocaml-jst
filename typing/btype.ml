@@ -1259,12 +1259,7 @@ module Alloc_mode = struct
     { locality = fst l; uniqueness = fst u }, snd l || snd u
 
   let check_const { locality; uniqueness } =
-    match Locality_mode.check_const locality with
-    | Some l -> begin match Uniqueness_mode.check_const uniqueness with
-      | Some u -> Some (l, u)
-      | None -> None
-      end
-    | None -> None
+    Locality_mode.check_const locality, Uniqueness_mode.check_const uniqueness
 
   let print ppf { locality; uniqueness } =
     Format.fprintf ppf
