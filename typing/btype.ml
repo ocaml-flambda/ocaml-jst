@@ -844,6 +844,7 @@ module type Lattice_mode = sig
   type const
   val min_const : const
   val max_const : const
+  val eq_const : const -> const -> bool
   val le_const : const -> const -> bool
   val join_const : const -> const -> const
   val meet_const : const -> const -> const
@@ -872,7 +873,7 @@ module Lattice_solver (L : Lattice_mode) = struct
     else begin
       let m = L.join_const v.lower m in
       set_lower ~log v m;
-      if m = v.upper then set_vlower ~log v []
+      if L.eq_const m v.upper then set_vlower ~log v []
     end
 
   let rec submode_vc ~log v m =
@@ -887,7 +888,7 @@ module Lattice_solver (L : Lattice_mode) = struct
         submode_vc ~log a m;
         set_lower ~log v (L.join_const v.lower a.lower);
       );
-      if v.lower = m then set_vlower ~log v []
+      if L.eq_const v.lower m then set_vlower ~log v []
     end
 
   let submode_vv ~log a b =
@@ -1037,14 +1038,14 @@ module Lattice_solver (L : Lattice_mode) = struct
     | Amode m -> Some m
     | Amodevar v ->
       compress_vlower v;
-      if v.lower = v.upper then Some v.lower else None
+      if L.eq_const v.lower v.upper then Some v.lower else None
 
   let print_var_id ppf v =
     Format.fprintf ppf "?%i" v.mvid
 
   let print_var ppf v =
     compress_vlower v;
-    if v.lower = v.upper then begin
+    if L.eq_const v.lower v.upper then begin
       L.print_const ppf v.lower
     end else if v.vlower = [] then begin
       print_var_id ppf v
@@ -1070,6 +1071,11 @@ module Locality_mode = struct
       match a, b with
       | Global, _ | _, Local -> true
       | Local, Global -> false
+
+    let eq_const a b =
+      match a, b with
+      | Global, Global | Local, Local -> true
+      | Local, Global | Global, Local -> false
 
     let join_const a b =
       match a, b with
@@ -1133,6 +1139,11 @@ module Uniqueness_mode = struct
       match a, b with
       | Unique, _ | _, Shared -> true
       | Shared, Unique -> false
+
+    let eq_const a b =
+      match a, b with
+      | Unique, Unique | Shared, Shared -> true
+      | Shared, Unique | Unique, Shared -> false
 
     let join_const a b =
       match a, b with
