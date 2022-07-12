@@ -542,8 +542,7 @@ type let_binding =
 type let_bindings =
   { lbs_bindings: let_binding list;
     lbs_rec: rec_flag;
-    lbs_extension: string Asttypes.loc option;
-    lbs_loc: Location.t }
+    lbs_extension: string Asttypes.loc option }
 
 let mklb first ~loc (p, e) attrs =
   {
@@ -556,12 +555,11 @@ let mklb first ~loc (p, e) attrs =
     lb_loc = make_loc loc;
   }
 
-let mklbs ~loc ext rf lb =
+let mklbs ext rf lb =
   {
     lbs_bindings = [lb];
     lbs_rec = rf;
     lbs_extension = ext ;
-    lbs_loc = make_loc loc;
   }
 
 let addlb lbs lb =
@@ -2601,7 +2599,7 @@ let_bindings(EXT):
   attrs2 = post_item_attributes
     {
       let attrs = attrs1 @ attrs2 in
-      mklbs ~loc:$sloc ext rec_flag (mklb ~loc:$sloc true body attrs)
+      mklbs ext rec_flag (mklb ~loc:$sloc true body attrs)
     }
 ;
 and_let_binding:

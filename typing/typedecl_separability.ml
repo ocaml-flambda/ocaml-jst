@@ -26,8 +26,6 @@ type type_definition = type_declaration
    a single argument, [argument_to_unbox] represents the
    information we need to check the argument for separability. *)
 type argument_to_unbox = {
-  kind: parameter_kind; (* for error messages *)
-  mutability: Asttypes.mutable_flag;
   argument_type: type_expr;
   result_type_parameter_instances: type_expr list;
   (** result_type_parameter_instances represents the domain of the
@@ -38,12 +36,7 @@ type argument_to_unbox = {
      For example, [type 'a t = 'b constraint 'a = 'b * int] has
      [['b * int]] as [result_type_parameter_instances], and so does
      [type _ t = T : 'b -> ('b * int) t]. *)
-  location : Location.t;
 }
-and parameter_kind =
-  | Record_field
-  | Constructor_parameter
-  | Constructor_field (** inlined records *)
 
 (** ['a multiplicity] counts the number of ['a] in
     a structure in which expect to see only one ['a]. *)
@@ -82,9 +75,6 @@ let structure : type_definition -> type_structure = fun def ->
   | Type_record (labels, _) ->
       Algebraic (One (
         demultiply_list labels @@ fun ld -> {
-          location = ld.ld_loc;
-          kind = Record_field;
-          mutability = ld.ld_mutable;
           argument_type = ld.ld_type;
           result_type_parameter_instances = def.type_params;
         }
@@ -106,9 +96,6 @@ let structure : type_definition -> type_structure = fun def ->
         begin match cd.cd_args with
         | Cstr_tuple tys ->
             demultiply_list tys @@ fun argument_type -> {
-              location = cd.cd_loc;
-              kind = Constructor_parameter;
-              mutability = Asttypes.Immutable;
               argument_type;
               result_type_parameter_instances;
             }
@@ -116,9 +103,6 @@ let structure : type_definition -> type_structure = fun def ->
             demultiply_list labels @@ fun ld ->
               let argument_type = ld.ld_type in
               {
-                location = ld.ld_loc;
-                kind = Constructor_field;
-                mutability = ld.ld_mutable;
                 argument_type;
                 result_type_parameter_instances;
               }

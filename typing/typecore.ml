@@ -1113,12 +1113,12 @@ let wrap_disambiguate msg ty f x =
 
 module Label = NameChoice (struct
   type t = label_description
-  type usage = unit
+  type usage = Env.label_usage
   let kind = Datatype_kind.Record
   let get_name lbl = lbl.lbl_name
   let get_type lbl = lbl.lbl_res
-  let lookup_all_from_type loc () path env =
-    Env.lookup_all_labels_from_type ~loc path env
+  let lookup_all_from_type loc usage path env =
+    Env.lookup_all_labels_from_type ~loc usage path env
   let in_env lbl =
     match lbl.lbl_repres with
     | Record_regular | Record_float | Record_unboxed false -> true
@@ -1151,7 +1151,7 @@ let disambiguate_label_by_ids closed ids labels  : (_, _) result =
   Ok labels
 
 (* Only issue warnings once per record constructor/pattern *)
-let disambiguate_lid_a_list loc closed env expected_type lid_a_list =
+let disambiguate_lid_a_list loc closed env usage expected_type lid_a_list =
   let ids = List.map (fun (lid, _) -> Longident.last lid.txt) lid_a_list in
   let w_pr = ref false and w_amb = ref []
   and w_scope = ref [] and w_scope_ty = ref "" in
@@ -1165,10 +1165,10 @@ let disambiguate_lid_a_list loc closed env expected_type lid_a_list =
     | _ -> Location.prerr_warning loc msg
   in
   let process_label lid =
-    let scope = Env.lookup_all_labels ~loc:lid.loc lid.txt env in
+    let scope = Env.lookup_all_labels ~loc:lid.loc usage lid.txt env in
     let filter : Label.nonempty_candidate_filter =
       disambiguate_label_by_ids closed ids in
-    Label.disambiguate ~warn ~filter () lid env expected_type scope in
+    Label.disambiguate ~warn ~filter usage lid env expected_type scope in
   let lbl_a_list =
     List.map (fun (lid,a) -> lid, process_label lid, a) lid_a_list in
   if !w_pr then
@@ -1206,7 +1206,7 @@ let map_fold_cont f xs k =
     xs (fun ys -> k (List.rev ys)) []
 
 let type_label_a_list
-      ?labels loc closed env type_lbl_a expected_type lid_a_list k =
+      ?labels loc closed env usage type_lbl_a expected_type lid_a_list k =
   let lbl_a_list =
     match lid_a_list, labels with
       ({txt=Longident.Lident s}, _)::_, Some labels when Hashtbl.mem labels s ->
@@ -1228,7 +1228,7 @@ let type_label_a_list
                   | _ -> lid_a)
                 lid_a_list
         in
-        disambiguate_lid_a_list loc closed env expected_type lid_a_list
+        disambiguate_lid_a_list loc closed env usage expected_type lid_a_list
   in
   (* Invariant: records are sorted in the typed tree *)
   let lbl_a_list =
@@ -2009,12 +2009,13 @@ and type_pat_aux
       | Normal ->
           k' (wrap_disambiguate "This record pattern is expected to have"
                (mk_expected expected_ty)
-               (type_label_a_list loc false !env type_label_pat expected_type
-                  lid_sp_list)
+               (type_label_a_list loc false !env Env.Projection
+                  type_label_pat expected_type lid_sp_list)
                make_record_pat)
       | Counter_example {labels; _} ->
-          type_label_a_list ~labels loc false !env type_label_pat expected_type
-            lid_sp_list (fun lbl_pat_list -> k' (make_record_pat lbl_pat_list))
+          type_label_a_list ~labels loc false !env Env.Projection
+            type_label_pat expected_type lid_sp_list
+            (fun lbl_pat_list -> k' (make_record_pat lbl_pat_list))
       end
   | Ppat_array spl ->
       let ty_elt = newgenvar() in
@@ -3736,7 +3737,7 @@ and type_expect_
       let lbl_exp_list =
         wrap_disambiguate "This record expression is expected to have"
           (mk_expected ty_record)
-          (type_label_a_list loc closed env
+          (type_label_a_list loc closed env Env.Construct
              (fun e k ->
                 k (type_label_exp true env rmode loc ty_record e))
              expected_type lid_sexp_list)
@@ -3831,7 +3832,9 @@ and type_expect_
         exp_attributes = sexp.pexp_attributes;
         exp_env = env }
   | Pexp_field(srecord, lid) ->
-      let (record, rmode, label, _) = type_label_access env srecord lid in
+      let (record, rmode, label, _) =
+        type_label_access env srecord Env.Projection lid
+      in
       let mode =
         match label.lbl_global with
         | Global -> Value_mode.global
@@ -3850,7 +3853,7 @@ and type_expect_
         exp_env = env }
   | Pexp_setfield(srecord, lid, snewval) ->
       let (record, rmode, label, expected_type) =
-        type_label_access env srecord lid in
+        type_label_access env srecord Env.Mutation lid in
       let ty_record =
         if expected_type = None then newvar () else record.exp_type in
       let (label_loc, label, newval) =
@@ -4871,7 +4874,7 @@ and type_function ?in_function loc attrs env (expected_mode : expected_mode)
     exp_env = env }
 
 
-and type_label_access env srecord lid =
+and type_label_access env srecord usage lid =
   if !Clflags.principal then begin_def ();
   let mode = Value_mode.newvar () in
   let record = type_exp ~recarg:Allowed env (mode_nontail mode) srecord in
@@ -4886,10 +4889,10 @@ and type_label_access env srecord lid =
       Some(p0, p, (repr ty_exp).level = generic_level || not !Clflags.principal)
     with Not_found -> None
   in
-  let labels = Env.lookup_all_labels ~loc:lid.loc lid.txt env in
+  let labels = Env.lookup_all_labels ~loc:lid.loc usage lid.txt env in
   let label =
     wrap_disambiguate "This expression has" (mk_expected ty_exp)
-      (Label.disambiguate () lid env expected_type) labels in
+      (Label.disambiguate usage lid env expected_type) labels in
   (record, mode, label, expected_type)
 
 (* Typing format strings for printing or reading.

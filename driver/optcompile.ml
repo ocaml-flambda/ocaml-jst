@@ -56,7 +56,6 @@ let flambda i backend typed =
       in
       Asmgen.compile_implementation
         ~backend
-        ~filename:i.source_file
         ~prefixname:i.output_prefix
         ~middle_end:Flambda_middle_end.lambda_to_clambda
         ~ppf_dump:i.ppf_dump
@@ -76,7 +75,6 @@ let clambda i backend typed =
        |> print_if i.ppf_dump Clflags.dump_lambda Printlambda.program
        |> Asmgen.compile_implementation
             ~backend
-            ~filename:i.source_file
             ~prefixname:i.output_prefix
             ~middle_end:Closure_middle_end.lambda_to_clambda
             ~ppf_dump:i.ppf_dump;
