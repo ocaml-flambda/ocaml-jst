@@ -23,7 +23,7 @@ val dup : 'a -> unique_ 'a glob * 'a glob = <fun>
 
 let drop (unique_ x) = unique_ ()
 [%%expect{|
-val drop : unique 'a -> unit = <fun>
+val drop : unique_ 'a -> unit = <fun>
 |}]
 
 let branching (unique_ x : float) = unique_ if true then x else x
@@ -31,7 +31,7 @@ let branching (unique_ x : float) = unique_ if true then x else x
 val branching : unique_ float -> unique_ float = <fun>
 |}]
 
-let sequence (unique_ x : float) = unique_ let y = x in x
+let sequence (unique_ x : float) = unique_ let y = x in (x, y)
 [%%expect{|
 Error: variable x used twice
 |}]
@@ -81,7 +81,10 @@ val higher_order2 : 'a -> ('a -> unique_ 'b) -> unique_ 'b = <fun>
 
 let higher_order3 (unique_ x : 'a) (f : 'a -> 'b) = unique_ f x
 [%%expect{|
-Error: result of f x is not unique
+Line 1, characters 60-63:
+1 | let higher_order3 (unique_ x : 'a) (f : 'a -> 'b) = unique_ f x
+                                                                ^^^
+Error: Found a shared value where a unique value was expected
 |}]
 
 let higher_order4 (x : 'a) (f : unique_ 'a -> 'b) = f x
@@ -91,12 +94,16 @@ Error: Argument x to f is not unique
 
 let higher_order5 (unique_ x) = let f (unique_ x) = unique_ x in higher_order x f
 [%%expect{|
-val higher_order5 : unique_ 'a -> unique_ 'a
+val higher_order5 : unique_ 'a -> unique_ 'a = <fun>
 |}]
 
 let higher_order6 (unique_ x) = let f (unique_ x) = unique_ x in higher_order2 x f
 [%%expect{|
-Error: Expected ('a -> unique_ 'b) but got (unique_ 'a -> unique_ 'b)
+Line 1, characters 81-82:
+1 | let higher_order6 (unique_ x) = let f (unique_ x) = unique_ x in higher_order2 x f
+                                                                                     ^
+Error: This expression has type unique_ 'a -> 'a
+       but an expression was expected of type 'b -> unique_ 'c
 |}]
 
 type record_update = { x : int }
@@ -111,12 +118,12 @@ val update : unique_ record_update -> unique_ record_update = <fun>
 
 let inf1 (unique_ x : float) = unique_ let y = x in y
 [%%expect{|
-val inf1 : unique_ float -> unique_ float
+val inf1 : unique_ float -> unique_ float = <fun>
 |}]
 
 let inf2 (b : bool) (unique_ x : float) = unique_ let y = if b then x else 1.0 in y
 [%%expect{|
-val inf2 : bool -> unique_ float -> unique_ float
+val inf2 : bool -> unique_ float -> unique_ float = <fun>
 |}]
 
 let inf3 (b : bool) (unique_ x : float) (y : float) = unique_ let z = if b then x else y in z
@@ -126,5 +133,5 @@ let inf3 (b : bool) (unique_ x : float) (y : float) = unique_ let z = if b then 
 
 let inf4 (unique_ x) = let f x = x in higher_order x f
 [%%expect{|
-val inf4 : unique_ 'a -> unique_ 'a
+val inf4 : unique_ 'a -> unique_ 'a = <fun>
 |}]

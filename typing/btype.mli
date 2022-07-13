@@ -355,6 +355,10 @@ module Value_mode : sig
 
   val min_mode : t
 
+  val set_locality : locality -> t -> t
+
+  val set_uniqueness : uniqueness -> t -> t
+
   (** Injections from [Alloc_mode.t] into [Value_mode.t] *)
 
   (** [of_alloc] maps [Global] to [Global] and [Local] to [Local] *)

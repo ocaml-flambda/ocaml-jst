@@ -1383,6 +1383,15 @@ module Value_mode = struct
     let uniqueness = Uniqueness_mode.min_mode in
     { r_as_l; r_as_g; uniqueness }
 
+  let set_locality locality { uniqueness } =
+    match locality with
+    | Local -> { local with uniqueness }
+    | Regional -> { regional with uniqueness }
+    | Global -> { global with uniqueness }
+
+  let set_uniqueness uniqueness { r_as_l; r_as_g } =
+    { r_as_l; r_as_g; uniqueness = Amode uniqueness }
+
   let of_alloc {locality ; uniqueness } =
     let r_as_l = locality in
     let r_as_g = locality in
