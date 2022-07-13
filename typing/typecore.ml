@@ -2894,6 +2894,10 @@ let is_local_returning_expr e =
   let rec loop e =
     match e.pexp_desc with
     | Pexp_apply
+        ({ pexp_desc = Pexp_extension({txt = "extension.unique"}, PStr []) },
+         [Nolabel, exp]) ->
+      loop exp
+    | Pexp_apply
         ({ pexp_desc = Pexp_extension({txt = "extension.local"}, PStr []) },
          [Nolabel, _]) ->
         true, e.pexp_loc
@@ -5882,6 +5886,9 @@ and type_let
     | Pexp_fun _ | Pexp_function _ -> true
     | Pexp_constraint (e, _)
     | Pexp_newtype (_, e)
+    | Pexp_apply
+      ({ pexp_desc = Pexp_extension({txt = "extension.unique"}, PStr []) },
+        [Nolabel, e])
     | Pexp_apply
       ({ pexp_desc = Pexp_extension({txt = "extension.local"}, PStr []) },
        [Nolabel, e]) -> sexp_is_fun e

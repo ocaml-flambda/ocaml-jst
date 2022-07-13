@@ -135,3 +135,8 @@ let inf4 (unique_ x) = let f x = x in higher_order x f
 [%%expect{|
 val inf4 : unique_ 'a -> unique_ 'a = <fun>
 |}]
+
+let unique_default_args ?(unique_ x = 1.0) () = x
+[%%expect{|
+val unique_default_args : ?x:unique_ float -> unit -> unique_ float = <fun>
+|}]
