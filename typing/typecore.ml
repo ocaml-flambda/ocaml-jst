@@ -1759,7 +1759,7 @@ and type_pat_aux
       (* explicitly polymorphic type *)
       assert construction_not_used_in_counterexamples;
       let cty, ty, force =
-        Typetexp.transl_simple_type_delayed !env (type_mode_pat sp) sty
+        Typetexp.transl_simple_type_delayed !env (fst (type_mode_pat sp)) sty
       in
       unify_pat_types ~refine lloc env ty (instance expected_ty);
       pattern_force := force :: !pattern_force;
@@ -2171,7 +2171,7 @@ and type_pat_aux
       (* Pretend separate = true *)
       begin_def();
       let cty, ty, force =
-        Typetexp.transl_simple_type_delayed !env (type_mode_pat sp) sty
+        Typetexp.transl_simple_type_delayed !env (fst (type_mode_pat sp)) sty
       in
       end_def();
       generalize_structure ty;
@@ -3164,7 +3164,7 @@ let create_package_type loc env (p, l) =
   let fields =
     List.map
       (fun (name, ct) ->
-         name, Typetexp.transl_simple_type env false (Global, Shared) ct)
+         name, Typetexp.transl_simple_type env false Global ct)
       l
   in
   let ty = newty (Tpackage (s,
@@ -4045,7 +4045,7 @@ and type_expect_
   | Pexp_constraint (sarg, sty) ->
       (* Pretend separate = true, 1% slowdown for lablgtk *)
       begin_def ();
-      let cty = Typetexp.transl_simple_type env false (type_mode_exp sexp) sty in
+      let cty = Typetexp.transl_simple_type env false (fst (type_mode_exp sexp)) sty in
       let ty = cty.ctyp_type in
       end_def ();
       generalize_structure ty;
@@ -4069,7 +4069,7 @@ and type_expect_
         match sty with
         | None ->
             let (cty', ty', force) =
-              Typetexp.transl_simple_type_delayed env (type_mode_exp sexp) sty'
+              Typetexp.transl_simple_type_delayed env (fst (type_mode_exp sexp)) sty'
             in
             begin_def ();
             let arg = type_exp env expected_mode sarg in
@@ -4115,9 +4115,9 @@ and type_expect_
         | Some sty ->
             begin_def ();
             let (cty, ty, force) =
-              Typetexp.transl_simple_type_delayed env (type_mode_exp sexp) sty
+              Typetexp.transl_simple_type_delayed env (fst (type_mode_exp sexp)) sty
             and (cty', ty', force') =
-              Typetexp.transl_simple_type_delayed env (type_mode_exp sexp) sty'
+              Typetexp.transl_simple_type_delayed env (fst (type_mode_exp sexp)) sty'
             in
             begin try
               let force'' = subtype env ty ty' in
@@ -4458,7 +4458,7 @@ and type_expect_
         match sty with None -> repr ty_expected, None
         | Some sty ->
             let sty = Ast_helper.Typ.force_poly sty in
-            let cty = Typetexp.transl_simple_type env false (Global, Shared) sty in
+            let cty = Typetexp.transl_simple_type env false Global sty in
             repr cty.ctyp_type, Some cty
       in
       if !Clflags.principal then begin

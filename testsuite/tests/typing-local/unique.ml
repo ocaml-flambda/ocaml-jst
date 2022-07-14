@@ -75,6 +75,11 @@ let unique_id (unique_ x) = unique_ x
 val unique_id : unique_ 'a -> 'a = <fun>
 |}]
 
+let shared_id : 'a -> 'a = fun x -> x
+[%%expect{|
+val shared_id : 'a -> 'a = <fun>
+|}]
+
 (* This case is interesting because it fails for locals but should not fail for uniques *)
 let tail_unique _x =
   let unique_ y = 1.0 in unique_id y
@@ -106,9 +111,12 @@ Error: Found a shared value where a unique value was expected
  * Error: Found a shared value where a unique value was expected
  * |}] *)
 
-let higher_order4 (x : 'a) (f : unique_ 'a -> 'b) = f x
+let higher_order4 (x : 'a) (f : unique_ 'a -> 'b) = f (shared_id x)
 [%%expect{|
-val higher_order4 : unique_ 'a -> (unique_ 'a -> 'b) -> 'b = <fun>
+Line 1, characters 54-67:
+1 | let higher_order4 (x : 'a) (f : unique_ 'a -> 'b) = f (shared_id x)
+                                                          ^^^^^^^^^^^^^
+Error: Found a shared value where a unique value was expected
 |}]
 
 let higher_order5 (unique_ x) = let f (unique_ x) = unique_ x in higher_order x f
@@ -171,6 +179,18 @@ val unique_default_args : ?x:unique_ float -> unit -> float = <fun>
 |}]
 
 
+(* Unique Local *)
+
+let ul (unique_ local_ x) = x
+[%%expect{|
+val ul : local_ unique_ 'a -> local_ 'a = <fun>
+|}]
+
+let ul_ret x = unique_ local_ x
+[%%expect{|
+val ul_ret : unique_ 'a -> local_ 'a = <fun>
+|}]
+
 (* ------------------------------------------------------------------------------------ *)
 (* Tests for locals, adapted to uniqueness *)
 (* ------------------------------------------------------------------------------------ *)
@@ -183,14 +203,10 @@ val leak : int -> int ref = <fun>
 |}]
 
 let leak n =
-  let local_ f : 'a. 'a -> 'a = fun x -> x in
+  let unique_ f : 'a. 'a -> 'a = fun x -> x in
   f
 [%%expect{|
-Line 3, characters 2-3:
-3 |   f
-      ^
-Error: This local value escapes its region
-  Hint: Cannot return local value without an explicit "local_" annotation
+val leak : 'a -> 'b -> 'b = <fun>
 |}]
 
 (* If both type and mode are wrong, complain about type *)
@@ -222,9 +238,7 @@ Lines 3-4, characters 4-60:
 4 |     = 'a -> unique_ 'b -> unique_ ('c -> unique_ ('d -> 'e))....................
 Error: The type constraints are not consistent.
 Type 'a -> unique_ 'b -> ('c -> 'd -> 'e) is not compatible with type
-  'a -> unique_ 'b -> 'c -> 'd -> 'e
-Type unique_ 'b -> ('c -> 'd -> 'e) is not compatible with type
-  unique_ 'b -> 'c -> 'd -> 'e
+  'a -> unique_ (unique_ 'b -> 'c -> 'd -> 'e)
 |}]
 
 type distinct_sarg = unit constraint unique_ int -> int = int -> int

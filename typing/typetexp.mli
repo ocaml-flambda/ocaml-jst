@@ -20,12 +20,12 @@ open Types
 val valid_tyvar_name : string -> bool
 
 val transl_simple_type:
-        Env.t -> bool -> (locality * uniqueness)
+        Env.t -> bool -> locality
         -> Parsetree.core_type -> Typedtree.core_type
 val transl_simple_type_univars:
         Env.t -> Parsetree.core_type -> Typedtree.core_type
 val transl_simple_type_delayed
-  :  Env.t -> (locality * uniqueness)
+  :  Env.t -> locality
   -> Parsetree.core_type
   -> Typedtree.core_type * type_expr * (unit -> unit)
         (* Translate a type, but leave type variables unbound. Returns
