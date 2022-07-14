@@ -11,7 +11,7 @@ let dup (unique_ x) = (x, x)
 val dup : unique_ 'a -> 'a * 'a = <fun>
 |}]
 
-let dup (unique_ x) = unique_ (x, x)
+let dup x = unique_ (x, x)
 [%%expect{|
 val dup : unique_ 'a -> 'a * 'a = <fun>
 |}]
@@ -24,9 +24,13 @@ let dup (glob : 'a) : 'a glob * 'a glob = unique_ ({glob}, {glob})
 val dup : 'a -> 'a glob * 'a glob = <fun>
 |}]
 
-let drop (unique_ x) = unique_ ()
+module M : sig
+  val drop : unique_ 'a -> unique_ unit
+  end = struct
+  let drop (unique_ x) = unique_ ()
+end
 [%%expect{|
-val drop : unique_ 'a -> unit = <fun>
+module M : sig val drop : unique_ 'a -> unique_ unit end
 |}]
 
 let branching (unique_ x : float) = unique_ if true then x else x
