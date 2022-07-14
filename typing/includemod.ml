@@ -255,6 +255,33 @@ let simplify_structure_coercion cc id_pos_list =
   then Tcoerce_none
   else Tcoerce_structure (cc, id_pos_list)
 
+(* Build a table of the components of a signature, along with their positions.
+   The table is indexed by kind and name of component *)
+let build_component_table pos_rep sg =
+  let rec build_table pos tbl = function
+      [] -> pos, tbl
+    | (Sig_value (_, _, Hidden)
+      |Sig_type (_, _, _, Hidden)
+      |Sig_typext (_, _, _, Hidden)
+      |Sig_module (_, _, _, _, Hidden)
+      |Sig_modtype (_, _, Hidden)
+      |Sig_class (_, _, _, Hidden)
+      |Sig_class_type (_, _, _, Hidden)
+      ) as item :: rem ->
+        let pos = if is_runtime_component item then pos + 1 else pos in
+        build_table pos tbl rem (* do not pair private items. *)
+    | item :: rem ->
+        let (id, _loc, name) = item_ident_name item in
+        let pos, nextpos =
+          if is_runtime_component item then pos, pos + 1
+          else -1, pos
+        in
+        build_table nextpos
+          (FieldMap.add name (id, item, pos_rep pos id) tbl) rem
+  in
+  build_table 0 FieldMap.empty sg
+
+
 (* Inclusion between module types.
    Return the restriction that transforms a value of the smaller type
    into a value of the bigger type. *)
@@ -386,43 +413,6 @@ and signatures ~loc env ~mark cxt subst sig1 sig2 =
     simplify_structure_coercion cc id_pos_list
   else
     Tcoerce_structure (cc, id_pos_list)
-
-and include_functor_signatures ~loc env ~mark cxt subst sig1 sig2 =
-  let _, comps1 = build_component_table (fun _pos name -> name) sig1 in
-  (* Do the pairing and checking, and return the final coercion *)
-  let cc =
-    pair_components ~loc ~mark env cxt subst comps1 sig2
-  in
-  cc
-
-(* Build a table of the components of a signature, along with their positions.
-   The table is indexed by kind and name of component *)
-and build_component_table :
-  'a . (_ -> _ -> 'a) -> _ -> _ * ( _ * _ * 'a) FieldMap.t =
-  fun pos_rep ->
-    let rec build_table pos tbl = function
-        [] -> pos, tbl
-      | (Sig_value (_, _, Hidden)
-        |Sig_type (_, _, _, Hidden)
-        |Sig_typext (_, _, _, Hidden)
-        |Sig_module (_, _, _, _, Hidden)
-        |Sig_modtype (_, _, Hidden)
-        |Sig_class (_, _, _, Hidden)
-        |Sig_class_type (_, _, _, Hidden)
-        ) as item :: rem ->
-          let pos = if is_runtime_component item then pos + 1 else pos in
-          build_table pos tbl rem (* do not pair private items. *)
-      | item :: rem ->
-          let (id, _loc, name) = item_ident_name item in
-          let pos, nextpos =
-            if is_runtime_component item then pos, pos + 1
-            else -1, pos
-          in
-          build_table nextpos
-            (FieldMap.add name (id, item, pos_rep pos id) tbl) rem
-    in
-    build_table 0 FieldMap.empty
-
 
 (* Inclusion between signature components *)
 and signature_components ~loc ~mark env cxt subst paired =
@@ -569,6 +559,11 @@ and check_modtype_equiv ~loc env ~mark cxt mty1 mty2 =
       (* Format.eprintf "@[c1 = %a@ c2 = %a@]@."
         print_coercion _c1 print_coercion _c2; *)
       raise(Error [cxt, env, Modtype_permutation (mty1, c1)])
+
+let include_functor_signatures ~loc env ~mark cxt subst sig1 sig2 =
+  let _, comps1 = build_component_table (fun _pos name -> name) sig1 in
+  (* Do the pairing and checking, and return the final coercion *)
+  pair_components ~loc ~mark env cxt subst comps1 sig2
 
 (* Simplified inclusion check between module types (for Env) *)
 

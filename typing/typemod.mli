@@ -110,7 +110,7 @@ type error =
     Cannot_apply of module_type
   | Not_included of Includemod.error list
   | Not_included_functor of Includemod.error list
-  | Cannot_eliminate_dependency of (functor_dependency_error * module_type)
+  | Cannot_eliminate_dependency of functor_dependency_error * module_type
   | Signature_expected
   | Structure_expected of module_type
   | Functor_expected of module_type

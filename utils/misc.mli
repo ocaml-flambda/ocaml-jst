@@ -80,9 +80,6 @@ val list_remove: 'a -> 'a list -> 'a list
            element equal to [x] removed. *)
 val split_last: 'a list -> 'a list * 'a
         (* Return the last element and the other elements of the given list. *)
-val take: 'a list -> int -> 'a list
-        (* [take l n] returns a list containing the first [n] elements of [l]
-           (or all of l, if it has fewer than [n] elements *)
 
 type ref_and_value = R : 'a ref * 'a -> ref_and_value
 

@@ -445,7 +445,8 @@ and open_description = (Path.t * Longident.t loc) open_infos
 
 and open_declaration = module_expr open_infos
 
-and include_flag =
+and include_kind =
+  | Tincl_structure
   | Tincl_functor of (Ident.t * module_coercion) list
 
 and 'a include_infos =
@@ -453,7 +454,7 @@ and 'a include_infos =
      incl_mod: 'a;
      incl_type: Types.signature;
      incl_loc: Location.t;
-     incl_flag: include_flag option;
+     incl_kind: include_kind;
      incl_attributes: attribute list;
     }
 

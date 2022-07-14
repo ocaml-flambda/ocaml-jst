@@ -81,7 +81,7 @@ type error =
     Cannot_apply of module_type
   | Not_included of Includemod.error list
   | Not_included_functor of Includemod.error list
-  | Cannot_eliminate_dependency of (functor_dependency_error * module_type)
+  | Cannot_eliminate_dependency of functor_dependency_error * module_type
   | Signature_expected
   | Structure_expected of module_type
   | Functor_expected of module_type
@@ -148,8 +148,6 @@ let extract_sig_functor_open env loc mty sig_acc =
       let sig_param =
         match Mtype.scrape env mty_param with
         | Mty_signature sig_param -> sig_param
-        | Mty_alias path ->
-          raise(Error(loc, env, Cannot_scrape_alias path))
         | _ -> raise (Error (loc,env,Signature_parameter_expected mty_param))
       in
       let coercion =
@@ -1319,24 +1317,23 @@ and transl_signature env sg =
         List.iter (fun ext ->
           Signature_names.check_typext names ext.ext_loc ext.ext_id
         ) constructors;
-        let sig_types = map_ext (fun es ext ->
+        let tsg = map_ext (fun es ext ->
             Sig_typext(ext.ext_id, ext.ext_type, es, Exported)
           ) constructors
         in
         mksig (Tsig_typext tyext) env loc,
-        sig_types,
+        tsg,
         newenv
     | Psig_exception sext ->
         let (ext, newenv) = Typedecl.transl_type_exception env sext in
         let constructor = ext.tyexn_constructor in
         Signature_names.check_typext names constructor.ext_loc
           constructor.ext_id;
-        let sig_type = Sig_typext(constructor.ext_id,
-                                  constructor.ext_type,
-                                  Text_exception,
-                                  Exported)
+        let tsg =
+          Sig_typext(constructor.ext_id, constructor.ext_type,
+                     Text_exception, Exported)
         in
-        mksig (Tsig_exception ext) env loc, [sig_type], newenv
+        mksig (Tsig_exception ext) env loc, [tsg], newenv
     | Psig_module pmd ->
         let scope = Ctype.create_scope () in
         let tmty =
@@ -1372,12 +1369,12 @@ and transl_signature env sg =
                               md_attributes=pmd.pmd_attributes})
             env loc
         in
-        let sig_types =
+        let tsg =
           match id with
           | None -> []
           | Some id -> [Sig_module(id, pres, md, Trec_not, Exported)]
         in
-        sig_item, sig_types, newenv
+        sig_item, tsg, newenv
     | Psig_modsubst pms ->
         let scope = Ctype.create_scope () in
         let path, md =
@@ -1454,26 +1451,26 @@ and transl_signature env sg =
         in
         let mty = tmty.mty_type in
         let scope = Ctype.create_scope () in
-        let flag, sg =
+        let incl_kind, sg =
           if has_include_functor env sloc sincl.pincl_attributes then
             let (sg, coercion) =
               extract_sig_functor_open env smty.pmty_loc mty sig_acc
             in
-            Some (Tincl_functor coercion), sg
+            Tincl_functor coercion, sg
           else
-            None, extract_sig env smty.pmty_loc mty
+            Tincl_structure, extract_sig env smty.pmty_loc mty
         in
-        let sig_types, newenv = Env.enter_signature ~scope sg env in
-        List.iter (Signature_names.check_sig_item names item.psig_loc) sig_types;
+        let tsg, newenv = Env.enter_signature ~scope sg env in
+        List.iter (Signature_names.check_sig_item names item.psig_loc) tsg;
         let incl =
           { incl_mod = tmty;
             incl_type = sg;
-            incl_flag = flag;
+            incl_kind;
             incl_attributes = sincl.pincl_attributes;
             incl_loc = sloc;
           }
         in
-        mksig (Tsig_include incl) env loc, sig_types, newenv
+        mksig (Tsig_include incl) env loc, tsg, newenv
     | Psig_class cl ->
         let (classes, newenv) = Typeclass.class_descriptions env cl in
         List.iter (fun cls ->
@@ -1484,7 +1481,7 @@ and transl_signature env sg =
           Signature_names.check_class_type names loc cls.cls_ty_id;
           Signature_names.check_type names loc cls.cls_typesharp_id;
         ) classes;
-        let sig_types =
+        let tsg =
           map_rec (fun rs cls ->
             let open Typeclass in
             [Sig_class(cls.cls_id, cls.cls_decl, rs, Exported);
@@ -1498,7 +1495,7 @@ and transl_signature env sg =
                    (List.map (fun decr ->
                       decr.Typeclass.cls_info) classes)) env loc
         in
-        typedtree, sig_types, newenv
+        typedtree, tsg, newenv
     | Psig_class_type cl ->
         let (classes, newenv) = Typeclass.class_type_declarations env cl in
         List.iter (fun decl ->
@@ -1508,7 +1505,7 @@ and transl_signature env sg =
           Signature_names.check_type names loc decl.clsty_obj_id;
           Signature_names.check_type names loc decl.clsty_typesharp_id;
         ) classes;
-        let sig_types =
+        let tsg =
           map_rec (fun rs decl ->
             let open Typeclass in
             [Sig_class_type(decl.clsty_ty_id, decl.clsty_ty_decl, rs,
@@ -1526,7 +1523,7 @@ and transl_signature env sg =
                (List.map (fun decl -> decl.Typeclass.clsty_info) classes))
             env loc
         in
-        typedtree, sig_types, newenv
+        typedtree, tsg, newenv
     | Psig_attribute attr ->
         Builtin_attributes.parse_standard_interface_attributes attr;
         mksig (Tsig_attribute attr) env loc, [], env
@@ -2490,14 +2487,14 @@ and type_structure ?(toplevel = None) funct_body anchor env sstr =
           Builtin_attributes.warning_scope sincl.pincl_attributes
             (fun () -> type_module true funct_body None env smodl)
         in
-        let flag, sg =
+        let incl_kind, sg =
           if has_include_functor env sloc sincl.pincl_attributes then
             let (sg, coercion) =
               extract_sig_functor_open env smodl.pmod_loc modl.mod_type sig_acc
             in
-            Some (Tincl_functor coercion), sg
+            Tincl_functor coercion, sg
           else
-            None, extract_sig_open env smodl.pmod_loc modl.mod_type
+            Tincl_structure, extract_sig_open env smodl.pmod_loc modl.mod_type
         in
         let scope = Ctype.create_scope () in
         (* Rename all identifiers bound by this signature to avoid clashes *)
@@ -2506,7 +2503,7 @@ and type_structure ?(toplevel = None) funct_body anchor env sstr =
         let incl =
           { incl_mod = modl;
             incl_type = sg;
-            incl_flag = flag;
+            incl_kind;
             incl_attributes = sincl.pincl_attributes;
             incl_loc = sloc;
           }
@@ -2519,24 +2516,22 @@ and type_structure ?(toplevel = None) funct_body anchor env sstr =
         Tstr_attribute attr, [], env
   in
   let toplevel_sig = Option.value toplevel ~default:[] in
-  let rec type_struct env sstr str_acc sig_acc =
+  let rec type_struct env sstr str_acc sig_acc sig_acc_with_toplvl =
     match sstr with
     | [] ->
-      let sig_acc =
-        Misc.take sig_acc (List.length sig_acc - List.length toplevel_sig)
-      in
       (List.rev str_acc, List.rev sig_acc, env)
     | pstr :: srem ->
         let previous_saved_types = Cmt_format.get_saved_types () in
-        let desc, sg, new_env = type_str_item env pstr sig_acc in
+        let desc, sg, new_env = type_str_item env pstr sig_acc_with_toplvl in
         let str = { str_desc = desc; str_loc = pstr.pstr_loc; str_env = env } in
         Cmt_format.set_saved_types (Cmt_format.Partial_structure_item str
                                     :: previous_saved_types);
-        type_struct new_env srem (str :: str_acc) (List.rev sg @ sig_acc)
+        type_struct new_env srem (str :: str_acc)
+          (List.rev_append sg sig_acc) (List.rev_append sg sig_acc_with_toplvl)
   in
   let previous_saved_types = Cmt_format.get_saved_types () in
   let run () =
-    let (items, sg, final_env) = type_struct env sstr [] toplevel_sig in
+    let (items, sg, final_env) = type_struct env sstr [] [] toplevel_sig in
     let str = { str_items = items; str_type = sg; str_final_env = final_env } in
     Cmt_format.set_saved_types
       (Cmt_format.Partial_structure str :: previous_saved_types);
@@ -2948,9 +2943,8 @@ let report_error ppf = function
         "@[This module is not a functor; it has type@ %a" modtype mty
   | Include_functor_arity mty ->
       fprintf ppf
-        "@[Functors with multiple arguments can not be included directly.@ \
-           This functor has type@ %a@ \
-           Please apply it to explicit arguments instead." modtype mty
+        "@[This module is not a functor between structures; it has type @ %a"
+        modtype mty
   | Signature_parameter_expected mty ->
       fprintf ppf
         "@[The type of this functor's parameter is not a signature; it is@ %a"

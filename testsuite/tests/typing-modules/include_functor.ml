@@ -1,5 +1,5 @@
 (* TEST
-  flags = "-extension include_functor"
+  flags = "-extension include_functor -w +a"
    * expect
 *)
 
@@ -159,10 +159,19 @@ module F9 (X : S9) = struct
   let eq_z = X.Foo.equal X.Foo.z
 end
 
+module Int9 : sig
+  type t
+  val equal : t -> t -> bool
+  val of_int : int -> t
+end = struct
+  include Int
+  let of_int t = t
+end
+
 module M9 = struct
   module Foo : Eq9 = struct
-    include Int
-    let z = 7
+    include Int9
+    let z = of_int 7
   end
   include functor F9
 end
@@ -172,6 +181,7 @@ let () = assert (M9.eq_z M9.Foo.z);;
 module type Eq9 = sig type t val z : t val equal : t -> t -> bool end
 module type S9 = sig module Foo : Eq9 end
 module F9 : functor (X : S9) -> sig val eq_z : X.Foo.t -> bool end
+module Int9 : sig type t val equal : t -> t -> bool val of_int : int -> t end
 module M9 : sig module Foo : Eq9 val eq_z : Foo.t -> bool end
 |}];;
 
@@ -185,20 +195,26 @@ Error: This expression has type int but an expression was expected of type
 |}];;
 
 module M9' = struct
-  module Foo : Eq9 with type t = int = struct
-    include Int
-    let z = 6
+  module Foo = struct
+    include Int9
+    let z = of_int 6
   end
   include functor F9
 end
 
-let () = assert (not (M9'.eq_z 5))
-let () = assert (M9'.eq_z 6);;
+let () = assert (not (M9'.eq_z (M9'.Foo.of_int 5)))
+let () = assert (M9'.eq_z (M9'.Foo.of_int 6));;
 [%%expect{|
 module M9' :
   sig
-    module Foo : sig type t = int val z : t val equal : t -> t -> bool end
-    val eq_z : int -> bool
+    module Foo :
+      sig
+        type t = Int9.t
+        val equal : t -> t -> bool
+        val of_int : int -> t
+        val z : t
+      end
+    val eq_z : Int9.t -> bool
   end
 |}];;
 
@@ -253,12 +269,38 @@ Exception: Assert_failure ("", 6, 9).
 |}]
 
 (* Test 12: Check that things get marked used appropriately when they are
-   used by include functor *)
-module M12 : sig val y : int list end = struct
+   used by include functor.  (And that we're getting the warnings we expect
+   to see if they weren't). *)
+module M12_1 : sig val y : int list end = struct
   module Bar = struct
     type t = int
     let x = 5
-    let q = "foo"
+  end
+
+  module F (G :
+    sig
+      module T_sub : sig type t val x : t end
+                  -> sig type t val x : t end
+    end) = struct
+    module Foo = G.T_sub(Bar)
+    let y = Foo.x
+  end
+
+  module T_sub (X : sig type t val x : t end) = struct
+    type t = X.t list
+    let x = [X.x]
+  end
+  include functor F
+end;;
+[%%expect{|
+module M12_1 : sig val y : int list end
+|}];;
+
+module M12_2 : sig val y : int list end = struct
+  module Bar = struct
+    type t = int
+    let x = 5
+    let q = 42
   end
 
   module F (G :
@@ -278,14 +320,81 @@ module M12 : sig val y : int list end = struct
   include functor F
 end;;
 [%%expect{|
-module M12 : sig val y : int list end
+Line 5, characters 8-9:
+5 |     let q = 42
+            ^
+Warning 32 [unused-value-declaration]: unused value q.
+Line 20, characters 8-9:
+20 |     let z = "something"
+             ^
+Warning 32 [unused-value-declaration]: unused value z.
+module M12_2 : sig val y : int list end
 |}];;
+
+module M12_3 : sig val y : int list end = struct
+  module Bar = struct
+    type t = int
+    let x = 5
+  end
+
+  module F (G :
+    sig
+      module T_sub : sig type t val x : t end
+                  -> sig type t val x : t end
+    end) = struct
+    module Foo = G.T_sub(Bar)
+    let y = Foo.x
+  end
+
+  module T_sub (X : sig type t val x : t end) = struct
+    type t = X.t list
+    let x = [X.x]
+  end
+
+  let y = [Bar.x]
+end;;
+
+[%%expect{|
+Line 9, characters 32-41:
+9 |       module T_sub : sig type t val x : t end
+                                    ^^^^^^^^^
+Warning 32 [unused-value-declaration]: unused value x.
+Line 13, characters 8-9:
+13 |     let y = Foo.x
+             ^
+Warning 32 [unused-value-declaration]: unused value y.
+Lines 7-14, characters 2-5:
+ 7 | ..module F (G :
+ 8 |     sig
+ 9 |       module T_sub : sig type t val x : t end
+10 |                   -> sig type t val x : t end
+11 |     end) = struct
+12 |     module Foo = G.T_sub(Bar)
+13 |     let y = Foo.x
+14 |   end
+Warning 60 [unused-module]: unused module F.
+Line 17, characters 4-21:
+17 |     type t = X.t list
+         ^^^^^^^^^^^^^^^^^
+Warning 34 [unused-type-declaration]: unused type t.
+Line 18, characters 8-9:
+18 |     let x = [X.x]
+             ^
+Warning 32 [unused-value-declaration]: unused value x.
+Lines 16-19, characters 2-5:
+16 | ..module T_sub (X : sig type t val x : t end) = struct
+17 |     type t = X.t list
+18 |     let x = [X.x]
+19 |   end
+Warning 60 [unused-module]: unused module T_sub.
+module M12_3 : sig val y : int list end
+|}]
 
 
 (* Test 13: Check that we reject uses in recursive module signatures *)
 module type S13 = sig val foo : int end
 
-module type F13 = functor (X : S) -> S13
+module type F13 = S -> S13
 
 module rec G : sig
   type t
@@ -298,7 +407,7 @@ end = struct
 end;;
 [%%expect{|
 module type S13 = sig val foo : int end
-module type F13 = functor (X : S) -> S13
+module type F13 = S -> S13
 Line 8, characters 2-21:
 8 |   include functor F13
       ^^^^^^^^^^^^^^^^^^^
@@ -321,9 +430,7 @@ module F14 : functor (X : S) (Y : S) -> sig val z : X.t * Y.t end
 Line 9, characters 18-21:
 9 |   include functor F14
                       ^^^
-Error: Functors with multiple arguments can not be included directly.
-       This functor has type
+Error: This module is not a functor between structures; it has type
        functor (X : S) (Y : S) -> sig val z : X.t * Y.t end
-       Please apply it to explicit arguments instead.
 |}];;
 

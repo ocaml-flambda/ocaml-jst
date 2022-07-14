@@ -783,9 +783,9 @@ and transl_structure ~scopes loc fields cc rootpath final_env = function
           let body, size = rebind_idents 0 fields ids in
           let let_kind = pure_module modl in
           let modl =
-            match incl.incl_flag with
-            | None -> transl_module ~scopes Tcoerce_none None modl
-            | Some (Tincl_functor name_cc_list) ->
+            match incl.incl_kind with
+            | Tincl_structure -> transl_module ~scopes Tcoerce_none None modl
+            | Tincl_functor name_cc_list ->
               transl_include_functor modl name_cc_list scopes
                 (of_location ~scopes incl.incl_loc)
           in
@@ -1322,11 +1322,10 @@ let transl_store_structure ~scopes glob map prims aliases str =
                                  store_idents (pos + 1) idl))
             in
             let modl =
-              match incl.incl_flag with
-              | None -> transl_module ~scopes Tcoerce_none None modl
-              | Some (Tincl_functor name_cc_list) ->
-                transl_include_functor modl name_cc_list scopes
-                  (of_location ~scopes incl.incl_loc)
+              match incl.incl_kind with
+              | Tincl_structure -> transl_module ~scopes Tcoerce_none None modl
+              | Tincl_functor name_cc_list ->
+                  transl_include_functor modl name_cc_list scopes loc
             in
             Llet(Strict, Pgenval, mid,
                  Lambda.subst no_env_update subst modl,
@@ -1657,11 +1656,12 @@ let transl_toplevel_item ~scopes item =
   | Tstr_include incl ->
       let ids = bound_value_identifiers incl.incl_type in
       let modl =
-        match incl.incl_flag with
-        | None -> transl_module ~scopes Tcoerce_none None incl.incl_mod
-        | Some (Tincl_functor name_cc_list) ->
-          transl_include_functor incl.incl_mod name_cc_list scopes
-            (of_location ~scopes incl.incl_loc)
+        match incl.incl_kind with
+        | Tincl_structure ->
+            transl_module ~scopes Tcoerce_none None incl.incl_mod
+        | Tincl_functor name_cc_list ->
+            transl_include_functor incl.incl_mod name_cc_list scopes
+              (of_location ~scopes incl.incl_loc)
       in
       let mid = Ident.create_local "include" in
       let rec set_idents pos = function
