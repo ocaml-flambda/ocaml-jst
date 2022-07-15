@@ -170,8 +170,8 @@ type lookup_error =
   | Unbound_class of Longident.t
   | Unbound_modtype of Longident.t
   | Unbound_cltype of Longident.t
-  | Unbound_instance_variable of string
-  | Not_an_instance_variable of string
+  | Unbound_settable_variable of string
+  | Not_a_settable_variable of string
   | Masked_instance_variable of Longident.t
   | Masked_self_variable of Longident.t
   | Masked_ancestor_variable of Longident.t
@@ -183,6 +183,7 @@ type lookup_error =
   | Illegal_reference_to_recursive_module
   | Cannot_scrape_alias of Longident.t * Path.t
   | Local_value_used_in_closure of Longident.t * escaping_context option
+  | Mutable_value_used_in_closure of string
 
 val lookup_error: Location.t -> t -> lookup_error -> 'a
 
@@ -244,9 +245,12 @@ val lookup_all_labels_from_type:
   ?use:bool -> loc:Location.t -> Path.t -> t ->
   (label_description * (unit -> unit)) list
 
-val lookup_instance_variable:
-  ?use:bool -> loc:Location.t -> string -> t ->
-  Path.t * Asttypes.mutable_flag * string * type_expr
+type settable_variable =
+  | Instance_variable of Path.t * Asttypes.mutable_flag * string * type_expr
+  | Mutable_variable of Ident.t * Types.value_mode * type_expr
+
+val lookup_settable_variable:
+  ?use:bool -> loc:Location.t -> string -> t -> settable_variable
 
 val find_value_by_name:
   Longident.t -> t -> Path.t * value_description

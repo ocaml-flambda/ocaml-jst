@@ -655,11 +655,14 @@ and transl_exp0 ~in_new_scope ~scopes e =
       let self = transl_value_path loc e.exp_env path_self in
       let var = transl_value_path loc e.exp_env path in
       Lprim(Pfield_computed Reads_vary, [self; var], loc)
+  | Texp_mutvar id ->
+      Lvar id.txt
   | Texp_setinstvar(path_self, path, _, expr) ->
       let loc = of_location ~scopes e.exp_loc in
       let self = transl_value_path loc e.exp_env path_self in
       let var = transl_value_path loc e.exp_env path in
       transl_setinstvar ~scopes loc self var expr
+  | Texp_setmutvar(id,expr) -> Lassign(id.txt, transl_exp ~scopes expr)
   | Texp_override(path_self, modifs) ->
       let loc = of_location ~scopes e.exp_loc in
       let self = transl_value_path loc e.exp_env path_self in

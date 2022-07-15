@@ -1078,7 +1078,8 @@ let build_other ext env =
 
 let rec has_instance p = match p.pat_desc with
   | Tpat_variant (l,_,r) when is_absent l r -> false
-  | Tpat_any | Tpat_var _ | Tpat_constant _ | Tpat_variant (_,None,_) -> true
+  | Tpat_any | Tpat_var _ | Tpat_mutvar _
+  | Tpat_constant _ | Tpat_variant (_,None,_) -> true
   | Tpat_alias (p,_,_) | Tpat_variant (_,Some p,_) -> has_instance p
   | Tpat_or (p1,p2,_) -> has_instance p1 || has_instance p2
   | Tpat_construct (_,_,ps) | Tpat_tuple ps | Tpat_array ps ->
@@ -1894,6 +1895,7 @@ module Conv = struct
           mkpat (Ppat_or (loop pa, loop pb))
       | Tpat_var (_, ({txt="*extension*"} as nm)) -> (* PR#7330 *)
           mkpat (Ppat_var nm)
+      | Tpat_mutvar _ -> fatal_error "Parmatch.Conv.conv unexpected mutvar"
       | Tpat_any
       | Tpat_var _ ->
           mkpat Ppat_any
@@ -2044,7 +2046,8 @@ let rec collect_paths_from_pat r p = match p.pat_desc with
       collect_paths_from_pat
       (if extendable_path path then add_path path r else r)
       ps
-| Tpat_any|Tpat_var _|Tpat_constant _| Tpat_variant (_,None,_) -> r
+| Tpat_any | Tpat_var _ | Tpat_mutvar _
+| Tpat_constant _ | Tpat_variant (_,None,_) -> r
 | Tpat_tuple ps | Tpat_array ps
 | Tpat_construct (_, {cstr_tag=Cstr_extension _}, ps)->
     List.fold_left collect_paths_from_pat r ps
@@ -2176,7 +2179,7 @@ let inactive ~partial pat =
         match pat.pat_desc with
         | Tpat_lazy _ | Tpat_array _ ->
           false
-        | Tpat_any | Tpat_var _ | Tpat_variant (_, None, _) ->
+        | Tpat_any | Tpat_var _ | Tpat_mutvar _ | Tpat_variant (_, None, _) ->
             true
         | Tpat_constant c -> begin
             match c with
@@ -2309,6 +2312,8 @@ let simplify_head_amb_pat head_bound_variables varsets ~add_column p ps k =
       simpl (Ident.Set.add x head_bound_variables) varsets p ps k
     | `Var (x, _) ->
       simpl (Ident.Set.add x head_bound_variables) varsets Patterns.omega ps k
+    | `Mutvar _ ->
+      fatal_error "Parmatch.simplify_head_amb_pat unexpected mutvar"
     | `Or (p1,p2,_) ->
       simpl head_bound_variables varsets p1 ps
         (simpl head_bound_variables varsets p2 ps k)

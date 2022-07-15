@@ -185,12 +185,14 @@ let classify_expression : Typedtree.expression -> sd =
     | Texp_constant _
     | Texp_new _
     | Texp_instvar _
+    | Texp_mutvar _
     | Texp_tuple _
     | Texp_array _
     | Texp_variant _
     | Texp_setfield _
     | Texp_while _
     | Texp_setinstvar _
+    | Texp_setmutvar _
     | Texp_pack _
     | Texp_object _
     | Texp_function _
@@ -586,6 +588,8 @@ let rec expression : Typedtree.expression -> term_judg =
       path pth << Dereference
     | Texp_instvar (self_path, pth, _inst_var) ->
         join [path self_path << Dereference; path pth]
+    | Texp_mutvar id ->
+        single id.txt << Dereference
     | Texp_apply
         ({exp_desc = Texp_ident (_, _, vd, Id_prim _)}, [_, Arg arg], _)
       when is_ref vd ->
@@ -747,6 +751,13 @@ let rec expression : Typedtree.expression -> term_judg =
         path pth << Dereference;
         expression e << Dereference;
       ]
+    | Texp_setmutvar (_id,e) ->
+      (*
+        G |- e: m[Dereference]
+        ----------------------
+        G |- x <- e: m
+      *)
+        expression e << Dereference
     | Texp_letexception ({ext_id}, e) ->
       (* G |- e: m
          ----------------------------
@@ -1244,6 +1255,7 @@ and is_destructuring_pattern : type k . k general_pattern -> bool =
   fun pat -> match pat.pat_desc with
     | Tpat_any -> false
     | Tpat_var (_, _) -> false
+    | Tpat_mutvar (_, _) -> false
     | Tpat_alias (pat, _, _) -> is_destructuring_pattern pat
     | Tpat_constant _ -> true
     | Tpat_tuple _ -> true

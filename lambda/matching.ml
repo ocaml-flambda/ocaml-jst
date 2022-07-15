@@ -201,7 +201,7 @@ end = struct
   let rec simpl_under_orpat p =
     match p.pat_desc with
     | Tpat_any
-    | Tpat_var _ ->
+    | Tpat_var _ | Tpat_mutvar _ ->
         p
     | Tpat_alias (q, id, s) ->
         { p with pat_desc = Tpat_alias (simpl_under_orpat q, id, s) }
@@ -228,6 +228,8 @@ end = struct
       match p.pat_desc with
       | `Any -> stop p `Any
       | `Var (id, s) -> continue p (`Alias (Patterns.omega, id, s))
+      | `Mutvar _ ->
+          fatal_error "Matching.Half_simple.of_clause unexpected mutvar"
       | `Alias (p, id, _) ->
           let k = Typeopt.value_kind p.pat_env p.pat_type in
           aux
@@ -319,6 +321,7 @@ end = struct
           explode
             { p with pat_desc = `Alias (Patterns.omega, id, str) }
             aliases rem
+      | `Mutvar _ -> fatal_error "Matching.explode_or_pat unexpected mutvar"
       | #view as view ->
           let env = mk_alpha_env arg_id aliases vars in
           ( (alpha env { p with pat_desc = view }, patl),
@@ -518,6 +521,8 @@ end = struct
               filter_rec ((left, p1, right) :: (left, p2, right) :: rem)
           | `Alias (p, _, _) -> filter_rec ((left, p, right) :: rem)
           | `Var _ -> filter_rec ((left, Patterns.omega, right) :: rem)
+          | `Mutvar _ ->
+              fatal_error "Matching.Context.specialized unexpected mutvar"
           | #Simple.view as view -> (
               let p = { p with pat_desc = view } in
               match matcher head p right with
@@ -643,6 +648,9 @@ end = struct
           match p.pat_desc with
           | `Alias (p, _, _) -> filter_rec ((p, ps) :: rem)
           | `Var _ -> filter_rec ((Patterns.omega, ps) :: rem)
+          | `Mutvar _ ->
+              fatal_error "Matching.Default_environment.specialize_matrix \
+                           unexpected mutvar"
           | `Or (p1, p2, _) -> filter_rec_or p1 p2 ps rem
           | #Simple.view as view -> (
               let p = { p with pat_desc = view } in
@@ -1125,7 +1133,7 @@ let is_or p =
 let rec omega_like p =
   match p.pat_desc with
   | Tpat_any
-  | Tpat_var _ ->
+  | Tpat_var _ | Tpat_mutvar _ ->
       true
   | Tpat_alias (p, _, _) -> omega_like p
   | Tpat_or (p1, p2, _) -> omega_like p1 || omega_like p2
@@ -3121,6 +3129,7 @@ let rec name_pattern default = function
   | ((pat, _), _) :: rem -> (
       match pat.pat_desc with
       | Tpat_var (id, _) -> id
+      | Tpat_mutvar (id, _) -> id
       | Tpat_alias (_, id, _) -> id
       | _ -> name_pattern default rem
     )
@@ -3326,6 +3335,7 @@ let is_lazy_pat p =
   | Tpat_array _
   | Tpat_or _
   | Tpat_constant _
+  | Tpat_mutvar _
   | Tpat_var _
   | Tpat_any ->
       false
@@ -3352,6 +3362,8 @@ let is_record_with_mutable_field p =
   | Tpat_var _
   | Tpat_any ->
       false
+  | Tpat_mutvar _ ->
+      fatal_error "Matching.is_record_with_mutable_field unexpected mutvar"
 
 let has_mutable p = Typedtree.exists_pattern is_record_with_mutable_field p
 
@@ -3618,6 +3630,9 @@ let for_let ~scopes loc param pat body_kind body =
       (* fast path, and keep track of simple bindings to unboxable numbers *)
       let k = Typeopt.value_kind pat.pat_env pat.pat_type in
       Llet (Strict, k, id, param, body)
+  | Tpat_mutvar (id, _) ->
+      let k = Typeopt.value_kind pat.pat_env pat.pat_type in
+      Lmutlet (k, id, param, body)
   | _ ->
       let opt = ref false in
       let nraise = next_raise_count () in

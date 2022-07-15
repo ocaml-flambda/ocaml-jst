@@ -53,6 +53,7 @@ let rec pretty_val : type k . _ -> k general_pattern -> _ = fun ppf v ->
   match v.pat_desc with
   | Tpat_any -> fprintf ppf "_"
   | Tpat_var (x,_) -> fprintf ppf "%s" (Ident.name x)
+  | Tpat_mutvar (x,_) -> fprintf ppf "mutable %s" (Ident.name x)
   | Tpat_constant c -> fprintf ppf "%s" (pretty_const c)
   | Tpat_tuple vs ->
       fprintf ppf "@[(%a)@]" (pretty_vals ",") vs

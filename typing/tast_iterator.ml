@@ -162,6 +162,7 @@ let pat
   match pat_desc with
   | Tpat_any  -> ()
   | Tpat_var _ -> ()
+  | Tpat_mutvar _ -> ()
   | Tpat_constant _ -> ()
   | Tpat_tuple l -> List.iter (sub.pat sub) l
   | Tpat_construct (_, _, l) -> List.iter (sub.pat sub) l
@@ -251,7 +252,9 @@ let expr sub {exp_extra; exp_desc; exp_env; _} =
       Option.iter (sub.expr sub) expo
   | Texp_new _ -> ()
   | Texp_instvar _ -> ()
+  | Texp_mutvar _ -> ()
   | Texp_setinstvar (_, _, _, exp) ->sub.expr sub exp
+  | Texp_setmutvar (_, exp) -> sub.expr sub exp
   | Texp_override (_, list) ->
       List.iter (fun (_, _, e) -> sub.expr sub e) list
   | Texp_letmodule (_, _, _, mexpr, exp) ->

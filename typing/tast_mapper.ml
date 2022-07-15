@@ -209,6 +209,7 @@ let pat
     match x.pat_desc with
     | Tpat_any
     | Tpat_var _
+    | Tpat_mutvar _
     | Tpat_constant _ -> x.pat_desc
     | Tpat_tuple l -> Tpat_tuple (List.map (sub.pat sub) l)
     | Tpat_construct (loc, cd, l) ->
@@ -350,11 +351,17 @@ let expr sub x =
           )
     | Texp_new _
     | Texp_instvar _ as d -> d
+    | Texp_mutvar _ as d -> d
     | Texp_setinstvar (path1, path2, id, exp) ->
         Texp_setinstvar (
           path1,
           path2,
           id,
+          sub.expr sub exp
+        )
+    | Texp_setmutvar (lid, exp) ->
+        Texp_setmutvar (
+          lid,
           sub.expr sub exp
         )
     | Texp_override (path, list) ->

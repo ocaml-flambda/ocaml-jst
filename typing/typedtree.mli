@@ -78,6 +78,8 @@ and 'k pattern_desc =
         (** _ *)
   | Tpat_var : Ident.t * string loc -> value pattern_desc
         (** x *)
+  | Tpat_mutvar : Ident.t * string loc -> value pattern_desc
+        (** mutable x *)
   | Tpat_alias :
       value general_pattern * Ident.t * string loc -> value pattern_desc
         (** P as a *)
@@ -276,7 +278,9 @@ and expression_desc =
   | Texp_new of
       Path.t * Longident.t loc * Types.class_declaration * apply_position
   | Texp_instvar of Path.t * Path.t * string loc
+  | Texp_mutvar of Ident.t loc
   | Texp_setinstvar of Path.t * Path.t * string loc * expression
+  | Texp_setmutvar of Ident.t loc * expression
   | Texp_override of Path.t * (Path.t * string loc * expression) list
   | Texp_letmodule of
       Ident.t option * string option loc * Types.module_presence * module_expr *

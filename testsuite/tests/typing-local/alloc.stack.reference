@@ -32,3 +32,4 @@
        verylong: No Allocation
        manylong: No Allocation
     optionalarg: No Allocation
+     letmutable: No Allocation

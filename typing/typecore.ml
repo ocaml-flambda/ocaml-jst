@@ -132,6 +132,8 @@ type error =
   | Literal_overflow of string
   | Unknown_literal of string * char
   | Illegal_letrec_pat
+  | Illegal_letrec_mutable
+  | Illegal_mutable_pat
   | Illegal_letrec_expr
   | Illegal_class_expr
   | Letop_type_clash of string * Ctype.Unification_trace.t
@@ -573,6 +575,7 @@ type pattern_variable =
   {
     pv_id: Ident.t;
     pv_mode: Value_mode.t;
+    pv_mutable: mutable_flag;
     pv_type: type_expr;
     pv_loc: Location.t;
     pv_as_var: bool;
@@ -604,7 +607,7 @@ let maybe_add_pattern_variables_ghost loc_let env pv =
        end
     ) pv env
 
-let enter_variable ?(is_module=false) ?(is_as_variable=false) loc name mode ty
+let enter_variable ?(is_module=false) ?(is_as_variable=false) loc name mode mutability ty
     attrs =
   if List.exists (fun {pv_id; _} -> Ident.name pv_id = name.txt)
       !pattern_variables
@@ -613,6 +616,7 @@ let enter_variable ?(is_module=false) ?(is_as_variable=false) loc name mode ty
   pattern_variables :=
     {pv_id = id;
      pv_mode = mode;
+     pv_mutable = mutability;
      pv_type = ty;
      pv_loc = loc;
      pv_as_var = is_as_variable;
@@ -779,7 +783,7 @@ and build_as_type_aux env p =
         else Value_mode.newvar ()
       in
       p.pat_type, mode
-  | Tpat_any | Tpat_var _
+  | Tpat_any | Tpat_var _ | Tpat_mutvar _
   | Tpat_array _ | Tpat_lazy _ -> p.pat_type, p.pat_mode
 
 let build_or_pat env loc mode lid =
@@ -1629,6 +1633,18 @@ and type_pat_aux
     | Some Backtrack_or -> false
     | Some (Refine_or {inside_nonsplit_or}) -> inside_nonsplit_or
   in
+  let mutability =
+    (* Check for mutable attribute (from "let mutable"), and that the pattern
+       is just a variable if its present.  *)
+    match Builtin_attributes.has_let_mutable sp.ppat_attributes,
+          sp.ppat_desc with
+    | Result.Error (), _ ->
+        raise (Error (loc, !env,
+                      Extension_not_enabled(Clflags.Extension.Let_mutable)))
+    | Ok true, Ppat_var _ -> Mutable
+    | Ok true, _ -> raise (Error (sp.ppat_loc, !env, Illegal_mutable_pat))
+    | Ok false, _ -> Immutable
+  in
   match sp.ppat_desc with
     Ppat_any ->
       let k' d = rvp k {
@@ -1669,10 +1685,15 @@ and type_pat_aux
         if name.txt = "*extension*" then
           Ident.create_local name.txt
         else
-          enter_variable loc name alloc_mode.mode ty sp.ppat_attributes
+          enter_variable loc name alloc_mode.mode mutability ty sp.ppat_attributes
+      in
+      let desc =
+        match mutability with
+        | Immutable -> Tpat_var (id, name)
+        | Mutable -> Tpat_mutvar (id, name)
       in
       rvp k {
-        pat_desc = Tpat_var (id, name);
+        pat_desc = desc;
         pat_loc = loc; pat_extra=[];
         pat_type = ty;
         pat_mode = alloc_mode.mode;
@@ -1693,7 +1714,7 @@ and type_pat_aux
             pat_env = !env }
       | Some s ->
           let v = { name with txt = s } in
-          let id = enter_variable loc v alloc_mode.mode
+          let id = enter_variable loc v alloc_mode.mode mutability
                      t ~is_module:true sp.ppat_attributes in
           rvp k {
             pat_desc = Tpat_var (id, v);
@@ -1724,7 +1745,9 @@ and type_pat_aux
           init_def generic_level;
           let _, ty' = instance_poly ~keep_names:true false tyl body in
           end_def ();
-          let id = enter_variable lloc name alloc_mode.mode ty' attrs in
+          let id =
+            enter_variable lloc name alloc_mode.mode mutability ty' attrs
+          in
           rvp k {
             pat_desc = Tpat_var (id, name);
             pat_loc = lloc;
@@ -1744,7 +1767,7 @@ and type_pat_aux
         end_def ();
         generalize ty_var;
         let id =
-          enter_variable ~is_as_variable:true loc name mode
+          enter_variable ~is_as_variable:true loc name mode mutability
             ty_var sp.ppat_attributes
         in
         rvp k {
@@ -2235,15 +2258,27 @@ let check_unused ?(lev=get_current_level ()) env expected_ty cases =
       | r -> r)
     cases
 
-let iter_pattern_variables_type f : pattern_variable list -> unit =
-  List.iter (fun {pv_type; _} -> f pv_type)
+(* Typically [f] is "generalize" (e.g., to generalize the types of let-bound
+   variables).  But this isn't safe to do for mutable variables, so we allow for
+   alternate behavior on mutables with [mutable_case].  *)
+let iter_pattern_variables_type ?(mutable_case=None) f pvs =
+  List.iter (fun {pv_type; pv_mutable} ->
+    match pv_mutable, mutable_case with
+    | Mutable, Some f -> f pv_type
+    | _ -> f pv_type)
+    pvs
 
 let add_pattern_variables ?check ?check_as env pv =
   List.fold_right
-    (fun {pv_id; pv_mode; pv_type; pv_loc; pv_as_var; pv_attributes} env ->
+    (fun {pv_id; pv_mode; pv_type; pv_loc; pv_as_var;
+          pv_mutable; pv_attributes} env ->
        let check = if pv_as_var then check_as else check in
+       let kind = match pv_mutable with
+         | Immutable -> Val_reg
+         | Mutable -> Val_mut
+       in
        Env.add_value ?check ~mode:pv_mode pv_id
-         {val_type = pv_type; val_kind = Val_reg; Types.val_loc = pv_loc;
+         {val_type = pv_type; val_kind = kind; Types.val_loc = pv_loc;
           val_attributes = pv_attributes;
           val_uid = Uid.mk ~current_unit:(Env.get_unit_name ());
          } env
@@ -2772,7 +2807,9 @@ let rec is_nonexpansive exp =
   | Texp_for _
   | Texp_send _
   | Texp_instvar _
+  | Texp_mutvar _
   | Texp_setinstvar _
+  | Texp_setmutvar _
   | Texp_override _
   | Texp_letexception _
   | Texp_letop _
@@ -3064,8 +3101,9 @@ let check_partial_application statement exp =
             | Texp_construct _ | Texp_variant _ | Texp_record _
             | Texp_field _ | Texp_setfield _ | Texp_array _
             | Texp_list_comprehension _ | Texp_arr_comprehension _
-            | Texp_while _ | Texp_for _ | Texp_instvar _
-            | Texp_setinstvar _ | Texp_override _ | Texp_assert _
+            | Texp_while _ | Texp_for _ | Texp_mutvar _ | Texp_instvar _
+            | Texp_setinstvar _ | Texp_setmutvar _
+            | Texp_override _ | Texp_assert _
             | Texp_lazy _ | Texp_object _ | Texp_pack _ | Texp_unreachable
             | Texp_extension_constructor _ | Texp_ifthenelse (_, _, None)
             | Texp_probe _ | Texp_probe_is_enabled _
@@ -3329,8 +3367,13 @@ and type_expect_
             in
             Texp_instvar(self_path, path,
                          match lid.txt with
-                             Longident.Lident txt -> { txt; loc = lid.loc }
-                           | _ -> assert false)
+                           Longident.Lident txt -> { txt; loc = lid.loc }
+                         | _ -> assert false)
+        | Val_mut -> begin
+            match path with
+            | Path.Pident id -> Texp_mutvar {loc = lid.loc; txt = id}
+            | _ -> assert false
+          end
         | Val_self (_, _, cl_num, _) ->
             let (path, _) =
               Env.find_value_by_name (Longident.Lident ("self-" ^ cl_num)) env
@@ -4234,11 +4277,8 @@ and type_expect_
               exp_env = env }
         end
   | Pexp_setinstvar (lab, snewval) -> begin
-      let (path, mut, cl_num, ty) =
-        Env.lookup_instance_variable ~loc lab.txt env
-      in
-      match mut with
-      | Mutable ->
+      match Env.lookup_settable_variable ~loc lab.txt env with
+      | Instance_variable (path,Mutable,cl_num,ty) ->
           let newval =
             type_expect env mode_global snewval
               (mk_expected (instance ty))
@@ -4252,8 +4292,20 @@ and type_expect_
             exp_type = instance Predef.type_unit; exp_mode = Value_mode.global;
             exp_attributes = sexp.pexp_attributes;
             exp_env = env }
-      | _ ->
-          raise(Error(loc, env, Instance_variable_not_mutable lab.txt))
+      | Instance_variable (_,Immutable,_,_) ->
+        raise(Error(loc, env, Instance_variable_not_mutable lab.txt))
+      | Mutable_variable (id,mode,ty) ->
+          let newval =
+            type_expect env (mode_nontail mode)
+              snewval (mk_expected (instance ty))
+          in
+          let lid = {txt = id; loc} in
+          rue {
+            exp_desc = Texp_setmutvar(lid, newval);
+            exp_loc = loc; exp_extra = [];
+            exp_type = instance Predef.type_unit; exp_mode = Value_mode.global;
+            exp_attributes = sexp.pexp_attributes;
+            exp_env = env }
     end
   | Pexp_override lst ->
       let _ =
@@ -6064,7 +6116,8 @@ and type_let
        if maybe_expansive exp then
          lower_contravariant env pat.pat_type)
     pat_list exp_list;
-  iter_pattern_variables_type generalize pvs;
+  iter_pattern_variables_type ~mutable_case:(Some (unify_var env (newvar ())))
+    generalize pvs;
   List.iter2
     (fun (_,pat) (exp, vars) ->
        match vars with
@@ -6098,6 +6151,8 @@ and type_let
       (fun {vb_pat=pat} -> match pat.pat_desc with
            Tpat_var _ -> ()
          | Tpat_alias ({pat_desc=Tpat_any}, _, _) -> ()
+         | Tpat_mutvar _ ->
+             raise (Error(pat.pat_loc, env, Illegal_letrec_mutable))
          | _ -> raise(Error(pat.pat_loc, env, Illegal_letrec_pat)))
       l;
   List.iter (function
@@ -6788,6 +6843,11 @@ let report_error ~loc env = function
   | Illegal_letrec_pat ->
       Location.errorf ~loc
         "Only variables are allowed as left-hand side of `let rec'"
+  | Illegal_letrec_mutable ->
+      Location.errorf ~loc "Mutable variables are not allowed in a `let rec'"
+  | Illegal_mutable_pat ->
+      Location.errorf ~loc
+        "Only variables are allowed as left-hand side of `let mutable'"
   | Illegal_letrec_expr ->
       Location.errorf ~loc
         "This kind of expression is not allowed as right-hand side of `let rec'"

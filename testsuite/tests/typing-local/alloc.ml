@@ -1,4 +1,5 @@
 (* TEST
+  flags = "-extension let_mutable"
    * bytecode
      reference = "${test_source_directory}/alloc.heap.reference"
    * stack-allocation
@@ -411,6 +412,13 @@ let optionalarg ((f : ?foo:local_ int -> unit -> unit), n) =
   let () = f ~foo:n () in
   ()
 
+let let_mutable_loop () =
+  let mutable x = [] in
+  for i = 0 to 10 do local_
+    x <- i :: x
+  done;
+  ignore_local x
+
 let run name f x =
   let prebefore = Gc.allocated_bytes () in
   let before = Gc.allocated_bytes () in
@@ -462,7 +470,8 @@ let () =
   run "bigstringbint" readbigstringbint ();
   run "verylong" makeverylong 42;
   run "manylong" makemanylong 100;
-  run "optionalarg" optionalarg (fun_with_optional_arg, 10)
+  run "optionalarg" optionalarg (fun_with_optional_arg, 10);
+  run "letmutable" let_mutable_loop ()
 
 
 (* In debug mode, Gc.minor () checks for minor heap->local pointers *)

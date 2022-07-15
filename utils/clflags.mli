@@ -202,7 +202,7 @@ val set_dumped_pass : string -> bool -> unit
 val dump_into_file : bool ref
 
 module Extension : sig
-  type t = Comprehensions | Local | Include_functor
+  type t = Comprehensions | Local | Include_functor | Let_mutable
   val enable : string -> unit
   val is_enabled : t -> bool
   val to_string : t -> string
