@@ -1,16 +1,19 @@
 (* TEST
-   * native *)
+   * stack-allocation
+   ** native
+      reference = "${test_source_directory}/loop_regions.stack.reference"
+   * no-stack-allocation
+   ** native
+      reference = "${test_source_directory}/loop_regions.heap.reference"
+ *)
 
 external local_stack_offset : unit -> int = "caml_local_stack_offset"
 external opaque_local : ('a[@local_opt]) -> ('a[@local_opt]) = "%opaque"
 
-let check_expected_offsets (name,actual,expected) =
+let print_offsets (name,allocs) =
   let p xs = String.concat "; " (List.map Int.to_string xs) in
-  if List.equal (=) actual expected then
-    Printf.printf "%25s: OK\n%!" name
-  else
-    Printf.printf "%25s: Error.  Expected: [%s],  Saw: [%s]\n%!"
-      name (p expected) (p actual)
+  Printf.printf "%25s: [%s]\n%!"
+    name (p allocs)
 
 (* local_ for allocates in parent region *)
 let loc_for () =
@@ -24,8 +27,6 @@ let loc_for () =
   let offset2 = local_stack_offset () in
   [offset1; !offset_loop; offset2]
 
-let loc_for_expect = [0; 16; 16]
-
 (* Non local loop allocates in its own region *)
 let nonloc_for () =
   let offset_loop = ref (-1) in
@@ -37,8 +38,6 @@ let nonloc_for () =
   done;
   let offset2 = local_stack_offset () in
   [offset1; !offset_loop; offset2]
-
-let nonloc_for_expect = [0; 16; 0]
 
 (* Local while body should allocate in parent *)
 let loc_while_body () =
@@ -54,8 +53,6 @@ let loc_while_body () =
   let offset2 = local_stack_offset () in
   [offset1; !offset_loop; offset2]
 
-let loc_while_body_expect = [0;16;16]
-
 (* Nonlocal while body should allocate in its own region*)
 let nonloc_while_body () =
   let offset_loop = ref (-1) in
@@ -69,8 +66,6 @@ let nonloc_while_body () =
   done;
   let offset2 = local_stack_offset () in
   [offset1; !offset_loop; offset2]
-
-let nonloc_while_body_expect = [0;16;0]
 
 (* Local while condition should allocate in parent *)
 let loc_while_cond () =
@@ -87,8 +82,6 @@ let loc_while_cond () =
   let offset2 = local_stack_offset () in
   [offset1; !offset_loop; offset2]
 
-let loc_while_cond_expect = [0;16;16]
-
 (* Nonlocal while condition should allocate in its own region *)
 let nonloc_while_cond () =
   let offset_loop = ref (-1) in
@@ -104,14 +97,12 @@ let nonloc_while_cond () =
   let offset2 = local_stack_offset () in
   [offset1; !offset_loop; offset2]
 
-let nonloc_while_cond_expect = [0;16;0]
-
 let () =
-  List.iter check_expected_offsets [
-    "local for",           loc_for (),           loc_for_expect;
-    "non-local for",       nonloc_for (),        nonloc_for_expect;
-    "local while body",    loc_while_body (),    loc_while_body_expect;
-    "nonlocal while body", nonloc_while_body (), nonloc_while_body_expect;
-    "local while cond",    loc_while_cond (),    loc_while_cond_expect;
-    "nonlocal while cond", nonloc_while_cond (), nonloc_while_cond_expect;
+  List.iter print_offsets [
+    "local for",           loc_for ();
+    "non-local for",       nonloc_for ();
+    "local while body",    loc_while_body ();
+    "nonlocal while body", nonloc_while_body ();
+    "local while cond",    loc_while_cond ();
+    "nonlocal while cond", nonloc_while_cond ()
   ]

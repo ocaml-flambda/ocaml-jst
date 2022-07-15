@@ -1,6 +1,0 @@
-                local for: OK
-            non-local for: OK
-         local while body: OK
-      nonlocal while body: OK
-         local while cond: OK
-      nonlocal while cond: OK
