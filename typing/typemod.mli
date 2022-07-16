@@ -114,8 +114,9 @@ type error =
   | Signature_expected
   | Structure_expected of module_type
   | Functor_expected of module_type
-  | Include_functor_arity of module_type
+  | Include_generative_functor
   | Signature_parameter_expected of module_type
+  | Signature_result_expected of module_type
   | Recursive_include_functor
   | With_no_component of Longident.t
   | With_mismatch of Longident.t * Includemod.error list

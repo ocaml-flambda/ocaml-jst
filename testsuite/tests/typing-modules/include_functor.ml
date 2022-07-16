@@ -430,8 +430,88 @@ module F14 : functor (X : S) (Y : S) -> sig val z : X.t * Y.t end
 Line 9, characters 18-21:
 9 |   include functor F14
                       ^^^
-Error: Expected a module type of the form "functor (X : S1) -> S2".
-This has type
-       functor (X : S) (Y : S) -> sig val z : X.t * Y.t end
+Error: The type of this functor's result is not a signature; it is
+       functor (Y : S) -> sig val z : X.t * Y.t end
 |}];;
 
+(* Test 15: Make sure we're extracting functor return types appropriately *)
+module type S15 = sig val x : int end
+module type S15' = S15
+
+module F15 (X : sig end) : S15' =
+struct
+  let x = 42
+end
+
+include functor F15
+
+[%%expect{|
+module type S15 = sig val x : int end
+module type S15' = S15
+Line 4, characters 12-13:
+4 | module F15 (X : sig end) : S15' =
+                ^
+Warning 60 [unused-module]: unused module X.
+module F15 : functor (X : sig end) -> S15'
+val x : int = 42
+|}]
+
+(* Test 16: Make sure we're adequately finding the definitions of module type
+   identifiers *)
+module type S16 = sig
+  type t
+  val x : t
+end
+
+module type S16' = sig
+  type s
+end
+
+module type F16_1 = functor (X : S16) -> S16'
+module type F16_2 = functor (_ : S16) -> S16'
+
+module type G16_1 = sig
+  type t
+  val x : t
+
+  include functor F16_1
+end
+
+module type G16_2 = sig
+  type t
+  val x : t
+
+  include functor F16_2
+end;;
+[%%expect{|
+module type S16 = sig type t val x : t end
+module type S16' = sig type s end
+Line 10, characters 29-30:
+10 | module type F16_1 = functor (X : S16) -> S16'
+                                  ^
+Warning 67 [unused-functor-parameter]: unused functor parameter X.
+module type F16_1 = functor (X : S16) -> S16'
+module type F16_2 = S16 -> S16'
+module type G16_1 = sig type t val x : t type s end
+module type G16_2 = sig type t val x : t type s end
+|}];;
+
+(* Test 17: Reject generative functors with a clear error message *)
+module type S17 = sig
+  type t
+  val x : t
+end
+
+module type F17 = functor () -> S17
+
+module type G17 = sig
+  include functor F17
+end;;
+[%%expect {|
+module type S17 = sig type t val x : t end
+module type F17 = functor () -> S17
+Line 9, characters 18-21:
+9 |   include functor F17
+                      ^^^
+Error: Generative functors may not be included
+|}];;

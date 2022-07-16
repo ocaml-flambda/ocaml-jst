@@ -85,8 +85,9 @@ type error =
   | Signature_expected
   | Structure_expected of module_type
   | Functor_expected of module_type
-  | Include_functor_arity of module_type
+  | Include_generative_functor
   | Signature_parameter_expected of module_type
+  | Signature_result_expected of module_type
   | Recursive_include_functor
   | With_no_component of Longident.t
   | With_mismatch of Longident.t * Includemod.error list
@@ -144,16 +145,21 @@ let extract_sig_open env loc mty =
    signature to fill in names from its parameter *)
 let extract_sig_functor_open env loc mty sig_acc =
   match Env.scrape_alias env mty with
-  | Mty_functor (Named (Some param, mty_param),Mty_signature sg) as mty_func ->
-      let sig_param =
+  | Mty_functor (Named (param, mty_param),sg_result) as mty_func ->
+      let sg_param =
         match Mtype.scrape env mty_param with
-        | Mty_signature sig_param -> sig_param
+        | Mty_signature sg_param -> sg_param
         | _ -> raise (Error (loc,env,Signature_parameter_expected mty_param))
+      in
+      let mty_result =
+        match Mtype.scrape env sg_result with
+        | Mty_signature mty_result -> mty_result
+        | sg -> raise (Error (loc,env,Signature_result_expected sg))
       in
       let coercion =
         try
           Includemod.include_functor_signatures ~mark:Mark_both env
-            (List.rev sig_acc) sig_param
+            (List.rev sig_acc) sg_param
         with Includemod.Error msg ->
           raise (Error(loc, env, Not_included_functor msg))
       in
@@ -163,19 +169,21 @@ let extract_sig_functor_open env loc mty sig_acc =
          contents of the module currently being checked.  So we create
          definitions for the parameter's types with [sig_make_manifest] before
          the call to [nondep_sig]. *)
-      let sig_param = Mtype.sig_make_manifest sig_acc in
-      let env =
-        Env.add_module ~arg:true param Mp_present (Mty_signature sig_param) env
-      in
       let sg =
-        try Mtype.nondep_sig env [param] sg
-        with Ctype.Nondep_cannot_erase _ ->
-          raise(Error(loc, env, Cannot_eliminate_dependency
-                                  (Functor_included, mty_func)))
+        match param with
+        | None -> mty_result
+        | Some id ->
+          let sg_param = Mtype.sig_make_manifest sig_acc in
+          let env =
+            Env.add_module ~arg:true id Mp_present (Mty_signature sg_param) env
+          in
+          try Mtype.nondep_sig env [id] mty_result
+          with Ctype.Nondep_cannot_erase _ ->
+            raise(Error(loc, env, Cannot_eliminate_dependency
+                                    (Functor_included, mty_func)))
       in
       (sg, coercion)
-  | Mty_functor (_,Mty_functor _) as mty ->
-      raise(Error(loc, env, Include_functor_arity mty))
+  | Mty_functor (Unit,_) -> raise(Error(loc, env, Include_generative_functor))
   | Mty_alias path -> raise(Error(loc, env, Cannot_scrape_alias path))
   | mty -> raise(Error(loc, env, Functor_expected mty))
 
@@ -2941,14 +2949,15 @@ let report_error ppf = function
   | Functor_expected mty ->
       fprintf ppf
         "@[This module is not a functor; it has type@ %a" modtype mty
-  | Include_functor_arity mty ->
-      fprintf ppf
-        "@[Expected a module type of the form \"functor (X : S1) -> S2\".\n\
-         This has type: @ %a"
-        modtype mty
+  | Include_generative_functor ->
+      fprintf ppf "Generative functors may not be included"
   | Signature_parameter_expected mty ->
       fprintf ppf
         "@[The type of this functor's parameter is not a signature; it is@ %a"
+        modtype mty
+  | Signature_result_expected mty ->
+      fprintf ppf
+        "@[The type of this functor's result is not a signature; it is@ %a"
         modtype mty
   | Recursive_include_functor ->
       fprintf ppf
