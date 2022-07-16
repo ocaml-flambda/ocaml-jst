@@ -2943,7 +2943,8 @@ let report_error ppf = function
         "@[This module is not a functor; it has type@ %a" modtype mty
   | Include_functor_arity mty ->
       fprintf ppf
-        "@[This module is not a functor between structures; it has type @ %a"
+        "@[Expected a module type of the form \"functor (X : S1) -> S2\".\n\
+         This has type: @ %a"
         modtype mty
   | Signature_parameter_expected mty ->
       fprintf ppf

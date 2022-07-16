@@ -430,7 +430,8 @@ module F14 : functor (X : S) (Y : S) -> sig val z : X.t * Y.t end
 Line 9, characters 18-21:
 9 |   include functor F14
                       ^^^
-Error: This module is not a functor between structures; it has type
+Error: Expected a module type of the form "functor (X : S1) -> S2".
+This has type
        functor (X : S) (Y : S) -> sig val z : X.t * Y.t end
 |}];;
 
