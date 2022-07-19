@@ -70,6 +70,29 @@ type existential_restriction =
   | In_class_def  (** or in [class c = let ... in ...] *)
   | In_self_pattern (** or in self pattern *)
 
+(* Errors in uniqueness analysis *)
+type unique_seen_reason =
+  (* Stores for each unique identifier that has already been seen,
+     the last expression where it (or one of its parents) has been seen.
+     We also keep the identifier (e.g. itself or a parent) that we saw. *)
+  | SeenAsIn of Ident.t * expression
+  (* We do mark idents as seen if they are directly matched on.
+     E.g. match x, y with ... -> x, y not seen
+          match f x with ...  -> x seen
+
+     But in the special case match x, y with | z -> ..., we end up using x, y
+     in a newly-created tuple. In that case, we retroactively mark x and y
+     as seen. *)
+  | TupleMatchOnAliasedAs of Ident.t * Ident.t
+
+type unique_error =
+  (* Record that we have seen an ident twice. The reasons may
+     be either about the identifier itself or a parent. *)
+  | SeenTwice of Ident.t * unique_seen_reason * unique_seen_reason
+  (* Unique variables can not be used as free variables of closures,
+     inside for-loops and while-loops. *)
+  | NotOwnedInExpression of Ident.t * expression
+
 type error =
   | Constructor_arity_mismatch of Longident.t * int * int
   | Label_mismatch of Longident.t * Ctype.Unification_trace.t
@@ -142,6 +165,7 @@ type error =
   | Uncurried_function_escapes
   | Local_return_annotation_mismatch of Location.t
   | Bad_tail_annotation of [`Conflict|`Not_a_tailcall]
+  | Unique_failure of unique_error
 
 exception Error of Location.t * Env.t * error
 exception Error_forward of Location.error
@@ -6901,6 +6925,7 @@ let report_error ~loc env = function
         (match err with
          | `Conflict -> "is contradictory"
          | `Not_a_tailcall -> "is not on a tail call")
+  | Unique_failure _ -> Location.errorf ~loc "Uniqueness analysis failed"
 
 let report_error ~loc env err =
   Printtyp.wrap_printing_env ~error:true env
@@ -6926,3 +6951,258 @@ let () =
 let type_expect env e ty = type_expect env mode_global_shared e ty
 let type_exp env e = type_exp env mode_global_shared e
 let type_argument env e t1 t2 = type_argument env mode_global_shared e t1 t2
+
+
+(* Lexical check that unique variables are only used once. *)
+
+module Projection = struct
+  module T = struct
+    type t =
+      | Tuple_field of int
+      | Record_field of string
+      | Construct_field of string * int
+      | Variant_field of label
+      | Array_field of int
+
+    let compare t1 t2 = match t1, t2 with
+      | Tuple_field i, Tuple_field j -> Int.compare i j
+      | Record_field l1, Record_field l2 -> String.compare l1 l2
+      | Construct_field(l1, i), Construct_field(l2, j) ->
+        begin match String.compare l1 l2 with
+        | 0 -> Int.compare i j
+        | i -> i end
+      | Variant_field l1, Variant_field l2 -> String.compare l1 l2
+      | Array_field i, Array_field j -> Int.compare i j
+      | Tuple_field _, Record_field _ -> -1
+      | Tuple_field _, Construct_field _ -> -1
+      | Tuple_field _, Variant_field _ -> -1
+      | Tuple_field _, Array_field _ -> -1
+      | Record_field _, Construct_field _ -> -1
+      | Record_field _, Variant_field _ -> -1
+      | Record_field _, Array_field _ -> -1
+      | Construct_field _, Variant_field _ -> -1
+      | Construct_field _, Array_field _ -> -1
+      | Variant_field _, Array_field _ -> -1
+      | _, _ -> 1
+  end
+  include T
+  module Map = Map.Make(T)
+end
+
+(* Whenever an identifier or its parent/child was seen twice,
+   we want to report an error message showing both locations.
+
+   Example: match x with | A y ->  ... y ... x ... (for unique x)
+   should error with the locations of x and y.
+
+   Example: match x with | A y ->
+              match x with | A z ->  ... y ... z ... (for unique x)
+   should error with the locations of y and z.
+
+   We thus store the children of each variable (e.g. y for x)
+   as well as aliases that were introduced (e.g. z for y).
+   To be able to find aliases like z and y, we keep the children
+   by their projections out of the parent.
+   When we see y, we mark y as seen. When we see z, we mark y as seen.
+   When we see x, we mark x and y as seen. If y was already marked,
+   it must have been seen already and we fail. *)
+type unique_env =
+  { last_seen: unique_seen_reason Ident.Map.t;
+    (* Match a representing ident to a reason where it was last seen. *)
+    children: Ident.t Projection.Map.t Ident.Map.t;
+    owned: Ident.Set.t;
+    (* The representing (unique) idents that are owned at the moment.
+       We do not delete them from the map once we have seen them,
+       but only when we enter a section where they can not be used. *)
+    aliases: Ident.t Ident.Map.t;
+    (* If several idents refer to the same structure in memory,
+        they are mapped to the "representing" ident x that we saw first.
+        We do not map x to itself. *)
+  }
+
+(* A tuple pattern can have one parent per element of the tuple.*)
+type parent =
+  | NoParent
+  | OneParent of Ident.t
+  | TupleParent of parent option list
+
+(* We look up idents by first finding the representing alias. *)
+let lookup_alias id uenv =
+  match Ident.Map.find_opt id uenv.aliases with
+  | Some alias -> alias
+  | None -> id
+
+let rec mark_seen id reason exp uenv =
+  let id = lookup_alias id uenv in
+  match Ident.Map.find_opt id uenv.last_seen with
+  | None ->
+    let uenv = { uenv with last_seen = Ident.Map.add id reason uenv.last_seen } in
+    let children = match Ident.Map.find_opt id uenv.children with
+      | None -> []
+      | Some projs -> Projection.Map.bindings projs in
+    List.fold_left (fun uenv (_, c) -> mark_seen c reason exp uenv) uenv children
+  | Some reason' ->
+    raise (Error(exp.exp_loc, exp.exp_env,
+                 Unique_failure(SeenTwice(id, reason', reason))))
+
+let add_mproj parent mproj id uenv =
+  let parent = lookup_alias parent uenv in
+  let uenv = if Ident.Set.mem parent uenv.owned
+    then { uenv with owned = Ident.Set.add id uenv.owned }
+    else uenv in
+  match mproj with
+  | None -> { uenv with aliases = Ident.Map.add id parent uenv.aliases }
+  | Some proj -> match Ident.Map.find_opt parent uenv.children with
+    | None ->
+      { uenv with children = Ident.Map.add parent (Projection.Map.singleton proj id) uenv.children }
+    | Some projs -> match Projection.Map.find_opt proj projs with
+      | None ->
+        { uenv with children = Ident.Map.add parent (Projection.Map.add proj id projs) uenv.children }
+      | Some id' ->
+        { uenv with aliases = Ident.Map.add id id' uenv.aliases }
+
+let add_anon_mproj parent mproj uenv =
+  let parent = lookup_alias parent uenv in
+  match mproj with
+  | None -> parent, uenv
+  | Some _ ->
+    let id = Ident.create_local "anon" in
+    id, add_mproj parent mproj id uenv
+
+let rec mark_tuple_parent_seen id ps exp uenv =
+  match ps with
+  | [] -> uenv
+  | None :: ps -> mark_tuple_parent_seen id ps exp uenv
+  | (Some NoParent) :: ps -> mark_tuple_parent_seen id ps exp uenv
+  | (Some (OneParent p)) :: ps ->
+    mark_tuple_parent_seen id ps exp (mark_seen p (TupleMatchOnAliasedAs(p, id)) exp uenv)
+  | (Some (TupleParent ps')) :: ps ->
+    mark_tuple_parent_seen id ps exp (mark_tuple_parent_seen id ps' exp uenv)
+
+(* "match x with | A y" will be interpreted with parent x and pat A y.
+   "match e with | A y" will be interpreted with no parent and pat A y.
+   "match x, e with | pat" will be interpreted with tuple parent Some x, None *)
+let rec pat_to_map (pat : Typedtree.pattern) parent exp uenv =
+  pat_to_map_ pat parent None exp uenv
+
+(* We interpret "match x with | A y" as
+     pat_to_map (A y) x uenv
+     = pat_to_map_ y x (Some (Construct_field A 0)) uenv
+     = add_mproj x (Some (Construct_field A 0)) y uenv
+     = { uenv with "x -> (Construct_field A 0 -> y)" }
+
+  Invariants:
+   - mproj == None if parent != OneParent(p) *)
+and pat_to_map_ (pat : Typedtree.pattern) parent mproj exp uenv =
+  match pat.pat_desc with
+  | Tpat_any -> uenv
+  | Tpat_var(id, _) -> begin
+    match parent with
+    | NoParent -> uenv
+    | OneParent(p) -> add_mproj p mproj id uenv
+    | TupleParent(ps) -> mark_tuple_parent_seen id ps exp uenv end
+  | Tpat_alias(pat',id, _) ->
+    let uenv = match parent with
+      | NoParent -> uenv
+      | OneParent(p) -> add_mproj p mproj id uenv
+      | TupleParent(ps) -> mark_tuple_parent_seen id ps exp uenv
+    in pat_to_map pat' (OneParent id) exp uenv
+  | Tpat_constant(_) -> uenv
+  | Tpat_tuple(ps) -> begin
+    match parent with
+    | NoParent ->
+      List.fold_left (fun uenv pat' -> pat_to_map pat' parent exp uenv) uenv ps
+    | OneParent(p) ->
+      let p, uenv = add_anon_mproj p mproj uenv in
+      List.fold_left2
+        (fun uenv pat' i ->
+           pat_to_map_ pat' (OneParent p) (Some (Projection.Tuple_field i)) exp uenv)
+        uenv ps (List.init (List.length ps) (fun x -> x))
+    | TupleParent(ps') ->
+      List.fold_left2
+        (fun uenv pat' p -> match p with
+          | Some p' -> pat_to_map pat' p' exp uenv
+          | None -> pat_to_map pat' NoParent exp uenv)
+        uenv ps ps'
+    end
+  | Tpat_construct(lbl, _, ps) -> begin
+      match parent with
+      | NoParent ->
+        List.fold_left (fun uenv pat' -> pat_to_map pat' parent exp uenv) uenv ps
+      | OneParent(p) ->
+        let p, uenv = add_anon_mproj p mproj uenv in
+        List.fold_left2
+          (fun uenv pat' i ->
+             pat_to_map_ pat' (OneParent p)
+              (Some (Projection.Construct_field(Longident.last lbl.txt, i)))
+              exp uenv)
+          uenv ps (List.init (List.length ps) (fun x -> x))
+      | TupleParent(_) -> assert false
+    end
+  | Tpat_variant(lbl, mpat, _) -> begin
+      match mpat with
+      | Some pat' -> let parent, uenv = match mproj, parent with
+        | Some _, OneParent p ->
+          let p, uenv = add_anon_mproj p mproj uenv in OneParent(p), uenv
+        | _, _ -> parent, uenv in
+        pat_to_map_ pat' parent (Some (Projection.Variant_field lbl)) exp uenv
+      | None -> uenv
+      end
+  | Tpat_record(ps, _) -> begin
+      match parent with
+      | NoParent ->
+        List.fold_left (fun uenv (_, _, pat') -> pat_to_map pat' parent exp uenv) uenv ps
+      | OneParent(p) ->
+        let p, uenv = add_anon_mproj p mproj uenv in
+        List.fold_left
+          (fun uenv (lbl, _, pat') ->
+             pat_to_map_ pat' (OneParent p)
+               (Some (Projection.Record_field (Longident.last lbl.txt))) exp uenv)
+          uenv ps
+      | TupleParent(_) -> assert false
+    end
+  | Tpat_array(ps) -> begin
+      match parent with
+      | NoParent ->
+        List.fold_left (fun uenv pat' -> pat_to_map pat' parent exp uenv) uenv ps
+      | OneParent(p) ->
+        let p, uenv = add_anon_mproj p mproj uenv in
+        List.fold_left2
+          (fun uenv pat' i ->
+              pat_to_map_ pat' (OneParent p) (Some (Projection.Array_field i)) exp uenv)
+          uenv ps (List.init (List.length ps) (fun x -> x))
+      | TupleParent(_) -> assert false
+    end
+  | Tpat_lazy(pat') -> pat_to_map pat' parent exp uenv
+  | Tpat_or(a, b, _) ->
+    pat_to_map a parent exp (pat_to_map b parent exp uenv)
+
+(* We ignore exceptions in uniqueness analysis. *)
+let comp_pat_to_map
+      (pat : Typedtree.computation Typedtree.general_pattern) parent exp uenv =
+  match split_pattern pat with
+  | Some pat', _ -> pat_to_map pat' parent exp uenv
+  | None, _ -> uenv
+
+let ident_option_from_path p =
+  match p with
+  | Path.Pident id -> Some id
+  | Path.Pdot _ -> None (* Pdot's can not be unique *)
+  | Path.Papply _ -> assert false
+
+let rec check_uniqueness_exp exp =
+  let _ = check_uniqueness_exp_ exp
+    { last_seen = Ident.Map.empty;
+      children = Ident.Map.empty;
+      owned = Ident.Set.empty;
+      aliases = Ident.Map.empty; }
+  in ()
+and check_uniqueness_exp_ exp uenv =
+  match exp.exp_desc with
+  | Texp_ident(p, _, _, _) -> begin
+    match ident_option_from_path p, exp.exp_mode.uniqueness with
+    | Some id, Amode Unique -> mark_seen id (SeenAsIn(id, exp)) exp uenv
+    | Some id, Amodevar _ -> mark_seen id (SeenAsIn(id, exp)) exp uenv
+    | _, _ -> uenv end
+  | Texp_constant _ -> uenv
+  | _ -> uenv

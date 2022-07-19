@@ -133,6 +133,8 @@ val escape : loc:Location.t -> env:Env.t -> value_mode -> unit
 
 val self_coercion : (Path.t * Location.t list ref) list ref
 
+type unique_error
+
 type error =
   | Constructor_arity_mismatch of Longident.t * int * int
   | Label_mismatch of Longident.t * Ctype.Unification_trace.t
@@ -206,6 +208,7 @@ type error =
   | Uncurried_function_escapes
   | Local_return_annotation_mismatch of Location.t
   | Bad_tail_annotation of [`Conflict|`Not_a_tailcall]
+  | Unique_failure of unique_error
 
 
 exception Error of Location.t * Env.t * error
