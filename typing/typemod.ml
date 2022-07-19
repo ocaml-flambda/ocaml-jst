@@ -85,7 +85,6 @@ type error =
   | Signature_expected
   | Structure_expected of module_type
   | Functor_expected of module_type
-  | Include_generative_functor
   | Signature_parameter_expected of module_type
   | Signature_result_expected of module_type
   | Recursive_include_functor
@@ -145,16 +144,11 @@ let extract_sig_open env loc mty =
    signature to fill in names from its parameter *)
 let extract_sig_functor_open env loc mty sig_acc =
   match Env.scrape_alias env mty with
-  | Mty_functor (Named (param, mty_param),sg_result) as mty_func ->
+  | Mty_functor (Named (param, mty_param),mty_result) as mty_func ->
       let sg_param =
         match Mtype.scrape env mty_param with
         | Mty_signature sg_param -> sg_param
-        | _ -> raise (Error (loc,env,Signature_parameter_expected mty_param))
-      in
-      let mty_result =
-        match Mtype.scrape env sg_result with
-        | Mty_signature mty_result -> mty_result
-        | sg -> raise (Error (loc,env,Signature_result_expected sg))
+        | _ -> raise (Error (loc,env,Signature_parameter_expected mty_func))
       in
       let coercion =
         try
@@ -162,6 +156,21 @@ let extract_sig_functor_open env loc mty sig_acc =
             (List.rev sig_acc) sg_param
         with Includemod.Error msg ->
           raise (Error(loc, env, Not_included_functor msg))
+      in
+      let incl_kind, sg_result =
+        (* Accept functor types of the forms:
+              sig..end -> sig..end
+           and
+              sig..end -> () -> sig..end *)
+        match Mtype.scrape env mty_result with
+        | Mty_signature sg_result -> Tincl_functor coercion, sg_result
+        | Mty_functor (Unit,mty_result) -> begin
+            match Mtype.scrape env mty_result with
+            | Mty_signature sg_result -> Tincl_gen_functor coercion, sg_result
+            | sg -> raise (Error (loc,env,Signature_result_expected
+                                            (Mty_functor (Unit,sg))))
+          end
+        | sg -> raise (Error (loc,env,Signature_result_expected sg))
       in
       (* Like the [Pmod_apply] case, we want to use [nondep_supertype] to
          eliminate references to the functor's parameter in its result type.
@@ -171,19 +180,20 @@ let extract_sig_functor_open env loc mty sig_acc =
          the call to [nondep_sig]. *)
       let sg =
         match param with
-        | None -> mty_result
+        | None -> sg_result
         | Some id ->
           let sg_param = Mtype.sig_make_manifest sig_acc in
           let env =
             Env.add_module ~arg:true id Mp_present (Mty_signature sg_param) env
           in
-          try Mtype.nondep_sig env [id] mty_result
+          try Mtype.nondep_sig env [id] sg_result
           with Ctype.Nondep_cannot_erase _ ->
             raise(Error(loc, env, Cannot_eliminate_dependency
                                     (Functor_included, mty_func)))
       in
-      (sg, coercion)
-  | Mty_functor (Unit,_) -> raise(Error(loc, env, Include_generative_functor))
+      (sg, incl_kind)
+  | Mty_functor (Unit,_) as mty ->
+      raise(Error(loc, env, Signature_parameter_expected mty))
   | Mty_alias path -> raise(Error(loc, env, Cannot_scrape_alias path))
   | mty -> raise(Error(loc, env, Functor_expected mty))
 
@@ -1461,10 +1471,10 @@ and transl_signature env sg =
         let scope = Ctype.create_scope () in
         let incl_kind, sg =
           if has_include_functor env sloc sincl.pincl_attributes then
-            let (sg, coercion) =
+            let (sg, incl_kind) =
               extract_sig_functor_open env smty.pmty_loc mty sig_acc
             in
-            Tincl_functor coercion, sg
+            incl_kind, sg
           else
             Tincl_structure, extract_sig env smty.pmty_loc mty
         in
@@ -2497,10 +2507,10 @@ and type_structure ?(toplevel = None) funct_body anchor env sstr =
         in
         let incl_kind, sg =
           if has_include_functor env sloc sincl.pincl_attributes then
-            let (sg, coercion) =
+            let (sg, incl_kind) =
               extract_sig_functor_open env smodl.pmod_loc modl.mod_type sig_acc
             in
-            Tincl_functor coercion, sg
+            incl_kind, sg
           else
             Tincl_structure, extract_sig_open env smodl.pmod_loc modl.mod_type
         in
@@ -2949,15 +2959,13 @@ let report_error ppf = function
   | Functor_expected mty ->
       fprintf ppf
         "@[This module is not a functor; it has type@ %a" modtype mty
-  | Include_generative_functor ->
-      fprintf ppf "Generative functors may not be included"
   | Signature_parameter_expected mty ->
       fprintf ppf
-        "@[The type of this functor's parameter is not a signature; it is@ %a"
+        "@[The type of this functor is:@ %a. @ Its parameter is not a signature."
         modtype mty
   | Signature_result_expected mty ->
       fprintf ppf
-        "@[The type of this functor's result is not a signature; it is@ %a"
+        "@[The type of this functor's result is not includable; it is@ %a"
         modtype mty
   | Recursive_include_functor ->
       fprintf ppf

@@ -430,8 +430,27 @@ module F14 : functor (X : S) (Y : S) -> sig val z : X.t * Y.t end
 Line 9, characters 18-21:
 9 |   include functor F14
                       ^^^
-Error: The type of this functor's result is not a signature; it is
+Error: The type of this functor's result is not includable; it is
        functor (Y : S) -> sig val z : X.t * Y.t end
+|}];;
+
+module F14_2 (X : S) () () = struct
+  let z = X.x
+end
+
+module M14_2 = struct
+  type t = int
+  let x : t = 5
+
+  include functor F14_2
+end;;
+[%%expect{|
+module F14_2 : functor (X : S) () () -> sig val z : X.t end
+Line 9, characters 18-23:
+9 |   include functor F14_2
+                      ^^^^^
+Error: The type of this functor's result is not includable; it is
+       functor () () -> sig val z : X.t end
 |}];;
 
 (* Test 15: Make sure we're extracting functor return types appropriately *)
@@ -496,22 +515,107 @@ module type G16_1 = sig type t val x : t type s end
 module type G16_2 = sig type t val x : t type s end
 |}];;
 
-(* Test 17: Reject generative functors with a clear error message *)
+(* Test 17: Functors whose types don't begin with a normal applicative parameter
+   are rejected. *)
 module type S17 = sig
   type t
   val x : t
 end
 
-module type F17 = functor () -> S17
+module type F17_1 = functor () -> S17
 
 module type G17 = sig
-  include functor F17
+  include functor F17_1
 end;;
 [%%expect {|
 module type S17 = sig type t val x : t end
-module type F17 = functor () -> S17
-Line 9, characters 18-21:
-9 |   include functor F17
-                      ^^^
-Error: Generative functors may not be included
+module type F17_1 = functor () -> S17
+Line 9, characters 18-23:
+9 |   include functor F17_1
+                      ^^^^^
+Error: The type of this functor is: functor () -> S17.
+       Its parameter is not a signature.
+|}];;
+
+module type F17_2 = functor () (X : S17) -> sig val z : X.t end
+
+module type G17_2 = sig
+  type t
+  val x : t
+  include functor F17_2
+end;;
+[%%expect {|
+module type F17_2 = functor () (X : S17) -> sig val z : X.t end
+Line 6, characters 18-23:
+6 |   include functor F17_2
+                      ^^^^^
+Error: The type of this functor is:
+       functor () (X : S17) -> sig val z : X.t end.
+       Its parameter is not a signature.
+|}];;
+
+(* Test 18: Generative functors *)
+module type S18 = sig
+  type t
+  val x : t
+  val equal : t -> t -> bool
+end
+
+module F18 (X : S18) () : sig
+  type t'
+  val z : t'
+  val equal_t' : t' -> t' -> bool
+end = struct
+  type t' = X.t
+  let z = X.x
+  let equal_t' = X.equal
+end
+
+module M18 = struct
+  type t = int
+  let x = 42
+  let equal = Int.equal
+  include functor F18
+end
+
+let () = assert (M18.equal_t' M18.z M18.z)
+[%%expect{|
+module type S18 = sig type t val x : t val equal : t -> t -> bool end
+module F18 :
+  functor (X : S18) () ->
+    sig type t' val z : t' val equal_t' : t' -> t' -> bool end
+module M18 :
+  sig
+    type t = int
+    val x : int
+    val equal : int -> int -> bool
+    type t'
+    val z : t'
+    val equal_t' : t' -> t' -> bool
+  end
+|}];;
+
+(* Test 19: Effects happen when they should *)
+let r19 = ref 0
+
+module F19 (X : sig val x : int end) = struct
+  let () = r19 := X.x
+end
+
+let () = assert (Int.equal 0 !r19)
+
+module M19 = struct
+  let x = 42
+  let () = assert (Int.equal 0 !r19)
+
+  include functor F19
+
+  let () = assert (Int.equal 42 !r19)
+end
+
+let () = assert (Int.equal 42 !r19);;
+[%%expect{|
+val r19 : int ref = {contents = 0}
+module F19 : functor (X : sig val x : int end) -> sig end
+module M19 : sig val x : int end
 |}];;
