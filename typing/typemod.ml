@@ -2538,18 +2538,18 @@ and type_structure ?(toplevel = None) funct_body anchor env sstr =
         Tstr_attribute attr, [], env
   in
   let toplevel_sig = Option.value toplevel ~default:[] in
-  let rec type_struct env sstr str_acc sig_acc sig_acc_with_toplvl =
+  let rec type_struct env sstr str_acc sig_acc sig_acc_include_functor =
     match sstr with
     | [] ->
       (List.rev str_acc, List.rev sig_acc, env)
     | pstr :: srem ->
         let previous_saved_types = Cmt_format.get_saved_types () in
-        let desc, sg, new_env = type_str_item env pstr sig_acc_with_toplvl in
+        let desc, sg, new_env = type_str_item env pstr sig_acc_include_functor in
         let str = { str_desc = desc; str_loc = pstr.pstr_loc; str_env = env } in
         Cmt_format.set_saved_types (Cmt_format.Partial_structure_item str
                                     :: previous_saved_types);
-        type_struct new_env srem (str :: str_acc)
-          (List.rev_append sg sig_acc) (List.rev_append sg sig_acc_with_toplvl)
+        type_struct new_env srem (str :: str_acc) (List.rev_append sg sig_acc)
+          (List.rev_append sg sig_acc_include_functor)
   in
   let previous_saved_types = Cmt_format.get_saved_types () in
   let run () =
