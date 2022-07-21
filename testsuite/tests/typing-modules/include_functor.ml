@@ -595,6 +595,27 @@ module M18 :
   end
 |}];;
 
+module F18_2 (X : S18) () : sig
+  type t'
+  val z : t'
+end = struct
+  type t' = X.t
+  let z = X.x
+end
+
+module M18_2 (Y : S18) = struct
+  include Y
+  include functor F18_2
+end;;
+[%%expect{|
+module F18_2 : functor (X : S18) () -> sig type t' val z : t' end
+Line 11, characters 18-23:
+11 |   include functor F18_2
+                       ^^^^^
+Error: This functor creates fresh types when applied.
+       Including it is not allowed inside applicative functors.
+|}];;
+
 (* Test 19: Effects happen when they should *)
 let r19 = ref 0
 

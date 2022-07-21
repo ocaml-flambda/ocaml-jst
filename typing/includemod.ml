@@ -282,11 +282,10 @@ let build_component_table pos_rep sg =
   build_table 0 FieldMap.empty sg
 
 
-(* Pair each component of sig2 with a component of sig1,
-   identifying the names along the way.
-   Return a coercion list indicating, for all run-time components
-   of sig2, the position of the matching run-time components of sig1
-   and the coercion to be applied to it. *)
+(* Pair each component of sig2 with a component of sig1, identifying the names
+   along the way.
+   Return a list containing each pair and the position of the component in sig1.
+   Raises if any component of sig2 cannot be paired. *)
 let pair_components env cxt subst sig1_comps sig2 =
   let rec pair subst paired unpaired = function
       [] -> begin

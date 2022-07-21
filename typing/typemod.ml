@@ -101,6 +101,7 @@ type error =
   | Implementation_is_required of string
   | Interface_not_compiled of string
   | Not_allowed_in_functor_body
+  | Not_includable_in_functor_body
   | Not_a_packed_module of type_expr
   | Incomplete_packed_module of type_expr
   | Scoping_pack of Longident.t * type_expr
@@ -142,7 +143,7 @@ let extract_sig_open env loc mty =
 
 (* Extract the signature of a functor's body, using the provided [sig_acc]
    signature to fill in names from its parameter *)
-let extract_sig_functor_open env loc mty sig_acc =
+let extract_sig_functor_open funct_body env loc mty sig_acc =
   match Env.scrape_alias env mty with
   | Mty_functor (Named (param, mty_param),mty_result) as mty_func ->
       let sg_param =
@@ -164,6 +165,8 @@ let extract_sig_functor_open env loc mty sig_acc =
               sig..end -> () -> sig..end *)
         match Mtype.scrape env mty_result with
         | Mty_signature sg_result -> Tincl_functor coercion, sg_result
+        | Mty_functor (Unit,_) when funct_body && Mtype.contains_type env mty ->
+            raise (Error (loc, env, Not_includable_in_functor_body))
         | Mty_functor (Unit,mty_result) -> begin
             match Mtype.scrape env mty_result with
             | Mty_signature sg_result -> Tincl_gen_functor coercion, sg_result
@@ -1472,7 +1475,7 @@ and transl_signature env sg =
         let incl_kind, sg =
           if has_include_functor env sloc sincl.pincl_attributes then
             let (sg, incl_kind) =
-              extract_sig_functor_open env smty.pmty_loc mty sig_acc
+              extract_sig_functor_open false env smty.pmty_loc mty sig_acc
             in
             incl_kind, sg
           else
@@ -2508,7 +2511,8 @@ and type_structure ?(toplevel = None) funct_body anchor env sstr =
         let incl_kind, sg =
           if has_include_functor env sloc sincl.pincl_attributes then
             let (sg, incl_kind) =
-              extract_sig_functor_open env smodl.pmod_loc modl.mod_type sig_acc
+              extract_sig_functor_open funct_body env smodl.pmod_loc
+                modl.mod_type sig_acc
             in
             incl_kind, sg
           else
@@ -3031,6 +3035,10 @@ let report_error ppf = function
       fprintf ppf
         "@[This expression creates fresh types.@ %s@]"
         "It is not allowed inside applicative functors."
+  | Not_includable_in_functor_body ->
+      fprintf ppf
+        "@[This functor creates fresh types when applied.@ %s@]"
+        "Including it is not allowed inside applicative functors."
   | Not_a_packed_module ty ->
       fprintf ppf
         "This expression is not a packed module. It has type@ %a"
