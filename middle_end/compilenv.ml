@@ -236,6 +236,17 @@ let pack_prefix_for_global_ident id =
       (* CR mshinwell: or the same as the -for-pack prefix in effect now? *)
       CU.Prefix.empty
 
+let symbol_for_global' id =
+  assert (Ident.is_global_or_predef id);
+  let pack_prefix =
+    if Ident.is_global id then pack_prefix_for_global_ident id
+    else CU.Prefix.empty
+  in
+  Symbol.for_ident id ~pack_prefix
+
+let symbol_for_global id =
+  symbol_for_global' id |> Symbol.linkage_name
+
 (* Register the approximation of the module being compiled *)
 
 let set_global_approx approx =

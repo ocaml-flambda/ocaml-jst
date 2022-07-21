@@ -63,15 +63,7 @@ let rec build_closure_env env_param pos = function
    contain the right names if the -for-pack option is active. *)
 
 let getglobal dbg id =
-  assert (Ident.is_global_or_predef id);
-  let pack_prefix =
-    if Ident.is_global id then Compilenv.pack_prefix_for_global_ident id
-    else Compilation_unit.Prefix.empty
-  in
-  let symbol =
-    Symbol.for_ident id ~pack_prefix
-    |> Symbol.linkage_name
-  in
+  let symbol = Compilenv.symbol_for_global id in
   Uprim (P.Pread_symbol symbol, [], dbg)
 
 let region ulam =

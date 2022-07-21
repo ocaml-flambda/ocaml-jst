@@ -2606,7 +2606,6 @@ asmcomp/emit.cmo : \
     utils/domainstate.cmi \
     lambda/debuginfo.cmi \
     utils/config.cmi \
-    middle_end/compilenv.cmi \
     asmcomp/cmm_helpers.cmi \
     asmcomp/cmm.cmi \
     utils/clflags.cmi \
@@ -2631,7 +2630,6 @@ asmcomp/emit.cmx : \
     utils/domainstate.cmx \
     lambda/debuginfo.cmx \
     utils/config.cmx \
-    middle_end/compilenv.cmx \
     asmcomp/cmm_helpers.cmx \
     asmcomp/cmm.cmx \
     utils/clflags.cmx \
@@ -3201,6 +3199,7 @@ middle_end/compilenv.cmx : \
     middle_end/clambda.cmx \
     middle_end/compilenv.cmi
 middle_end/compilenv.cmi : \
+    middle_end/symbol.cmi \
     middle_end/flambda/simple_value_approx.cmi \
     middle_end/flambda/base_types/set_of_closures_id.cmi \
     lambda/lambda.cmi \
@@ -6299,6 +6298,7 @@ toplevel/opttoploop.cmo : \
     utils/config.cmi \
     driver/compmisc.cmi \
     middle_end/compilenv.cmi \
+    utils/compilation_unit.cmi \
     driver/compenv.cmi \
     middle_end/closure/closure_middle_end.cmi \
     utils/clflags.cmi \
@@ -6346,6 +6346,7 @@ toplevel/opttoploop.cmx : \
     utils/config.cmx \
     driver/compmisc.cmx \
     middle_end/compilenv.cmx \
+    utils/compilation_unit.cmx \
     driver/compenv.cmx \
     middle_end/closure/closure_middle_end.cmx \
     utils/clflags.cmx \
