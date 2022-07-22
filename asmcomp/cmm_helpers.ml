@@ -2731,11 +2731,7 @@ let make_symbol ?compilation_unit name =
     | None -> Compilation_unit.get_current_exn ()
     | Some compilation_unit -> compilation_unit
   in
-  let compilation_unit_symbol =
-    Symbol.for_compilation_unit compilation_unit
-    |> Symbol.linkage_name
-  in
-  compilation_unit_symbol ^ Symbol.separator ^ name
+  Symbol.for_name compilation_unit name |> Symbol.linkage_name
 
 (* Generate the entry point *)
 

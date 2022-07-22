@@ -15,8 +15,6 @@
 
 open Local_store
 
-module CU = Compilation_unit
-
 let lowest_scope  = 0
 let highest_scope = 100000000
 
@@ -153,15 +151,6 @@ let print ~with_scope ppf =
 let print_with_scope ppf id = print ~with_scope:true ppf id
 
 let print ppf id = print ~with_scope:false ppf id
-
-let compilation_unit_name_of_global_ident t =
-  match t with
-  | Global name -> CU.Name.of_string name
-  | Predef _ | Local _ | Scoped _ ->
-    Misc.fatal_errorf "%a is not a global Ident" print t
-
-let of_compilation_unit_name comp_unit_name =
-  Global (CU.Name.to_string comp_unit_name)
 
 type 'a tbl =
     Empty

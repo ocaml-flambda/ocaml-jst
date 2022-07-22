@@ -141,7 +141,7 @@ let read_library_info filename =
 let get_global_info global_ident =
   assert (Ident.is_global global_ident);
   if CU.Name.equal
-       (Ident.compilation_unit_name_of_global_ident global_ident)
+       (Ident.name global_ident |> CU.Name.of_string)
        (CU.name current_unit.ui_name)
   then
     Some current_unit
@@ -242,7 +242,7 @@ let symbol_for_global' id =
     if Ident.is_global id then pack_prefix_for_global_ident id
     else CU.Prefix.empty
   in
-  Symbol.for_ident id ~pack_prefix
+  Symbol.for_global_or_predef_ident pack_prefix id
 
 let symbol_for_global id =
   symbol_for_global' id |> Symbol.linkage_name
@@ -316,7 +316,7 @@ let approx_for_global comp_unit =
   if CU.equal comp_unit CU.predef_exn
   then invalid_arg "approx_for_global with predef_exn compilation unit";
   let comp_unit_name = which_cmx_file comp_unit in
-  let id = Ident.of_compilation_unit_name comp_unit_name in
+  let id = Ident.create_persistent (comp_unit_name |> CU.Name.to_string) in
   let modname = Ident.name id in
   (*
   Format.eprintf "CU %a gives ident/modname %s, backtrace:@ \n%s\n%!"
@@ -409,8 +409,8 @@ let structured_constants () =
   let provenance : Clambda.usymbol_provenance =
     { original_idents = [];
       module_path =
-        Path.Pident (Ident.of_compilation_unit_name (
-          Compilation_unit.name (Compilation_unit.get_current_exn ())));
+        Path.Pident (Ident.create_persistent (Compilation_unit.Name.to_string (
+          Compilation_unit.name (Compilation_unit.get_current_exn ()))));
     }
   in
   SymMap.bindings (!structured_constants).strcst_all

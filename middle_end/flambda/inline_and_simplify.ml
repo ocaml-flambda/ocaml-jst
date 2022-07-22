@@ -1729,7 +1729,7 @@ let simplify_program env r (program : Flambda.program) =
 let add_predef_exns_to_environment ~env =
   List.fold_left (fun env predef_exn ->
       assert (Ident.is_predef predef_exn);
-      let symbol = Symbol.for_ident predef_exn in
+      let symbol = Symbol.for_predef_ident predef_exn in
       let name = Ident.name predef_exn in
       let approx =
         A.value_block Tag.object_tag

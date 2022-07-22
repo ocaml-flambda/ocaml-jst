@@ -72,7 +72,6 @@ module Prefix : sig
   type t
   include Identifiable.S with type t := t
   val parse_for_pack : string option -> t
-  val extract_prefix : string -> t * Name.t
   val to_list_outermost_pack_first : t -> Name.t list
   val to_string : t -> string
   val empty : t
@@ -121,13 +120,6 @@ end = struct
     | None -> []
     | Some pack -> parse pack
 
-  let extract_prefix name =
-    match String.rindex_opt name '.' with
-    | None -> [], Name.of_string name
-    | Some pos ->
-      parse (String.sub name 0 (pos+1)),
-      Name.of_string (String.sub name (pos+1) (String.length name - pos - 1))
-
   let to_string p =
     Format.asprintf "%a" print p
 
@@ -159,7 +151,13 @@ let create ?(for_pack_prefix = Prefix.empty) name =
   }
 
 let of_string str =
-  let for_pack_prefix, name = Prefix.extract_prefix str in
+  let for_pack_prefix, name =
+    match String.rindex_opt str '.' with
+    | None -> Prefix.empty, Name.of_string str
+    | Some pos ->
+        Prefix.parse_for_pack (Some (String.sub str 0 (pos+1))),
+        Name.of_string (String.sub str (pos+1) (String.length str - pos - 1))
+  in
   create ~for_pack_prefix name
 
 let dummy = create (Name.of_string "*none*")
@@ -229,8 +227,6 @@ let print_full_path fmt t =
 
 let full_path_as_string t =
   Format.asprintf "%a" print_full_path t
-
-type crcs = (t * Digest.t option) list
 
 let current = ref None
 

@@ -58,11 +58,6 @@ module Prefix : sig
       "-for-pack" argument. *)
   val parse_for_pack : string option -> t
 
-  (* CR mshinwell: clarify comment *)
-  (** [extract_prefix id] returns the prefix of an identifier and its basename,
-      as if it was generated with "-for-pack". *)
-  val extract_prefix : string -> t * Name.t
-
   val to_list_outermost_pack_first : t -> Name.t list
 
   val to_string : t -> string
@@ -93,9 +88,8 @@ val print_full_path : Format.formatter -> t -> unit
     mangled in any way). *)
 val create : ?for_pack_prefix:Prefix.t -> Name.t -> t
 
-(** Create a compilation unit from the given [name] (which is not encoded or
-    mangled in any way). The "-for-pack" of prefix is extracted if there is
-    any. *)
+(** Create a compilation unit from the given [name]. The "-for-pack" of
+    prefix is extracted if there is any. *)
 val of_string : string -> t
 (* CR mshinwell: It's kind of bad that [create name] and [of_string name]
    do different things w.r.t. the prefix. *)
@@ -134,11 +128,6 @@ type error = private
 (** The exception raised by conversion functions in this module. *)
 exception Error of error
 
-(** The type used for recording digests of compilation units in .cmo and
-    .cmx files. *)
-type crcs = (t * Digest.t option) list
-
-(* To think about: *)
 val set_current : t -> unit
 val get_current_exn : unit -> t
 val is_current : t -> bool

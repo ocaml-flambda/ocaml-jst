@@ -1398,8 +1398,7 @@ and close_functions { backend; fenv; cenv; mutable_vars } fun_defs =
                          as funct)) ->
             Lambda.check_lfunction funct;
             let label =
-              Symbol.for_ident id ~pack_prefix:(Compilenv.pack_prefix_for_current_unit ())
-              |> Symbol.linkage_name
+              Symbol.for_local_ident id |> Symbol.linkage_name
             in
             let arity = List.length params in
             let fundesc =

@@ -78,40 +78,40 @@ let linkage_name_for_compilation_unit comp_unit =
 let linkage_name_for_current_unit () =
   linkage_name_for_compilation_unit (CU.get_current_exn ())
 
-let for_ident ?pack_prefix id =
+let for_global_or_predef_ident pack_prefix id =
+  assert (Ident.is_global_or_predef id);
   let linkage_name, compilation_unit =
     if Ident.is_predef id then
       "caml_exn_" ^ Ident.name id, CU.predef_exn
-    else if Ident.is_global id then
-      let pack_prefix =
-        (* At present there is no way of discovering the pack prefix just
-           given an [Ident.t].  This would be fixed by enforcing -for-pack
-           when compiling .mli files. *)
-        match pack_prefix with
-        | Some pack_prefix -> pack_prefix
-        | None ->
-          Misc.fatal_errorf "Must supply [pack_prefix] for a [Global] \
-              identifier passed to [Symbol.for_ident]:@ %a"
-            Ident.print id
-      in
+    else
       let compilation_unit =
         (* CR mshinwell: decide on "pack_prefix" or "for_pack_prefix" *)
         Compilation_unit.create ~for_pack_prefix:pack_prefix
-          (Ident.compilation_unit_name_of_global_ident id)
+          (Ident.name id |> Compilation_unit.Name.of_string)
       in
       linkage_name_for_compilation_unit compilation_unit, compilation_unit
-    else
-      let compilation_unit = CU.get_current_exn () in
-      let linkage_name =
-        linkage_name_for_compilation_unit compilation_unit
-          ^ separator ^ Ident.unique_name id
-      in
-      linkage_name, compilation_unit
   in
   { compilation_unit;
     linkage_name;
     hash = Hashtbl.hash linkage_name;
   }
+
+let for_predef_ident id =
+  for_global_or_predef_ident Compilation_unit.Prefix.empty id
+
+let for_name compilation_unit name =
+  let linkage_name =
+    linkage_name_for_compilation_unit compilation_unit
+    ^ separator ^ name
+  in
+  { compilation_unit;
+    linkage_name;
+    hash = Hashtbl.hash linkage_name; }
+
+let for_local_ident id =
+  assert (not (Ident.is_global_or_predef id));
+  let compilation_unit = CU.get_current_exn () in
+  for_name compilation_unit (Ident.unique_name id)
 
 let for_compilation_unit compilation_unit =
   let linkage_name = linkage_name_for_compilation_unit compilation_unit in

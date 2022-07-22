@@ -347,7 +347,7 @@ let rec close t env (lam : Lambda.lambda) : Flambda.t =
     let zero = Variable.create Names.zero in
     let is_zero = Variable.create Names.is_zero in
     let exn = Variable.create Names.division_by_zero in
-    let exn_symbol = Symbol.for_ident Predef.ident_division_by_zero in
+    let exn_symbol = Symbol.for_predef_ident Predef.ident_division_by_zero in
     let dbg = Debuginfo.from_location loc in
     let zero_const : Flambda.named =
       match prim with
@@ -477,13 +477,13 @@ let rec close t env (lam : Lambda.lambda) : Flambda.t =
     Misc.fatal_errorf "[Psetfield (Pgetglobal ...)] is \
         forbidden upon entry to the middle end"
   | Lprim (Pgetglobal id, [], _) when Ident.is_predef id ->
-    let symbol = Symbol.for_ident id in
+    let symbol = Symbol.for_predef_ident id in
     t.imported_symbols <- Symbol.Set.add symbol t.imported_symbols;
     name_expr (Symbol symbol) ~name:Names.predef_exn
   | Lprim (Pgetglobal id, [], _) ->
     assert (not (Ident.same id t.current_unit_id));
     let symbol =
-      Symbol.for_ident id ~pack_prefix:((pack_prefix_for_ident t) id)
+      Symbol.for_global_or_predef_ident ((pack_prefix_for_ident t) id) id
     in
     t.imported_symbols <- Symbol.Set.add symbol t.imported_symbols;
     name_expr (Symbol symbol) ~name:Names.pgetglobal
@@ -719,7 +719,8 @@ let lambda_to_flambda ~backend ~module_ident ~size ~filename lam
   let compilation_unit = Compilation_unit.get_current_exn () in
   let current_unit_id =
     Compilation_unit.name compilation_unit
-    |> Ident.of_compilation_unit_name
+    |> Compilation_unit.Name.to_string
+    |> Ident.create_persistent
   in
   let t =
     { current_unit_id;
@@ -733,7 +734,7 @@ let lambda_to_flambda ~backend ~module_ident ~size ~filename lam
     let pack_prefix =
       Compilation_unit.Prefix.parse_for_pack !Clflags.for_package
     in
-    Symbol.for_ident module_ident ~pack_prefix
+    Symbol.for_global_or_predef_ident pack_prefix module_ident
   in
   let block_symbol =
     let var = Variable.create Internal_variable_names.module_as_block in

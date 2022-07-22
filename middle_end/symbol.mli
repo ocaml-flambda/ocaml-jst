@@ -20,14 +20,16 @@
 
 type t
 
-(** It is assumed that the provided [Ident.t] is in the current unit unless
-    it is [Global] or [Predef].
-    If the supplied [Ident.t] is [Global], then [pack_prefix] must be
-    provided, even if the prefix is empty. *)
-(* CR mshinwell: Insist on -for-pack for .mli files; then this function
-   will not need to take [pack_prefix]. *)
-val for_ident : ?pack_prefix:Compilation_unit.Prefix.t -> Ident.t -> t
+val for_predef_ident : Ident.t -> t
 
+(* CR mshinwell: Insist on -for-pack for .mli files; then this function
+   will not need to take a pack prefix. *)
+val for_global_or_predef_ident : Compilation_unit.Prefix.t -> Ident.t -> t
+
+(** It is assumed that the provided [Ident.t] is in the current unit. *)
+val for_local_ident : Ident.t -> t
+
+val for_name : Compilation_unit.t -> string -> t
 val for_compilation_unit : Compilation_unit.t -> t
 val for_current_unit : unit -> t
 val for_new_const_in_current_unit : unit -> t
@@ -50,5 +52,3 @@ val linkage_name_for_ocamlobjinfo : t -> string
 include Identifiable.S with type t := t
 
 val is_predef_exn : t -> bool
-
-val separator : string

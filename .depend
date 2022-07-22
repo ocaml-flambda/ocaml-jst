@@ -673,19 +673,16 @@ typing/ident.cmo : \
     utils/misc.cmi \
     utils/local_store.cmi \
     utils/identifiable.cmi \
-    utils/compilation_unit.cmi \
     utils/clflags.cmi \
     typing/ident.cmi
 typing/ident.cmx : \
     utils/misc.cmx \
     utils/local_store.cmx \
     utils/identifiable.cmx \
-    utils/compilation_unit.cmx \
     utils/clflags.cmx \
     typing/ident.cmi
 typing/ident.cmi : \
-    utils/identifiable.cmi \
-    utils/compilation_unit.cmi
+    utils/identifiable.cmi
 typing/includeclass.cmo : \
     typing/types.cmi \
     typing/printtyp.cmi \
