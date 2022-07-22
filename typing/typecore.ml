@@ -3058,6 +3058,7 @@ type unique_env =
     (* If several idents refer to the same structure in memory,
         they are mapped to the "representing" ident x that we saw first.
         We do not map x to itself. *)
+    (* TODO: Maybe we do map x to itself currently? *)
     constraints: Types.uniqueness Types.mode list Ident.Map.t;
     (* Modevars that need to be constrained when an ident is not unique.
        This includes those of aliases, as well as mode variables
@@ -3298,6 +3299,20 @@ let ident_option_from_path p =
   | Path.Pdot _ -> None (* Pdot's can not be unique *)
   | Path.Papply _ -> assert false
 
+let mark_if_ident p exp uenv =
+  match ident_option_from_path p with
+  | Some id -> mark_seen id (SeenAs(id)) exp uenv
+  | None -> uenv
+
+let is_unique_variable_opt exp_opt =
+  match exp_opt with
+  | Some ({ exp_desc = Texp_ident(p, _, _, _) } as exp') ->
+      begin match ident_option_from_path p with
+      | Some id -> Some (id, has_unique_attr_texp exp')
+      | None -> None
+      end
+  | _ -> None
+
 let rec exp_to_parent exp =
   match exp.exp_desc with
   | Texp_ident(p, _, _, _) -> begin
@@ -3317,11 +3332,7 @@ let rec check_uniqueness_exp exp =
   in ()
 and check_uniqueness_exp_ exp uenv =
   match exp.exp_desc with
-  | Texp_ident(p, _, _, _) -> begin
-    match ident_option_from_path p, exp.exp_mode.uniqueness with
-    | Some id, Amode Unique -> mark_seen id (SeenAs(id)) exp uenv
-    | Some id, Amodevar _ -> mark_seen id (SeenAs(id)) exp uenv
-    | _, _ -> uenv end
+  | Texp_ident(p, _, _, _) -> mark_if_ident p exp uenv
   | Texp_constant _ -> uenv
   | Texp_let(_, vbs, exp') ->
       let uenv = check_uniqueness_value_bindings_ vbs uenv in
@@ -3349,33 +3360,92 @@ and check_uniqueness_exp_ exp uenv =
     match e_opt with
     | None -> uenv
     | Some e -> check_uniqueness_exp_ e uenv end
-  | Texp_record { fields; extended_expression } ->
-      let special_opt = match extended_expression with
-      | Some ({ exp_desc = Texp_ident(p, _, _, _) } as exp') -> begin
-          match ident_option_from_path p with
-          | Some id -> Some (id, has_unique_attr_texp exp')
-          | None -> None end
-      | _  -> None in begin
-        match special_opt with
-        | Some (parent, is_unique_with) -> (* Record with 'with' on variable *)
-          let uenv = Array.fold_left (fun uenv f -> match f with
-              | l, Kept _ ->
-                  let id, uenv = add_anon_mproj parent (Some (Projection.Record_field l.lbl_name)) uenv in
-                  mark_seen id (SeenAs(parent)) exp uenv
-              | _, Overridden (_, e) -> check_uniqueness_exp_ e uenv) uenv fields in
-          if is_unique_with (* We use the allocation and can not use it again. *)
-            then mark_seen_no_children parent (SeenAs(parent)) exp uenv
-            else uenv
-        | None -> (* Normal record: check all subexpressions *)
-          let uenv = Array.fold_left (fun uenv f -> match f with
-              | _, Kept _ -> uenv
-              | _, Overridden (_, e) -> check_uniqueness_exp_ e uenv) uenv fields in
-          match extended_expression with
-          | None -> uenv
-          | Some e -> check_uniqueness_exp_ e uenv
-        end
-  | Texp_field _ (* (expr, id, _) *)
-  (* TODO: Handle projections by adding new mode_vars in type checking *)
+  | Texp_record { fields; extended_expression } -> begin
+      match is_unique_variable_opt extended_expression with
+      | Some (parent, is_unique_with) -> (* Record with 'with' on variable *)
+        let uenv = Array.fold_left (fun uenv f -> match f with
+            | l, Kept _ ->
+                let id, uenv = add_anon_mproj parent (Some (Projection.Record_field l.lbl_name)) uenv in
+                (* TODO: Add new mode_vars in type checking *)
+                mark_seen id (SeenAs(parent)) exp uenv
+            | _, Overridden (_, e) -> check_uniqueness_exp_ e uenv) uenv fields in
+        if is_unique_with (* We use the allocation and can not use it again. *)
+          then mark_seen_no_children parent (SeenAs(parent)) exp uenv
+          else uenv
+      | None -> (* Normal record: check all subexpressions *)
+        let uenv = Array.fold_left (fun uenv f -> match f with
+            | _, Kept _ -> uenv
+            | _, Overridden (_, e) -> check_uniqueness_exp_ e uenv) uenv fields in
+        match extended_expression with
+        | None -> uenv
+        | Some e -> check_uniqueness_exp_ e uenv
+      end
+  | Texp_field(e, _, l) -> begin
+      match is_unique_variable_opt (Some e) with
+      (* TODO: Add new mode_vars in type checking *)
+      | Some (parent, _) ->
+        let id, uenv = add_anon_mproj parent (Some (Projection.Record_field l.lbl_name)) uenv in
+        mark_seen id (SeenAs(parent)) exp uenv
+      | None -> check_uniqueness_exp_ e uenv
+    end
+  | Texp_setfield(exp', _, _, e) -> begin
+      match is_unique_variable_opt (Some exp') with
+      (* In t.x <- e, we do not mark the variable t as seen. *)
+      (* TODO: Remove last_seen marker from t.x *)
+      | Some _ -> check_uniqueness_exp_ e uenv
+      | None -> check_uniqueness_exp_ exp' (check_uniqueness_exp_ e uenv)
+    end
+  | Texp_array(es) ->
+      List.fold_left (fun uenv e -> check_uniqueness_exp_ e uenv) uenv es
+  | Texp_ifthenelse(if', then', else_opt) ->
+      let uenv = match is_unique_variable_opt (Some if') with
+        | Some _ -> uenv
+        | None -> check_uniqueness_exp_ if' uenv in
+      begin match else_opt with
+      | Some else' -> check_uniqueness_parallel [then'; else'] uenv
+      | None -> check_uniqueness_exp_ then' uenv
+      end
+  | Texp_sequence(e, e') ->
+      check_uniqueness_exp_ e' (check_uniqueness_exp_ e uenv)
+  | Texp_while(e, e') ->
+      without_owned (fun uenv ->
+          check_uniqueness_exp_ e' (check_uniqueness_exp_ e uenv))
+        uenv
+  | Texp_list_comprehension(e, cs) ->
+      without_owned (fun uenv ->
+          check_uniqueness_comprehensions cs (check_uniqueness_exp_ e uenv))
+        uenv
+  | Texp_arr_comprehension(e, cs) ->
+      without_owned (fun uenv ->
+          check_uniqueness_comprehensions cs (check_uniqueness_exp_ e uenv))
+        uenv
+  | Texp_for(_, _, from', to', _, body) ->
+      let uenv = check_uniqueness_exp_ from' uenv in
+      let uenv = check_uniqueness_exp_ to' uenv in
+      without_owned (check_uniqueness_exp_ body) uenv
+  | Texp_send(e, _, e_opt, _) ->
+      let uenv = match e_opt with
+        | Some e -> check_uniqueness_exp_ e uenv
+        | None -> uenv in
+      without_owned (check_uniqueness_exp_ e) uenv
+  | Texp_new _ -> uenv
+  | Texp_instvar(self, p, _) ->
+      without_owned (fun uenv ->
+        let uenv = mark_if_ident self exp uenv in
+        mark_if_ident p exp uenv)
+        uenv
+  | Texp_setinstvar(self, p, _, e) ->
+      let uenv = without_owned (fun uenv ->
+          let uenv = mark_if_ident self exp uenv in
+          mark_if_ident p exp uenv)
+          uenv in
+      check_uniqueness_exp_ e uenv
+  | Texp_override(self, ls) ->
+      let uenv = without_owned (mark_if_ident self exp) uenv in
+      List.fold_left (fun u (p, _, e) ->
+          let u = without_owned (mark_if_ident p exp) u in
+          check_uniqueness_exp_ e u
+        ) uenv ls
   | _ -> (* TODO *) uenv
 
 and check_uniqueness_parent_ exp uenv =
@@ -3399,6 +3469,15 @@ and check_uniqueness_value_bindings_ vbs uenv =
       uenv vbs in
   List.fold_left (fun uenv vb -> check_uniqueness_parent_ vb.vb_expr uenv) uenv vbs
 
+and check_uniqueness_parallel es uenv =
+  let uenv, us = List.fold_left_map (fun u e ->
+      let u' = check_uniqueness_exp_ e {u with last_seen = uenv.last_seen} in
+      u', u'.last_seen) uenv es in
+  { uenv with last_seen =
+                List.fold_left
+                  (fun a b -> Ident.Map.union (fun _ x _ -> Some x) a b)
+                  Ident.Map.empty us }
+
 and check_uniqueness_cases_
   : 'a. ('a Typedtree.general_pattern -> parent -> unique_env -> unique_env)
     -> parent -> 'a case list -> unique_env -> unique_env =
@@ -3409,18 +3488,23 @@ and check_uniqueness_cases_
   let uenv = List.fold_left (fun uenv c -> match c.c_guard with
     | None -> uenv
     | Some g -> check_uniqueness_exp_ g uenv) uenv cs in
-  let uenv, us = List.fold_left_map (fun u c ->
-    let u' = check_uniqueness_exp_ c.c_rhs {u with last_seen = uenv.last_seen} in
-    u', u'.last_seen) uenv cs in
-  { uenv with last_seen =
-                List.fold_left
-                  (fun a b -> Ident.Map.union (fun _ x _ -> Some x) a b)
-                  Ident.Map.empty us }
+  check_uniqueness_parallel (List.map (fun c -> c.c_rhs) cs) uenv
 
 and check_uniqueness_cases parent cs uenv =
   check_uniqueness_cases_ pat_to_map parent cs uenv
 and check_uniqueness_comp_cases parent cs uenv =
   check_uniqueness_cases_ comp_pat_to_map parent cs uenv
+
+and check_uniqueness_comprehensions cs uenv =
+  List.fold_left (fun u c ->
+      let u = match c.guard with
+        | None -> u
+        | Some e -> check_uniqueness_exp_ e u in
+      List.fold_left (fun u c ->
+          match c with
+          | From_to(_, _, e1, e2, _) -> check_uniqueness_exp_ e1 (check_uniqueness_exp_ e2 u)
+          | In(_, e) -> check_uniqueness_exp_ e u) u c.clauses)
+    uenv cs
 
 (* Approximate the type of an expression, for better recursion *)
 
