@@ -266,6 +266,18 @@ module Locality_mode : sig
   val of_const : const -> locality mode
 end
 
+module Uniqueness_mode : sig
+  type const = Types.uniqueness = Unique | Shared
+  val min_const : const
+  val max_const : const
+  val le_const : const -> const -> bool
+  val join_const : const -> const -> const
+  val meet_const : const -> const -> const
+  val print_const : Format.formatter -> const -> unit
+  val of_const : const -> uniqueness mode
+  val submode : uniqueness mode -> uniqueness mode -> (unit, unit) result
+end
+
 module Alloc_mode : sig
 
   type t = Types.alloc_mode
