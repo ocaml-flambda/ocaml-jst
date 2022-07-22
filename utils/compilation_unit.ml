@@ -50,10 +50,14 @@ end = struct
   let isupper chr =
     Char.equal (Char.uppercase_ascii chr) chr
 
+  (* HACK: Workaround to be removed ASAP once we've changed our build rules *)
+  let is_allowed_dotfile_name str =
+    String.equal str ".cinaps"
+
   let of_string str =
     if String.length str < 1
       || not (isupper (String.get str 0))
-      || String.contains str '.'
+      || (String.contains str '.' && not (is_allowed_dotfile_name str))
     then begin
       raise (Error (Bad_compilation_unit_name str))
     end;
