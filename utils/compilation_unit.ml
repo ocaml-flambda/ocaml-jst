@@ -72,11 +72,10 @@ module Prefix : sig
   type t
   include Identifiable.S with type t := t
   val parse_for_pack : string option -> t
-  val to_list_outermost_pack_first : t -> Name.t list
+  val to_list : t -> Name.t list
   val to_string : t -> string
   val empty : t
   val is_empty : t -> bool
-  val first_component_to_name : t -> Name.t option
 end = struct
   type t = Name.t list
 
@@ -123,11 +122,6 @@ end = struct
   let to_string p =
     Format.asprintf "%a" print p
 
-  let first_component_to_name t =
-    match t with
-    | [] -> None
-    | name :: _ -> Some name
-
   let empty = []
 
   let is_empty t =
@@ -135,7 +129,7 @@ end = struct
     | [] -> true
     | _::_ -> false
 
-  let to_list_outermost_pack_first t = t
+  let to_list t = t
 end
 
 type t = {
@@ -173,7 +167,7 @@ let with_for_pack_prefix t for_pack_prefix = { t with for_pack_prefix; }
 let is_packed t = not (Prefix.is_empty t.for_pack_prefix)
 
 let full_path t =
-  (Prefix.to_list_outermost_pack_first t.for_pack_prefix) @ [ t.name ]
+  (Prefix.to_list t.for_pack_prefix) @ [ t.name ]
 
 include Identifiable.Make (struct
   type nonrec t = t

@@ -58,13 +58,12 @@ module Prefix : sig
       "-for-pack" argument. *)
   val parse_for_pack : string option -> t
 
-  val to_list_outermost_pack_first : t -> Name.t list
+  (** Return the list of names comprising the prefix, outermost first. *)
+  val to_list : t -> Name.t list
 
   val to_string : t -> string
 
   val is_empty : t -> bool
-
-  val first_component_to_name : t -> Name.t option
 end
 
 (** The name of a compilation unit qualified with any "-for-pack" prefix that
