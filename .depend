@@ -1253,6 +1253,7 @@ typing/typeclass.cmi : \
     parsing/asttypes.cmi
 typing/typecore.cmo : \
     utils/warnings.cmi \
+    typing/uniquenessAnalysis.cmi \
     typing/typetexp.cmi \
     typing/types.cmi \
     typing/typedtree.cmi \
@@ -1285,6 +1286,7 @@ typing/typecore.cmo : \
     typing/typecore.cmi
 typing/typecore.cmx : \
     utils/warnings.cmx \
+    typing/uniquenessAnalysis.cmx \
     typing/typetexp.cmx \
     typing/types.cmx \
     typing/typedtree.cmx \
@@ -1316,6 +1318,7 @@ typing/typecore.cmx : \
     parsing/ast_helper.cmx \
     typing/typecore.cmi
 typing/typecore.cmi : \
+    typing/uniquenessAnalysis.cmi \
     typing/types.cmi \
     typing/typedtree.cmi \
     typing/path.cmi \
@@ -1759,6 +1762,33 @@ typing/typetexp.cmi : \
     typing/env.cmi \
     typing/ctype.cmi \
     parsing/asttypes.cmi
+typing/uniquenessAnalysis.cmo : \
+    typing/types.cmi \
+    typing/typedtree.cmi \
+    typing/path.cmi \
+    parsing/parsetree.cmi \
+    utils/misc.cmi \
+    parsing/longident.cmi \
+    typing/ident.cmi \
+    typing/ctype.cmi \
+    typing/btype.cmi \
+    parsing/asttypes.cmi \
+    typing/uniquenessAnalysis.cmi
+typing/uniquenessAnalysis.cmx : \
+    typing/types.cmx \
+    typing/typedtree.cmx \
+    typing/path.cmx \
+    parsing/parsetree.cmi \
+    utils/misc.cmx \
+    parsing/longident.cmx \
+    typing/ident.cmx \
+    typing/ctype.cmx \
+    typing/btype.cmx \
+    parsing/asttypes.cmi \
+    typing/uniquenessAnalysis.cmi
+typing/uniquenessAnalysis.cmi : \
+    typing/typedtree.cmi \
+    typing/ident.cmi
 typing/untypeast.cmo : \
     typing/typedtree.cmi \
     typing/path.cmi \

@@ -208,7 +208,7 @@ type error =
   | Uncurried_function_escapes
   | Local_return_annotation_mismatch of Location.t
   | Bad_tail_annotation of [`Conflict|`Not_a_tailcall]
-  | Unique_failure of unique_error
+  | Unique_failure of UniquenessAnalysis.unique_error
 
 
 exception Error of Location.t * Env.t * error
