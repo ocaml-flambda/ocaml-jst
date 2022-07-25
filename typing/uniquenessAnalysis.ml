@@ -111,7 +111,10 @@ type unique_env =
        created for projections. *)
   }
 
-(* A tuple pattern can have one parent per element of the tuple.*)
+(* "match x with" will be interpreted with OneParent(x).
+   "match e with" will be interpreted with NoParent.
+   "match x, e with" will be interpreted with
+     TupleParent([OneParent(x); NoParent], "x, e") *)
 type parent =
   | NoParent
   | OneParent of Ident.t
@@ -223,12 +226,6 @@ let without_owned f uenv =
   let uenv' = f { uenv with owned = Ident.Set.empty } in
   { uenv' with owned = uenv.owned }
 
-(* "match x with | A y" will be interpreted with OneParent(x) and pat A y.
-   "match e with | A y" will be interpreted with NoParent and pat A y.
-   "match x, e with | pat" will be interpreted with TupleParent(OneParent(x), NoParent) *)
-let rec pat_to_map (pat : Typedtree.pattern) parent uenv =
-  pat_to_map_ pat parent None uenv
-
 (* We interpret "match x with | A y" as
      pat_to_map (A y) x uenv
      = pat_to_map_ y x (Some (Construct_field A 0)) uenv
@@ -236,8 +233,8 @@ let rec pat_to_map (pat : Typedtree.pattern) parent uenv =
      = { uenv with "x -> (Construct_field A 0 -> y)" }
 
   Invariants:
-   - mproj == None if parent != OneParent(_, _) *)
-and pat_to_map_ (pat : Typedtree.pattern) parent mproj uenv =
+   - mproj == None if parent != OneParent(_, _) **)
+let rec pat_to_map_ (pat : Typedtree.pattern) parent mproj uenv =
   match pat.pat_desc with
   | Tpat_any -> uenv
   | Tpat_var(id, _, mode) -> begin
@@ -252,13 +249,13 @@ and pat_to_map_ (pat : Typedtree.pattern) parent mproj uenv =
       | OneParent(p) -> add_mode id mode.uniqueness
                           (add_mproj p mproj id uenv)
       | TupleParent(ps, exp) -> mark_tuple_parent_seen id ps exp uenv
-    in pat_to_map pat' (OneParent id) uenv
+    in pat_to_map_ pat' (OneParent id) None uenv
   | Tpat_constant(_) -> uenv
   | Tpat_tuple(ps) -> begin
       match ps with | [] -> uenv | _ ->
       match parent with
       | NoParent ->
-        List.fold_left (fun uenv pat' -> pat_to_map pat' parent uenv) uenv ps
+        List.fold_left (fun uenv pat' -> pat_to_map_ pat' parent None uenv) uenv ps
       | OneParent(p) ->
         let p, uenv = add_anon_mproj p mproj uenv in
         List.fold_left2
@@ -267,14 +264,14 @@ and pat_to_map_ (pat : Typedtree.pattern) parent mproj uenv =
           uenv ps (List.init (List.length ps) Fun.id)
       | TupleParent(ps', _) ->
         List.fold_left2
-          (fun uenv pat' p -> pat_to_map pat' p uenv)
+          (fun uenv pat' p -> pat_to_map_ pat' p None uenv)
           uenv ps ps'
       end
   | Tpat_construct(lbl, _, ps) -> begin
       match ps with | [] -> uenv | _ ->
       match parent with
       | NoParent ->
-        List.fold_left (fun uenv pat' -> pat_to_map pat' parent uenv) uenv ps
+        List.fold_left (fun uenv pat' -> pat_to_map_ pat' parent None uenv) uenv ps
       | OneParent(p) ->
         let p, uenv = add_anon_mproj p mproj uenv in
         List.fold_left2
@@ -298,7 +295,7 @@ and pat_to_map_ (pat : Typedtree.pattern) parent mproj uenv =
       match ps with | [] -> uenv | _ ->
       match parent with
       | NoParent ->
-        List.fold_left (fun uenv (_, _, pat') -> pat_to_map pat' parent uenv) uenv ps
+        List.fold_left (fun uenv (_, _, pat') -> pat_to_map_ pat' parent None uenv) uenv ps
       | OneParent(p) ->
         let p, uenv = add_anon_mproj p mproj uenv in
         List.fold_left
@@ -312,7 +309,7 @@ and pat_to_map_ (pat : Typedtree.pattern) parent mproj uenv =
       match ps with | [] -> uenv | _ ->
       match parent with
       | NoParent ->
-        List.fold_left (fun uenv pat' -> pat_to_map pat' parent uenv) uenv ps
+        List.fold_left (fun uenv pat' -> pat_to_map_ pat' parent None uenv) uenv ps
       | OneParent(p) ->
         let p, uenv = add_anon_mproj p mproj uenv in
         List.fold_left2
@@ -321,9 +318,12 @@ and pat_to_map_ (pat : Typedtree.pattern) parent mproj uenv =
           uenv ps (List.init (List.length ps) Fun.id)
       | TupleParent _ -> assert false
     end
-  | Tpat_lazy(pat') -> pat_to_map pat' parent uenv
+  | Tpat_lazy(pat') -> pat_to_map_ pat' parent mproj uenv
   | Tpat_or(a, b, _) ->
-    pat_to_map a parent (pat_to_map b parent uenv)
+    pat_to_map_ a parent mproj (pat_to_map_ b parent mproj uenv)
+
+let pat_to_map (pat : Typedtree.pattern) parent uenv =
+  pat_to_map_ pat parent None uenv
 
 (* We ignore exceptions in uniqueness analysis. *)
 let comp_pat_to_map
@@ -361,15 +361,7 @@ let rec exp_to_parent exp =
   | Texp_tuple(es) -> TupleParent(List.map exp_to_parent es, exp)
   | _ -> NoParent
 
-let rec check_uniqueness_exp exp =
-  let _ = check_uniqueness_exp_ exp
-    { last_seen = Ident.Map.empty;
-      children = Ident.Map.empty;
-      owned = Ident.Set.empty;
-      aliases = Ident.Map.empty;
-      constraints = Ident.Map.empty; }
-  in ()
-and check_uniqueness_exp_ exp uenv =
+let rec check_uniqueness_exp_ exp uenv =
   match exp.exp_desc with
   | Texp_ident(p, _, _, _) -> mark_if_ident p exp uenv
   | Texp_constant _ -> uenv
@@ -386,7 +378,7 @@ and check_uniqueness_exp_ exp uenv =
           | Arg e -> check_uniqueness_exp_ e uenv
           | Omitted _ -> uenv) uenv xs
   | Texp_match(e, cs, _) ->
-    let uenv = check_uniqueness_parent_ e uenv in
+    let uenv = check_uniqueness_parent e uenv in
     check_uniqueness_comp_cases (exp_to_parent e) cs uenv
   | Texp_try(e, cs) ->
     let uenv = check_uniqueness_exp_ e uenv in
@@ -485,26 +477,18 @@ and check_uniqueness_exp_ exp uenv =
   | Texp_probe { handler } -> check_uniqueness_exp_ handler uenv
   | Texp_probe_is_enabled _ -> uenv
 
-and check_uniqueness_parent_ exp uenv =
+and check_uniqueness_parent exp uenv =
   match exp.exp_desc with
   | Texp_ident _ -> uenv
   | Texp_tuple(xs) ->
-      List.fold_left (fun uenv e -> check_uniqueness_parent_ e uenv) uenv xs
+      List.fold_left (fun uenv e -> check_uniqueness_parent e uenv) uenv xs
   | _ -> check_uniqueness_exp_ exp uenv
 
-and check_uniqueness_value_bindings vbs =
-  let _ = check_uniqueness_value_bindings_ vbs
-            { last_seen = Ident.Map.empty;
-              children = Ident.Map.empty;
-              owned = Ident.Set.empty;
-              aliases = Ident.Map.empty;
-              constraints = Ident.Map.empty; }
-  in ()
 and check_uniqueness_value_bindings_ vbs uenv =
   let uenv = List.fold_left
       (fun uenv vb -> pat_to_map vb.vb_pat (exp_to_parent vb.vb_expr) uenv)
       uenv vbs in
-  List.fold_left (fun uenv vb -> check_uniqueness_parent_ vb.vb_expr uenv) uenv vbs
+  List.fold_left (fun uenv vb -> check_uniqueness_parent vb.vb_expr uenv) uenv vbs
 
 and check_uniqueness_parallel es uenv =
   let uenv, us = List.fold_left_map (fun u e ->
@@ -542,3 +526,22 @@ and check_uniqueness_comprehensions cs uenv =
           | From_to(_, _, e1, e2, _) -> check_uniqueness_exp_ e1 (check_uniqueness_exp_ e2 u)
           | In(_, e) -> check_uniqueness_exp_ e u) u c.clauses)
     uenv cs
+
+
+let check_uniqueness_exp exp =
+  let _ = check_uniqueness_exp_ exp
+      { last_seen = Ident.Map.empty;
+        children = Ident.Map.empty;
+        owned = Ident.Set.empty;
+        aliases = Ident.Map.empty;
+        constraints = Ident.Map.empty; }
+  in ()
+
+let check_uniqueness_value_bindings vbs =
+  let _ = check_uniqueness_value_bindings_ vbs
+      { last_seen = Ident.Map.empty;
+        children = Ident.Map.empty;
+        owned = Ident.Set.empty;
+        aliases = Ident.Map.empty;
+        constraints = Ident.Map.empty; }
+  in ()
