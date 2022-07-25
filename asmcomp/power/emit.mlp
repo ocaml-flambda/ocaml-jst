@@ -1192,7 +1192,9 @@ let begin_assembly() =
      sections are in different pages.  .opd comes after .data,
      so aligning .opd is enough.  To save space, we do it only
      for the startup file, not for every OCaml compilation unit. *)
-  let c = Compilenv.current_unit_name() in
+  let c =
+    Compilation_unit.get_current_exn () |> Compilation_unit.full_path_as_string
+  in
   if abi = ELF64v1 && (c = "_startup" || c = "_shared_startup") then begin
     `	.p2align	12\n`
   end;
