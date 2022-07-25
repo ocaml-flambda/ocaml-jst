@@ -730,7 +730,7 @@ let rec expression : Typedtree.expression -> term_judg =
         expression e1 << Dereference;
         option expression eo << Dereference;
       ]
-    | Texp_field (e, _, _) ->
+    | Texp_field (e, _, _, _) ->
       (*
         G |- e: m[Dereference]
         -----------------------

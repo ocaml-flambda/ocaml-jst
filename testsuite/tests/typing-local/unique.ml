@@ -172,6 +172,31 @@ let unique_default_args ?(unique_ x = 1.0) () = x
 val unique_default_args : ?x:unique_ float -> unit -> float = <fun>
 |}]
 
+type point = { dim : int; x : float; y : float; z : float }
+[%%expect{|
+type point = { dim : int; x : float; y : float; z : float; }
+|}]
+
+let record_mode_vars (p : point) =
+  let x = unique_id p.x in
+  let y = (p.y, p.y) in
+  (x, y, unique_ p.z)
+[%%expect{|
+val record_mode_vars : unique_ point -> float * (float * float) * float =
+  <fun>
+|}]
+
+let record_mode_vars (p : point) =
+  let x = unique_id p.x in
+  let y = (p.x, p.y) in
+  (x, y, unique_ p.z)
+[%%expect{|
+Line 3, characters 11-14:
+3 |   let y = (p.x, p.y) in
+               ^^^
+Error: The identifier anon was inferred to be unique and thus can not
+       be used twice. It was seen here because anon is a parent or alias of anon.
+|}]
 
 (* Unique Local *)
 

@@ -300,8 +300,8 @@ let expr sub x =
           fields; representation;
           extended_expression = Option.map (sub.expr sub) extended_expression;
         }
-    | Texp_field (exp, lid, ld) ->
-        Texp_field (sub.expr sub exp, lid, ld)
+    | Texp_field (exp, lid, ld, mode) ->
+        Texp_field (sub.expr sub exp, lid, ld, mode)
     | Texp_setfield (exp1, lid, ld, exp2) ->
         Texp_setfield (
           sub.expr sub exp1,

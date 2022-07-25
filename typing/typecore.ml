@@ -2778,7 +2778,7 @@ let rec is_nonexpansive exp =
            | Kept _ -> true)
         fields
       && is_nonexpansive_opt extended_expression
-  | Texp_field(exp, _, _) -> is_nonexpansive exp
+  | Texp_field(exp, _, _, _) -> is_nonexpansive exp
   | Texp_ifthenelse(_cond, ifso, ifnot) ->
       is_nonexpansive ifso && is_nonexpansive_opt ifnot
   | Texp_sequence (_e1, e2) -> is_nonexpansive e2  (* PR#4354 *)
@@ -3926,15 +3926,16 @@ and type_expect_
       let (record, rmode, label, _) = type_label_access env srecord lid in
       let mode =
         match label.lbl_global with
-        | Global -> Value_mode.global
+        | Global -> Value_mode.global (* lbl_global==Global also implies Shared *)
         | Nonlocal -> Value_mode.local_to_regional rmode
         | Unrestricted -> rmode
       in
+      let mode, _ = Value_mode.newvar_above mode in
       submode ~loc ~env mode expected_mode;
       let (_, ty_arg, ty_res) = instance_label false label in
       unify_exp env record ty_res;
       rue {
-        exp_desc = Texp_field(record, lid, label);
+        exp_desc = Texp_field(record, lid, label, mode);
         exp_loc = loc; exp_extra = [];
         exp_type = ty_arg;
         exp_mode = expected_mode.mode;

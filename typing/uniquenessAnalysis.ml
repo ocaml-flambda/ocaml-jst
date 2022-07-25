@@ -411,11 +411,12 @@ let rec check_uniqueness_exp_ exp uenv =
         | None -> uenv
         | Some e -> check_uniqueness_exp_ e uenv
       end
-  | Texp_field(e, _, l) -> begin
+  | Texp_field(e, _, l, mode) -> begin
       match is_unique_variable_opt (Some e) with
       (* TODO: Add new mode_vars in type checking *)
       | Some (parent, _) ->
         let id, uenv = add_anon_mproj parent (Some (Projection.Record_field l.lbl_name)) uenv in
+        let uenv = add_mode id mode.uniqueness uenv in
         mark_seen id (Seen_as id) exp uenv (* TODO: Nicer Seen_as name for error messages *)
       | None -> check_uniqueness_exp_ e uenv
     end

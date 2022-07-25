@@ -483,7 +483,7 @@ and transl_exp0 ~in_new_scope ~scopes e =
       transl_record ~scopes e.exp_loc e.exp_env
         (transl_exp_mode e)
         fields representation extended_expression
-  | Texp_field(arg, _, lbl) ->
+  | Texp_field(arg, _, lbl, _) ->
       let targ = transl_exp ~scopes arg in
       let sem =
         match lbl.lbl_mut with
