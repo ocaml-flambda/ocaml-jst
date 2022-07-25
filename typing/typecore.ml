@@ -3057,21 +3057,12 @@ type unique_env =
     aliases: Ident.t Ident.Map.t;
     (* If several idents refer to the same structure in memory,
         they are mapped to the "representing" ident x that we saw first.
-        We do not map x to itself. *)
-    (* TODO: Maybe we do map x to itself currently? *)
+        We do not map x to itself in general (but we do for function params
+        as it is more convenient there). *)
     constraints: Types.uniqueness Types.mode list Ident.Map.t;
     (* Modevars that need to be constrained when an ident is not unique.
        This includes those of aliases, as well as mode variables
        created for projections. *)
-    (* env: Ident.t list Ident.Map.t; *)
-    (* Map programmer-defined idents to unique identifiers.
-       This is necessary as a programmer-identifier may refer to
-       different memory locations due to or-patterns:
-
-       match y with | Cons(1, x) | x -> x
-
-       If we did not have this map, a definition like above could
-       also induce cycles in the children map. *)
   }
 
 (* A tuple pattern can have one parent per element of the tuple.*)
@@ -3087,19 +3078,14 @@ let lookup_alias id uenv =
   | Some alias -> alias
   | None -> id
 
-let rec mark_shared id err cnt uenv =
-  if cnt = 200 then begin
-    Ident.Map.iter (fun x projs ->
-      List.iter (fun (_, y) ->
-        Printf.eprintf "%s is a parent of %s\n"
-          (Ident.unique_name x) (Ident.unique_name y))
-        (Projection.Map.bindings projs))
-      uenv.children;
-    Ident.Map.iter (fun x y ->
-      Printf.eprintf "%s alias-maps to %s\n"
-        (Ident.unique_name x) (Ident.unique_name y))
-      uenv.aliases;
-    raise err end;
+(* Depth-first search of the children map, marking all modes as shared.
+   We have to be careful as there can be cycles due to or-patterns:
+
+   match x with | Cons(1, y) | y -> y
+
+   Here y aliases x and y is a child of x. Cycle! *)
+let rec mark_shared_ seen id err uenv =
+  if List.memq id seen then seen else
   let ms = match Ident.Map.find_opt id uenv.constraints with
     | None -> []
     | Some ms -> ms in
@@ -3107,17 +3093,31 @@ let rec mark_shared id err cnt uenv =
     (fun m -> match Uniqueness_mode.submode (Amode Shared) m with
        | Ok () -> ()
        | Error () -> raise err) ms;
-  let _cs = match Ident.Map.find_opt id uenv.children with
+  let cs = match Ident.Map.find_opt id uenv.children with
     | None -> []
     | Some projs -> Projection.Map.bindings projs in
-  List.iter (fun (_, id') -> mark_shared id' err (cnt + 1) uenv) [] (* TODO *)
+  List.fold_left (fun seen (_, id') -> mark_shared_ seen id' err uenv) (id::seen) cs
+let mark_shared id err uenv =
+  let _ = mark_shared_ [] id err uenv in ()
 
-let rec mark_seen_ visit_children id reason exp uenv =
+(* Get the highest point in the children tree where the uniqueness fails.
+   If we have not recursed into children yet, we found a reason why uniqueness
+   failed for a id or a parent: In this case that parent is the highest point.
+   If we have recursed already, we have not failed at id, which means that all
+   parents of id are fine. Then id is the highest point. *)
+let get_subject has_recursed reason id uenv =
+  if has_recursed then id else
+    let rid = match reason with
+      | SeenAs(rid) -> rid
+      | TupleMatchOnAliasedAs(rid, _) -> rid in
+    lookup_alias rid uenv
+
+let rec mark_seen_ has_recursed visit_children id reason exp uenv =
   let id = lookup_alias id uenv in
   let _ = if Ident.Set.mem id uenv.owned then () else
     let err = Error(exp.exp_loc, exp.exp_env,
                         Unique_failure(NotOwnedInExpression(id))) in
-    mark_shared id err 0 uenv in
+    mark_shared id err uenv in
   match Ident.Map.find_opt id uenv.last_seen with
   | None ->
     if visit_children then
@@ -3125,16 +3125,16 @@ let rec mark_seen_ visit_children id reason exp uenv =
       let children = match Ident.Map.find_opt id uenv.children with
         | None -> []
         | Some projs -> Projection.Map.bindings projs in
-      List.fold_left (fun uenv (_, c) -> mark_seen_ true c reason exp uenv) uenv children
+      List.fold_left (fun uenv (_, c) -> mark_seen_ true true c reason exp uenv) uenv children
     else uenv
   | Some (exp', reason') ->
     let err = Error(exp.exp_loc, exp.exp_env,
                     Unique_failure(SeenTwice(id, exp', reason, reason'))) in
-    mark_shared id err 0 uenv; uenv
+    mark_shared (get_subject has_recursed reason' id uenv) err uenv; uenv
 let mark_seen id reason exp uenv =
-  mark_seen_ true id reason exp uenv
+  mark_seen_ false true id reason exp uenv
 let mark_seen_no_children id reason exp uenv =
-  mark_seen_ false id reason exp uenv
+  mark_seen_ false false id reason exp uenv
 
 let add_mproj parent mproj id uenv =
   let parent = lookup_alias parent uenv in
@@ -3153,14 +3153,10 @@ let add_mproj parent mproj id uenv =
         { uenv with aliases = Ident.Map.add id old uenv.aliases }
 
 let add_anon_mproj parent mproj uenv =
-  let parent = lookup_alias parent uenv in
-  match mproj with
-  | None -> parent, uenv
-  | Some _ ->
-    let id = Ident.create_local "anon" in
-    id, add_mproj parent mproj id uenv
+  let id = Ident.create_local "anon" in
+  id, add_mproj parent mproj id uenv
 
-let register_mode id mode uenv =
+let add_mode id mode uenv =
   let id = lookup_alias id uenv in
   let ms = match Ident.Map.find_opt id uenv.constraints with
     | None -> []
@@ -3204,13 +3200,13 @@ and pat_to_map_ (pat : Typedtree.pattern) parent mproj uenv =
   | Tpat_var(id, _) -> begin
     match parent with
     | NoParent -> uenv
-    | OneParent(p) -> register_mode id pat.pat_mode.uniqueness
+    | OneParent(p) -> add_mode id pat.pat_mode.uniqueness
                         (add_mproj p mproj id uenv)
     | TupleParent(ps, exp) -> mark_tuple_parent_seen id ps exp uenv end
   | Tpat_alias(pat',id, _) ->
     let uenv = match parent with
       | NoParent -> uenv
-      | OneParent(p) -> register_mode id pat.pat_mode.uniqueness
+      | OneParent(p) -> add_mode id pat.pat_mode.uniqueness
                           (add_mproj p mproj id uenv)
       | TupleParent(ps, exp) -> mark_tuple_parent_seen id ps exp uenv
     in pat_to_map pat' (OneParent id) uenv
@@ -3301,7 +3297,7 @@ let ident_option_from_path p =
 
 let mark_if_ident p exp uenv =
   match ident_option_from_path p with
-  | Some id -> mark_seen id (SeenAs(id)) exp uenv
+  | Some id -> mark_seen id (SeenAs id) exp uenv
   | None -> uenv
 
 let is_unique_variable_opt exp_opt =
@@ -3367,10 +3363,10 @@ and check_uniqueness_exp_ exp uenv =
             | l, Kept _ ->
                 let id, uenv = add_anon_mproj parent (Some (Projection.Record_field l.lbl_name)) uenv in
                 (* TODO: Add new mode_vars in type checking *)
-                mark_seen id (SeenAs(parent)) exp uenv
+                mark_seen id (SeenAs id) exp uenv
             | _, Overridden (_, e) -> check_uniqueness_exp_ e uenv) uenv fields in
         if is_unique_with (* We use the allocation and can not use it again. *)
-          then mark_seen_no_children parent (SeenAs(parent)) exp uenv
+          then mark_seen_no_children parent (SeenAs parent) exp uenv
           else uenv
       | None -> (* Normal record: check all subexpressions *)
         let uenv = Array.fold_left (fun uenv f -> match f with
@@ -3385,13 +3381,13 @@ and check_uniqueness_exp_ exp uenv =
       (* TODO: Add new mode_vars in type checking *)
       | Some (parent, _) ->
         let id, uenv = add_anon_mproj parent (Some (Projection.Record_field l.lbl_name)) uenv in
-        mark_seen id (SeenAs(parent)) exp uenv
+        mark_seen id (SeenAs id) exp uenv (* TODO: Nicer SeenAs name for error messages *)
       | None -> check_uniqueness_exp_ e uenv
     end
   | Texp_setfield(exp', _, _, e) -> begin
       match is_unique_variable_opt (Some exp') with
       (* In t.x <- e, we do not mark the variable t as seen. *)
-      (* TODO: Remove last_seen marker from t.x *)
+      (* TODO: Remove last_seen marker from t.x for nicer interface *)
       | Some _ -> check_uniqueness_exp_ e uenv
       | None -> check_uniqueness_exp_ exp' (check_uniqueness_exp_ e uenv)
     end
@@ -3446,7 +3442,7 @@ and check_uniqueness_exp_ exp uenv =
           let u = without_owned (mark_if_ident p exp) u in
           check_uniqueness_exp_ e u
         ) uenv ls
-  | _ -> (* TODO *) uenv
+  | _ -> (* TODO: handle all cases *) uenv
 
 and check_uniqueness_parent_ exp uenv =
   match exp.exp_desc with
