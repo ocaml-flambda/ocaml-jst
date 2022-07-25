@@ -3442,7 +3442,18 @@ and check_uniqueness_exp_ exp uenv =
           let u = without_owned (mark_if_ident p exp) u in
           check_uniqueness_exp_ e u
         ) uenv ls
-  | _ -> (* TODO: handle all cases *) uenv
+  | Texp_letmodule _ -> uenv (* TODO *)
+  | Texp_letexception(_, e) -> check_uniqueness_exp_ e uenv
+  | Texp_assert e -> check_uniqueness_exp_ e uenv
+  | Texp_lazy e -> check_uniqueness_exp_ e uenv
+  | Texp_object _ -> uenv (* TODO *)
+  | Texp_pack _ -> uenv (* TODO *)
+  | Texp_letop _ -> uenv (* TODO *)
+  | Texp_unreachable -> uenv
+  | Texp_extension_constructor _ -> uenv
+  | Texp_open _ -> uenv (* TODO *)
+  | Texp_probe { handler } -> check_uniqueness_exp_ handler uenv
+  | Texp_probe_is_enabled _ -> uenv
 
 and check_uniqueness_parent_ exp uenv =
   match exp.exp_desc with

@@ -8,16 +8,21 @@ type 'a glob = { global_ glob : 'a; } [@@unboxed]
 
 let dup (unique_ x) = (x, x)
 [%%expect{|
-val dup : unique_ 'a -> 'a * 'a = <fun>
+Line 1, characters 26-27:
+1 | let dup (unique_ x) = (x, x)
+                              ^
+Error: The identifier x was inferred to be unique and thus can not
+       be used twice.
 |}]
 
 let dup x = unique_ (x, x)
 [%%expect{|
-val dup : unique_ 'a -> 'a * 'a = <fun>
+Line 1, characters 24-25:
+1 | let dup x = unique_ (x, x)
+                            ^
+Error: The identifier x was inferred to be unique and thus can not
+       be used twice.
 |}]
-(* [%%expect{|
- *   Error: two uses of unique_ var
- * |}] *)
 
 let dup (glob : 'a) : 'a glob * 'a glob = unique_ ({glob}, {glob})
 [%%expect{|
@@ -40,11 +45,12 @@ val branching : unique_ float -> float = <fun>
 
 let sequence (unique_ x : float) = unique_ let y = x in (x, y)
 [%%expect{|
-val sequence : unique_ float -> float * float = <fun>
+Line 1, characters 60-61:
+1 | let sequence (unique_ x : float) = unique_ let y = x in (x, y)
+                                                                ^
+Error: The identifier x was inferred to be unique and thus can not
+       be used twice. It was seen here because y is a parent or alias of x.
 |}]
-(* [%%expect{|
- * Error: variable x used twice
- * |}] *)
 
 let children_unique (unique_ xs : float list) = unique_ match xs with
   | [] -> (0., [])
@@ -64,15 +70,16 @@ let dup_child (unique_ fs : 'a list) = unique_ match fs with
   | [] -> ([], [])
   | x :: xs as gs -> (gs, xs)
 [%%expect{|
-val dup_child : unique_ 'a list -> 'a list * 'a list = <fun>
+Line 3, characters 26-28:
+3 |   | x :: xs as gs -> (gs, xs)
+                              ^^
+Error: The identifier xs was inferred to be unique and thus can not
+       be used twice. It was seen previously because gs is a parent or alias of xs.
 |}]
-(* [%%expect{|
- *   Error: gs and xs can not be unique at the same time
- * |}] *)
 
-let unique_id (unique_ x) = unique_ x
+let unique_id : 'a. unique_ 'a -> unique_ 'a = fun x -> x
 [%%expect{|
-val unique_id : unique_ 'a -> 'a = <fun>
+val unique_id : unique_ 'a -> unique_ 'a = <fun>
 |}]
 
 let shared_id : 'a -> 'a = fun x -> x
@@ -87,58 +94,45 @@ let tail_unique _x =
 val tail_unique : 'a -> float = <fun>
 |}]
 
-let higher_order (unique_ x : 'a) (f : unique_ 'a -> unique_ 'b) = unique_ f x
+let higher_order (f : unique_ 'a -> unique_ 'b) (unique_ x : 'a) = unique_ f x
 [%%expect{|
-val higher_order : unique_ 'a -> (unique_ 'a -> unique_ 'b) -> 'b = <fun>
+val higher_order : (unique_ 'a -> unique_ 'b) -> unique_ 'a -> 'b = <fun>
 |}]
 
-let higher_order2 (x : 'a) (f : 'a -> unique_ 'b) = unique_ f x
+let higher_order2 (f : 'a -> unique_ 'b) (x : 'a) = unique_ f x
 [%%expect{|
-val higher_order2 : 'a -> ('a -> unique_ 'b) -> 'b = <fun>
+val higher_order2 : ('a -> unique_ 'b) -> 'a -> 'b = <fun>
 |}]
 
-let higher_order3 (unique_ x : 'a) (f : 'a -> 'b) = unique_ f x
+let higher_order3 (f : 'a -> 'b) (unique_ x : 'a) = unique_ f x
 [%%expect{|
 Line 1, characters 60-63:
-1 | let higher_order3 (unique_ x : 'a) (f : 'a -> 'b) = unique_ f x
+1 | let higher_order3 (f : 'a -> 'b) (unique_ x : 'a) = unique_ f x
                                                                 ^^^
 Error: Found a shared value where a unique value was expected
 |}]
-(* [%%expect{|
- * Line 1, characters 60-63:
- * 1 | let higher_order3 (unique_ x : 'a) (f : 'a -> 'b) = unique_ f x
- *                                                                 ^^^
- * Error: Found a shared value where a unique value was expected
- * |}] *)
 
-let higher_order4 (x : 'a) (f : unique_ 'a -> 'b) = f (shared_id x)
+let higher_order4 (f : unique_ 'a -> 'b) (x : 'a) = f (shared_id x)
 [%%expect{|
 Line 1, characters 54-67:
-1 | let higher_order4 (x : 'a) (f : unique_ 'a -> 'b) = f (shared_id x)
+1 | let higher_order4 (f : unique_ 'a -> 'b) (x : 'a) = f (shared_id x)
                                                           ^^^^^^^^^^^^^
 Error: Found a shared value where a unique value was expected
 |}]
 
-let higher_order5 (unique_ x) = let f (unique_ x) = unique_ x in higher_order x f
+let higher_order5 (unique_ x) = let f (unique_ x) = unique_ x in higher_order f x
 [%%expect{|
 val higher_order5 : unique_ 'a -> 'a = <fun>
 |}]
 
-let higher_order6 (unique_ x) = let f (unique_ x) = unique_ x in higher_order2 x f
+let higher_order6 (unique_ x) = let f (unique_ x) = unique_ x in higher_order2 f x
 [%%expect{|
-Line 1, characters 81-82:
-1 | let higher_order6 (unique_ x) = let f (unique_ x) = unique_ x in higher_order2 x f
-                                                                                     ^
+Line 1, characters 79-80:
+1 | let higher_order6 (unique_ x) = let f (unique_ x) = unique_ x in higher_order2 f x
+                                                                                   ^
 Error: This expression has type unique_ 'a -> 'a
        but an expression was expected of type 'b -> unique_ 'c
 |}]
-(* [%%expect{|
- * Line 1, characters 81-82:
- * 1 | let higher_order6 (unique_ x) = let f (unique_ x) = unique_ x in higher_order2 x f
- *                                                                                      ^
- * Error: This expression has type unique_ 'a -> 'a
- *        but an expression was expected of type 'b -> unique_ 'c
- * |}] *)
 
 type record_update = { x : int }
 [%%expect{|
@@ -160,15 +154,19 @@ let inf2 (b : bool) (unique_ x : float) = unique_ let y = if b then x else 1.0 i
 val inf2 : bool -> unique_ float -> float = <fun>
 |}]
 
-let inf3 (b : bool) (unique_ x : float) (y : float) = unique_ let z = if b then x else y in z
+let inf3 (b : bool) (y : float) (unique_ x : float) = unique_ let z = if b then x else y in z
 [%%expect{|
-val inf3 : bool -> unique_ float -> unique_ float -> float = <fun>
+Line 1, characters 87-88:
+1 | let inf3 (b : bool) (y : float) (unique_ x : float) = unique_ let z = if b then x else y in z
+                                                                                           ^
+Error: The identifier y was inferred to be unique and thus can not be
+       used in a context where unique use is not guaranteed.
 |}]
 (* [%%expect{|
  *   Error: z is not unique
  * |}] *)
 
-let inf4 (unique_ x) = let f x = x in higher_order x f
+let inf4 (unique_ x) = let f x = x in unique_ higher_order f x
 [%%expect{|
 val inf4 : unique_ 'a -> 'a = <fun>
 |}]
@@ -189,6 +187,26 @@ val ul : local_ unique_ 'a -> local_ 'a = <fun>
 let ul_ret x = unique_ local_ x
 [%%expect{|
 val ul_ret : unique_ 'a -> local_ 'a = <fun>
+|}]
+
+let or_patterns1 : unique_ float list -> float list -> float = fun x y -> match x, y with
+  | z :: _, _ | _, z :: _ -> unique_ z
+  | _, _ -> 42.0
+[%%expect{|
+Line 2, characters 37-38:
+2 |   | z :: _, _ | _, z :: _ -> unique_ z
+                                         ^
+Error: Found a shared value where a unique value was expected
+|}]
+
+let or_patterns2 : float list -> unique_ float list -> float = fun x y -> match x, y with
+  | z :: _, _ | _, z :: _ -> unique_ z
+  | _, _ -> 42.0
+[%%expect{|
+Line 2, characters 37-38:
+2 |   | z :: _, _ | _, z :: _ -> unique_ z
+                                         ^
+Error: Found a shared value where a unique value was expected
 |}]
 
 (* ------------------------------------------------------------------------------------ *)
