@@ -1460,6 +1460,20 @@ module Value_mode = struct
     Locality_mode.submode_exn r_as_g r_as_l;
     { r_as_l; r_as_g; uniqueness }
 
+  let newvar_below { r_as_l; r_as_g; uniqueness } =
+    let r_as_l, b1 = Locality_mode.newvar_below r_as_l in
+    let r_as_g, b2 = Locality_mode.newvar_below r_as_g in
+    let uniqueness, b3 = Uniqueness_mode.newvar_below uniqueness in
+    Locality_mode.submode_exn r_as_g r_as_l;
+    { r_as_l; r_as_g; uniqueness }, b1 || b2 || b3
+
+  let newvar_above { r_as_l; r_as_g; uniqueness } =
+    let r_as_l, b1 = Locality_mode.newvar_above r_as_l in
+    let r_as_g, b2 = Locality_mode.newvar_above r_as_g in
+    let uniqueness, b3 = Uniqueness_mode.newvar_above uniqueness in
+    Locality_mode.submode_exn r_as_g r_as_l;
+    { r_as_l; r_as_g; uniqueness }, b1 || b2 || b3
+
   let check_const t =
     let locality = match Locality_mode.check_const t.r_as_l with
     | None -> None

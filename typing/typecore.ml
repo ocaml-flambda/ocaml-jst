@@ -71,12 +71,12 @@ type existential_restriction =
   | In_class_def  (** or in [class c = let ... in ...] *)
   | In_self_pattern (** or in self pattern *)
 
-(* Errors in uniqueness analysis *)
 type unique_seen_reason =
+  | SeenAs of Ident.t
   (* Stores for each unique identifier that has already been seen,
      the last expression where it (or one of its parents/aliases) has been seen.
      We also keep the identifier (e.g. itself, alias or parent) that we saw. *)
-  | SeenAs of Ident.t
+  | TupleMatchOnAliasedAs of Ident.t * Ident.t
   (* We do mark idents as seen if they are directly matched on.
      E.g. match x, y with ... -> x, y not seen
           match f x with ...  -> x seen
@@ -84,15 +84,14 @@ type unique_seen_reason =
      But in the special case match x, y with | z -> ..., we end up using x, y
      in a newly-created tuple. In that case, we retroactively mark x and y
      as seen. *)
-  | TupleMatchOnAliasedAs of Ident.t * Ident.t
 
 type unique_error =
+  | SeenTwice of Ident.t * expression * unique_seen_reason * unique_seen_reason
   (* Record that we have seen an ident twice. The expression gives the
      other point where the identifier was seen. *)
-  | SeenTwice of Ident.t * expression * unique_seen_reason * unique_seen_reason
+  | NotOwnedInExpression of Ident.t
   (* Unique variables can not be used as free variables of closures,
      inside for-loops and while-loops. *)
-  | NotOwnedInExpression of Ident.t
 
 type error =
   | Constructor_arity_mismatch of Longident.t * int * int
@@ -1739,11 +1738,12 @@ and type_pat_aux
   | Ppat_var name ->
       let ty = instance expected_ty in
       let alloc_mode = alloc_mode in
+      let mode, _ = Value_mode.newvar_above alloc_mode.mode in
       let id = (* PR#7330 *)
         if name.txt = "*extension*" then
           Ident.create_local name.txt
         else
-          enter_variable loc name alloc_mode.mode ty sp.ppat_attributes
+          enter_variable loc name mode ty sp.ppat_attributes
       in
       rvp k {
         pat_desc = Tpat_var (id, name);
@@ -3419,27 +3419,14 @@ and check_uniqueness_exp_ exp uenv =
       let uenv = check_uniqueness_exp_ from' uenv in
       let uenv = check_uniqueness_exp_ to' uenv in
       without_owned (check_uniqueness_exp_ body) uenv
-  | Texp_send(e, _, e_opt, _) ->
-      let uenv = match e_opt with
-        | Some e -> check_uniqueness_exp_ e uenv
-        | None -> uenv in
-      without_owned (check_uniqueness_exp_ e) uenv
-  | Texp_new _ -> uenv
-  | Texp_instvar(self, p, _) ->
-      without_owned (fun uenv ->
-        let uenv = mark_if_ident self exp uenv in
-        mark_if_ident p exp uenv)
-        uenv
-  | Texp_setinstvar(self, p, _, e) ->
-      let uenv = without_owned (fun uenv ->
-          let uenv = mark_if_ident self exp uenv in
-          mark_if_ident p exp uenv)
-          uenv in
+  | Texp_send(e, _, _, _) ->
       check_uniqueness_exp_ e uenv
-  | Texp_override(self, ls) ->
-      let uenv = without_owned (mark_if_ident self exp) uenv in
-      List.fold_left (fun u (p, _, e) ->
-          let u = without_owned (mark_if_ident p exp) u in
+  | Texp_new _ -> uenv
+  | Texp_instvar _ -> uenv
+  | Texp_setinstvar(_, _, _, e) ->
+      check_uniqueness_exp_ e uenv
+  | Texp_override(_, ls) ->
+      List.fold_left (fun u (_, _, e) ->
           check_uniqueness_exp_ e u
         ) uenv ls
   | Texp_letmodule _ -> uenv (* TODO *)
