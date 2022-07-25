@@ -240,16 +240,16 @@ let rec pat_to_map (pat : Typedtree.pattern) parent uenv =
 and pat_to_map_ (pat : Typedtree.pattern) parent mproj uenv =
   match pat.pat_desc with
   | Tpat_any -> uenv
-  | Tpat_var(id, _) -> begin
+  | Tpat_var(id, _, mode) -> begin
     match parent with
     | NoParent -> uenv
-    | OneParent(p) -> add_mode id pat.pat_mode.uniqueness
+    | OneParent(p) -> add_mode id mode.uniqueness
                         (add_mproj p mproj id uenv)
     | TupleParent(ps, exp) -> mark_tuple_parent_seen id ps exp uenv end
-  | Tpat_alias(pat',id, _) ->
+  | Tpat_alias(pat',id, _, mode) ->
     let uenv = match parent with
       | NoParent -> uenv
-      | OneParent(p) -> add_mode id pat.pat_mode.uniqueness
+      | OneParent(p) -> add_mode id mode.uniqueness
                           (add_mproj p mproj id uenv)
       | TupleParent(ps, exp) -> mark_tuple_parent_seen id ps exp uenv
     in pat_to_map pat' (OneParent id) uenv

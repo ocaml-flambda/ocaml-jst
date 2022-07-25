@@ -23,7 +23,6 @@ open Typedtree
 open Btype
 open Ctype
 module Value_mode = Btype.Value_mode
-open UniquenessAnalysis
 
 type type_forcing_context =
   | If_conditional
@@ -401,11 +400,11 @@ let optimise_allocations () =
 
 let check_uniqueness_exp exp =
   try UniquenessAnalysis.check_uniqueness_exp exp
-  with | Unique_error(loc, env, err) -> raise (Error(loc, env, Unique_failure(err)))
+  with | UniquenessAnalysis.Unique_error(loc, env, err) -> raise (Error(loc, env, Unique_failure(err)))
 
 let check_uniqueness_value_bindings vbs =
   try UniquenessAnalysis.check_uniqueness_value_bindings vbs
-  with | Unique_error(loc, env, err) -> raise (Error(loc, env, Unique_failure(err)))
+  with | UniquenessAnalysis.Unique_error(loc, env, err) -> raise (Error(loc, env, Unique_failure(err)))
 
 (* Typing of constants *)
 
@@ -758,7 +757,7 @@ and build_as_type env p =
 
 and build_as_type_aux env p =
   match p.pat_desc with
-    Tpat_alias(p1,_, _) -> build_as_type_and_mode env p1
+    Tpat_alias(p1, _, _, _) -> build_as_type_and_mode env p1
   | Tpat_tuple pl ->
       let tyl = List.map (build_as_type env) pl in
       newty (Ttuple tyl), p.pat_mode
@@ -1736,7 +1735,7 @@ and type_pat_aux
           enter_variable loc name mode ty sp.ppat_attributes
       in
       rvp k {
-        pat_desc = Tpat_var (id, name);
+        pat_desc = Tpat_var (id, name, mode);
         pat_loc = loc; pat_extra=[];
         pat_type = ty;
         pat_mode = alloc_mode.mode;
@@ -1757,10 +1756,11 @@ and type_pat_aux
             pat_env = !env }
       | Some s ->
           let v = { name with txt = s } in
-          let id = enter_variable loc v alloc_mode.mode
+          let mode, _ = Value_mode.newvar_above alloc_mode.mode in
+          let id = enter_variable loc v mode
                      t ~is_module:true sp.ppat_attributes in
           rvp k {
-            pat_desc = Tpat_var (id, v);
+            pat_desc = Tpat_var (id, v, mode);
             pat_loc = sp.ppat_loc;
             pat_extra=[Tpat_unpack, loc, sp.ppat_attributes];
             pat_mode = alloc_mode.mode;
@@ -1784,9 +1784,10 @@ and type_pat_aux
           init_def generic_level;
           let _, ty' = instance_poly ~keep_names:true false tyl body in
           end_def ();
-          let id = enter_variable lloc name alloc_mode.mode ty' attrs in
+          let mode, _ = Value_mode.newvar_above alloc_mode.mode in
+          let id = enter_variable lloc name mode ty' attrs in
           rvp k {
-            pat_desc = Tpat_var (id, name);
+            pat_desc = Tpat_var (id, name, mode);
             pat_loc = lloc;
             pat_extra = [Tpat_constraint cty, loc, sp.ppat_attributes];
             pat_type = ty;
@@ -1803,12 +1804,13 @@ and type_pat_aux
         let ty_var, mode = build_as_type_and_mode env q in
         end_def ();
         generalize ty_var;
+        let mode, _ = Value_mode.newvar_above mode in
         let id =
           enter_variable ~is_as_variable:true loc name mode
             ty_var sp.ppat_attributes
         in
         rvp k {
-          pat_desc = Tpat_alias(q, id, name);
+          pat_desc = Tpat_alias(q, id, name, mode);
           pat_loc = loc; pat_extra=[];
           pat_type = q.pat_type;
           pat_mode = q.pat_mode;
@@ -2200,12 +2202,12 @@ and type_pat_aux
         let extra = (Tpat_constraint cty, loc, sp'.ppat_attributes) in
         let p : k general_pattern =
           match category, (p : k general_pattern) with
-          | Value, {pat_desc = Tpat_var (id,s); _} ->
+          | Value, {pat_desc = Tpat_var (id,s,mode); _} ->
             {p with
               pat_type = ty;
               pat_desc =
                 Tpat_alias
-                  ({p with pat_desc = Tpat_any; pat_attributes = []}, id,s);
+                  ({p with pat_desc = Tpat_any; pat_attributes = []}, id, s, mode);
               pat_extra = [extra];
             }
           | _, p ->
@@ -3305,8 +3307,8 @@ let rec name_pattern default = function
     [] -> Ident.create_local default
   | p :: rem ->
     match p.pat_desc with
-      Tpat_var (id, _) -> id
-    | Tpat_alias(_, id, _) -> id
+      Tpat_var (id, _, _) -> id
+    | Tpat_alias(_, id, _, _) -> id
     | _ -> name_pattern default rem
 
 let name_cases default lst =
@@ -5363,7 +5365,7 @@ and type_argument ?explanation ?recarg env (mode : expected_mode) sarg
           }
         in
         let exp_env = Env.add_value ~mode id desc env in
-        {pat_desc = Tpat_var (id, mknoloc name); pat_type = ty;pat_extra=[];
+        {pat_desc = Tpat_var (id, mknoloc name, mode); pat_type = ty;pat_extra=[];
          pat_mode = mode; pat_attributes = [];
          pat_loc = Location.none; pat_env = env},
         {exp_type = ty; exp_mode = mode; exp_loc = Location.none; exp_env = exp_env;
@@ -6175,7 +6177,7 @@ and type_let
     List.iter
       (fun {vb_pat=pat} -> match pat.pat_desc with
            Tpat_var _ -> ()
-         | Tpat_alias ({pat_desc=Tpat_any}, _, _) -> ()
+         | Tpat_alias ({pat_desc=Tpat_any}, _, _, _) -> ()
          | _ -> raise(Error(pat.pat_loc, env, Illegal_letrec_pat)))
       l;
   List.iter (function
@@ -6920,19 +6922,20 @@ let report_error ~loc env = function
          | `Conflict -> "is contradictory"
          | `Not_a_tailcall -> "is not on a tail call")
   | Unique_failure err -> match err with
-    | Not_owned_in_expression id ->
+    | UniquenessAnalysis.Not_owned_in_expression id ->
       Location.errorf ~loc
         "The identifier@ %s was inferred to be unique and thus can not be@ \
           used in a context where unique use is not guaranteed."
         (Ident.name id)
-    | Seen_twice(id, _, r1, r2) -> (* TODO: incorporate expression into the error *)
+    | UniquenessAnalysis.Seen_twice(id, _, r1, r2) ->
+      (* TODO: incorporate expression into the error *)
       let get_reason r place = match r with
-        | Seen_as id' ->
+        | UniquenessAnalysis.Seen_as id' ->
           if Ident.same id id' then Format.dprintf ""
           else Format.dprintf
                  " It was seen %s because %s is a parent or alias of %s."
                  place (Ident.name id') (Ident.name id)
-        | Tuple_match_on_aliased_as(id', alias) ->
+        | UniquenessAnalysis.Tuple_match_on_aliased_as(id', alias) ->
           if Ident.same id id'
           then Format.dprintf
                  " It was seen %s because %s refers to a tuple containing %s."

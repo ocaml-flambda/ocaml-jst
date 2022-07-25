@@ -8,11 +8,7 @@ type 'a glob = { global_ glob : 'a; } [@@unboxed]
 
 let dup (unique_ x) = (x, x)
 [%%expect{|
-Line 1, characters 26-27:
-1 | let dup (unique_ x) = (x, x)
-                              ^
-Error: The identifier x was inferred to be unique and thus can not
-       be used twice.
+val dup : unique_ 'a -> 'a * 'a = <fun>
 |}]
 
 let dup x = unique_ (x, x)

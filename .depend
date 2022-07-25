@@ -1763,32 +1763,36 @@ typing/typetexp.cmi : \
     typing/ctype.cmi \
     parsing/asttypes.cmi
 typing/uniquenessAnalysis.cmo : \
+    typing/typetexp.cmi \
     typing/types.cmi \
     typing/typedtree.cmi \
     typing/path.cmi \
-    parsing/parsetree.cmi \
-    utils/misc.cmi \
     parsing/longident.cmi \
+    parsing/location.cmi \
     typing/ident.cmi \
-    typing/ctype.cmi \
+    typing/env.cmi \
+    parsing/builtin_attributes.cmi \
     typing/btype.cmi \
     parsing/asttypes.cmi \
     typing/uniquenessAnalysis.cmi
 typing/uniquenessAnalysis.cmx : \
+    typing/typetexp.cmx \
     typing/types.cmx \
     typing/typedtree.cmx \
     typing/path.cmx \
-    parsing/parsetree.cmi \
-    utils/misc.cmx \
     parsing/longident.cmx \
+    parsing/location.cmx \
     typing/ident.cmx \
-    typing/ctype.cmx \
+    typing/env.cmx \
+    parsing/builtin_attributes.cmx \
     typing/btype.cmx \
     parsing/asttypes.cmi \
     typing/uniquenessAnalysis.cmi
 typing/uniquenessAnalysis.cmi : \
     typing/typedtree.cmi \
-    typing/ident.cmi
+    parsing/location.cmi \
+    typing/ident.cmi \
+    typing/env.cmi
 typing/untypeast.cmo : \
     typing/typedtree.cmi \
     typing/path.cmi \
