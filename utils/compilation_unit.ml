@@ -34,6 +34,7 @@ module Name : sig
   val dummy : t
   val of_string : string -> t
   val to_string : t -> string
+  val check_as_path_component : t -> unit
 end = struct
   type t = string
 
@@ -50,18 +51,16 @@ end = struct
   let isupper chr =
     Char.equal (Char.uppercase_ascii chr) chr
 
-  (* HACK: Workaround to be removed ASAP once we've changed our build rules *)
-  let is_allowed_dotfile_name str =
-    String.equal str ".cinaps"
+  let of_string str = str
 
-  let of_string str =
-    if String.length str < 1
-      || not (isupper (String.get str 0))
-      || (String.contains str '.' && not (is_allowed_dotfile_name str))
-    then begin
-      raise (Error (Bad_compilation_unit_name str))
-    end;
-    str
+  (* This is so called (and separate from [of_string]) because we only want to
+     check a name if it has a prefix. In particular, this allows single-module
+     executables to have names like ".cinaps" that aren't valid module names. *)
+  let check_as_path_component t =
+    if String.length t < 1
+      || not (isupper (String.get t 0))
+      || String.contains t '.'
+    then raise (Error (Bad_compilation_unit_name t))
 
   let dummy = ""
 
@@ -139,6 +138,11 @@ type t = {
 }
 
 let create ?(for_pack_prefix = Prefix.empty) name =
+  if not (Prefix.is_empty for_pack_prefix) then begin
+    Name.check_as_path_component name;
+    ListLabels.iter ~f:Name.check_as_path_component
+      (for_pack_prefix |> Prefix.to_list)
+  end;
   { name;
     for_pack_prefix;
     hash = Hashtbl.hash (name, for_pack_prefix)
