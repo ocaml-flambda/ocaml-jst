@@ -471,7 +471,12 @@ let rec check_uniqueness_exp_ exp uenv =
   | Texp_lazy e -> check_uniqueness_exp_ e uenv
   | Texp_object _ -> uenv (* TODO *)
   | Texp_pack _ -> uenv (* TODO *)
-  | Texp_letop _ -> uenv (* TODO *)
+  | Texp_letop {let_;ands;param;body} ->
+      let uenv = mark_seen param (Seen_as param) exp uenv in
+      let uenv = check_uniqueness_binding_op let_ exp uenv in
+      let uenv = List.fold_left (fun uenv bop ->
+          check_uniqueness_binding_op bop exp uenv) uenv ands in
+      check_uniqueness_cases (OneParent param) [body] uenv
   | Texp_unreachable -> uenv
   | Texp_extension_constructor _ -> uenv
   | Texp_open _ -> uenv (* TODO *)
@@ -527,6 +532,10 @@ and check_uniqueness_comprehensions cs uenv =
           | From_to(_, _, e1, e2, _) -> check_uniqueness_exp_ e1 (check_uniqueness_exp_ e2 u)
           | In(_, e) -> check_uniqueness_exp_ e u) u c.clauses)
     uenv cs
+
+and check_uniqueness_binding_op bo exp uenv =
+  let uenv = mark_if_ident bo.bop_op_path exp uenv in
+  check_uniqueness_exp_ bo.bop_exp uenv
 
 
 let check_uniqueness_exp exp =
