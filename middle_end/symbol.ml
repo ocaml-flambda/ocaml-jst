@@ -68,8 +68,7 @@ let linkage_name_for_compilation_unit comp_unit =
     if CU.Prefix.is_empty for_pack_prefix then name
     else
       let pack_names =
-        CU.Prefix.to_list_outermost_pack_first for_pack_prefix
-        |> List.map CU.Name.to_string
+        CU.Prefix.to_list for_pack_prefix |> List.map CU.Name.to_string
       in
       String.concat separator (pack_names @ [name])
   in
