@@ -67,7 +67,7 @@ CAMLextern color_t caml_allocation_color (void *hp);
 CAMLextern char *caml_alloc_for_heap (asize_t request);   /* Size in bytes. */
 CAMLextern void caml_free_for_heap (char *mem);
 CAMLextern int caml_add_to_heap (char *mem);
-#define CAML_MODIFY_LOG_SIZE 99000000
+#define CAML_MODIFY_LOG_SIZE 99000
 struct modify_log_entry {
   value *field_pointer;
   value old_value;
