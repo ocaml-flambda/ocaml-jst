@@ -352,6 +352,10 @@ and transl_exp0 ~in_new_scope ~scopes e =
       let body_kind = Typeopt.value_kind body.exp_env body.exp_type in
       transl_let ~scopes rec_flag pat_expr_list
         body_kind (event_before ~scopes body (transl_exp ~scopes body))
+  | Texp_letmutable(pat_expr, body) ->
+      let body_kind = Typeopt.value_kind body.exp_env body.exp_type in
+      transl_letmutable ~scopes pat_expr
+        body_kind (event_before ~scopes body (transl_exp ~scopes body))
   | Texp_function { arg_label = _; param; cases; partial; region; warnings } ->
       let scopes =
         if in_new_scope then scopes
@@ -655,8 +659,7 @@ and transl_exp0 ~in_new_scope ~scopes e =
       let self = transl_value_path loc e.exp_env path_self in
       let var = transl_value_path loc e.exp_env path in
       Lprim(Pfield_computed Reads_vary, [self; var], loc)
-  | Texp_mutvar id ->
-      Lvar id.txt
+  | Texp_mutvar id -> Lmutvar id.txt
   | Texp_setinstvar(path_self, path, _, expr) ->
       let loc = of_location ~scopes e.exp_loc in
       let self = transl_value_path loc e.exp_env path_self in
@@ -1228,7 +1231,8 @@ and transl_let ~scopes ?(add_regions=false) ?(in_structure=false)
           let lam = if add_regions then maybe_region lam else lam in
           let mk_body = transl rem in
           fun body ->
-            Matching.for_let ~scopes pat.pat_loc lam pat body_kind (mk_body body)
+            Matching.for_let ~scopes pat.pat_loc lam pat Immutable body_kind
+              (mk_body body)
       in
       transl pat_expr_list
   | Recursive ->
@@ -1253,6 +1257,12 @@ and transl_let ~scopes ?(add_regions=false) ?(in_structure=false)
         (id, lam) in
       let lam_bds = List.map2 transl_case pat_expr_list idlist in
       fun body -> Lletrec(lam_bds, body)
+
+and transl_letmutable ~scopes
+      {vb_pat=pat; vb_expr=expr; vb_attributes=attr; vb_loc} body_kind body =
+  let lam = transl_bound_exp ~scopes ~in_structure:false pat expr in
+  let lam = Translattribute.add_function_attributes lam vb_loc attr in
+  Matching.for_let ~scopes pat.pat_loc lam pat Mutable body_kind body
 
 and transl_setinstvar ~scopes loc self var expr =
   Lprim(Psetfield_computed (maybe_pointer expr, Assignment alloc_heap),

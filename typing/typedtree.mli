@@ -78,8 +78,6 @@ and 'k pattern_desc =
         (** _ *)
   | Tpat_var : Ident.t * string loc -> value pattern_desc
         (** x *)
-  | Tpat_mutvar : Ident.t * string loc -> value pattern_desc
-        (** mutable x *)
   | Tpat_alias :
       value general_pattern * Ident.t * string loc -> value pattern_desc
         (** P as a *)
@@ -182,6 +180,8 @@ and expression_desc =
         (** let P1 = E1 and ... and Pn = EN in E       (flag = Nonrecursive)
             let rec P1 = E1 and ... and Pn = EN in E   (flag = Recursive)
          *)
+  | Texp_letmutable of value_binding * expression
+        (** let mutable x [: t] = E in E' **)
   | Texp_function of { arg_label : arg_label; param : Ident.t;
       cases : value case list; partial : partial;
       region : bool; warnings : Warnings.state; }
@@ -312,16 +312,16 @@ and meth =
   | Tmeth_val of Ident.t
 
   and comprehension =
-  { 
+  {
      clauses: comprehension_clause list;
-     guard : expression option 
+     guard : expression option
   }
 
-and comprehension_clause = 
- | From_to of Ident.t * Parsetree.pattern * 
+and comprehension_clause =
+ | From_to of Ident.t * Parsetree.pattern *
      expression * expression * direction_flag
  | In of pattern * expression
- 
+
 and 'k case =
     {
      c_lhs: 'k general_pattern;

@@ -162,7 +162,6 @@ let pat
   match pat_desc with
   | Tpat_any  -> ()
   | Tpat_var _ -> ()
-  | Tpat_mutvar _ -> ()
   | Tpat_constant _ -> ()
   | Tpat_tuple l -> List.iter (sub.pat sub) l
   | Tpat_construct (_, _, l) -> List.iter (sub.pat sub) l
@@ -193,6 +192,9 @@ let expr sub {exp_extra; exp_desc; exp_env; _} =
   | Texp_constant _ -> ()
   | Texp_let (rec_flag, list, exp) ->
       sub.value_bindings sub (rec_flag, list);
+      sub.expr sub exp
+  | Texp_letmutable (vb, exp) ->
+      sub.value_binding sub vb;
       sub.expr sub exp
   | Texp_function {cases; _} ->
      List.iter (sub.case sub) cases

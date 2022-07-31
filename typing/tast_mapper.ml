@@ -209,7 +209,6 @@ let pat
     match x.pat_desc with
     | Tpat_any
     | Tpat_var _
-    | Tpat_mutvar _
     | Tpat_constant _ -> x.pat_desc
     | Tpat_tuple l -> Tpat_tuple (List.map (sub.pat sub) l)
     | Tpat_construct (loc, cd, l) ->
@@ -261,6 +260,8 @@ let expr sub x =
     | Texp_let (rec_flag, list, exp) ->
         let (rec_flag, list) = sub.value_bindings sub (rec_flag, list) in
         Texp_let (rec_flag, list, sub.expr sub exp)
+    | Texp_letmutable (vb, exp) ->
+        Texp_letmutable (sub.value_binding sub vb, sub.expr sub exp)
     | Texp_function { arg_label; param; cases; partial; region; warnings } ->
         let cases = List.map (sub.case sub) cases in
         Texp_function { arg_label; param; cases; partial; region; warnings }

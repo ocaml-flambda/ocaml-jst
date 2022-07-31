@@ -30,7 +30,7 @@ val for_trywith:
         lambda
 val for_let:
         scopes:scopes -> Location.t ->
-        lambda -> pattern -> value_kind -> lambda ->
+        lambda -> pattern -> Asttypes.mutable_flag -> value_kind -> lambda ->
         lambda
 val for_multiple_match:
         scopes:scopes -> value_kind -> Location.t ->

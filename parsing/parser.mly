@@ -555,10 +555,9 @@ type let_bindings =
     lbs_extension: string Asttypes.loc option;
     lbs_loc: Location.t }
 
-let mklb first ~loc ~pattern_attrs (p, e) attrs =
+let mklb first ~loc (p, e) attrs =
   {
-    lb_pattern =
-      { p with ppat_attributes = pattern_attrs @ p.ppat_attributes };
+    lb_pattern = p;
     lb_expression = e;
     lb_attributes = attrs;
     lb_docs = symbol_docs_lazy loc;
@@ -2612,29 +2611,30 @@ let_bindings(EXT):
     let_binding(EXT)                            { $1 }
   | let_bindings(EXT) and_let_binding           { addlb $1 $2 }
 ;
+let_and_mutable_attr:
+    LET MUTABLE { [let_mutable_attr] }
+  | LET         { [] }
+;
 %inline let_binding(EXT):
-  LET
+  attrs0 = let_and_mutable_attr
   ext = EXT
   attrs1 = attributes
   rec_flag = rec_flag
-  pattern_attrs = let_mutable_flag
   body = let_binding_body
   attrs2 = post_item_attributes
     {
-      let attrs = attrs1 @ attrs2 in
-      mklbs ~loc:$sloc ext rec_flag
-        (mklb ~loc:$sloc ~pattern_attrs true body attrs)
+      let attrs = attrs0 @ attrs1 @ attrs2 in
+      mklbs ~loc:$sloc ext rec_flag (mklb ~loc:$sloc true body attrs)
     }
 ;
 and_let_binding:
   AND
   attrs1 = attributes
-  pattern_attrs = let_mutable_flag
   body = let_binding_body
   attrs2 = post_item_attributes
     {
       let attrs = attrs1 @ attrs2 in
-      mklb ~loc:$sloc ~pattern_attrs false body attrs
+      mklb ~loc:$sloc false body attrs
     }
 ;
 letop_binding_body:
@@ -3788,10 +3788,6 @@ rec_flag:
 %inline no_nonrec_flag:
     /* empty */ { Recursive }
   | NONREC      { not_expecting $loc "nonrec flag" }
-;
-let_mutable_flag:
-    /* empty */                                 { [] }
-  | MUTABLE                                     { [let_mutable_attr] }
 ;
 direction_flag:
     TO                                          { Upto }

@@ -69,7 +69,7 @@ let transl_arr_clause ~transl_exp ~scopes ~loc clause body =
             Matching.for_let ~scopes pat.pat_loc
               (Lprim(Parrayrefu(in_kind),
                      [Lvar(in_var); Lvar(index)], loc))
-              pat (valuekind_of_arraykind in_kind) body;
+              pat Immutable (valuekind_of_arraykind in_kind) body;
           for_region = true
         }
         in
@@ -484,7 +484,8 @@ let transl_list_comp type_comp body acc_var mats ~transl_exp ~scopes ~loc =
       let args = [Lvar(in_var); Lvar(new_acc)] in
       let func = in_comp_prim () in
       let body =
-        Matching.for_let ~scopes pat.pat_loc (Lvar(pat_id)) pat pval body
+        Matching.for_let ~scopes pat.pat_loc (Lvar(pat_id)) pat Immutable pval
+          body
       in
       let mats = (in_var, transl_exp ~scopes in_)::mats in
       pat_id , pval, args, func, body, mats

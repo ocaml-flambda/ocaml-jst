@@ -161,53 +161,36 @@ val foo5_3 : int -> int = <fun>
 val foo5_4 : int -> int = <fun>
 |}]
 
-(* Test 6: you can use mutable with and *)
+(* Test 6: let mutable ... and ... is illegal *)
 let foo_6 () =
-  let z = 3
-  and mutable x = []
+  let mutable x = []
+  and z = 3
   in
   x <- z :: x;
   match x with
   | [] -> 0
   | z :: _ -> z
 
-let () = assert Int.(equal 3 (foo_6 ()))
-
 [%%expect{|
-val foo_6 : unit -> int = <fun>
+Line 2, characters 14-15:
+2 |   let mutable x = []
+                  ^
+Error: Mutable let bindings are not allowed as part of a `let .. and ..' group
 |}]
 
 (* Test 7: mutable and rec don't mix *)
 let foo_7_1 () =
-  let rec z = 1 :: x
-  and mutable x = []
-  in
+  let mutable rec x = 1 :: x in
   match x with
   | [] -> 0
   | _ :: _ -> 1
 
 [%%expect{|
-Line 3, characters 14-15:
-3 |   and mutable x = []
-                  ^
-Error: Mutable variables are not allowed in a `let rec'
+Line 2, characters 18-19:
+2 |   let mutable rec x = 1 :: x in
+                      ^
+Error: Mutable let bindings are not allowed to be recursive
 |}]
-
-let foo_7_2 () =
-  let rec z = 1 :: x
-  and y = 1 :: z
-  and mutable x = []
-  in
-  match x with
-  | [] -> 0
-  | _ :: _ -> 1
-[%%expect{|
-Line 4, characters 14-15:
-4 |   and mutable x = []
-                  ^
-Error: Mutable variables are not allowed in a `let rec'
-|}]
-
 
 (* Test 8: only variable patterns may be mutable *)
 let foo_8_1 y =
@@ -236,4 +219,51 @@ Line 3, characters 14-21:
 3 |   let mutable {x_8_2} = {x_8_2 = y + 1} in
                   ^^^^^^^
 Error: Only variables are allowed as left-hand side of `let mutable'
+|}]
+
+(* Test 9: disallowed at the structure level *)
+let mutable foo_9_1 = 10
+[%%expect{|
+Line 1, characters 12-19:
+1 | let mutable foo_9_1 = 10
+                ^^^^^^^
+Error: Mutable let bindings are not allowed at the structure level
+|}]
+
+module M9 = struct
+  let mutable foo_9_2 = 20
+end
+[%%expect{|
+Line 2, characters 14-21:
+2 |   let mutable foo_9_2 = 20
+                  ^^^^^^^
+Error: Mutable let bindings are not allowed at the structure level
+|}]
+
+(* Test 10: disallowed in class definitions *)
+class c10 =
+  let mutable x = 20 in
+  object
+    method read_incr =
+      x <- x + 1;
+      x
+  end
+
+[%%expect{|
+Line 2, characters 14-15:
+2 |   let mutable x = 20 in
+                  ^
+Error: Mutable let bindings are not allowed inside class definition
+|}]
+
+(* Test 11: binding a mutable variable shouldn't be simplified away *)
+let f_11 () =
+  let mutable x = 10 in
+  let y = x in
+  x <- x + 10;
+  (y,x)
+
+let () = assert (f_11 () = (10,20))
+[%%expect{|
+val f_11 : unit -> int * int = <fun>
 |}]

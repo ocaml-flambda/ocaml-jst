@@ -147,6 +147,9 @@ let classify_expression : Typedtree.expression -> sd =
     | Texp_let (rec_flag, vb, e) ->
         let env = classify_value_bindings rec_flag env vb in
         classify_expression env e
+    | Texp_letmutable (vb, e) ->
+        let env = classify_value_bindings Nonrecursive env [vb] in
+        classify_expression env e
     | Texp_ident (path, _, _, _) ->
         classify_path env path
 
@@ -534,6 +537,14 @@ let rec expression : Typedtree.expression -> term_judg =
          G |- let <bindings> in body : m
       *)
       value_bindings rec_flag bindings >> expression body
+    | Texp_letmutable (binding,body) ->
+      (*
+         G  |- <bindings> : m -| G'
+         G' |- body : m
+         --------------------------------
+         G |- let mutable <bindings> in body : m
+      *)
+      value_bindings Nonrecursive [binding] >> expression body
     | Texp_letmodule (x, _, _, mexp, e) ->
       module_binding (x, mexp) >> expression e
     | Texp_match (e, cases, _) ->
@@ -1255,7 +1266,6 @@ and is_destructuring_pattern : type k . k general_pattern -> bool =
   fun pat -> match pat.pat_desc with
     | Tpat_any -> false
     | Tpat_var (_, _) -> false
-    | Tpat_mutvar (_, _) -> false
     | Tpat_alias (pat, _, _) -> is_destructuring_pattern pat
     | Tpat_constant _ -> true
     | Tpat_tuple _ -> true

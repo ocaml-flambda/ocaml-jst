@@ -55,7 +55,6 @@ and 'k pattern_desc =
   (* value patterns *)
   | Tpat_any : value pattern_desc
   | Tpat_var : Ident.t * string loc -> value pattern_desc
-  | Tpat_mutvar : Ident.t * string loc -> value pattern_desc
   | Tpat_alias :
       value general_pattern * Ident.t * string loc -> value pattern_desc
   | Tpat_constant : constant -> value pattern_desc
@@ -103,6 +102,7 @@ and expression_desc =
       Path.t * Longident.t loc * Types.value_description * ident_kind
   | Texp_constant of constant
   | Texp_let of rec_flag * value_binding list * expression
+  | Texp_letmutable of value_binding * expression
   | Texp_function of { arg_label : arg_label; param : Ident.t;
       cases : value case list; partial : partial;
       region : bool; warnings : Warnings.state; }
@@ -699,7 +699,6 @@ let rec classify_pattern_desc : type k . k pattern_desc -> k pattern_category =
   | Tpat_lazy _ -> Value
   | Tpat_any -> Value
   | Tpat_var _ -> Value
-  | Tpat_mutvar _ -> Value
   | Tpat_constant _ -> Value
 
   | Tpat_value _ -> Computation
@@ -731,7 +730,6 @@ let shallow_iter_pattern_desc
   | Tpat_lazy p -> f.f p
   | Tpat_any
   | Tpat_var _
-  | Tpat_mutvar _
   | Tpat_constant _ -> ()
   | Tpat_value p -> f.f p
   | Tpat_exception p -> f.f p
@@ -756,7 +754,6 @@ let shallow_map_pattern_desc
   | Tpat_variant (x1, Some p1, x2) ->
       Tpat_variant (x1, Some (f.f p1), x2)
   | Tpat_var _
-  | Tpat_mutvar _
   | Tpat_constant _
   | Tpat_any
   | Tpat_variant (_,None,_) -> d

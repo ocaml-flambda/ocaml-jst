@@ -315,7 +315,6 @@ let pattern : type k . _ -> k T.general_pattern -> _ = fun sub pat ->
           | _ ->
               Ppat_var name
         end
-    | Tpat_mutvar (_id, name) -> Ppat_var name
 
     (* We transform (_ as x) in x if _ and x have the same location.
        The compiler transforms (x:t) into (_ as x : t).
@@ -410,6 +409,8 @@ let expression sub exp =
         Pexp_let (rec_flag,
           List.map (sub.value_binding sub) list,
           sub.expr sub exp)
+    | Texp_letmutable (vb, exp) ->
+        Pexp_let (Nonrecursive, [sub.value_binding sub vb], sub.expr sub exp)
 
     (* Pexp_function can't have a label, so we split in 3 cases. *)
     (* One case, no guard: It's a fun. *)
