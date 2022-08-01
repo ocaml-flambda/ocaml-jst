@@ -639,7 +639,6 @@ let rec lam ppf = function
       fprintf ppf "@[<2>(function%s%a@ %a%a%a)@]"
         (alloc_kind mode) pr_params params
         function_attribute attr return_kind (rmode, return) lam body
-
   | (Llet _ | Lmutlet _) as expr ->
       let let_kind = begin function
         | Llet(str,_,_,_,_) ->
