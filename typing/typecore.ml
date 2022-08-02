@@ -392,6 +392,9 @@ let optimise_allocations () =
     !allocations;
   reset_allocations ()
 
+let val_binding_param =
+  { vbt_defined = true; vbt_is_func = false; vbt_in_module = false }
+
 (* Typing of constants *)
 
 let type_constant = function
@@ -868,6 +871,7 @@ let type_for_loop_index ~loc ~env ~param ty =
         {val_type = instance ty;
           val_attributes = [];
           val_kind = Val_reg;
+          val_binding = val_binding_param;
           val_loc = loc;
           val_uid = Uid.mk ~current_unit:(Env.get_unit_name ());
         } env
@@ -2255,6 +2259,7 @@ let add_pattern_variables ?check ?check_as env pv =
        let check = if pv_as_var then check_as else check in
        Env.add_value ?check ~mode:pv_mode pv_id
          {val_type = pv_type; val_kind = Val_reg; Types.val_loc = pv_loc;
+          val_binding = val_binding_param; (* FIXME *)
           val_attributes = pv_attributes;
           val_uid = Uid.mk ~current_unit:(Env.get_unit_name ());
          } env
@@ -2317,6 +2322,7 @@ let type_class_arg_pattern cl_num val_env met_env l spat =
           Env.add_value pv_id
             { val_type = pv_type
             ; val_kind = Val_reg
+            ; val_binding = val_binding_param
             ; val_attributes = pv_attributes
             ; val_loc = pv_loc
             ; val_uid
@@ -2327,6 +2333,7 @@ let type_class_arg_pattern cl_num val_env met_env l spat =
           Env.add_value id' ~check
             { val_type = pv_type
             ; val_kind = Val_ivar (Immutable, cl_num)
+            ; val_binding = val_binding_param
             ; val_attributes = pv_attributes
             ; val_loc = pv_loc
             ; val_uid
@@ -2365,6 +2372,7 @@ let type_self_pattern cl_num privty val_env met_env par_env spat =
           Env.add_value pv_id
             {val_type = pv_type;
              val_kind = Val_self (meths, vars, cl_num, privty);
+             val_binding = val_binding_param;
              val_attributes = pv_attributes;
              val_loc = pv_loc;
              val_uid = Uid.mk ~current_unit:(Env.get_unit_name ());
@@ -4151,6 +4159,7 @@ and type_expect_
                   let method_desc =
                     {val_type = method_type;
                      val_kind = Val_reg;
+                     val_binding = val_binding_param;
                      val_attributes = [];
                      val_loc = Location.none;
                      val_uid = Uid.internal_not_actually_unique;
@@ -5306,6 +5315,7 @@ and type_argument ?explanation ?recarg env (mode : expected_mode) sarg
         let id = Ident.create_local name in
         let desc =
           { val_type = ty; val_kind = Val_reg;
+            val_binding = val_binding_param;
             val_attributes = [];
             val_loc = Location.none;
             val_uid = Uid.mk ~current_unit:(Env.get_unit_name ());
@@ -6259,6 +6269,7 @@ and type_andops env sarg sands expected_ty =
               env ->
             Env.add_value pv_id
               { val_type = pv_type;
+                val_binding = val_binding_param;
                 val_attributes = pv_attributes;
                 val_kind = Val_reg;
                 val_loc = pv_loc;

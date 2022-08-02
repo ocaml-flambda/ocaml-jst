@@ -285,6 +285,7 @@ module Vars  : Map.S with type key = string
 type value_description =
   { val_type: type_expr;                (* Type of the value *)
     val_kind: value_kind;
+    val_binding: value_binding_type;
     val_loc: Location.t;
     val_attributes: Parsetree.attributes;
     val_uid: Uid.t;
@@ -300,6 +301,11 @@ and value_kind =
                                         (* Self *)
   | Val_anc of (string * Ident.t) list * string
                                         (* Ancestor *)
+
+and value_binding_type =
+  { mutable vbt_defined : bool;    (* false during recursive definition *)
+    vbt_is_func : bool;
+    vbt_in_module : bool; }
 
 (* Variance *)
 

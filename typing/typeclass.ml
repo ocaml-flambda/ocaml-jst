@@ -272,6 +272,8 @@ let enter_met_env ?check loc lab kind unbound_kind ty class_env =
     Env.enter_value ?check lab
       {val_type = ty; val_kind = kind;
        val_attributes = []; Types.val_loc = loc;
+       val_binding =
+         { vbt_defined = true; vbt_is_func = false; vbt_in_module = false };
        val_uid = Uid.mk ~current_unit:(Env.get_unit_name ()); } met_env
   in
   let class_env = {val_env; met_env; par_env} in
@@ -1230,7 +1232,11 @@ and class_expr_aux cl_num val_env met_env scl =
              let desc =
                {val_type = expr.exp_type; val_kind = Val_ivar (Immutable,
                                                                cl_num);
+                val_binding =
+                  { vbt_defined = true; vbt_is_func = false;
+                    vbt_in_module = false };
                 val_attributes = [];
+
                 Types.val_loc = vd.Types.val_loc;
                 val_uid = vd.val_uid;
                }

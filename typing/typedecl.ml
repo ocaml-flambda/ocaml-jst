@@ -1358,13 +1358,18 @@ let check_unboxable env loc ty =
 let transl_value_decl env loc valdecl =
   let cty = Typetexp.transl_type_scheme env valdecl.pval_type in
   let ty = cty.ctyp_type in
+  let mk_val_decl kind =
+    { val_type = ty; val_kind = kind; Types.val_loc = loc;
+      val_binding =
+        { vbt_defined = true; vbt_is_func = false; vbt_in_module = true };
+      val_attributes = valdecl.pval_attributes;
+      val_uid = Uid.mk ~current_unit:(Env.get_unit_name ());
+    }
+  in
   let v =
   match valdecl.pval_prim with
     [] when Env.is_in_signature env ->
-      { val_type = ty; val_kind = Val_reg; Types.val_loc = loc;
-        val_attributes = valdecl.pval_attributes;
-        val_uid = Uid.mk ~current_unit:(Env.get_unit_name ());
-      }
+      mk_val_decl Val_reg
   | [] ->
       raise (Error(valdecl.pval_loc, Val_in_structure))
   | _ ->
@@ -1391,10 +1396,7 @@ let transl_value_decl env loc valdecl =
       && prim.prim_native_name = ""
       then raise(Error(valdecl.pval_type.ptyp_loc, Missing_native_external));
       check_unboxable env loc ty;
-      { val_type = ty; val_kind = Val_prim prim; Types.val_loc = loc;
-        val_attributes = valdecl.pval_attributes;
-        val_uid = Uid.mk ~current_unit:(Env.get_unit_name ());
-      }
+      mk_val_decl (Val_prim prim)
   in
   let (id, newenv) =
     Env.enter_value valdecl.pval_name.txt v env
