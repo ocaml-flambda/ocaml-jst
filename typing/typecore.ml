@@ -227,7 +227,7 @@ type expected_mode =
     (* for t in tuple_modes, t <= regional_to_global mode *)
   }
 
-let apply_position env (expected_mode : expected_mode) sexp : apply_position =
+let apply_position env (expected_mode : expected_mode) sexp sfunct : apply_position =
   let fail err =
     raise (Error (sexp.pexp_loc, env, Bad_tail_annotation err))
   in
@@ -235,11 +235,31 @@ let apply_position env (expected_mode : expected_mode) sexp : apply_position =
     Builtin_attributes.tailcall sexp.pexp_attributes,
     expected_mode.position
   with
-  | Ok None, Nontail -> Default
-  | Ok (None | Some `Tail), Tail -> Tail
-  | Ok (Some `Nontail), _ -> Nontail
-  | Ok (Some `Tail), Nontail -> fail `Not_a_tailcall
   | Error `Conflict, _ -> fail `Conflict
+  | Ok (Some `Nontail), _ -> Nontail
+  | Ok (Some `Tail), Tail -> Tail
+  | Ok (Some `Tail), Nontail -> fail `Not_a_tailcall
+  | Ok None, Nontail -> Default
+  | Ok None, Tail ->
+    match sfunct with
+    | Pexp_ident lid ->
+      begin match Env.find_value_by_name lid.txt env with
+      | exception Not_found ->
+        (* The failed lookup will cause an error later *)
+        Tail
+      | _, { val_kind = Val_prim _prim } ->
+        (* FIXME: check which prims need tail calls *)
+        Tail
+      | _, { val_binding = binding } ->
+        match binding with
+        | { vbt_in_module = true; vbt_defined = true }
+        | { vbt_is_func = true; vbt_defined = true } ->
+          Default
+        | { vbt_defined = false }
+        | { vbt_in_module = false; vbt_is_func = false } ->
+          Tail
+      end
+    | _ -> Tail
 
 let mode_return mode =
   { position = Tail;
@@ -591,6 +611,7 @@ type pattern_variable =
     pv_loc: Location.t;
     pv_as_var: bool;
     pv_attributes: attributes;
+    pv_binding: value_binding_type;
   }
 
 type module_variable =
@@ -618,8 +639,8 @@ let maybe_add_pattern_variables_ghost loc_let env pv =
        end
     ) pv env
 
-let enter_variable ?(is_module=false) ?(is_as_variable=false) loc name mode ty
-    attrs =
+let enter_variable ?(is_module=false) ?(is_as_variable=false) loc name mode
+    binding ty attrs =
   if List.exists (fun {pv_id; _} -> Ident.name pv_id = name.txt)
       !pattern_variables
   then raise(Error(loc, Env.empty, Multiply_bound_variable name.txt));
@@ -630,7 +651,8 @@ let enter_variable ?(is_module=false) ?(is_as_variable=false) loc name mode ty
      pv_type = ty;
      pv_loc = loc;
      pv_as_var = is_as_variable;
-     pv_attributes = attrs} :: !pattern_variables;
+     pv_attributes = attrs;
+     pv_binding = binding } :: !pattern_variables;
   if is_module then begin
     (* Note: unpack patterns enter a variable of the same name *)
     if not !allow_modules then
@@ -1604,23 +1626,25 @@ let as_comp_pattern
    does not match any value.  *)
 let rec type_pat
   : type k r . k pattern_category -> no_existentials:_ -> mode:_ ->
-      alloc_mode:_ -> env:_ -> _ -> _ -> (k general_pattern -> r) -> r
-  = fun category ~no_existentials ~mode ~alloc_mode
+      alloc_mode:_ -> binding:_ -> env:_ -> _ -> _ ->
+      (k general_pattern -> r) -> r
+  = fun category ~no_existentials ~mode ~alloc_mode ~binding
         ~env sp expected_ty k ->
   Builtin_attributes.warning_scope sp.ppat_attributes
     (fun () ->
        type_pat_aux category ~no_existentials ~mode
-         ~alloc_mode ~env sp expected_ty k
+         ~alloc_mode ~binding ~env sp expected_ty k
     )
 
 and type_pat_aux
   : type k r . k pattern_category -> no_existentials:_ -> mode:_
-         -> alloc_mode:expected_pat_mode -> env:_ -> _ -> _
+         -> alloc_mode:expected_pat_mode -> binding:_ -> env:_ -> _ -> _
          -> (k general_pattern -> r) -> r
   = fun category ~no_existentials ~mode
-      ~alloc_mode ~env sp expected_ty k ->
-  let type_pat category ?(mode=mode) ?(alloc_mode=alloc_mode) ?(env=env) =
-    type_pat category ~no_existentials ~mode ~alloc_mode ~env
+      ~alloc_mode ~binding ~env sp expected_ty k ->
+  let type_pat category ?(mode=mode) ?(alloc_mode=alloc_mode)
+               ?(binding=binding) ?(env=env) =
+    type_pat category ~no_existentials ~mode ~alloc_mode ~binding ~env
   in
   let loc = sp.ppat_loc in
   let refine =
@@ -1684,7 +1708,7 @@ and type_pat_aux
         if name.txt = "*extension*" then
           Ident.create_local name.txt
         else
-          enter_variable loc name alloc_mode.mode ty sp.ppat_attributes
+          enter_variable loc name alloc_mode.mode binding ty sp.ppat_attributes
       in
       rvp k {
         pat_desc = Tpat_var (id, name);
@@ -1708,7 +1732,7 @@ and type_pat_aux
             pat_env = !env }
       | Some s ->
           let v = { name with txt = s } in
-          let id = enter_variable loc v alloc_mode.mode
+          let id = enter_variable loc v alloc_mode.mode binding
                      t ~is_module:true sp.ppat_attributes in
           rvp k {
             pat_desc = Tpat_var (id, v);
@@ -1739,7 +1763,7 @@ and type_pat_aux
           init_def generic_level;
           let _, ty' = instance_poly ~keep_names:true false tyl body in
           end_def ();
-          let id = enter_variable lloc name alloc_mode.mode ty' attrs in
+          let id = enter_variable lloc name alloc_mode.mode binding ty' attrs in
           rvp k {
             pat_desc = Tpat_var (id, name);
             pat_loc = lloc;
@@ -1759,7 +1783,7 @@ and type_pat_aux
         end_def ();
         generalize ty_var;
         let id =
-          enter_variable ~is_as_variable:true loc name mode
+          enter_variable ~is_as_variable:true loc name mode binding
             ty_var sp.ppat_attributes
         in
         rvp k {
@@ -2203,10 +2227,10 @@ and type_pat_aux
       raise (Error_forward (Builtin_attributes.error_of_extension ext))
 
 let type_pat category ?no_existentials ?(mode=Normal)
-    ?(lev=get_current_level()) ~alloc_mode env sp expected_ty =
+    ?(lev=get_current_level()) ~alloc_mode ~binding env sp expected_ty =
   Misc.protect_refs [Misc.R (gadt_equations_level, Some lev)] (fun () ->
         type_pat category ~no_existentials ~mode
-          ~alloc_mode ~env sp expected_ty (fun x -> x)
+          ~alloc_mode ~binding ~env sp expected_ty (fun x -> x)
     )
 
 (* this function is passed to Partial.parmatch
@@ -2224,7 +2248,9 @@ let partial_pred ~lev ~splitting_mode ?(explode=0)
   try
     reset_pattern true;
     let alloc_mode = simple_pat_mode Value_mode.global in
-    let typed_p = type_pat Value ~lev ~mode ~alloc_mode env p expected_ty in
+    let binding = val_binding_param in
+    let typed_p =
+      type_pat Value ~lev ~mode ~alloc_mode ~binding env p expected_ty in
     set_state state env;
     (* types are invalidated but we don't need them here *)
     Some typed_p
@@ -2255,21 +2281,23 @@ let iter_pattern_variables_type f : pattern_variable list -> unit =
 
 let add_pattern_variables ?check ?check_as env pv =
   List.fold_right
-    (fun {pv_id; pv_mode; pv_type; pv_loc; pv_as_var; pv_attributes} env ->
+    (fun {pv_id; pv_mode; pv_type; pv_loc;
+          pv_as_var; pv_binding; pv_attributes} env ->
        let check = if pv_as_var then check_as else check in
        Env.add_value ?check ~mode:pv_mode pv_id
          {val_type = pv_type; val_kind = Val_reg; Types.val_loc = pv_loc;
-          val_binding = val_binding_param; (* FIXME *)
+          val_binding = pv_binding;
           val_attributes = pv_attributes;
           val_uid = Uid.mk ~current_unit:(Env.get_unit_name ());
          } env
     )
     pv env
 
-let type_pattern category ~lev ~alloc_mode env spat expected_ty =
+let type_pattern category ~lev ~alloc_mode ~binding env spat expected_ty =
   reset_pattern true;
   let new_env = ref env in
-  let pat = type_pat category ~lev ~alloc_mode new_env spat expected_ty in
+  let pat =
+    type_pat category ~lev ~alloc_mode ~binding new_env spat expected_ty in
   let pvs = get_ref pattern_variables in
   let unpacks = get_ref module_variables in
   (pat, !new_env, get_ref pattern_force, pvs, unpacks)
@@ -2279,11 +2307,12 @@ let type_pattern_list
   =
   reset_pattern allow;
   let new_env = ref env in
-  let type_pat (attrs, pat_mode, exp_mode, pat) ty =
+  let type_pat (attrs, pat_mode, exp_mode, binding, pat) ty =
     Builtin_attributes.warning_scope ~ppwarning:false attrs
       (fun () ->
          exp_mode,
-         type_pat category ~no_existentials ~alloc_mode:pat_mode new_env pat ty
+         type_pat category ~no_existentials ~alloc_mode:pat_mode ~binding
+           new_env pat ty
       )
   in
   let patl = List.map2 type_pat spatl expected_tys in
@@ -2302,6 +2331,7 @@ let type_class_arg_pattern cl_num val_env met_env l spat =
   let alloc_mode = simple_pat_mode Value_mode.global in
   let pat =
     type_pat Value ~no_existentials:In_class_args ~alloc_mode
+      ~binding:val_binding_param
       (ref val_env) spat nv in
   if has_variants pat then begin
     Parmatch.pressure_variants val_env [pat];
@@ -2354,9 +2384,10 @@ let type_self_pattern cl_num privty val_env met_env par_env spat =
   reset_pattern false;
   let nv = newvar() in
   let alloc_mode = simple_pat_mode Value_mode.global in
+  let binding = val_binding_param in
   let pat =
     type_pat Value ~no_existentials:In_self_pattern
-      ~alloc_mode (ref val_env) spat nv
+      ~alloc_mode ~binding (ref val_env) spat nv
   in
   List.iter (fun f -> f()) (get_ref pattern_force);
   let meths = ref Meths.empty in
@@ -2372,7 +2403,7 @@ let type_self_pattern cl_num privty val_env met_env par_env spat =
           Env.add_value pv_id
             {val_type = pv_type;
              val_kind = Val_self (meths, vars, cl_num, privty);
-             val_binding = val_binding_param;
+             val_binding = binding;
              val_attributes = pv_attributes;
              val_loc = pv_loc;
              val_uid = Uid.mk ~current_unit:(Env.get_unit_name ());
@@ -3519,7 +3550,7 @@ and type_expect_
       { exp with exp_loc = loc }
   | Pexp_apply(sfunct, sargs) ->
       assert (sargs <> []);
-      let position = apply_position env expected_mode sexp in
+      let position = apply_position env expected_mode sexp sfunct.pexp_desc in
       let funct_mode, funct_expected_mode =
         match position with
         | Tail ->
@@ -4115,7 +4146,7 @@ and type_expect_
       if !Clflags.principal then begin_def ();
       let obj = type_exp env mode_global e in
       let obj_meths = ref None in
-      let ap_pos = apply_position env expected_mode sexp in
+      let ap_pos = apply_position env expected_mode sexp e.pexp_desc in
       begin try
         let (meth, exp, typ) =
           match obj.exp_desc with
@@ -4245,7 +4276,7 @@ and type_expect_
       end
   | Pexp_new cl ->
       let (cl_path, cl_decl) = Env.lookup_class ~loc:cl.loc cl.txt env in
-      let ap_pos = apply_position env expected_mode sexp in
+      let ap_pos = apply_position env expected_mode sexp (Pexp_ident cl) in
       begin match cl_decl.cty_new with
           None ->
             raise(Error(loc, env, Virtual_class cl.txt))
@@ -5687,7 +5718,9 @@ and type_cases
         end_def ();
         generalize_structure ty_arg;
         let (pat, ext_env, force, pvs, unpacks) =
-          type_pattern category ~lev ~alloc_mode:pmode env pc_lhs ty_arg
+          type_pattern category ~lev ~alloc_mode:pmode
+            ~binding:val_binding_param
+            env pc_lhs ty_arg
         in
         pattern_force := force @ !pattern_force;
         let pat =
@@ -5846,11 +5879,18 @@ and type_cases
 (* Typing of let bindings *)
 
 and type_let
-    ?(check = fun s -> Warnings.Unused_var s)
-    ?(check_strict = fun s -> Warnings.Unused_var_strict s)
+    ?(in_module = false)
     existential_context
     env rec_flag spat_sexp_list allow =
   let open Ast_helper in
+  let check, check_strict =
+    if in_module then
+      (fun s -> Warnings.Unused_value_declaration s),
+      (fun s -> Warnings.Unused_value_declaration s)
+    else
+      (fun s -> Warnings.Unused_var s),
+      (fun s -> Warnings.Unused_var_strict s)
+  in
   begin_def();
   if !Clflags.principal then begin_def ();
 
@@ -5881,6 +5921,7 @@ and type_let
     | Recursive -> Some Value_mode.global
     | Nonrecursive -> None
   in
+  let is_recursive = (rec_flag = Recursive) in
   let spatl =
     List.map
       (fun {pvb_pat=spat; pvb_expr=sexp; pvb_attributes=attrs} ->
@@ -5916,13 +5957,17 @@ and type_let
            | Some mode ->
                simple_pat_mode mode, mode_nontail mode
          in
-         attrs, pat_mode, exp_mode, spat)
+         let binding =
+           { vbt_defined = not is_recursive;
+             vbt_is_func = sexp_is_fun sexp;
+             vbt_in_module = in_module }
+         in
+         attrs, pat_mode, exp_mode, binding, spat)
       spat_sexp_list in
   let nvs = List.map (fun _ -> newvar ()) spatl in
   let (pat_list, new_env, force, pvs, unpacks) =
     type_pattern_list Value existential_context env spatl nvs allow in
-  let attrs_list = List.map (fun (attrs, _, _, _) -> attrs) spatl in
-  let is_recursive = (rec_flag = Recursive) in
+  let attrs_list = List.map (fun (attrs, _, _, _, _) -> attrs) spatl in
   (* If recursive, first unify with an approximation of the expression *)
   if is_recursive then
     List.iter2
@@ -6097,9 +6142,11 @@ and type_let
          )
     )
     pat_list
-    (List.map2 (fun (attrs, _, _, _) (e, _) -> attrs, e) spatl exp_list);
+    (List.map2 (fun (attrs, _, _, _, _) (e, _) -> attrs, e) spatl exp_list);
   let pvs = List.map (fun pv -> { pv with pv_type = instance pv.pv_type}) pvs in
   end_def();
+  if is_recursive then
+    List.iter (fun (_, _, _, b, _) -> b.vbt_defined <- true) spatl;
   List.iter2
     (fun (_,pat) (exp, _) ->
        if maybe_expansive exp then
@@ -6259,7 +6306,9 @@ and type_andops env sarg sands expected_ty =
           (mk_expected ~explanation:In_comprehension_argument iter_ty) in
       let pat =
         let alloc_mode = simple_pat_mode Value_mode.global in
-        type_pat Value ~no_existentials:In_self_pattern ~alloc_mode (ref env) param item_ty
+        let binding = val_binding_param in
+        type_pat Value ~no_existentials:In_self_pattern ~alloc_mode ~binding
+          (ref env) param item_ty
       in
       let pv = !pattern_variables in
       pattern_variables := [];
@@ -6317,11 +6366,7 @@ and type_andops env sarg sands expected_ty =
 let type_binding env rec_flag spat_sexp_list =
   Typetexp.reset_type_variables();
   let (pat_exp_list, new_env, _unpacks) =
-    type_let
-      ~check:(fun s -> Warnings.Unused_value_declaration s)
-      ~check_strict:(fun s -> Warnings.Unused_value_declaration s)
-      At_toplevel
-      env rec_flag spat_sexp_list false
+    type_let ~in_module:true At_toplevel env rec_flag spat_sexp_list false
   in
   (pat_exp_list, new_env)
 

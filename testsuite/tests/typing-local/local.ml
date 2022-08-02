@@ -1067,22 +1067,22 @@ let print (local_ x) = print_string !x
 
 let foo x =
   let r = local_ { contents = x } in
-  print r
+  print r [@tail]
 [%%expect{|
 val print : local_ string ref -> unit = <fun>
 Line 5, characters 8-9:
-5 |   print r
+5 |   print r [@tail]
             ^
 Error: This local value escapes its region
   Hint: This argument cannot be local, because this is a tail call
 |}]
 
 let local_cb (local_ f) = f ()
-let foo (local_ x) = local_cb (fun () -> x := 17; 42)
+let foo (local_ x) = local_cb (fun () -> x := 17; 42) [@tail]
 [%%expect{|
 val local_cb : local_ (unit -> 'a) -> 'a = <fun>
 Line 2, characters 41-42:
-2 | let foo (local_ x) = local_cb (fun () -> x := 17; 42)
+2 | let foo (local_ x) = local_cb (fun () -> x := 17; 42) [@tail]
                                              ^
 Error: The value x is local, so cannot be used inside a closure that might escape
 Hint: The closure might escape because it is an argument to a tail call
@@ -1123,10 +1123,10 @@ val foo : 'a -> int = <fun>
 let foo x =
   let r = local_ { contents = x } in
   let local_ foo () = r.contents in
-  foo ()
+  foo () [@tail]
 [%%expect{|
 Line 4, characters 2-5:
-4 |   foo ()
+4 |   foo () [@tail]
       ^^^
 Error: This local value escapes its region
   Hint: This function cannot be local, because this is a tail call
@@ -1148,6 +1148,52 @@ let foo x =
 [%%expect{|
 val foo : 'a -> local_ 'a = <fun>
 |}]
+
+(* Tail call heuristics *)
+let use (local_ x) = ()
+
+let tail_mod () = use (local_ ref 42)
+[%%expect{|
+val use : local_ 'a -> unit = <fun>
+val tail_mod : unit -> unit = <fun>
+|}]
+
+let tail_cont k = k (local_ ref 42)
+[%%expect{|
+Line 1, characters 20-35:
+1 | let tail_cont k = k (local_ ref 42)
+                        ^^^^^^^^^^^^^^^
+Error: This local value escapes its region
+  Hint: This argument cannot be local, because this is a tail call
+|}]
+
+let tail_complex () = (fun _ -> ()) (local_ ref 42)
+[%%expect{|
+Line 1, characters 36-51:
+1 | let tail_complex () = (fun _ -> ()) (local_ ref 42)
+                                        ^^^^^^^^^^^^^^^
+Error: This local value escapes its region
+  Hint: This argument cannot be local, because this is a tail call
+|}]
+
+let tail_local_nonfn k =
+  let k' = k in
+  k' (local_ ref 42)
+[%%expect{|
+Line 3, characters 5-20:
+3 |   k' (local_ ref 42)
+         ^^^^^^^^^^^^^^^
+Error: This local value escapes its region
+  Hint: This argument cannot be local, because this is a tail call
+|}]
+
+let tail_local_fn k =
+  let k' x = k x in
+  k' (local_ ref 42)
+[%%expect{|
+val tail_local_fn : (local_ int ref -> 'a) -> 'a = <fun>
+|}]
+
 
 (* Cannot return local values without annotations on all exits *)
 
