@@ -197,6 +197,23 @@ let rcp node =
 ;;
 
 
+let delayed_checks = ref []
+let reset_delayed_checks () = delayed_checks := []
+let add_delayed_check f =
+  delayed_checks := (f, Warnings.backup ()) :: !delayed_checks
+
+let force_delayed_checks () =
+  (* checks may change type levels *)
+  let snap = Btype.snapshot () in
+  let w_old = Warnings.backup () in
+  List.iter
+    (fun (f, w) -> Warnings.restore w; f ())
+    (List.rev !delayed_checks);
+  Warnings.restore w_old;
+  reset_delayed_checks ();
+  Btype.backtrack snap
+
+
 type recarg =
   | Allowed
   | Required
@@ -227,39 +244,76 @@ type expected_mode =
     (* for t in tuple_modes, t <= regional_to_global mode *)
   }
 
-let apply_position env (expected_mode : expected_mode) sexp sfunct : apply_position =
+
+(* Recursively bound names that are tail-called (for warning) *)
+let tail_called_rec_names : Uid.t list ref = Local_store.s_ref []
+
+(* Local function definitions that tail call recursive bindings *)
+let local_fns_with_rec_tailcall : unit Uid.Tbl.t ref =
+  Local_store.s_table Types.Uid.Tbl.create 16
+
+(* Local function definitions that are ever called in non-tail position *)
+let local_fns_called_nontail : unit Uid.Tbl.t ref =
+  Local_store.s_table Types.Uid.Tbl.create 16
+
+let apply_position env (expected_mode : expected_mode) sexp sfunct :
+      apply_position * [`Nontail | `Tail] option =
   let fail err =
     raise (Error (sexp.pexp_loc, env, Bad_tail_annotation err))
   in
-  match
-    Builtin_attributes.tailcall sexp.pexp_attributes,
-    expected_mode.position
-  with
-  | Error `Conflict, _ -> fail `Conflict
-  | Ok (Some `Nontail), _ -> Nontail
-  | Ok (Some `Tail), Tail -> Tail
-  | Ok (Some `Tail), Nontail -> fail `Not_a_tailcall
-  | Ok None, Nontail -> Default
-  | Ok None, Tail ->
+  let called_val =
     match sfunct with
     | Pexp_ident lid ->
-      begin match Env.find_value_by_name lid.txt env with
-      | exception Not_found ->
-        (* The failed lookup will cause an error later *)
-        Tail
-      | _, { val_kind = Val_prim _prim } ->
-        (* FIXME: check which prims need tail calls *)
-        Tail
-      | _, { val_binding = binding } ->
-        match binding with
-        | { vbt_in_module = true; vbt_defined = true }
-        | { vbt_is_func = true; vbt_defined = true } ->
-          Default
-        | { vbt_defined = false }
-        | { vbt_in_module = false; vbt_is_func = false } ->
-          Tail
-      end
-    | _ -> Tail
+       begin match Env.find_value_by_name lid.txt env with
+       | exception Not_found -> None
+       | _, v -> Some v
+       end
+    | _ -> None
+  in
+  begin match expected_mode.position, called_val with
+  | Tail, Some { val_uid = uid; val_binding = { vbt_defined = false } } ->
+    tail_called_rec_names := uid :: !tail_called_rec_names
+  | Nontail,
+    Some { val_uid = uid;
+           val_binding =
+             { vbt_defined = true; vbt_is_func = true; vbt_in_module = false }
+         } ->
+    Uid.Tbl.replace !local_fns_called_nontail uid ();
+  | _ -> ()
+  end;
+  match Builtin_attributes.tailcall sexp.pexp_attributes with
+  | Error `Conflict -> fail `Conflict
+  | Ok annot ->
+    match annot, expected_mode.position, called_val with
+    | Some `Nontail, _, _ ->
+       Nontail, annot
+    | Some `Tail, Tail, _ ->
+       Tail, annot
+    | Some `Tail, Nontail, _ ->
+       fail `Not_a_tailcall
+    | None, Nontail, _ ->
+       Default, annot
+    | None, Tail, None ->
+       Tail, annot
+    | None, Tail, Some { val_kind = Val_prim _prim } ->
+       (* FIXME: check which prims need tail calls *)
+       Tail, annot
+    | None, Tail, Some { val_binding = binding; val_uid = uid } ->
+       match binding with
+       | { vbt_defined = false }
+       | { vbt_in_module = false; vbt_is_func = false } ->
+          Tail, annot
+       | { vbt_in_module = true; vbt_defined = true } ->
+          Default, annot
+       | { vbt_defined = true; vbt_is_func = true; vbt_in_module = false } ->
+          (* Call to a local function that contains a recursive tailcalls.
+             Warn about this if there are no non-tail calls to this function. *)
+          if Uid.Tbl.mem !local_fns_with_rec_tailcall uid then
+            add_delayed_check
+              (fun () ->
+                if not (Uid.Tbl.mem !local_fns_called_nontail uid) then
+                  Location.prerr_warning sexp.pexp_loc Warnings.Not_a_tailcall);
+          Default, annot
 
 let mode_return mode =
   { position = Tail;
@@ -2452,22 +2506,6 @@ let rec cases_tuple_arity cases =
     | Not_local_tuple -> Not_local_tuple
     | arity -> combine_pat_tuple_arity arity (cases_tuple_arity rest)
 
-let delayed_checks = ref []
-let reset_delayed_checks () = delayed_checks := []
-let add_delayed_check f =
-  delayed_checks := (f, Warnings.backup ()) :: !delayed_checks
-
-let force_delayed_checks () =
-  (* checks may change type levels *)
-  let snap = Btype.snapshot () in
-  let w_old = Warnings.backup () in
-  List.iter
-    (fun (f, w) -> Warnings.restore w; f ())
-    (List.rev !delayed_checks);
-  Warnings.restore w_old;
-  reset_delayed_checks ();
-  Btype.backtrack snap
-
 let rec final_subexpression exp =
   match exp.exp_desc with
     Texp_let (_, _, e)
@@ -3550,7 +3588,8 @@ and type_expect_
       { exp with exp_loc = loc }
   | Pexp_apply(sfunct, sargs) ->
       assert (sargs <> []);
-      let position = apply_position env expected_mode sexp sfunct.pexp_desc in
+      let position, tail_annot =
+        apply_position env expected_mode sexp sfunct.pexp_desc in
       let funct_mode, funct_expected_mode =
         match position with
         | Tail ->
@@ -3605,11 +3644,22 @@ and type_expect_
         | _ ->
             funct, sargs
       in
+      let saved_tailcalls = !tail_called_rec_names in
+      tail_called_rec_names := [];
       begin_def ();
       let (args, ty_res, position) =
         type_application env loc expected_mode position funct funct_mode sargs
       in
       end_def ();
+      let new_tailcalls = !tail_called_rec_names in
+      tail_called_rec_names := new_tailcalls @ saved_tailcalls;
+      if expected_mode.position = Tail
+         && position <> Typedtree.Tail
+         && tail_annot = None
+         && new_tailcalls <> [] then
+        (* FIXME 
+        Location.prerr_warning loc Warnings.Not_a_tailcall; *)
+        ();
       unify_var env (newvar()) funct.exp_type;
       rue {
         exp_desc = Texp_apply(funct, args, position);
@@ -4146,7 +4196,7 @@ and type_expect_
       if !Clflags.principal then begin_def ();
       let obj = type_exp env mode_global e in
       let obj_meths = ref None in
-      let ap_pos = apply_position env expected_mode sexp e.pexp_desc in
+      let ap_pos, _ = apply_position env expected_mode sexp e.pexp_desc in
       begin try
         let (meth, exp, typ) =
           match obj.exp_desc with
@@ -4276,7 +4326,7 @@ and type_expect_
       end
   | Pexp_new cl ->
       let (cl_path, cl_decl) = Env.lookup_class ~loc:cl.loc cl.txt env in
-      let ap_pos = apply_position env expected_mode sexp (Pexp_ident cl) in
+      let ap_pos, _ = apply_position env expected_mode sexp (Pexp_ident cl) in
       begin match cl_decl.cty_new with
           None ->
             raise(Error(loc, env, Virtual_class cl.txt))
@@ -6032,6 +6082,7 @@ and type_let
            || (is_recursive && (Warnings.is_active Warnings.Unused_rec_flag))))
       attrs_list
   in
+  let rec_bindings = Uid.Tbl.create 10 in
   let mode_pat_slot_list =
     (* Algorithm to detect unused declarations in recursive bindings:
        - During type checking of the definitions, we capture the 'value_used'
@@ -6052,16 +6103,24 @@ and type_let
     List.map2
       (fun attrs (mode, pat) ->
          Builtin_attributes.warning_scope ~ppwarning:false attrs (fun () ->
+           let bindings =
+             List.map
+               (* note: Env.find_value does not trigger the value_used
+                  event *)
+               (fun id -> id, Env.find_value (Path.Pident id) new_env)
+               (Typedtree.pat_bound_idents pat)
+           in
+           if is_recursive then
+             List.iter
+               (fun (_,vd) -> Uid.Tbl.add rec_bindings vd.val_uid ())
+               bindings;
            if not warn_about_unused_bindings then mode, pat, None
            else
              let some_used = ref false in
              (* has one of the identifier of this pattern been used? *)
              let slot = ref [] in
              List.iter
-               (fun id ->
-                  let vd = Env.find_value (Path.Pident id) new_env in
-                  (* note: Env.find_value does not trigger the value_used
-                           event *)
+               (fun (id, vd) ->
                   let name = Ident.name id in
                   let used = ref false in
                   if not (name = "" || name.[0] = '_' || name.[0] = '#') then
@@ -6083,7 +6142,7 @@ and type_let
                          some_used := true
                     )
                )
-               (Typedtree.pat_bound_idents pat);
+               bindings;
              mode, pat, Some slot
          ))
       attrs_list
@@ -6093,8 +6152,11 @@ and type_let
     List.map2
       (fun {pvb_expr=sexp; pvb_attributes; _} (mode, pat, slot) ->
         if is_recursive then current_slot := slot;
-        match pat.pat_type.desc with
-        | Tpoly (ty, tl) ->
+        let saved_tailcalls = !tail_called_rec_names in
+        tail_called_rec_names := [];
+        let res =
+          match pat.pat_type.desc with
+          | Tpoly (ty, tl) ->
             if !Clflags.principal then begin_def ();
             let vars, ty' = instance_poly ~keep_names:true true tl ty in
             if !Clflags.principal then begin
@@ -6112,7 +6174,7 @@ and type_let
               )
             in
             exp, Some vars
-        | _ ->
+          | _ ->
             let exp =
               Builtin_attributes.warning_scope pvb_attributes (fun () ->
                   if rec_flag = Recursive then
@@ -6122,7 +6184,28 @@ and type_let
                     type_expect exp_env mode
                       sexp (mk_expected pat.pat_type))
             in
-            exp, None)
+            exp, None
+        in
+        let nonself_tailcalls =
+          if not is_recursive then !tail_called_rec_names
+          else
+            List.filter
+              (fun n -> not (Uid.Tbl.mem rec_bindings n))
+              !tail_called_rec_names
+        in
+        begin match nonself_tailcalls with
+        | [] -> tail_called_rec_names := saved_tailcalls
+        | _ :: _ ->
+           if sexp_is_fun sexp then begin
+             List.iter
+               (fun id ->
+                 let vd = Env.find_value (Path.Pident id) new_env in
+                 Uid.Tbl.add !local_fns_with_rec_tailcall vd.val_uid ())
+               (Typedtree.pat_bound_idents pat)
+           end;
+           tail_called_rec_names := nonself_tailcalls @ saved_tailcalls
+        end;
+        res)
       spat_sexp_list mode_pat_slot_list in
   current_slot := None;
   if is_recursive && not !rec_needed then begin

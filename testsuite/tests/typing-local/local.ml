@@ -1194,6 +1194,24 @@ let tail_local_fn k =
 val tail_local_fn : (local_ int ref -> 'a) -> 'a = <fun>
 |}]
 
+let rec warn_local_loop n =
+  let go () = warn_local_loop (n-1) in
+  if n > 0 then go () else 42
+[%%expect{|
+Line 3, characters 16-21:
+3 |   if n > 0 then go () else 42
+                    ^^^^^
+Warning 200 [not-a-tailcall]: This call is not a tail call.
+Hint: Silence this warning by explictly marking this call [@tail] or [@nontail].
+val warn_local_loop : int -> int = <fun>
+|}]
+
+let rec no_warn_local_nontail () =
+  let f () = no_warn_local_nontail () in
+  f (); f ()
+[%%expect{|
+val no_warn_local_nontail : unit -> 'a = <fun>
+|}]
 
 (* Cannot return local values without annotations on all exits *)
 
