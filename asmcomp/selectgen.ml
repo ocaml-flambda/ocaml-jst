@@ -394,8 +394,8 @@ method effects_of exp =
     let from_op =
       match op with
       | Capply _ | Cextcall _ | Cprobe _ | Copaque -> EC.arbitrary
-      | Calloc Alloc_heap -> EC.none
-      | Calloc Alloc_local -> EC.coeffect_only Coeffect.Arbitrary
+      | Calloc (Alloc_heap, _) -> EC.none
+      | Calloc (Alloc_local, _) -> EC.coeffect_only Coeffect.Arbitrary
       | Cstore _ -> EC.effect_only Effect.Arbitrary
       | Cbeginregion | Cendregion -> EC.arbitrary
       | Craise _ | Ccheckbound -> EC.effect_only Effect.Raise

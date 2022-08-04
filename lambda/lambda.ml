@@ -41,56 +41,103 @@ type field_read_semantics =
   | Reads_vary
 
 include (struct
-
-  type alloc_mode =
+  type locality_mode =
     | Alloc_heap
     | Alloc_local
 
-  let alloc_heap = Alloc_heap
+  type uniqueness_mode =
+    | Alloc_unique
+    | Alloc_shared
+
+  type alloc_mode = locality_mode * uniqueness_mode
+
+  let alloc_heap = Alloc_heap, Alloc_shared
 
   let alloc_local : alloc_mode =
-    if Config.stack_allocation then Alloc_local
-    else Alloc_heap
+    if Config.stack_allocation then Alloc_local, Alloc_shared
+    else alloc_heap
 
-  let join_mode a b =
+  let alloc_heap_unique = Alloc_heap, Alloc_unique
+
+  let alloc_local_unique =
+    if Config.stack_allocation then Alloc_local, Alloc_unique
+    else alloc_heap_unique
+
+  let join_mode_locality a b =
     match a, b with
     | Alloc_local, _ | _, Alloc_local -> Alloc_local
     | Alloc_heap, Alloc_heap -> Alloc_heap
 
-end : sig
+  let join_mode_uniqueness a b =
+    match a, b with
+    | Alloc_shared, _ | _, Alloc_shared -> Alloc_shared
+    | Alloc_unique, Alloc_unique -> Alloc_unique
 
-  type alloc_mode = private
+  let join_mode (al, au) (bl, bu) =
+    join_mode_locality al bl, join_mode_uniqueness au bu
+
+end : sig
+  type locality_mode = private
     | Alloc_heap
     | Alloc_local
+
+  type uniqueness_mode = private
+    | Alloc_unique
+    | Alloc_shared
+
+  type alloc_mode = locality_mode * uniqueness_mode
 
   val alloc_heap : alloc_mode
 
   val alloc_local : alloc_mode
+
+  val alloc_heap_unique : alloc_mode
+
+  val alloc_local_unique : alloc_mode
 
   val join_mode : alloc_mode -> alloc_mode -> alloc_mode
 
 end)
 
 let is_local_mode = function
-  | Alloc_heap -> false
-  | Alloc_local -> true
+  | Alloc_heap, _ -> false
+  | Alloc_local, _ -> true
 
 let is_heap_mode = function
-  | Alloc_heap -> true
-  | Alloc_local -> false
+  | Alloc_heap, _ -> true
+  | Alloc_local, _ -> false
 
-let sub_mode a b =
+let sub_mode_locality a b =
   match a, b with
   | Alloc_heap, _ -> true
   | _, Alloc_local -> true
   | Alloc_local, Alloc_heap -> false
 
-let eq_mode a b =
+let sub_mode_uniqueness a b =
+  match a, b with
+  | Alloc_unique, _ -> true
+  | _, Alloc_shared -> true
+  | Alloc_shared, Alloc_unique -> false
+
+let sub_mode (al, au) (bl, bu) =
+  sub_mode_locality al bl && sub_mode_uniqueness au bu
+
+let eq_mode_locality a b =
   match a, b with
   | Alloc_heap, Alloc_heap -> true
   | Alloc_local, Alloc_local -> true
   | Alloc_heap, Alloc_local -> false
   | Alloc_local, Alloc_heap -> false
+
+let eq_mode_uniqueness a b =
+  match a, b with
+  | Alloc_unique, Alloc_unique -> true
+  | Alloc_shared, Alloc_shared -> true
+  | Alloc_unique, Alloc_shared -> false
+  | Alloc_shared, Alloc_unique -> false
+
+let eq_mode (al, au) (bl, bu) =
+  eq_mode_locality al bl && eq_mode_uniqueness au bu
 
 type initialization_or_assignment =
   | Assignment of alloc_mode
@@ -114,7 +161,9 @@ type primitive =
   | Psetglobal of Ident.t
   (* Operations on heap blocks *)
   | Pmakeblock of int * mutable_flag * block_shape * alloc_mode
+  | Preuseblock of int * mutable_flag * reuse_status list * alloc_mode
   | Pmakefloatblock of mutable_flag * alloc_mode
+  | Preusefloatblock of mutable_flag * reuse_status list * alloc_mode
   | Pfield of int * field_read_semantics
   | Pfield_computed of field_read_semantics
   | Psetfield of int * immediate_or_pointer * initialization_or_assignment
@@ -149,7 +198,7 @@ type primitive =
   | Pbyteslength | Pbytesrefu | Pbytessetu | Pbytesrefs | Pbytessets
   (* Array operations *)
   | Pmakearray of array_kind * mutable_flag * alloc_mode
-  | Pduparray of array_kind * mutable_flag
+  | Pduparray of array_kind * mutable_flag * alloc_mode
   | Parraylength of array_kind
   | Parrayrefu of array_kind
   | Parraysetu of array_kind
@@ -226,6 +275,10 @@ and value_kind =
 and block_shape =
   value_kind list option
 
+and reuse_status =
+  | Reuse_set of value_kind
+  | Reuse_keep
+
 and array_kind =
     Pgenarray | Paddrarray | Pintarray | Pfloatarray
 
@@ -250,6 +303,13 @@ and raise_kind =
   | Raise_regular
   | Raise_reraise
   | Raise_notrace
+
+(* For setting fields in reused (regular) blocks. We do not mark floats
+   as immediates as we handle float blocks specially. *)
+let immediate_or_pointer_of_value_kind v =
+  match v with
+  | Pintval -> Immediate
+  | _ -> Pointer
 
 let equal_boxed_integer x y =
   match x, y with
@@ -475,8 +535,8 @@ let check_lfunction fn =
      [Curried {nlocal=0}]. *)
   let nparams = List.length fn.params in
   begin match fn.mode, fn.kind with
-  | Alloc_heap, Tupled -> ()
-  | Alloc_local, Tupled ->
+  | (Alloc_heap, _), Tupled -> ()
+  | (Alloc_local, _), Tupled ->
      (* Tupled optimisation does not apply to local functions *)
      assert false
   | mode, Curried {nlocal} ->
@@ -1113,7 +1173,9 @@ let primitive_may_allocate : primitive -> alloc_mode option = function
   | Prevapply _ | Pdirapply _ -> Some alloc_local
   | Pgetglobal _ | Psetglobal _ -> None
   | Pmakeblock (_, _, _, m) -> Some m
+  | Preuseblock _ -> None
   | Pmakefloatblock (_, m) -> Some m
+  | Preusefloatblock _ -> None
   | Pfield _ | Pfield_computed _ | Psetfield _ | Psetfield_computed _ -> None
   | Pfloatfield (_, _, m) -> Some m
   | Psetfloatfield _ -> None

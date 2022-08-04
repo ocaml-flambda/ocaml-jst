@@ -480,9 +480,38 @@ let rec transl env e =
           assert false
       | (Pmakeblock(tag, _mut, _kind, mode), args) ->
           make_alloc ~mode dbg tag (List.map (transl env) args)
+      | (Preuseblock _, []) ->
+          assert false (* the reused memory cell is the first arg *)
+      | (Preuseblock(_tag, _mut, reuses, mode), id :: args) ->
+          let id = transl env id in
+          let (exp, _ , _) = List.fold_left (fun (exp, args, n) r ->
+              match r, args with
+              | Reuse_keep, _ -> (exp, args, n + 1)
+              | Reuse_set _, [] -> assert false
+              | Reuse_set vk, (arg :: args) ->
+                  (Csequence(remove_unit(
+                       setfield n (Lambda.immediate_or_pointer_of_value_kind vk)
+                         (Lambda.Assignment mode) id (transl env arg) dbg), exp),
+                   args, n + 1)
+              ) (id, args, 0) reuses
+          in exp
+      | (Preusefloatblock _, []) ->
+          assert false (* the reused memory cell is the first arg *)
+      | (Preusefloatblock(_mut, reuses, mode), id :: args) ->
+          let id = transl env id in
+          let (exp, _ , _) = List.fold_left (fun (exp, args, n) r ->
+              match r, args with
+              | Reuse_keep, _ -> (exp, args, n + 1)
+              | Reuse_set _, [] -> assert false
+              | Reuse_set _, (arg :: args) ->
+                  (Csequence(remove_unit(setfloatfield n
+                      (Lambda.Assignment mode) id (transl env arg) dbg), exp),
+                   args, n + 1)
+            ) (id, args, 0) reuses
+          in exp
       | (Pccall prim, args) ->
           transl_ccall env prim args dbg
-      | (Pduparray (kind, _), [Uprim (Pmakearray (kind', _, _), args, _dbg)]) ->
+      | (Pduparray (kind, _, _), [Uprim (Pmakearray (kind', _, _), args, _dbg)]) ->
           (* We arrive here in two cases:
              1. When using Closure, all the time.
              2. When using Flambda, if a float array longer than
@@ -556,7 +585,7 @@ let rec transl env e =
       | (Pread_symbol _, _::_::_::_::_)
       | (Pbigarrayset (_, _, _, _), [])
       | (Pbigarrayref (_, _, _, _), [])
-      | ((Pbigarraydim _ | Pduparray (_, _)), ([] | _::_::_::_::_))
+      | ((Pbigarraydim _ | Pduparray (_, _, _)), ([] | _::_::_::_::_))
       | (Pprobe_is_enabled _, _)
         ->
           fatal_error "Cmmgen.transl:prim, wrong arity"
@@ -759,8 +788,8 @@ and transl_make_array dbg env kind mode args =
   | Pgenarray ->
       let prim =
         match (mode : Lambda.alloc_mode) with
-        | Alloc_heap -> "caml_make_array"
-        | Alloc_local ->
+        | Alloc_heap, _ -> "caml_make_array"
+        | Alloc_local, _ ->
           assert Config.stack_allocation;
           "caml_make_array_local"
       in
@@ -887,10 +916,11 @@ and transl_prim_1 env p arg dbg =
     | Pstringrefu | Pstringrefs | Pbytesrefu | Pbytessetu
     | Pbytesrefs | Pbytessets | Pisout | Pread_symbol _
     | Pmakeblock (_, _, _, _) | Psetfield (_, _, _) | Psetfield_computed (_, _)
+    | Preuseblock (_, _, _, _) | Preusefloatblock (_, _, _)
     | Psetfloatfield (_, _) | Pduprecord (_, _) | Pccall _ | Pdivint _
     | Pmodint _ | Pintcomp _ | Pfloatcomp _ | Pmakearray (_, _, _)
     | Pcompare_ints | Pcompare_floats | Pcompare_bints _
-    | Pduparray (_, _) | Parrayrefu _ | Parraysetu _
+    | Pduparray (_, _, _) | Parrayrefu _ | Parraysetu _
     | Parrayrefs _ | Parraysets _ | Paddbint _ | Psubbint _ | Pmulbint _
     | Pdivbint _ | Pmodbint _ | Pandbint _ | Porbint _ | Pxorbint _
     | Plslbint _ | Plsrbint _ | Pasrbint _ | Pbintcomp (_, _)
@@ -1068,9 +1098,9 @@ and transl_prim_2 env p arg1 arg2 dbg =
   | Pabsfloat _ | Pstringlength | Pbyteslength | Pbytessetu | Pbytessets
   | Pisint | Pbswap16 | Pint_as_pointer | Popaque | Pread_symbol _
   | Pmakeblock (_, _, _, _) | Pfield _ | Psetfield_computed (_, _)
-  | Pfloatfield _
+  | Pfloatfield _ | Preuseblock (_, _, _, _) | Preusefloatblock (_, _, _)
   | Pduprecord (_, _) | Pccall _ | Praise _ | Poffsetint _ | Poffsetref _
-  | Pmakearray (_, _, _) | Pduparray (_, _) | Parraylength _ | Parraysetu _
+  | Pmakearray (_, _, _) | Pduparray (_, _, _) | Parraylength _ | Parraysetu _
   | Parraysets _ | Pbintofint _ | Pintofbint _ | Pcvtbint (_, _, _)
   | Pnegbint _ | Pbigarrayref (_, _, _, _) | Pbigarrayset (_, _, _, _)
   | Pbigarraydim _ | Pbytes_set _ | Pbigstring_set _ | Pbbswap _
@@ -1123,12 +1153,12 @@ and transl_prim_3 env p arg1 arg2 arg3 dbg =
   | Pmulfloat _ | Pdivfloat _ | Pstringlength | Pstringrefu | Pstringrefs
   | Pbyteslength | Pbytesrefu | Pbytesrefs | Pisint | Pisout
   | Pbswap16 | Pint_as_pointer | Popaque | Pread_symbol _
-  | Pmakeblock (_, _, _, _)
+  | Pmakeblock (_, _, _, _) | Preuseblock(_, _, _, _) | Preusefloatblock(_, _, _)
   | Pfield _ | Psetfield (_, _, _) | Pfloatfield _ | Psetfloatfield (_, _)
   | Pduprecord (_, _) | Pccall _ | Praise _ | Pdivint _ | Pmodint _ | Pintcomp _
   | Pcompare_ints | Pcompare_floats | Pcompare_bints _
   | Poffsetint _ | Poffsetref _ | Pfloatcomp _ | Pmakearray (_, _, _)
-  | Pduparray (_, _) | Parraylength _ | Parrayrefu _ | Parrayrefs _
+  | Pduparray (_, _, _) | Parraylength _ | Parrayrefu _ | Parrayrefs _
   | Pbintofint _ | Pintofbint _ | Pcvtbint _ | Pnegbint _ | Paddbint _
   | Psubbint _ | Pmulbint _ | Pdivbint _ | Pmodbint _ | Pandbint _ | Porbint _
   | Pxorbint _ | Plslbint _ | Plsrbint _ | Pasrbint _ | Pbintcomp (_, _)

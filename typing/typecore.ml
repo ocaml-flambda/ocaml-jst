@@ -3780,8 +3780,13 @@ and type_expect_
           None -> None
         | Some sexp ->
             if !Clflags.principal then begin_def ();
-            (* TODO: mode can be more relaxed than this if fields are nonlocal *)
-            let exp = type_exp ~recarg env (mode_subcomponent expected_mode) sexp in
+            (* TODO: mode can be more relaxed than this if fields are nonlocal
+               and the update is not unique *)
+            let is_unique_with = has_unique_attr_exp sexp in
+            let expected_mode = if is_unique_with
+              then mode_unique (mode_subcomponent expected_mode).mode
+              else mode_subcomponent expected_mode in
+            let exp = type_exp ~recarg env expected_mode sexp in
             if !Clflags.principal then begin
               end_def ();
               generalize_structure exp.exp_type

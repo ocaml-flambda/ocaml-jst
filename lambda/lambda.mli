@@ -34,14 +34,26 @@ type immediate_or_pointer =
   | Immediate
   | Pointer
 
-type alloc_mode = private
+type locality_mode = private
   | Alloc_heap
   | Alloc_local
+
+type uniqueness_mode = private
+  | Alloc_unique
+  | Alloc_shared
+
+(* CR-soon: This can be private once it is possible to pattern-match on private aliases *)
+type alloc_mode = locality_mode * uniqueness_mode
 
 val alloc_heap : alloc_mode
 
 (* Actually [Alloc_heap] if [Config.stack_allocation] is [false] *)
 val alloc_local : alloc_mode
+
+val alloc_heap_unique : alloc_mode
+
+(* Actually [Alloc_heap] if [Config.stack_allocation] is [false] *)
+val alloc_local_unique : alloc_mode
 
 type initialization_or_assignment =
   (* [Assignment Alloc_local] is a mutation of a block that may be heap or local.
@@ -81,7 +93,9 @@ type primitive =
   | Psetglobal of Ident.t
   (* Operations on heap blocks *)
   | Pmakeblock of int * mutable_flag * block_shape * alloc_mode
+  | Preuseblock of int * mutable_flag * reuse_status list * alloc_mode
   | Pmakefloatblock of mutable_flag * alloc_mode
+  | Preusefloatblock of mutable_flag * reuse_status list * alloc_mode
   | Pfield of int * field_read_semantics
   | Pfield_computed of field_read_semantics
   | Psetfield of int * immediate_or_pointer * initialization_or_assignment
@@ -116,7 +130,7 @@ type primitive =
   | Pbyteslength | Pbytesrefu | Pbytessetu | Pbytesrefs | Pbytessets
   (* Array operations *)
   | Pmakearray of array_kind * mutable_flag * alloc_mode
-  | Pduparray of array_kind * mutable_flag
+  | Pduparray of array_kind * mutable_flag * alloc_mode
   (** For [Pduparray], the argument must be an immutable array.
       The arguments of [Pduparray] give the kind and mutability of the
       array being *produced* by the duplication. *)
@@ -199,6 +213,10 @@ and value_kind =
 and block_shape =
   value_kind list option
 
+and reuse_status =
+  | Reuse_set of value_kind
+  | Reuse_keep
+
 and boxed_integer = Primitive.boxed_integer =
     Pnativeint | Pint32 | Pint64
 
@@ -220,6 +238,8 @@ and raise_kind =
   | Raise_regular
   | Raise_reraise
   | Raise_notrace
+
+val immediate_or_pointer_of_value_kind : value_kind -> immediate_or_pointer
 
 val equal_primitive : primitive -> primitive -> bool
 

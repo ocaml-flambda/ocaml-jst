@@ -765,14 +765,14 @@ let transl_primitive loc p env ty ~poly_mode path =
      let arg_modes = List.map to_alloc_mode p.prim_native_repr_args in
      let region =
        match to_alloc_mode p.prim_native_repr_res with
-       | Alloc_heap -> true
-       | Alloc_local -> false
+       | Alloc_heap, _ -> true
+       | Alloc_local, _ -> false
      in
      let rec count_nlocal = function
        | [] -> assert false
        | [_] -> if region then 0 else 1
-       | Alloc_heap :: args -> count_nlocal args
-       | (Alloc_local :: _) as args -> List.length args
+       | (Alloc_heap, _) :: args -> count_nlocal args
+       | ((Alloc_local, _) :: _) as args -> List.length args
      in
      let nlocal = count_nlocal arg_modes in
      let lfunc =
@@ -809,8 +809,8 @@ let lambda_primitive_needs_event_after = function
   | Pbbswap _ -> true
 
   | Pidentity | Pbytes_to_string | Pbytes_of_string | Pignore | Psetglobal _
-  | Pgetglobal _ | Pmakeblock _ | Pmakefloatblock _
-  | Pfield _ | Pfield_computed _ | Psetfield _
+  | Pgetglobal _ | Pmakeblock _ | Preuseblock _ | Pmakefloatblock _
+  | Preusefloatblock _ | Pfield _ | Pfield_computed _ | Psetfield _
   | Psetfield_computed _ | Pfloatfield _ | Psetfloatfield _ | Praise _
   | Psequor | Psequand | Pnot | Pnegint | Paddint | Psubint | Pmulint
   | Pdivint _ | Pmodint _ | Pandint | Porint | Pxorint | Plslint | Plsrint

@@ -188,7 +188,7 @@ let variable_and_symbol_invariants (program : Flambda.program) =
     | Var var -> check_variable_is_bound env var
     | Apply { func; args; kind; dbg; inlined; specialise; probe;
               reg_close = (Rc_close_at_apply|Rc_normal|Rc_nontail);
-              mode = (Alloc_heap|Alloc_local) } ->
+              mode = ((Alloc_heap|Alloc_local), (Alloc_shared|Alloc_unique)) } ->
       check_variable_is_bound env func;
       check_variables_are_bound env args;
       ignore_call_kind kind;
@@ -200,8 +200,8 @@ let variable_and_symbol_invariants (program : Flambda.program) =
       check_mutable_variable_is_bound env being_assigned;
       check_variable_is_bound env new_value
     | Send { kind; meth; obj; args; dbg;
-             reg_close = (Rc_normal | Rc_close_at_apply | Rc_nontail);
-             mode = (Alloc_heap | Alloc_local) } ->
+             reg_close = (Rc_normal|Rc_close_at_apply|Rc_nontail);
+             mode = ((Alloc_heap|Alloc_local), (Alloc_shared|Alloc_unique)) } ->
       ignore_meth_kind kind;
       check_variable_is_bound env meth;
       check_variable_is_bound env obj;

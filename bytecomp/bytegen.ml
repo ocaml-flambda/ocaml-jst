@@ -112,7 +112,7 @@ let preserve_tailcall_for_prim = function
     Pidentity | Popaque | Pdirapply _ | Prevapply _ | Psequor | Psequand ->
       true
   | Pbytes_to_string | Pbytes_of_string | Pignore | Pgetglobal _ | Psetglobal _
-  | Pmakeblock _ | Pmakefloatblock _
+  | Pmakeblock _ | Preuseblock _ | Pmakefloatblock _ | Preusefloatblock _
   | Pfield _ | Pfield_computed _ | Psetfield _
   | Psetfield_computed _ | Pfloatfield _ | Psetfloatfield _ | Pduprecord _
   | Pccall _ | Praise _ | Pnot | Pnegint | Paddint | Psubint | Pmulint
@@ -763,7 +763,7 @@ let rec comp_expr env exp sz cont =
                  (Kmakeblock(List.length args, 0) ::
                   Kccall("caml_make_array", 1) :: cont)
       end
-  | Lprim (Pduparray (kind, mutability),
+  | Lprim (Pduparray (kind, mutability, _),
            [Lprim (Pmakearray (kind',_,m),args,_)], loc) ->
       assert (kind = kind');
       comp_expr env (Lprim (Pmakearray (kind, mutability, m), args, loc)) sz cont

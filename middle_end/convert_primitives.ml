@@ -26,8 +26,12 @@ let convert (prim : Lambda.primitive) : Clambda_primitives.primitive =
   match prim with
   | Pmakeblock (tag, mutability, shape, mode) ->
       Pmakeblock (tag, mutability, shape, mode)
+  | Preuseblock (tag, mutability, reuse_statuses, mode) ->
+      Preuseblock (tag, mutability, reuse_statuses, mode)
   | Pmakefloatblock (mutability, mode) ->
       Pmakearray (Pfloatarray, mutability, mode)
+  | Preusefloatblock (mutability, reuse_statuses, mode) ->
+      Preusefloatblock (mutability, reuse_statuses, mode)
   | Pfield (field, _) -> Pfield field
   | Pfield_computed _sem -> Pfield_computed
   | Psetfield (field, imm_or_pointer, init_or_assign) ->
@@ -79,7 +83,7 @@ let convert (prim : Lambda.primitive) : Clambda_primitives.primitive =
   | Pbytesrefs -> Pbytesrefs
   | Pbytessets -> Pbytessets
   | Pmakearray (kind, mutability, mode) -> Pmakearray (kind, mutability, mode)
-  | Pduparray (kind, mutability) -> Pduparray (kind, mutability)
+  | Pduparray (kind, mutability, mode) -> Pduparray (kind, mutability, mode)
   | Parraylength kind -> Parraylength kind
   | Parrayrefu kind -> Parrayrefu kind
   | Parraysetu kind -> Parraysetu kind

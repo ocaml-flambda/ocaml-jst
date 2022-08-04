@@ -4698,8 +4698,8 @@ let remove_mode_variables ty =
       visited := TypeSet.add ty !visited;
       match ty.desc with
       | Tarrow ((_,marg,mret),targ,tret,_) ->
-         let _ = Btype.Alloc_mode.constrain_lower marg in
-         let _ = Btype.Alloc_mode.constrain_lower mret in
+         let _ = Btype.Alloc_mode.constrain_global_shared marg in
+         let _ = Btype.Alloc_mode.constrain_global_shared mret in
          go targ; go tret
       | _ -> iter_type_expr go ty
     end

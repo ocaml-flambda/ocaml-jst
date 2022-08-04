@@ -1105,7 +1105,7 @@ let rec close ({ backend; fenv; cenv ; mutable_vars } as env) lam =
           in
           let body =
             match mode, fundesc.fun_region with
-            | Alloc_heap, false -> region body
+            | (Alloc_heap, _), false -> region body
             | _ -> body
           in
           let body =

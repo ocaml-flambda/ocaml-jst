@@ -36,6 +36,8 @@ type primitive =
   | Pread_symbol of string
   (* Operations on heap blocks *)
   | Pmakeblock of int * mutable_flag * block_shape * alloc_mode
+  | Preuseblock of int * mutable_flag * reuse_status list * alloc_mode
+  | Preusefloatblock of mutable_flag * reuse_status list * alloc_mode
   | Pfield of int
   | Pfield_computed
   | Psetfield of int * immediate_or_pointer * initialization_or_assignment
@@ -72,7 +74,7 @@ type primitive =
   (** For [Pmakearray], the list of arguments must not be empty.  The empty
       array should be represented by a distinguished constant in the middle
       end. *)
-  | Pduparray of array_kind * mutable_flag
+  | Pduparray of array_kind * mutable_flag * alloc_mode
   (** For [Pduparray], the argument must be an immutable array.
       The arguments of [Pduparray] give the kind and mutability of the
       array being *produced* by the duplication. *)
@@ -142,6 +144,11 @@ and value_kind = Lambda.value_kind =
   | Parrayval of array_kind
 
 and block_shape = Lambda.block_shape
+
+and reuse_status = Lambda.reuse_status =
+  | Reuse_set of value_kind
+  | Reuse_keep
+
 and boxed_integer = Primitive.boxed_integer =
     Pnativeint | Pint32 | Pint64
 

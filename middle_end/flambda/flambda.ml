@@ -430,8 +430,10 @@ and print_set_of_closures ppf (set_of_closures : set_of_closures) =
       end
     in
     let alloc_mode = match alloc_mode with
-      | Alloc_heap -> "Alloc_heap"
-      | Alloc_local -> "Alloc_local"
+      | Alloc_heap, Alloc_shared -> "Alloc_heap"
+      | Alloc_local, Alloc_shared -> "Alloc_local"
+      | Alloc_heap, Alloc_unique -> "Alloc_heap_unique"
+      | Alloc_local, Alloc_unique -> "Alloc_local_unique"
     in
     fprintf ppf "@[<2>(set_of_closures id=%a@ %a@ @[<2>free_vars={%a@ }@]@ \
         @[<2>specialised_args={%a})@]@ \

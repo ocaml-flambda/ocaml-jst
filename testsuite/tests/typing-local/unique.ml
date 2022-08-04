@@ -135,9 +135,16 @@ type record_update = { x : int }
 type record_update = { x : int; }
 |}]
 
-let update (unique_ r : record_update) = unique_ { unique_ r with x = 1 }
+let update (unique_ r : record_update) =
+  let unique_ x = { unique_ r with x = 1 }
+  in x.x
 [%%expect{|
-val update : unique_ record_update -> record_update = <fun>
+val update : unique_ record_update -> int = <fun>
+|}]
+
+let update2 = update { x = 3 }
+[%%expect{|
+val update2 : int = 1
 |}]
 
 let inf1 (unique_ x : float) = unique_ let y = x in y
@@ -162,14 +169,14 @@ Error: The identifier y was inferred to be unique and thus can not be
  *   Error: z is not unique
  * |}] *)
 
-let inf4 (unique_ x) = let f x = x in unique_ higher_order f x
+let inf4 (unique_ x) = let f x = x in higher_order f x
 [%%expect{|
 val inf4 : unique_ 'a -> 'a = <fun>
 |}]
 
 let unique_default_args ?(unique_ x = 1.0) () = x
 [%%expect{|
-val unique_default_args : ?x:unique_ float -> unit -> float = <fun>
+val unique_default_args : ?x:unique_ float -> (unit -> float) = <fun>
 |}]
 
 type point = { dim : int; x : float; y : float; z : float }

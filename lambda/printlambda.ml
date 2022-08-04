@@ -55,8 +55,10 @@ let array_kind = function
   | Pfloatarray -> "float"
 
 let alloc_mode = function
-  | Alloc_heap -> ""
-  | Alloc_local -> "local"
+  | Alloc_heap, Alloc_shared -> ""
+  | Alloc_local, Alloc_shared -> "local"
+  | Alloc_heap, Alloc_unique -> "unique"
+  | Alloc_local, Alloc_unique -> "localunique"
 
 let boxed_integer_name = function
   | Pnativeint -> "nativeint"
@@ -112,8 +114,8 @@ let field_kind ppf = function
         value_kind') fields
 
 let alloc_kind = function
-  | Alloc_heap -> ""
-  | Alloc_local -> "[L]"
+  | Alloc_heap, _ -> ""
+  | Alloc_local, _ -> "[L]"
 
 let print_boxed_integer_conversion ppf bi1 bi2 m =
   fprintf ppf "%s_of_%s%s" (boxed_integer_name bi2) (boxed_integer_name bi1)
@@ -172,6 +174,22 @@ let block_shape ppf shape = match shape with
         t;
       Format.fprintf ppf ")"
 
+let reuse_status ppf status = match status with
+  | Reuse_keep -> Format.fprintf ppf "_"
+  | Reuse_set vk -> Format.fprintf ppf "%a" field_kind vk
+
+let reuse_statuses ppf statuses = match statuses with
+  | l when List.for_all ((=) (Reuse_set Pgenval)) l -> ()
+  | [] -> ()
+  | [elt] ->
+      Format.fprintf ppf " (%a)" reuse_status elt
+  | (h :: t) ->
+      Format.fprintf ppf " (%a" reuse_status h;
+      List.iter (fun elt ->
+          Format.fprintf ppf ",%a" reuse_status elt)
+        t;
+      Format.fprintf ppf ")"
+
 let integer_comparison ppf = function
   | Ceq -> fprintf ppf "=="
   | Cne -> fprintf ppf "!="
@@ -215,6 +233,15 @@ let primitive ppf = function
   | Pmakeblock(tag, Mutable, shape, mode) ->
       fprintf ppf "make%smutable %i%a"
         (alloc_mode mode) tag block_shape shape
+  | Preuseblock(tag, Immutable, rs, mode) ->
+      fprintf ppf "reuse%sblock %i%a"
+        (alloc_mode mode) tag reuse_statuses rs
+  | Preuseblock(tag, Immutable_unique, rs, mode) ->
+      fprintf ppf "reuse%sblock_unique %i%a"
+        (alloc_mode mode) tag reuse_statuses rs
+  | Preuseblock(tag, Mutable, rs, mode) ->
+      fprintf ppf "reuse%sblock_mutable %i%a"
+        (alloc_mode mode) tag reuse_statuses rs
   | Pmakefloatblock (Immutable, mode) ->
       fprintf ppf "make%sfloatblock Immutable"
         (alloc_mode mode)
@@ -224,6 +251,15 @@ let primitive ppf = function
   | Pmakefloatblock (Mutable, mode) ->
      fprintf ppf "make%sfloatblock Mutable"
         (alloc_mode mode)
+  | Preusefloatblock(Immutable, rs, mode) ->
+      fprintf ppf "reuse%sfloatblock %a"
+        (alloc_mode mode) reuse_statuses rs
+  | Preusefloatblock(Immutable_unique, rs, mode) ->
+      fprintf ppf "reuse%sfloatblock_unique %a"
+        (alloc_mode mode) reuse_statuses rs
+  | Preusefloatblock(Mutable, rs, mode) ->
+      fprintf ppf "reuse%sfloatblock_mutable %a"
+        (alloc_mode mode) reuse_statuses rs
   | Pfield (n, sem) ->
       fprintf ppf "field%a %i" field_read_semantics sem n
   | Pfield_computed sem ->
@@ -238,8 +274,8 @@ let primitive ppf = function
         match init with
         | Heap_initialization -> "(heap-init)"
         | Root_initialization -> "(root-init)"
-        | Assignment Alloc_heap -> ""
-        | Assignment Alloc_local -> "(local)"
+        | Assignment (Alloc_heap, _) -> ""
+        | Assignment (Alloc_local, _) -> "(local)"
       in
       fprintf ppf "setfield_%s%s %i" instr init n
   | Psetfield_computed (ptr, init) ->
@@ -252,8 +288,8 @@ let primitive ppf = function
         match init with
         | Heap_initialization -> "(heap-init)"
         | Root_initialization -> "(root-init)"
-        | Assignment Alloc_heap -> ""
-        | Assignment Alloc_local -> "(local)"
+        | Assignment (Alloc_heap, _) -> ""
+        | Assignment (Alloc_local, _) -> "(local)"
       in
       fprintf ppf "setfield_%s%s_computed" instr init
   | Pfloatfield (n, sem, mode) ->
@@ -264,8 +300,8 @@ let primitive ppf = function
         match init with
         | Heap_initialization -> "(heap-init)"
         | Root_initialization -> "(root-init)"
-        | Assignment Alloc_heap -> ""
-        | Assignment Alloc_local -> "(local)"
+        | Assignment (Alloc_heap, _) -> ""
+        | Assignment (Alloc_local, _) -> "(local)"
       in
       fprintf ppf "setfloatfield%s %i" init n
   | Pduprecord (rep, size) -> fprintf ppf "duprecord %a %i" record_rep rep size
@@ -319,9 +355,9 @@ let primitive ppf = function
      fprintf ppf "make%sarray_imm[%s]" (alloc_mode mode) (array_kind k)
   | Pmakearray (k, Immutable_unique, mode) ->
       fprintf ppf "make%sarray_unique[%s]" (alloc_mode mode) (array_kind k)
-  | Pduparray (k, Mutable) -> fprintf ppf "duparray[%s]" (array_kind k)
-  | Pduparray (k, Immutable) -> fprintf ppf "duparray_imm[%s]" (array_kind k)
-  | Pduparray (k, Immutable_unique) ->
+  | Pduparray (k, Mutable, _) -> fprintf ppf "duparray[%s]" (array_kind k)
+  | Pduparray (k, Immutable, _) -> fprintf ppf "duparray_imm[%s]" (array_kind k)
+  | Pduparray (k, Immutable_unique, _) ->
       fprintf ppf "duparray_unique[%s]" (array_kind k)
   | Parrayrefu k -> fprintf ppf "array.unsafe_get[%s]" (array_kind k)
   | Parraysetu k -> fprintf ppf "array.unsafe_set[%s]" (array_kind k)
@@ -433,7 +469,9 @@ let name_of_primitive = function
   | Pgetglobal _ -> "Pgetglobal"
   | Psetglobal _ -> "Psetglobal"
   | Pmakeblock _ -> "Pmakeblock"
+  | Preuseblock _ -> "Preuseblock"
   | Pmakefloatblock _ -> "Pmakefloatblock"
+  | Preusefloatblock _ -> "Preusefloatblock"
   | Pfield _ -> "Pfield"
   | Pfield_computed _ -> "Pfield_computed"
   | Psetfield _ -> "Psetfield"

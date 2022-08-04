@@ -616,8 +616,8 @@ and close_functions t external_env function_declarations : Flambda.named =
     let nheap =
       match Function_decl.mode decl, Function_decl.kind decl with
       | _, Curried {nlocal} -> List.length params - nlocal
-      | Alloc_heap, Tupled -> List.length params
-      | Alloc_local, Tupled ->
+      | (Alloc_heap, _), Tupled -> List.length params
+      | (Alloc_local, _), Tupled ->
          Misc.fatal_error "Closure_conversion: Tupled Alloc_local function found"
     in
     let params = List.mapi (fun i v ->

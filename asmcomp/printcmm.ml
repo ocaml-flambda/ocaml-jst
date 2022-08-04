@@ -119,8 +119,8 @@ let operation d = function
       Printf.sprintf "extcall \"%s\"%s" lbl (location d)
   | Cload (c, Asttypes.Immutable) -> Printf.sprintf "load %s" (chunk c)
   | Cload (c, Asttypes.Mutable) -> Printf.sprintf "load_mut %s" (chunk c)
-  | Calloc Alloc_heap -> "alloc" ^ location d
-  | Calloc Alloc_local -> "alloc_local" ^ location d
+  | Calloc (Alloc_heap, _) -> "alloc" ^ location d
+  | Calloc (Alloc_local, _) -> "alloc_local" ^ location d
   | Cstore (c, init) ->
     let init =
       match init with

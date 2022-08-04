@@ -75,7 +75,7 @@ let transl_extension_constructor ~scopes env path ext =
       (* Extension constructors are currently always Alloc_heap.
          They could be Alloc_local, but that would require changes
          to pattern typing, as patterns can close over them. *)
-      Lprim (Pmakeblock (Obj.object_tag, Immutable_unique, None, alloc_heap),
+      Lprim (Pmakeblock (Obj.object_tag, Immutable, None, alloc_heap_unique),
         [Lconst (Const_base (Const_string (name, ext.ext_loc, None)));
          Lprim (prim_fresh_oo_id, [Lconst (const_int 0)], loc)],
         loc)
@@ -95,7 +95,7 @@ let extract_float = function
   | _ -> fatal_error "Translcore.extract_float"
 
 let transl_alloc_mode alloc_mode =
-  match Btype.Alloc_mode.constrain_lower alloc_mode with
+  match Btype.Alloc_mode.constrain_global_shared alloc_mode with
   | Global, _ -> alloc_heap
   | Local, _ -> alloc_local
 
@@ -118,16 +118,16 @@ let may_allocate_in_region lam =
   let rec loop = function
     | Lvar _ | Lconst _ -> ()
 
-    | Lfunction {mode=Alloc_heap} -> ()
-    | Lfunction {mode=Alloc_local} -> raise Exit
+    | Lfunction {mode=Alloc_heap,_} -> ()
+    | Lfunction {mode=Alloc_local,_} -> raise Exit
 
-    | Lapply {ap_mode=Alloc_local}
-    | Lsend (_,_,_,_,_,Alloc_local,_) -> raise Exit
+    | Lapply {ap_mode=Alloc_local,_}
+    | Lsend (_,_,_,_,_,(Alloc_local,_),_) -> raise Exit
 
     | Lprim (prim, args, _) ->
        begin match Lambda.primitive_may_allocate prim with
-       | Some Alloc_local -> raise Exit
-       | None | Some Alloc_heap ->
+       | Some (Alloc_local, _) -> raise Exit
+       | None | Some (Alloc_heap, _) ->
           List.iter loop args
        end
     | Lregion _body ->
@@ -553,7 +553,7 @@ and transl_exp0 ~in_new_scope ~scopes e =
               Lprim (Pmakearray (kind, Immutable, mode), ll,
                      of_location ~scopes e.exp_loc)
             in
-            Lprim (Pduparray (kind, Mutable), [imm_array],
+            Lprim (Pduparray (kind, Mutable, mode), [imm_array],
                    of_location ~scopes e.exp_loc)
         | cl ->
             let imm_array =
@@ -565,7 +565,7 @@ and transl_exp0 ~in_new_scope ~scopes e =
               | Pgenarray ->
                   raise Not_constant    (* can this really happen? *)
             in
-            Lprim (Pduparray (kind, Mutable), [imm_array],
+            Lprim (Pduparray (kind, Mutable, mode), [imm_array],
                    of_location ~scopes e.exp_loc)
         end
       with Not_constant ->
@@ -980,13 +980,13 @@ and transl_apply ~scopes
           let body = build_apply handle [Lvar id_arg] loc Rc_normal ret_mode l in
           let nlocal =
             match join_mode mode (join_mode arg_mode ret_mode) with
-            | Alloc_local -> 1
-            | Alloc_heap -> 0
+            | (Alloc_local, _) -> 1
+            | (Alloc_heap, _) -> 0
           in
           let region =
             match ret_mode with
-            | Alloc_local -> false
-            | Alloc_heap -> true
+            | (Alloc_local, _) -> false
+            | (Alloc_heap, _) -> true
           in
           Lfunction{kind = Curried {nlocal}; params = [id_arg, Pgenval];
                     return = Pgenval; body; mode; region;
@@ -1044,8 +1044,8 @@ and transl_curried_function
           | _, Tupled ->
              (* arity > 1 prevents this *)
              assert false
-          | Alloc_heap, (Curried _ as c) -> c
-          | Alloc_local, Curried {nlocal} ->
+          | (Alloc_heap, _), (Curried _ as c) -> c
+          | (Alloc_local, _), Curried {nlocal} ->
              (* all subsequent curried arrows should be local *)
              assert (nlocal = List.length params);
              Curried {nlocal = nlocal + 1}
@@ -1150,8 +1150,8 @@ and transl_function0
     let nlocal =
       if not region then 1
       else match join_mode mode arg_mode with
-        | Alloc_local -> 1
-        | Alloc_heap -> 0
+        | (Alloc_local, _) -> 1
+        | (Alloc_heap, _) -> 0
     in
     ((Curried {nlocal}, [param, kind], return, region), body)
 
@@ -1226,8 +1226,8 @@ and transl_let ~scopes ?(add_regions=false) ?(in_structure=false)
         in
         let lam = if add_regions then maybe_region lam else lam in
         begin match transl_exp_mode expr, lam with
-        | Alloc_heap, _ -> ()
-        | Alloc_local, Lfunction _ -> ()
+        | (Alloc_heap, _), _ -> ()
+        | (Alloc_local, _), Lfunction _ -> ()
         | _ -> Misc.fatal_error "transl_let: local recursive non-function"
         end;
         (id, lam) in
@@ -1239,10 +1239,36 @@ and transl_setinstvar ~scopes loc self var expr =
     [self; var; transl_exp ~scopes expr], loc)
 
 and transl_record ~scopes loc env mode fields repres opt_init_expr =
+  let is_unique_update_on =
+    match opt_init_expr with
+    | None -> None
+    | Some exp -> match Builtin_attributes.has_unique exp.exp_attributes with
+      | Ok false | Error _ -> None
+      | Ok true -> match exp with
+        | { exp_desc = Texp_ident(Path.Pident(_) as path, _, desc, kind) } ->
+            let t = transl_ident (of_location ~scopes exp.exp_loc)
+                      exp.exp_env exp.exp_type path desc kind
+            in Some t
+        | _ -> None in
+  let reuses =
+    Array.map
+      (fun (_lbl, definition) ->
+          match definition with
+          | Kept _typ -> Reuse_keep
+          | Overridden (_lid, expr) ->
+              let field_kind = value_kind expr.exp_env expr.exp_type in
+              Reuse_set field_kind)
+      fields
+  in
+  let reuses = Array.to_list reuses in
   let size = Array.length fields in
   (* Determine if there are "enough" fields (only relevant if this is a
      functional-style record update *)
   let no_init = match opt_init_expr with None -> true | _ -> false in
+  let mut : Lambda.mutable_flag =
+    if Array.exists (fun (lbl, _) -> lbl.lbl_mut = Asttypes.Mutable) fields
+    then Mutable
+    else Immutable in
   if no_init || size < Config.max_young_wosize || is_local_mode mode
   then begin
     (* Allocate new record with given fields (and remaining fields
@@ -1277,13 +1303,12 @@ and transl_record ~scopes loc env mode fields repres opt_init_expr =
         fields
     in
     let ll, shape = List.split (Array.to_list lv) in
-    let mut : Lambda.mutable_flag =
-      if Array.exists (fun (lbl, _) -> lbl.lbl_mut = Asttypes.Mutable) fields
-      then Mutable
-      else Immutable in
     let lam =
       try
         if mut = Mutable then raise Not_constant;
+        let () = match mode with
+          | _, Alloc_shared -> ()
+          | _, Alloc_unique -> raise Not_constant in
         let cl = List.map extract_constant ll in
         match repres with
         | Record_regular -> Lconst(Const_block(0, cl))
@@ -1295,60 +1320,92 @@ and transl_record ~scopes loc env mode fields repres opt_init_expr =
             raise Not_constant
       with Not_constant ->
         let loc = of_location ~scopes loc in
-        match repres with
-          Record_regular ->
-            Lprim(Pmakeblock(0, mut, Some shape, mode), ll, loc)
-        | Record_inlined tag ->
-            Lprim(Pmakeblock(tag, mut, Some shape, mode), ll, loc)
-        | Record_unboxed _ -> (match ll with [v] -> v | _ -> assert false)
-        | Record_float ->
-            Lprim(Pmakefloatblock (mut, mode), ll, loc)
-        | Record_extension path ->
-            let slot = transl_extension_path loc env path in
-            Lprim(Pmakeblock(0, mut, Some (Pgenval :: shape), mode),
-                  slot :: ll, loc)
+        match is_unique_update_on with
+        | None ->
+            begin match repres with
+            | Record_regular ->
+                Lprim(Pmakeblock(0, mut, Some shape, mode), ll, loc)
+            | Record_inlined tag ->
+                Lprim(Pmakeblock(tag, mut, Some shape, mode), ll, loc)
+            | Record_unboxed _ -> (match ll with [v] -> v | _ -> assert false)
+            | Record_float ->
+                Lprim(Pmakefloatblock (mut, mode), ll, loc)
+            | Record_extension path ->
+                let slot = transl_extension_path loc env path in
+                Lprim(Pmakeblock(0, mut, Some (Pgenval :: shape), mode),
+                      slot :: ll, loc)
+            end
+        | Some id ->
+            let set_ll = List.map fst (List.filter
+                                     (fun (_, r) -> match r with
+                                        | Reuse_keep -> false
+                                        | Reuse_set _ -> true)
+                                     (List.combine ll reuses)) in
+            match repres with
+            | Record_regular ->
+                Lprim(Preuseblock(0, mut, reuses, mode), id :: set_ll, loc)
+            | Record_inlined tag ->
+                Lprim(Preuseblock(tag, mut, reuses, mode), id :: set_ll, loc)
+            | Record_unboxed _ -> (match ll with [v] -> v | _ -> assert false)
+            | Record_float ->
+                Lprim(Preusefloatblock (mut, reuses, mode), id :: set_ll, loc)
+            | Record_extension _ -> (* We add an Reuse_keep for the extension *)
+                Lprim(Preuseblock(0, mut, Reuse_keep :: reuses, mode), id :: set_ll, loc)
     in
-    begin match opt_init_expr with
-      None -> lam
-    | Some init_expr -> Llet(Strict, Pgenval, init_id,
+    begin match opt_init_expr, is_unique_update_on with
+    | None, _ | _, Some _ -> lam
+    | Some init_expr, None -> Llet(Strict, Pgenval, init_id,
                              transl_exp ~scopes init_expr, lam)
     end
-  end else begin
-    (* Take a shallow copy of the init record, then mutate the fields
-       of the copy *)
-    let copy_id = Ident.create_local "newrecord" in
-    let update_field cont (lbl, definition) =
-      match definition with
-      | Kept _type -> cont
-      | Overridden (_lid, expr) ->
-          let upd =
-            match repres with
-              Record_regular
-            | Record_inlined _ ->
-                let ptr = maybe_pointer expr in
-                Psetfield(lbl.lbl_pos, ptr, Assignment alloc_heap)
-            | Record_unboxed _ -> assert false
-            | Record_float ->
-                Psetfloatfield (lbl.lbl_pos, Assignment alloc_heap)
-            | Record_extension _ ->
-                let pos = lbl.lbl_pos + 1 in
-                let ptr = maybe_pointer expr in
-                Psetfield(pos, ptr, Assignment alloc_heap)
-          in
-          Lsequence(Lprim(upd, [Lvar copy_id; transl_exp ~scopes expr],
-                          of_location ~scopes loc),
-                    cont)
-    in
-    begin match opt_init_expr with
-      None -> assert false
+  end else match opt_init_expr with
+    | None -> assert false
     | Some init_expr ->
         assert (is_heap_mode mode); (* Pduprecord must be Alloc_heap *)
-        Llet(Strict, Pgenval, copy_id,
-             Lprim(Pduprecord (repres, size), [transl_exp ~scopes init_expr],
-                   of_location ~scopes loc),
-             Array.fold_left update_field (Lvar copy_id) fields)
-    end
-  end
+        match is_unique_update_on with
+        | None ->
+            begin
+              (* Take a shallow copy of the init record, then mutate the fields
+                of the copy *)
+              let copy_id = Ident.create_local "newrecord" in
+              let update_field cont (lbl, definition) =
+                match definition with
+                | Kept _type -> cont
+                | Overridden (_lid, expr) ->
+                    let upd =
+                      match repres with
+                        Record_regular
+                      | Record_inlined _ ->
+                          let ptr = maybe_pointer expr in
+                          Psetfield(lbl.lbl_pos, ptr, Assignment alloc_heap)
+                      | Record_unboxed _ -> assert false
+                      | Record_float ->
+                          Psetfloatfield (lbl.lbl_pos, Assignment alloc_heap)
+                      | Record_extension _ ->
+                          let pos = lbl.lbl_pos + 1 in
+                          let ptr = maybe_pointer expr in
+                          Psetfield(pos, ptr, Assignment alloc_heap)
+                    in
+                    Lsequence(Lprim(upd, [Lvar copy_id; transl_exp ~scopes expr],
+                                    of_location ~scopes loc),
+                              cont)
+              in
+              let updates = Array.fold_left update_field (Lvar copy_id) fields in
+              Llet(Strict, Pgenval, copy_id,
+                  Lprim(Pduprecord (repres, size), [transl_exp ~scopes init_expr],
+                        of_location ~scopes loc), updates)
+            end
+        | Some id ->
+            begin
+              (* Reuse the init record in-place *)
+              let update_field (_lbl, definition) =
+                match definition with
+                | Kept _type -> None
+                | Overridden (_lid, expr) -> Some (transl_exp ~scopes expr)
+              in
+              let updates = List.filter_map update_field (Array.to_list fields) in
+              Lprim(Preuseblock (0, mut, reuses, mode), id :: updates,
+                    of_location ~scopes loc)
+            end
 
 and transl_match ~scopes e arg pat_expr_list partial =
   let kind = Typeopt.value_kind e.exp_env e.exp_type in

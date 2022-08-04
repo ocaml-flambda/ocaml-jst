@@ -46,8 +46,8 @@ module M =
 
     let print ppf { var; mode } =
       let mode = match mode with
-        | Lambda.Alloc_heap -> ""
-        | Lambda.Alloc_local -> "[->L]" in
+        | Lambda.Alloc_heap, _ -> ""
+        | Lambda.Alloc_local, _ -> "[->L]" in
       Format.fprintf ppf "%a%s" Variable.print var mode
 
     let output o { var; mode = _ } =

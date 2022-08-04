@@ -342,16 +342,21 @@ module Inconstants (P:Param) (Backend:Backend_intf.S) = struct
        toplevel: if this expression is evaluated only once.
     *)
     | Prim (Pmakeblock (_tag, (Immutable | Immutable_unique),
-                        _value_kind, _mode), args, _dbg) ->
+                        _value_kind, (_, Alloc_shared)), args, _dbg) ->
       mark_vars args curr
 (*  (* CR-someday pchambart: If global mutables are allowed: *)
     | Prim(Lambda.Pmakeblock(_tag, Asttypes.Mutable), args, _dbg, _)
       when toplevel ->
       List.iter (mark_loop ~toplevel curr) args
 *)
-    | Prim (Pmakearray (Pfloatarray, (Immutable | Immutable_unique), _mode),
+    (* CR-soon anlorenzen: Also lift Preuseblock and Preusefloatblock *)
+    | Prim (Pmakearray (Pfloatarray, (Immutable | Immutable_unique), (_, Alloc_shared)),
             args, _) ->
       mark_vars args curr
+    | Prim (Pmakearray (Pfloatarray, (Immutable | Immutable_unique), (_, Alloc_unique)),
+            args, _) ->
+        if toplevel then mark_vars args curr
+        else mark_curr curr
     | Prim (Pmakearray (Pfloatarray, Mutable, _mode), args, _) ->
       (* CR-someday pchambart: Toplevel float arrays could always be
          statically allocated using an equivalent of the
@@ -363,10 +368,14 @@ module Inconstants (P:Param) (Backend:Backend_intf.S) = struct
       *)
       if toplevel then mark_vars args curr
       else mark_curr curr
-    | Prim (Pduparray (Pfloatarray, (Immutable | Immutable_unique)),
+    | Prim (Pduparray (Pfloatarray, (Immutable | Immutable_unique), (_, Alloc_shared)),
             [arg], _) ->
-      mark_var arg curr
-    | Prim (Pduparray (Pfloatarray, Mutable), [arg], _) ->
+        mark_var arg curr
+    | Prim (Pduparray (Pfloatarray, (Immutable | Immutable_unique), (_, Alloc_unique)),
+            [arg], _) ->
+      if toplevel then mark_var arg curr
+      else mark_curr curr
+    | Prim (Pduparray (Pfloatarray, Mutable, _), [arg], _) ->
       if toplevel then mark_var arg curr
       else mark_curr curr
     | Prim (Pduparray _, _, _) ->

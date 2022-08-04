@@ -1244,17 +1244,17 @@ module Alloc_mode = struct
     { locality = Locality_mode.join (List.map (fun t -> t.locality) ms);
       uniqueness = Uniqueness_mode.join (List.map (fun (t : t) -> t.uniqueness) ms) }
 
-  let constrain_upper {locality; uniqueness = _} =
-    Locality_mode.constrain_upper locality, Shared
-  (* Uniqueness_mode.constrain_upper uniqueness *)
+  let constrain_upper {locality; uniqueness} =
+    Locality_mode.constrain_upper locality,
+    Uniqueness_mode.constrain_upper uniqueness
 
-  let constrain_lower {locality; uniqueness = _} =
-    Locality_mode.constrain_lower locality, Shared
-  (* Uniqueness_mode.constrain_lower uniqueness *)
+  let constrain_lower {locality; uniqueness} =
+    Locality_mode.constrain_lower locality,
+    Uniqueness_mode.constrain_lower uniqueness
 
-  let constrain_global_shared {locality; uniqueness = _} =
-    Locality_mode.constrain_lower locality, Shared
-  (* Uniqueness_mode.constrain_upper uniqueness *)
+  let constrain_global_shared {locality; uniqueness} =
+    Locality_mode.constrain_lower locality,
+    Uniqueness_mode.constrain_upper uniqueness
 
   let newvar () =
     { locality = Locality_mode.newvar ();
