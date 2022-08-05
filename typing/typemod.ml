@@ -20,7 +20,6 @@ open Asttypes
 open Parsetree
 open Types
 open Format
-module Value_mode = Btype.Value_mode
 module String = Misc.Stdlib.String
 
 module Sig_component_kind = struct
@@ -1959,7 +1958,7 @@ and type_module_aux ~alias sttn funct_body anchor env smod =
           in
           Named (id, param, mty), Types.Named (id, mty.mty_type), newenv, true
       in
-      let newenv = Env.add_lock Value_mode.global newenv in
+      let newenv = Env.add_lock Mode.Value.global newenv in
       let body = type_module sttn funct_body None newenv sbody in
       { mod_desc = Tmod_functor(t_arg, body);
         mod_type = Mty_functor(ty_arg, body.mod_type);

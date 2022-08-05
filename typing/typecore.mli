@@ -203,8 +203,8 @@ type error =
   | Letop_type_clash of string * Ctype.Unification_trace.t
   | Andop_type_clash of string * Ctype.Unification_trace.t
   | Bindings_type_clash of Ctype.Unification_trace.t
-  | Submode_failed of Btype.Value_mode.error * Env.escaping_context option
-  | Param_mode_mismatch of type_expr
+  | Submode_failed of Mode.Value.error * Env.escaping_context option
+  | Param_mode_mismatch of type_expr * Mode.Alloc.error
   | Uncurried_function_escapes
   | Local_return_annotation_mismatch of Location.t
   | Bad_tail_annotation of [`Conflict|`Not_a_tailcall]

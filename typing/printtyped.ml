@@ -173,6 +173,21 @@ let attributes i ppf l =
     Printast.payload (i + 1) ppf a.Parsetree.attr_payload
   ) l
 
+let fmt_locality ppf (locality : Mode.Value.locality option) =
+  Format.fprintf ppf
+  ( match locality with
+    | Some Global -> "global "
+    | Some Regional -> "regional "
+    | Some Local -> "local "
+    | None -> "<modevar> ")
+
+let fmt_uniqueness ppf (uniqueness : Mode.Value.uniqueness option) =
+  Format.fprintf ppf
+  ( match uniqueness with
+    | Some Shared -> "shared\n"
+    | Some Unique -> "unique\n"
+    | None -> "<modevar>\n")
+
 let rec core_type i ppf x =
   line i ppf "core_type %a\n" fmt_location x.ctyp_loc;
   attributes i ppf x.ctyp_attributes;
@@ -330,17 +345,8 @@ and expression i ppf x =
                       expression_extra i ppf extra attrs; i+1)
       (i+1) x.exp_extra
   in
-  ( let consts = Btype.Value_mode.check_const x.exp_mode in
-    line i ppf "value_mode ";
-    line 0 ppf (match fst consts with
-     | Some Global -> "global "
-     | Some Regional -> "regional "
-     | Some Local -> "local "
-     | None -> "<modevar> ");
-    line 0 ppf (match snd consts with
-     | Some Shared -> "shared\n"
-     | Some Unique -> "unique\n"
-     | None -> "<modevar>\n"));
+  ( let locality, uniqueness = Mode.Value.check_const x.exp_mode in
+    line i ppf "value_mode %a %a" fmt_locality locality fmt_uniqueness uniqueness);
   match x.exp_desc with
   | Texp_ident (li,_,_,_) -> line i ppf "Texp_ident %a\n" fmt_path li;
   | Texp_instvar (_, li,_) -> line i ppf "Texp_instvar %a\n" fmt_path li;

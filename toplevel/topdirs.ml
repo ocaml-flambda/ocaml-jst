@@ -22,7 +22,6 @@ open Types
 open Cmo_format
 open Trace
 open Toploop
-module Alloc_mode = Btype.Alloc_mode
 
 (* The standard output formatter *)
 let std_out = std_formatter
@@ -322,7 +321,7 @@ let match_generic_printer_type desc path args printer_type =
   let ty_expected =
     List.fold_right
       (fun ty_arg ty -> Ctype.newty
-         (Tarrow ((Asttypes.Nolabel,Alloc_mode.global,Alloc_mode.global),
+         (Tarrow ((Asttypes.Nolabel,Mode.Alloc.global,Mode.Alloc.global),
                   ty_arg, ty,
                   Cunknown)))
       ty_args (Ctype.newconstr printer_type [ty_target]) in

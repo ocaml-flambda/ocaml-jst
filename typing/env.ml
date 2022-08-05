@@ -221,7 +221,7 @@ type escaping_context =
   | Partial_application
 
 type value_lock =
-  | Lock of { mode : Value_mode.t; escaping_context : escaping_context option }
+  | Lock of { mode : Mode.Value.t; escaping_context : escaping_context option }
   | Region_lock
 
 module IdTbl =
@@ -500,7 +500,7 @@ and address_lazy = (address_unforced, address) EnvLazy.t
 and value_data =
   { vda_description : value_description;
     vda_address : address_lazy;
-    vda_mode : Value_mode.t }
+    vda_mode : Mode.Value.t }
 
 and value_entry =
   | Val_bound of value_data
@@ -1591,7 +1591,7 @@ let rec components_of_module_maker
             in
             let vda = { vda_description = decl';
                         vda_address = addr;
-                        vda_mode = Value_mode.global } in
+                        vda_mode = Mode.Value.global } in
             c.comp_values <- NameMap.add (Ident.name id) vda c.comp_values;
         | SigL_type(id, decl, _, _) ->
             let final_decl = Subst.type_declaration sub decl in
@@ -1919,7 +1919,7 @@ let add_functor_arg id env =
    functor_args = Ident.add id () env.functor_args;
    summary = Env_functor_arg (env.summary, id)}
 
-let add_value ?check ?(mode = Value_mode.global) id desc env =
+let add_value ?check ?(mode = Mode.Value.global) id desc env =
   let addr = value_declaration_address env id desc in
   store_value ?check mode id addr desc env
 
@@ -1978,7 +1978,7 @@ let scrape_alias t mty =
 let enter_value ?check name desc env =
   let id = Ident.create_local name in
   let addr = value_declaration_address env id desc in
-  let env = store_value ?check Value_mode.global id addr desc env in
+  let env = store_value ?check Mode.Value.global id addr desc env in
   (id, env)
 
 let enter_type ~scope name info env =
@@ -2442,9 +2442,9 @@ let lock_mode ~errors ~loc env id vmode locks =
   List.fold_left
     (fun vmode lock ->
       match lock with
-      | Region_lock -> Value_mode.local_to_regional vmode
+      | Region_lock -> Mode.Value.local_to_regional vmode
       | Lock {mode; escaping_context} ->
-          match Value_mode.submode vmode mode with
+          match Mode.Value.submode vmode mode with
           | Ok () -> vmode
           | Error _ ->
               may_lookup_error errors loc env
@@ -2693,7 +2693,7 @@ let lookup_value ~errors ~use ~loc lid env =
   | Lident s -> lookup_ident_value ~errors ~use ~loc s env
   | Ldot(l, s) ->
     let path, desc = lookup_dot_value ~errors ~use ~loc l s env in
-    let mode = Value_mode.global in
+    let mode = Mode.Value.global in
     path, desc, mode
   | Lapply _ -> assert false
 

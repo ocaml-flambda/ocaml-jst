@@ -1,4 +1,5 @@
 (* TEST
+   flags += "-extension unique"
  * expect *)
 
 type 'a list =

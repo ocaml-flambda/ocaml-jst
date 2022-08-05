@@ -1541,17 +1541,15 @@ let instance_label fixed lbl =
   )
 
 let prim_mode mvar = function
-  | Primitive.Prim_global, _ -> Alloc_mode.global
-  | Primitive.Prim_local, _ -> Alloc_mode.local
-  | Primitive.Prim_unique, _ -> Alloc_mode.unique
-  | Primitive.Prim_local_unique, _ -> Alloc_mode.local_unique
+  | Primitive.Prim_global, _ -> Mode.Alloc.global
+  | Primitive.Prim_local, _ -> Mode.Alloc.local
   | Primitive.Prim_poly, _ -> mvar
 
 let rec instance_prim_locals locals mvar macc finalret ty =
   match locals, (repr ty).desc with
   | l :: locals, Tarrow ((lbl,_,mret),arg,ret,commu) ->
      let marg = prim_mode mvar l in
-     let macc = Alloc_mode.join [marg; mret; macc] in
+     let macc = Mode.Alloc.join [marg; mret; macc] in
      let mret =
        match locals with
        | [] -> finalret
@@ -1567,13 +1565,13 @@ let instance_prim_mode (desc : Primitive.description) ty =
   let is_poly = function Primitive.Prim_poly, _ -> true | _ -> false in
   if is_poly desc.prim_native_repr_res ||
        List.exists is_poly desc.prim_native_repr_args then
-    let mode = Alloc_mode.newvar () in
+    let mode = Mode.Alloc.newvar () in
     let finalret = prim_mode mode desc.prim_native_repr_res in
     instance_prim_locals desc.prim_native_repr_args
-      mode Alloc_mode.global finalret ty,
+      mode Mode.Alloc.global finalret ty,
     mode
   else
-    ty, Alloc_mode.global
+    ty, Mode.Alloc.global
 
 (**** Instantiation with parameter substitution ****)
 
@@ -2625,7 +2623,7 @@ let unify_package env unify_list lv1 p1 n1 tl1 lv2 p2 n2 tl2 =
   && !package_subtype env p2 n2 tl2 p1 n1 tl1 then () else raise Not_found
 
 let unify_alloc_mode a b =
-  match Btype.Alloc_mode.equate a b with
+  match Mode.Alloc.equate a b with
   | Ok () -> ()
   | Error _e -> raise (Unify [])
 
@@ -3266,8 +3264,8 @@ let filter_arrow env t l =
     Tvar _ ->
       let lv = t.level in
       let t1 = newvar2 lv and t2 = newvar2 lv in
-      let marg = Btype.Alloc_mode.newvar () in
-      let mret = Btype.Alloc_mode.newvar () in
+      let marg = Mode.Alloc.newvar () in
+      let mret = Mode.Alloc.newvar () in
       let t' = newty2 lv (Tarrow ((l,marg,mret), t1, t2, Cok)) in
       link_type t t';
       (marg, t1, mret, t2)
@@ -3404,9 +3402,9 @@ let relevant_pairs pairs v =
 let moregen_alloc_mode v a1 a2 =
   match
     match v with
-    | Invariant -> Btype.Alloc_mode.equate a1 a2
-    | Covariant -> Btype.Alloc_mode.submode a1 a2
-    | Contravariant -> Btype.Alloc_mode.submode a2 a1
+    | Invariant -> Mode.Alloc.equate a1 a2
+    | Covariant -> Mode.Alloc.submode a1 a2
+    | Contravariant -> Mode.Alloc.submode a2 a1
     | Bivariant -> Ok ()
   with
   | Ok () -> ()
@@ -4229,11 +4227,11 @@ let has_constr_row' env t =
 
 let build_submode posi m =
   if posi then begin
-    let m', changed = Btype.Alloc_mode.newvar_below m in
+    let m', changed = Mode.Alloc.newvar_below m in
     let c = if changed then Changed else Unchanged in
     m', c
   end else begin
-    let m', changed = Btype.Alloc_mode.newvar_above m in
+    let m', changed = Mode.Alloc.newvar_above m in
     let c = if changed then Changed else Unchanged in
     m', c
   end
@@ -4433,7 +4431,7 @@ let subtype_error env trace =
   raise (Subtype (expand_trace env (List.rev trace), []))
 
 let subtype_alloc_mode env trace a1 a2 =
-  match Btype.Alloc_mode.submode a1 a2 with
+  match Mode.Alloc.submode a1 a2 with
   | Ok () -> ()
   | Error _e -> subtype_error env trace
 
@@ -4698,8 +4696,8 @@ let remove_mode_variables ty =
       visited := TypeSet.add ty !visited;
       match ty.desc with
       | Tarrow ((_,marg,mret),targ,tret,_) ->
-         let _ = Btype.Alloc_mode.constrain_global_shared marg in
-         let _ = Btype.Alloc_mode.constrain_global_shared mret in
+         let _ = Mode.Alloc.constrain_global_shared marg in
+         let _ = Mode.Alloc.constrain_global_shared mret in
          go targ; go tret
       | _ -> iter_type_expr go ty
     end

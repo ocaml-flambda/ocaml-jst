@@ -19,7 +19,6 @@ open Misc
 open Asttypes
 open Types
 open Typedtree
-module Value_mode = Btype.Value_mode
 
 (*************************************)
 (* Utilities for building patterns   *)
@@ -37,8 +36,8 @@ let omega_list = Patterns.omega_list
 
 let extra_pat =
   make_pat
-    (Tpat_var (Ident.create_local "+", mknoloc "+", Value_mode.global))
-    Ctype.none Value_mode.max_mode Env.empty
+    (Tpat_var (Ident.create_local "+", mknoloc "+", Mode.Value.global))
+    Ctype.none Mode.Value.max_mode Env.empty
 
 
 (*******************)
@@ -710,7 +709,7 @@ let set_last a =
 (* mark constructor lines for failure when they are incomplete *)
 let mark_partial =
   let zero =
-    make_pat (`Constant (Const_int 0)) Ctype.none Value_mode.max_mode Env.empty
+    make_pat (`Constant (Const_int 0)) Ctype.none Mode.Value.max_mode Env.empty
   in
   List.map (fun ((hp, _), _ as ps) ->
     match hp.pat_desc with
@@ -946,8 +945,8 @@ let build_other ext env =
           make_pat
             (Tpat_var (Ident.create_local "*extension*",
                        {txt="*extension*"; loc = d.pat_loc},
-                       Value_mode.max_mode))
-            Ctype.none Value_mode.max_mode Env.empty
+                       Mode.Value.max_mode))
+            Ctype.none Mode.Value.max_mode Env.empty
       | Construct _ ->
           begin match ext with
           | Some ext ->
@@ -1957,7 +1956,7 @@ type ppat_of_type =
       (string, label_description) Hashtbl.t
 
 let ppat_of_type env ty =
-  match pats_of_type env ty Value_mode.max_mode with
+  match pats_of_type env ty Mode.Value.max_mode with
   | [] -> PT_empty
   | [{pat_desc = Tpat_any}] -> PT_any
   | [pat] ->

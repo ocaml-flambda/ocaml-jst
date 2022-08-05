@@ -49,6 +49,31 @@ val is_Tunivar: type_expr -> bool
 val is_Tconstr: type_expr -> bool
 val dummy_method: label
 
+type change =
+    Ctype : type_expr * type_desc -> change
+  | Ccompress : type_expr * type_desc * type_desc -> change
+  | Clevel : type_expr * int -> change
+  | Cscope : type_expr * int -> change
+  | Cname :
+      (Path.t * type_expr list) option ref * (Path.t * type_expr list) option -> change
+  | Crow : row_field option ref * row_field option -> change
+  | Ckind : field_kind option ref * field_kind option -> change
+  | Ccommu : commutable ref * commutable -> change
+  | Cuniv : type_expr option ref * type_expr option -> change
+  | Ctypeset : TypeSet.t ref * TypeSet.t -> change
+  | Cmode_upper : 'a mode_var * 'a -> change
+  | Cmode_lower : 'a mode_var * 'a -> change
+  | Cmode_vlower : 'a mode_var * 'a mode_var list -> change
+
+type changes =
+    Change of change * changes ref
+  | Unchanged
+  | Invalid
+
+val log_changes : changes -> changes ref -> unit
+
+val append_change : changes ref ref -> change -> unit
+
 val repr: type_expr -> type_expr
         (* Return the canonical representative of a type. *)
 
@@ -226,6 +251,9 @@ val undo_compress: snapshot -> unit
            not already backtracked to a previous snapshot.
            Does not call [cleanup_abbrev] *)
 
+val undo_change : change -> unit
+val rev_log : change list -> changes -> change list
+
 (* Functions to use when modifying a type (only Ctype?) *)
 val link_type: type_expr -> type_expr -> unit
         (* Set the desc field of [t1] to [Tlink t2], logging the old
@@ -254,195 +282,3 @@ val iter_type_expr_cstr_args: (type_expr -> unit) ->
 val map_type_expr_cstr_args: (type_expr -> type_expr) ->
   (constructor_arguments -> constructor_arguments)
 
-
-module Locality_mode : sig
-  type const = Types.locality = Global | Local
-  val min_const : const
-  val max_const : const
-  val le_const : const -> const -> bool
-  val join_const : const -> const -> const
-  val meet_const : const -> const -> const
-  val print_const : Format.formatter -> const -> unit
-  val of_const : const -> locality mode
-end
-
-module Uniqueness_mode : sig
-  type const = Types.uniqueness = Unique | Shared
-  val min_const : const
-  val max_const : const
-  val le_const : const -> const -> bool
-  val join_const : const -> const -> const
-  val meet_const : const -> const -> const
-  val print_const : Format.formatter -> const -> unit
-  val of_const : const -> uniqueness mode
-  val submode : uniqueness mode -> uniqueness mode -> (unit, unit) result
-end
-
-module Alloc_mode : sig
-
-  type t = Types.alloc_mode
-  (* Modes are ordered so that [global] is a submode of [local] *)
-  type locality = Types.locality = Global | Local
-  (* Modes are ordered so that [unique] is a submode of [shared] *)
-  type uniqueness = Types.uniqueness = Unique | Shared
-  type const = locality * uniqueness
-
-  val global : t
-
-  val local : t
-
-  val unique : t
-
-  val local_unique : t
-
-  val of_const : const -> t
-
-  val min_mode : t
-
-  val max_mode : t
-
-  type error = [`Locality | `Uniqueness]
-
-  val submode : t -> t -> (unit, error) result
-
-  val submode_exn : t -> t -> unit
-
-  val equate : t -> t -> (unit, error) result
-
-  val join_const : const -> const -> const
-
-  val join : t list -> t
-
-  (* Force a mode variable to its upper bound *)
-  val constrain_upper : t -> const
-
-  (* Force a mode variable to its lower bound *)
-  val constrain_lower : t -> const
-
-  (* Force a mode variable as shared and global *)
-  val constrain_global_shared : t -> const
-
-  val newvar : unit -> t
-
-  val newvar_below : t -> t * bool
-
-  val newvar_above : t -> t * bool
-
-  val check_const : t -> locality option * uniqueness option
-
-  val print : Format.formatter -> t -> unit
-
-end
-
-module Value_mode : sig
-
-  (* Modes are ordered so that [unique] is a submode of [shared] *)
-  type uniqueness = Types.uniqueness = Unique | Shared
-
-  (* Modes are ordered so that [global] is a submode of [local] *)
-  type locality =
-   | Global
-   | Regional
-   | Local
-
-  type const = locality * uniqueness
-
-  type t = Types.value_mode
-
-  val global : t
-
-  val regional : t
-
-  val local : t
-
-  val global_unique : t
-
-  val regional_unique : t
-
-  val local_unique : t
-
-  val of_const : const -> t
-
-  val max_mode : t
-
-  val min_mode : t
-
-  val set_locality : locality -> t -> t
-
-  val set_uniqueness : uniqueness -> t -> t
-
-  (** Injections from [Alloc_mode.t] into [Value_mode.t] *)
-
-  (** [of_alloc] maps [Global] to [Global] and [Local] to [Local] *)
-  val of_alloc : Alloc_mode.t -> t
-
-  (** Kernel operators *)
-
-  (** The kernel operator [local_to_regional] maps [Local] to
-      [Regional] and leaves the others unchanged. *)
-  val local_to_regional : t -> t
-
-  (** The kernel operator [regional_to_global] maps [Regional]
-      to [Global] and leaves the others unchanged. *)
-  val regional_to_global : t -> t
-
-  (** Closure operators *)
-
-  (** The closure operator [regional_to_local] maps [Regional]
-      to [Local] and leaves the others unchanged. *)
-  val regional_to_local : t -> t
-
-  (** The closure operator [global_to_regional] maps [Global] to
-      [Regional] and leaves the others unchanged. *)
-  val global_to_regional : t -> t
-
-  (** Note that the kernal and closure operators are in the following
-      adjunction relationship:
-      {v
-        local_to_regional
-        -| regional_to_local
-        -| regional_to_global
-        -| global_to_regional
-      v}
-
-      Equivalently,
-      {v
-        local_to_regional a <= b  iff  a <= regional_to_local b
-        regional_to_local a <= b  iff  a <= regional_to_global b
-        regional_to_global a <= b  iff  a <= global_to_regional b
-      v}
-   *)
-
-  (** Versions of the operators that return [Alloc.t] *)
-
-  (** Maps [Regional] to [Global] and leaves the others unchanged. *)
-  val regional_to_global_alloc : t -> Alloc_mode.t
-
-  (** Maps [Regional] to [Local] and leaves the others unchanged. *)
-  val regional_to_local_alloc : t -> Alloc_mode.t
-
-  type error = [`Regionality | `Locality | `Uniqueness]
-
-  val submode : t -> t -> (unit, error) result
-
-  val submode_exn : t -> t -> unit
-
-  val submode_meet : t -> t list -> (unit, error) result
-
-  val join : t list -> t
-
-  val constrain_upper : t -> const
-
-  val constrain_lower : t -> const
-
-  val newvar : unit -> t
-
-  val newvar_below : t -> t * bool
-
-  val newvar_above : t -> t * bool
-
-  val check_const : t -> locality option * uniqueness option
-
-  val print : Format.formatter -> t -> unit
-
-end

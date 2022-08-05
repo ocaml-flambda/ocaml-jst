@@ -379,7 +379,7 @@ module Extension = struct
   type t = Comprehensions | Local | Unique
 
   let all = [ Comprehensions; Local; Unique ]
-  let default_extensions = [ Local; Unique ]
+  let default_extensions = [ Local ]
 
   let extensions = ref ([] : t list)   (* -extension *)
   let equal (a : t) (b : t) = (a = b)
@@ -431,6 +431,7 @@ type 'a env_reader = {
   usage : string;
   env_var : string;
 }
+
 let color = ref None (* -color *)
 
 let color_reader = {

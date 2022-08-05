@@ -95,12 +95,12 @@ let extract_float = function
   | _ -> fatal_error "Translcore.extract_float"
 
 let transl_alloc_mode alloc_mode =
-  match Btype.Alloc_mode.constrain_global_shared alloc_mode with
+  match Mode.Alloc.constrain_global_shared alloc_mode with
   | Global, _ -> alloc_heap
   | Local, _ -> alloc_local
 
 let transl_value_mode mode =
-  let alloc_mode = Btype.Value_mode.regional_to_global_alloc mode in
+  let alloc_mode = Mode.Value.regional_to_global_alloc mode in
   transl_alloc_mode alloc_mode
 
 let transl_exp_mode e = transl_value_mode e.exp_mode
@@ -234,7 +234,7 @@ let rec push_defaults loc bindings cases partial warnings =
              cases, partial) }
       in
       push_defaults loc bindings
-        [{c_lhs={pat with pat_desc = Tpat_var (param, mknoloc name, Btype.Value_mode.global)};
+        [{c_lhs={pat with pat_desc = Tpat_var (param, mknoloc name, Mode.Value.global)};
           c_guard=None; c_rhs=exp}]
         Total warnings
   | _ ->
@@ -505,7 +505,7 @@ and transl_exp0 ~in_new_scope ~scopes e =
       end
   | Texp_setfield(arg, _, lbl, newval) ->
       let mode =
-        let arg_mode = Btype.Value_mode.regional_to_local_alloc arg.exp_mode in
+        let arg_mode = Mode.Value.regional_to_local_alloc arg.exp_mode in
         Assignment (transl_alloc_mode arg_mode)
       in
       let access =

@@ -97,6 +97,7 @@ COMPILERLIBS_SOURCES=\
   typing/type_immediacy.ml \
   typing/types.ml \
   typing/btype.ml \
+  typing/mode.ml \
   typing/subst.ml \
   typing/predef.ml \
   typing/datarepr.ml \

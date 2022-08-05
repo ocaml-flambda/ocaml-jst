@@ -16,7 +16,7 @@
 open Asttypes
 open Types
 open Typedtree
-module Uniqueness_mode = Btype.Uniqueness_mode
+module Uniqueness_mode = Mode.Uniqueness
 
 type unique_seen_reason =
   | Seen_as of Ident.t

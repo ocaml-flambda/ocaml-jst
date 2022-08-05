@@ -1,4 +1,5 @@
 (* TEST
+   flags += "-extension unique"
  * expect *)
 
 type 'a glob = { global_ glob: 'a } [@@unboxed]
@@ -58,6 +59,13 @@ val children_unique : unique_ float list -> float * float list = <fun>
 let borrow_match (unique_ fs : 'a list) = unique_ match fs with
   | [] -> []
   | x :: xs as gs -> gs
+[%%expect{|
+val borrow_match : unique_ 'a list -> 'a list = <fun>
+|}]
+
+let borrow_match (unique_ fs : 'a list) = unique_ match fs with
+    | [] -> []
+    | x :: xs -> fs
 [%%expect{|
 val borrow_match : unique_ 'a list -> 'a list = <fun>
 |}]
@@ -241,20 +249,6 @@ Error: Found a shared value where a unique value was expected
 (* Tests for locals, adapted to uniqueness *)
 (* ------------------------------------------------------------------------------------ *)
 
-let leak n =
-  let unique_ r : int ref = ref n in
-  r
-[%%expect{|
-val leak : int -> int ref = <fun>
-|}]
-
-let leak n =
-  let unique_ f : 'a. 'a -> 'a = fun x -> x in
-  f
-[%%expect{|
-val leak : 'a -> 'b -> 'b = <fun>
-|}]
-
 (* If both type and mode are wrong, complain about type *)
 let f () =
   let id2 (unique_ x : string) = x in
@@ -284,7 +278,9 @@ Lines 3-4, characters 4-60:
 4 |     = 'a -> unique_ 'b -> unique_ ('c -> unique_ ('d -> 'e))....................
 Error: The type constraints are not consistent.
 Type 'a -> unique_ 'b -> ('c -> 'd -> 'e) is not compatible with type
-  'a -> unique_ (unique_ 'b -> 'c -> 'd -> 'e)
+  'a -> unique_ 'b -> 'c -> 'd -> 'e
+Type unique_ 'b -> ('c -> 'd -> 'e) is not compatible with type
+  unique_ 'b -> 'c -> 'd -> 'e
 |}]
 
 type distinct_sarg = unit constraint unique_ int -> int = int -> int
@@ -311,58 +307,6 @@ Line 1, characters 42-89:
 Error: The type constraints are not consistent.
 Type unique_ int -> int is not compatible with type
   unique_ int -> unique_ int
-|}]
-
-type unique_higher_order = unit constraint
-  unique_ (int -> int -> int) -> int = unique_ (int -> unique_ (int -> int)) -> int
-[%%expect{|
-Line 2, characters 2-83:
-2 |   unique_ (int -> int -> int) -> int = unique_ (int -> unique_ (int -> int)) -> int
-      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Error: The type constraints are not consistent.
-Type unique_ (int -> (int -> int)) -> int is not compatible with type
-  unique_ (int -> int -> int) -> int
-Type int -> int -> int is not compatible with type
-  int -> unique_ (int -> int)
-|}]
-
-type nonunique_higher_order = unit constraint
-  (int -> int -> int) -> int = (int -> unique_ (int -> int)) -> int
-[%%expect{|
-Line 2, characters 2-67:
-2 |   (int -> int -> int) -> int = (int -> unique_ (int -> int)) -> int
-      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Error: The type constraints are not consistent.
-Type (int -> int -> int) -> int is not compatible with type
-  (int -> unique_ (int -> int)) -> int
-Type int -> int -> int is not compatible with type
-  int -> unique_ (int -> int)
-|}]
-
-type unique_higher_order = unit constraint
-  int -> unique_ (int -> int -> int) = int -> unique_ (int -> unique_ (int -> int))
-[%%expect{|
-Line 2, characters 2-83:
-2 |   int -> unique_ (int -> int -> int) = int -> unique_ (int -> unique_ (int -> int))
-      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Error: The type constraints are not consistent.
-Type int -> unique_ (int -> (int -> int)) is not compatible with type
-  int -> unique_ (int -> int -> int)
-Type int -> int -> int is not compatible with type
-  int -> unique_ (int -> int)
-|}]
-
-type nonunique_higher_order = unit constraint
-  int -> (int -> int -> int) = int -> (int -> unique_ (int -> int))
-[%%expect{|
-Line 2, characters 2-67:
-2 |   int -> (int -> int -> int) = int -> (int -> unique_ (int -> int))
-      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Error: The type constraints are not consistent.
-Type int -> int -> int -> int is not compatible with type
-  int -> int -> unique_ (int -> int)
-Type int -> int -> int is not compatible with type
-  int -> unique_ (int -> int)
 |}]
 
 let foo () =

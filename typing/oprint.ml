@@ -277,6 +277,18 @@ let join_uniqueness um1 um2 =
 let join_modes (lm1, um1) (lm2, um2) =
   join_locality lm1 lm2, join_uniqueness um1 um2
 
+let same_locality (m1, _) (m2, _) =
+  match m1, m2 with
+  | Olm_local, Olm_global -> false
+  | Olm_global, Olm_local -> false
+  | _, _ -> true
+
+let same_uniqueness (_, m1) (_, m2) =
+  match m1, m2 with
+  | Oum_unique, Oum_shared -> false
+  | Oum_shared, Oum_unique -> false
+  | _, _ -> true
+
 let rec print_out_type_0 mode ppf =
   function
   | Otyp_alias (ty, s) ->
@@ -287,6 +299,29 @@ let rec print_out_type_0 mode ppf =
         (print_out_type_0 mode) ty
   | ty ->
       print_out_type_1 mode ppf ty
+
+and print_out_type_mode mode ppf ty =
+  let is_local = match mode with
+    | Olm_local, _ -> true
+    | _, _ -> false in
+  let is_unique = match mode with
+    | _, Oum_unique -> true
+    | _, _ -> false in
+  if is_local || is_unique then
+    if (not is_local || Clflags.Extension.is_enabled Local)
+    && (not is_unique || Clflags.Extension.is_enabled Unique) then begin
+      if is_local then begin
+        pp_print_string ppf "local_";
+        pp_print_space ppf () end;
+      if is_unique then begin
+        pp_print_string ppf "unique_";
+        pp_print_space ppf () end;
+      print_out_type_2 mode ppf ty end
+    else
+      let ty = if is_unique then Otyp_attribute (ty, {oattr_name="unique"}) else ty in
+      let ty = if is_local then Otyp_attribute (ty, {oattr_name="local"}) else ty in
+      print_out_type ppf ty
+  else print_out_type_2 mode ppf ty
 
 and print_out_type_1 mode ppf =
   function
@@ -299,72 +334,16 @@ and print_out_type_1 mode ppf =
       let mode = join_modes mode am in
       print_out_ret mode rm ppf ty2;
       pp_close_box ppf ()
-  | ty ->
-    match mode with
-    | Olm_local, Oum_unique ->
-      print_out_type_local_unique mode ppf ty
-    | Olm_local, _ ->
-        print_out_type_local mode ppf ty
-    | _, Oum_unique ->
-      print_out_type_unique mode ppf ty
-    | _, _ -> print_out_type_2 mode ppf ty
+  | ty -> print_out_type_mode mode ppf ty
 
 and print_out_arg am ppf ty =
-  match am with
-  | Olm_local, Oum_unique ->
-    print_out_type_local_unique am ppf ty
-  | Olm_local, _ ->
-    print_out_type_local am ppf ty
-  | _, Oum_unique ->
-    print_out_type_unique am ppf ty
-  | _, _ -> print_out_type_2 am ppf ty
+  print_out_type_mode am ppf ty
 
 (* If mode and rm do not match up, print the arrow according to rm. *)
 and print_out_ret mode rm ppf ty =
-  let same_locality = match fst mode, fst rm with
-    | Olm_local, Olm_global -> false
-    | Olm_global, Olm_local -> false
-    | _, _ -> true
-  and same_uniqueness = match snd mode, snd rm with
-    | Oum_unique, Oum_shared -> false
-    | Oum_shared, Oum_unique -> false
-    | _, _ -> true in
-  if same_locality && same_uniqueness
+  if same_locality mode rm && same_uniqueness mode rm
   then print_out_type_1 rm ppf ty
-  else match rm with
-    | Olm_local, Oum_unique -> print_out_type_local_unique rm ppf ty
-    | Olm_local, _ -> print_out_type_local rm ppf ty
-    | _, Oum_unique -> print_out_type_unique rm ppf ty
-    | _, _ -> print_out_type_2 rm ppf ty
-
-and print_out_type_local m ppf ty =
-  if Clflags.Extension.is_enabled Local then begin
-    pp_print_string ppf "local_";
-    pp_print_space ppf ();
-    print_out_type_2 m ppf ty
-  end else begin
-    print_out_type ppf (Otyp_attribute (ty, {oattr_name="local"}))
-  end
-
-and print_out_type_unique m ppf ty =
-  if Clflags.Extension.is_enabled Unique then begin
-    pp_print_string ppf "unique_";
-    pp_print_space ppf ();
-    print_out_type_2 m ppf ty
-  end else begin
-    print_out_type ppf (Otyp_attribute (ty, {oattr_name="unique"}))
-  end
-
-and print_out_type_local_unique m ppf ty =
-  if Clflags.Extension.is_enabled Local && Clflags.Extension.is_enabled Unique then begin
-    pp_print_string ppf "local_";
-    pp_print_space ppf ();
-    pp_print_string ppf "unique_";
-    pp_print_space ppf ();
-    print_out_type_2 m ppf ty
-  end else begin
-    print_out_type ppf (Otyp_attribute (Otyp_attribute (ty, {oattr_name="unique"}), {oattr_name="local"}))
-  end
+  else print_out_type_mode rm ppf ty
 
 and print_out_type_2 mode ppf =
   function

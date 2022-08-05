@@ -32,8 +32,6 @@ type coeffects = No_coeffects | Has_coeffects
 type mode =
   | Prim_local
   | Prim_global
-  | Prim_unique
-  | Prim_local_unique
   | Prim_poly
 (* [Prim_poly] arguments and results are subject to mode inference,
    allowing e.g. (+.) to work on local or global floats. After

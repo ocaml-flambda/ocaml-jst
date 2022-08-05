@@ -17,7 +17,6 @@
 open Asttypes
 open Types
 open Typedtree
-module Value_mode = Btype.Value_mode
 
 (* useful pattern auxiliary functions *)
 
@@ -26,7 +25,7 @@ let omega = {
   pat_loc = Location.none;
   pat_extra = [];
   pat_type = Ctype.none;
-  pat_mode = Value_mode.min_mode;
+  pat_mode = Mode.Value.min_mode;
   pat_env = Env.empty;
   pat_attributes = [];
 }

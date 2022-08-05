@@ -498,7 +498,7 @@ and raw_type_desc ppf = function
     Tvar name -> fprintf ppf "Tvar %a" print_name name
   | Tarrow((l,arg,ret),t1,t2,c) ->
       fprintf ppf "@[<hov1>Tarrow((\"%s\",%a,%a),@,%a,@,%a,@,%s)@]"
-        (string_of_label l) Alloc_mode.print arg Alloc_mode.print ret
+        (string_of_label l) Mode.Alloc.print arg Mode.Alloc.print ret
         raw_type t1 raw_type t2
         (safe_commu_repr [] c)
   | Ttuple tl ->
@@ -946,17 +946,17 @@ let reset_and_mark_loops_list tyl =
 (* Disabled in classic mode when printing an unification error *)
 let print_labels = ref true
 
-let print_mode mode =
-  let consts = Alloc_mode.check_const mode in
-  let lmode = match fst consts with
+let tree_of_mode mode =
+  let locality, uniqueness = Mode.Alloc.check_const mode in
+  let locality = match locality with
     | Some Global -> Olm_global
     | Some Local -> Olm_local
     | None -> Olm_unknown
-  and umode = match snd consts with
+  and uniqueness = match uniqueness with
     | Some Unique -> Oum_unique
     | Some Shared -> Oum_shared
     | None -> Oum_unknown
-  in lmode, umode
+  in locality, uniqueness
 
 let rec tree_of_typexp sch ty =
   let ty = repr ty in
@@ -986,9 +986,9 @@ let rec tree_of_typexp sch ty =
                 tree_of_typexp sch ty
             | _ -> Otyp_stuff "<hidden>"
           else tree_of_typexp sch ty1 in
-        let am = print_mode marg in
+        let am = tree_of_mode marg in
         let t2 = tree_of_typexp sch ty2 in
-        let rm = print_mode mret in
+        let rm = tree_of_mode mret in
         Otyp_arrow (lab, am, t1, rm, t2)
     | Ttuple tyl ->
         Otyp_tuple (tree_of_typlist sch tyl)

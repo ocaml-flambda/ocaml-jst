@@ -20,8 +20,6 @@ open Types
 open Typecore
 open Typetexp
 open Format
-module Value_mode = Btype.Value_mode
-module Alloc_mode = Btype.Alloc_mode
 
 type 'a class_info = {
   cls_id : Ident.t;
@@ -179,7 +177,7 @@ let rec constructor_type constr cty =
   | Cty_signature _ ->
       constr
   | Cty_arrow (l, ty, cty) ->
-      Ctype.newty (Tarrow ((l, Alloc_mode.global, Alloc_mode.global),
+      Ctype.newty (Tarrow ((l, Mode.Alloc.global, Mode.Alloc.global),
                            ty, constructor_type constr cty, Cok))
 
 let rec class_body cty =
@@ -765,7 +763,7 @@ and class_field_aux self_loc cl_num self_type meths vars
              (* Read the generalized type *)
              let (_, ty) = Meths.find lab.txt !meths in
              let meth_type = mk_expected (
-               Btype.newgenty (Tarrow((Nolabel, Alloc_mode.global, Alloc_mode.global),
+               Btype.newgenty (Tarrow((Nolabel, Mode.Alloc.global, Mode.Alloc.global),
                                       self_type, ty, Cok))
              ) in
              Ctype.raise_nongen_level ();
@@ -793,7 +791,7 @@ and class_field_aux self_loc cl_num self_type meths vars
           Ctype.raise_nongen_level ();
           let meth_type = mk_expected (
             Ctype.newty
-              (Tarrow ((Nolabel, Alloc_mode.global, Alloc_mode.global), self_type,
+              (Tarrow ((Nolabel, Mode.Alloc.global, Mode.Alloc.global), self_type,
                        Ctype.instance Predef.type_unit, Cok))
           ) in
           vars := vars_local;
@@ -823,8 +821,8 @@ and class_field_aux self_loc cl_num self_type meths vars
 and class_structure cl_num final val_env met_env loc
   { pcstr_self = spat; pcstr_fields = str } =
   (* Environment for substructures *)
-  let val_env = Env.add_lock Value_mode.global val_env in
-  let met_env = Env.add_lock Value_mode.global met_env in
+  let val_env = Env.add_lock Mode.Value.global val_env in
+  let met_env = Env.add_lock Mode.Value.global met_env in
   let par_env = met_env in
 
   (* Location of self. Used for locations of self arguments *)
@@ -1056,7 +1054,7 @@ and class_expr_aux cl_num val_env met_env scl =
                          Id_value);
               exp_loc = Location.none; exp_extra = [];
               exp_type = Ctype.instance vd.val_type;
-              exp_mode = Value_mode.global;
+              exp_mode = Mode.Value.global;
               exp_attributes = []; (* check *)
               exp_env = val_env'})
           end
@@ -1072,7 +1070,7 @@ and class_expr_aux cl_num val_env met_env scl =
         Typecore.check_partial val_env pat.pat_type pat.pat_loc
           [{c_lhs = pat; c_guard = None; c_rhs = dummy}]
       in
-      let val_env' = Env.add_lock Value_mode.global val_env' in
+      let val_env' = Env.add_lock Mode.Value.global val_env' in
       Ctype.raise_nongen_level ();
       let cl = class_expr cl_num val_env' met_env scl' in
       Ctype.end_def ();
@@ -1130,11 +1128,11 @@ and class_expr_aux cl_num val_env met_env scl =
                   let ty' = extract_option_type val_env ty
                   and ty0' = extract_option_type val_env ty0 in
                   let arg = type_argument val_env sarg ty' ty0' in
-                  option_some val_env arg Value_mode.global
+                  option_some val_env arg Mode.Value.global
               )
             in
             let eliminate_optional_arg () =
-              Arg (option_none val_env ty0 Value_mode.global Location.none)
+              Arg (option_none val_env ty0 Mode.Value.global Location.none)
             in
             let remaining_sargs, arg =
               if ignore_labels then begin
@@ -1166,9 +1164,9 @@ and class_expr_aux cl_num val_env met_env scl =
                     if Btype.is_optional l && List.mem_assoc Nolabel sargs then
                       eliminate_optional_arg ()
                     else begin
-                      let mode_closure = Alloc_mode.global in
-                      let mode_arg = Alloc_mode.global in
-                      let mode_ret = Alloc_mode.global in
+                      let mode_closure = Mode.Alloc.global in
+                      let mode_arg = Mode.Alloc.global in
+                      let mode_ret = Mode.Alloc.global in
                       Omitted { mode_closure; mode_arg; mode_ret }
                     end
             in
@@ -1220,7 +1218,7 @@ and class_expr_aux cl_num val_env met_env scl =
                            Id_value);
                 exp_loc = Location.none; exp_extra = [];
                 exp_type = Ctype.instance vd.val_type;
-                exp_mode = Value_mode.global;
+                exp_mode = Mode.Value.global;
                 exp_attributes = [];
                 exp_env = val_env;
                }
@@ -1307,7 +1305,7 @@ let rec approx_declaration cl =
       let arg =
         if Btype.is_optional l then Ctype.instance var_option
         else Ctype.newvar () in
-      Ctype.newty (Tarrow ((l, Alloc_mode.global, Alloc_mode.global),
+      Ctype.newty (Tarrow ((l, Mode.Alloc.global, Mode.Alloc.global),
                            arg, approx_declaration cl, Cok))
   | Pcl_let (_, _, cl) ->
       approx_declaration cl
@@ -1321,7 +1319,7 @@ let rec approx_description ct =
       let arg =
         if Btype.is_optional l then Ctype.instance var_option
         else Ctype.newvar () in
-      Ctype.newty (Tarrow ((l, Alloc_mode.global, Alloc_mode.global),
+      Ctype.newty (Tarrow ((l, Mode.Alloc.global, Mode.Alloc.global),
                            arg, approx_description ct, Cok))
   | _ -> Ctype.newvar ()
 

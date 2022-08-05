@@ -1183,8 +1183,8 @@ let primitive_may_allocate : primitive -> alloc_mode option = function
   | Pccall p ->
      if not p.prim_alloc then None
      else begin match p.prim_native_repr_res with
-       | (Prim_local|Prim_local_unique|Prim_poly), _ -> Some alloc_local
-       | (Prim_global|Prim_unique), _ -> Some alloc_heap
+       | (Prim_local|Prim_poly), _ -> Some alloc_local
+       | (Prim_global), _ -> Some alloc_heap
      end
   | Praise _ -> None
   | Psequor | Psequand | Pnot
