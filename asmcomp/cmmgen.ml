@@ -504,8 +504,9 @@ let rec transl env e =
               | Reuse_keep, _ -> (exp, args, n + 1)
               | Reuse_set _, [] -> assert false
               | Reuse_set _, (arg :: args) ->
-                  (Csequence(remove_unit(setfloatfield n
-                      (Lambda.Assignment mode) id (transl env arg) dbg), exp),
+                  (Csequence(remove_unit(
+                       setfloatfield n
+                         (Lambda.Assignment mode) id (transl env arg) dbg), exp),
                    args, n + 1)
             ) (id, args, 0) reuses
           in exp

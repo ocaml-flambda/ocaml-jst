@@ -209,10 +209,13 @@ let rec size_of_lambda env = function
       in
       size_of_lambda env body
   | Lprim(Pmakeblock _, args, _) -> RHS_block (List.length args)
+  | Lprim(Preuseblock _, _ :: args, _) -> RHS_block (List.length args)
   | Lprim (Pmakearray ((Paddrarray|Pintarray), _, _), args, _) ->
       RHS_block (List.length args)
   | Lprim (Pmakearray (Pfloatarray, _, _), args, _)
   | Lprim (Pmakefloatblock _, args, _) ->
+      RHS_floatblock (List.length args)
+  | Lprim (Preusefloatblock _, _ :: args, _) ->
       RHS_floatblock (List.length args)
   | Lprim (Pmakearray (Pgenarray, _, _), _, _) ->
      (* Pgenarray is excluded from recursive bindings by the
@@ -749,6 +752,9 @@ let rec comp_expr env exp sz cont =
   | Lprim (Pmakefloatblock _, args, loc) ->
       let cont = add_pseudo_event loc !compunit_name cont in
       comp_args env args sz (Kmakefloatblock (List.length args) :: cont)
+  | Lprim (Preusefloatblock _, _ :: args, loc) ->
+      let cont = add_pseudo_event loc !compunit_name cont in
+      comp_args env args sz (Kmakefloatblock (List.length args) :: cont)
   | Lprim(Pmakearray (kind, _, _), args, loc) ->
       let cont = add_pseudo_event loc !compunit_name cont in
       begin match kind with
@@ -795,6 +801,9 @@ let rec comp_expr env exp sz cont =
       in
       comp_args env args sz cont
   | Lprim(Pmakeblock(tag, _mut, _, _), args, loc) ->
+      let cont = add_pseudo_event loc !compunit_name cont in
+      comp_args env args sz (Kmakeblock(List.length args, tag) :: cont)
+  | Lprim(Preuseblock(tag, _mut, _, _), _ :: args, loc) ->
       let cont = add_pseudo_event loc !compunit_name cont in
       comp_args env args sz (Kmakeblock(List.length args, tag) :: cont)
   | Lprim(Pfloatfield (n, _, _), args, loc) ->

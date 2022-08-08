@@ -340,6 +340,8 @@ module Inconstants (P:Param) (Backend:Backend_intf.S) = struct
 
        makeblock(Mutable) can be a 'constant' if it is allocated at
        toplevel: if this expression is evaluated only once.
+       This would also apply to Alloc_unique. However, the runtime
+       currently can't support that.
     *)
     | Prim (Pmakeblock (_tag, (Immutable | Immutable_unique),
                         _value_kind, (_, Alloc_shared)), args, _dbg) ->
@@ -349,7 +351,7 @@ module Inconstants (P:Param) (Backend:Backend_intf.S) = struct
       when toplevel ->
       List.iter (mark_loop ~toplevel curr) args
 *)
-    (* CR-soon anlorenzen: Also lift Preuseblock and Preusefloatblock *)
+    (* CR-someday anlorenzen: Also lift Preuseblock and Preusefloatblock *)
     | Prim (Pmakearray (Pfloatarray, (Immutable | Immutable_unique), (_, Alloc_shared)),
             args, _) ->
       mark_vars args curr
