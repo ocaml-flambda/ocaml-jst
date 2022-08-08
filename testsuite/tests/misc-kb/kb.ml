@@ -134,8 +134,8 @@ let kb_completion greater =
         print_string "--- Considering "; non_orientable (m', n');
 ***)
         if m' = n' then process failures (k,l) eqs else
-        if greater(m',n') then enter_rule(m',n') else
-        if greater(n',m') then enter_rule(n',m') else
+        if greater(m',n') then enter_rule(m',n') [@tail] else
+        if greater(n',m') then enter_rule(n',m') [@tail] else
         process ((m',n')::failures) (k,l) eqs
 
   and next_criticals failures (k,l) =

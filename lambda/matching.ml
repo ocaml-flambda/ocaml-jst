@@ -227,7 +227,7 @@ end = struct
       in
       match p.pat_desc with
       | `Any -> stop p `Any
-      | `Var (id, s) -> continue p (`Alias (Patterns.omega, id, s))
+      | `Var (id, s) -> continue p (`Alias (Patterns.omega, id, s)) [@nontail]
       | `Alias (p, id, _) ->
           let k = Typeopt.value_kind p.pat_env p.pat_type in
           aux
@@ -241,7 +241,7 @@ end = struct
           let orpat = General.view (simpl_under_orpat (General.erase p)) in
           match orpat.pat_desc with
           | `Or _ as or_view -> stop orpat or_view
-          | other_view -> continue orpat other_view
+          | other_view -> continue orpat other_view [@nontail]
         )
       | ( `Constant _ | `Tuple _ | `Construct _ | `Variant _ | `Array _
         | `Lazy _ ) as view ->

@@ -1033,8 +1033,8 @@ and class_field ctxt f x =
                pp f "%s :@;%a=@;%a"
                  s.txt (core_type ctxt) ct (expression ctxt) e
            | {pexp_desc=Pexp_poly (e, None); pexp_attributes=[]; _} ->
-               bind e
-           | _ -> bind e) e
+               bind e [@nontail]
+           | _ -> bind e [@nontail]) e
         (item_attributes ctxt) x.pcf_attributes
   | Pcf_constraint (ct1, ct2) ->
       pp f "@[<2>constraint %a =@;%a@]%a"

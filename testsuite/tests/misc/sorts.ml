@@ -612,7 +612,7 @@ let lmerge_1d cmp l =
          | h2::t2 -> if cmp h1 h2 <= 0
                      then merge rest accu2 (h1::accu) t1 l2
                      else merge rest accu2 (h2::accu) l1 t2
-    in merge_rest_accu2 accu l1 l2
+    in merge_rest_accu2 accu l1 l2 [@tail]
   and merge_rev rest accu2 accu l1 l2 = (* accu, accu2 are forward;
                                            l1,l2,rest are rev *)
     let merge_rev_rest_accu2 accu l1 l2 =
@@ -624,7 +624,7 @@ let lmerge_1d cmp l =
          | h2::t2 -> if cmp h2 h1 <= 0
                      then merge_rev rest accu2 (h1::accu) t1 l2
                      else merge_rev rest accu2 (h2::accu) l1 t2
-    in merge_rev_rest_accu2 accu l1 l2
+    in merge_rev_rest_accu2 accu l1 l2 [@tail]
   and mergepairs accu = function       (* accu is rev, arg is forward *)
     | [] -> mergeall_rev accu
     | [l] -> mergeall_rev ((List.rev l)::accu)

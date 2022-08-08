@@ -185,7 +185,7 @@ let html_table_struct indi_txt phony d t =
           else if t.table.(k).(j).elem <> e then true
           else loop1 (j + 1)
         in
-        loop1 (j + 1)
+        loop1 (j + 1) [@tail]
     in
     loop 0
   in
@@ -260,9 +260,9 @@ let html_table_struct indi_txt phony d t =
                       let s = ph (TDhr CenterA) in
                       (colspan + 2, LeftA, s) :: les
               in
-              loop1 les next_l
+              loop1 les next_l [@tail]
           in
-          loop1 les j
+          loop1 les j [@tail]
       in
       loop [] 0
     in
@@ -377,7 +377,7 @@ let group_by_common_children d list =
                   loop ((nl @ nl1, S.union cs cs1) :: (List.rev beg @ rest1))
             | [] -> (nl, cs) :: loop rest
           in
-          loop1 [] rest
+          loop1 [] rest [@tail]
     in
     loop nlcsl
   in
@@ -534,9 +534,9 @@ let equilibrate t =
                     Elem y when x = y -> down_it t i k; loop 0
                   | _ -> loop2 (k + 1)
               in
-              loop2 0
+              loop2 0 [@tail]
           in
-          loop1 0
+          loop1 0 [@tail]
       | _ -> loop (j + 1)
   in
   loop 0
@@ -896,7 +896,7 @@ let treat_gaps t =
                 | None -> loop t (j + 1)
               else loop1 t (j1 - 1)
             in
-            loop1 t (j - 2)
+            loop1 t (j - 2) [@tail]
       | _ -> loop t (j + 1)
   in
   if Array.length t.table.(i) = 1 then t else loop t 2
@@ -1086,7 +1086,7 @@ let do_fall2_right t i1 i2 j1 j2 =
               Nothing -> loop_j (j + 1)
             | _ -> i + 1
         in
-        loop_j j2
+        loop_j j2 [@tail]
     in
     loop_i (Array.length t.table - 1)
   in
@@ -1121,7 +1121,7 @@ let do_fall2_left t i1 i2 j1 j2 =
               Nothing -> loop_j (j - 1)
             | _ -> i + 1
         in
-        loop_j j1
+        loop_j j1 [@tail]
     in
     loop_i (Array.length t.table - 1)
   in
@@ -1324,7 +1324,7 @@ let fall2_right t =
             Some t -> loop_i (Array.length t.table - 1) t
           | None -> loop_j (j - 1) t
       in
-      loop_j (Array.length t.table.(i) - 2) t
+      loop_j (Array.length t.table.(i) - 2) t [@tail]
   in
   loop_i (Array.length t.table - 1) t
 ;;
@@ -1340,7 +1340,7 @@ let fall2_left t =
             Some t -> loop_i (Array.length t.table - 1) t
           | None -> loop_j (j + 1) t
       in
-      loop_j 1 t
+      loop_j 1 t [@tail]
   in
   loop_i (Array.length t.table - 1) t
 ;;
@@ -1356,7 +1356,7 @@ let shorten_too_long t =
             Some t -> loop_i (Array.length t.table - 1) t
           | None -> loop_j (j + 1) t
       in
-      loop_j 1 t
+      loop_j 1 t [@tail]
   in
   loop_i (Array.length t.table - 1) t
 ;;
@@ -1375,7 +1375,7 @@ let top_adjust t =
           else if t.table.(i).(j).elem <> Nothing then i
           else loop_j (j + 1)
         in
-        loop_j 0
+        loop_j 0 [@tail]
     in
     loop 0
   in
@@ -1403,7 +1403,7 @@ let bottom_adjust t =
           else if t.table.(i).(j).elem <> Nothing then i
           else loop_j (j + 1)
         in
-        loop_j 0
+        loop_j 0 [@tail]
     in
     loop (Array.length t.table - 1)
   in

@@ -1089,7 +1089,7 @@ and transl_curried_function
       transl_tupled_function ~scopes ~arity ~mode ~region
         loc return repr partial param cases
   in
-  loop ~scopes loc return ~arity:1 ~mode ~region partial warnings param cases
+  loop ~scopes loc return ~arity:1 ~mode ~region partial warnings param cases [@nontail]
 
 and transl_tupled_function
       ~scopes ~arity ~mode ~region loc return

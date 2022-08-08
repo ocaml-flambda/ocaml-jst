@@ -175,7 +175,7 @@ let rec row_field tag row =
         match repr row.row_more with
         | {desc=Tvariant row'} -> row_field tag row'
         | _ -> Rabsent
-  in find row.row_fields
+  in find row.row_fields [@tail]
 
 let rec row_more row =
   match repr row.row_more with
