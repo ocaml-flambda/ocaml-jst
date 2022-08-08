@@ -256,9 +256,14 @@ let mode_subcomponent expected_mode =
     tuple_modes = [] }
 
 let mode_nonlocal expected_mode =
+  let mode =
+    expected_mode.mode
+    |> Value_mode.regional_to_global
+    |> Value_mode.local_to_regional
+  in
   { position = Nontail;
     escaping_context = None;
-    mode = Value_mode.local_to_regional expected_mode.mode;
+    mode;
     tuple_modes = [] }
 
 let mode_tailcall_function mode =
