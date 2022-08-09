@@ -214,6 +214,8 @@ let rec push_defaults loc bindings cases partial warnings =
       let desc =
         {val_type = pat.pat_type; val_kind = Val_reg;
          val_attributes = []; Types.val_loc = Location.none;
+         val_binding =
+           { vbt_defined = true; vbt_is_func = false; vbt_in_module = false };
          val_uid = Types.Uid.internal_not_actually_unique; }
       in
       let env = Env.add_value param desc exp.exp_env in
@@ -1087,7 +1089,7 @@ and transl_curried_function
       transl_tupled_function ~scopes ~arity ~mode ~region
         loc return repr partial param cases
   in
-  loop ~scopes loc return ~arity:1 ~mode ~region partial warnings param cases
+  loop ~scopes loc return ~arity:1 ~mode ~region partial warnings param cases [@nontail]
 
 and transl_tupled_function
       ~scopes ~arity ~mode ~region loc return

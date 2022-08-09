@@ -2177,7 +2177,7 @@ let fmt_ebb_of_string ?legacy_behavior str =
           !zero !minus !plus !hash !space ign
       end
     in
-    read_flags str_ind
+    read_flags str_ind [@tail]
 
   (* Try to read a digital or a '*' padding. *)
   and parse_padding : type e f .
@@ -2243,7 +2243,7 @@ let fmt_ebb_of_string ?legacy_behavior str =
       parse_after_precision pct_ind new_ind end_ind minus plus hash space ign
         pad (Lit_precision prec) in
     match str.[str_ind] with
-    | '0' .. '9' -> parse_literal minus str_ind
+    | '0' .. '9' -> parse_literal minus str_ind [@tail]
     | ('+' | '-') as symb when legacy_behavior ->
       (* Legacy mode would accept and ignore '+' or '-' before the
          integer describing the desired precision; note that this
@@ -2253,7 +2253,7 @@ let fmt_ebb_of_string ?legacy_behavior str =
          That said, the idea (supported by this tweak) that width and
          precision literals are "integer literals" in the OCaml sense is
          still blatantly wrong, as 123_456 or 0xFF are rejected. *)
-      parse_literal (minus || symb = '-') (str_ind + 1)
+      parse_literal (minus || symb = '-') (str_ind + 1) [@tail]
     | '*' ->
       parse_after_precision pct_ind (str_ind + 1) end_ind minus plus hash space
         ign pad Arg_precision
@@ -2285,13 +2285,13 @@ let fmt_ebb_of_string ?legacy_behavior str =
     match pad with
     | No_padding -> (
       match minus, prec with
-        | _, No_precision -> parse_conv No_padding
-        | false, Lit_precision n -> parse_conv (Lit_padding (Right, n))
-        | true, Lit_precision n -> parse_conv (Lit_padding (Left, n))
-        | false, Arg_precision -> parse_conv (Arg_padding Right)
-        | true, Arg_precision -> parse_conv (Arg_padding Left)
+        | _, No_precision -> parse_conv No_padding [@tail]
+        | false, Lit_precision n -> parse_conv (Lit_padding (Right, n)) [@tail]
+        | true, Lit_precision n -> parse_conv (Lit_padding (Left, n)) [@tail]
+        | false, Arg_precision -> parse_conv (Arg_padding Right) [@tail]
+        | true, Arg_precision -> parse_conv (Arg_padding Left) [@tail]
     )
-    | pad -> parse_conv pad
+    | pad -> parse_conv pad [@tail]
 
   (* Case analysis on conversion. *)
   and parse_conversion : type x y z t u v e f .
@@ -2364,8 +2364,8 @@ let fmt_ebb_of_string ?legacy_behavior str =
         else incompatible_flag pct_ind str_ind c "'-'"
       | Arg_padding _ -> incompatible_flag pct_ind str_ind c "'*'"
     in
-    let get_pad_opt c = opt_of_pad c (get_pad ()) in
-    let get_padprec_opt c = opt_of_pad c (get_padprec ()) in
+    let get_pad_opt c = opt_of_pad c (get_pad ()) [@tail] in
+    let get_padprec_opt c = opt_of_pad c (get_padprec ()) [@tail] in
 
     (* Get precision as a prec_option (see "%_f").
        (no need for legacy mode tweaking, those were rejected by the

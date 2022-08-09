@@ -226,7 +226,7 @@ and immediate_subtypes_variant_row acc desc =
     | Tvariant more -> immediate_subtypes_variant_row acc more
     | _ -> row :: acc
   in
-  add_row (add_subtypes acc)
+  add_row (add_subtypes acc) [@tail]
 
 and immediate_subtypes_variant_row_field acc = function
   | Rpresent(None)

@@ -50,7 +50,7 @@ let[@inline always] tailcalled_function () =
 let[@inline never] do_direct_tailcall () =
   let local_ r = ref 42 in
   let _ = opaque_identity r in
-  tailcalled_function ()
+  tailcalled_function () [@tail]
 let () =
   do_direct_tailcall ();
   check_empty "after direct tailcall"
@@ -76,7 +76,7 @@ let[@inline always] overtailcalled_function () =
 let[@inline never] do_direct_overtailcall () =
   let local_ r = ref 42 in
   let _ = opaque_identity r in
-  overtailcalled_function () ()
+  overtailcalled_function () () [@tail]
 let () =
   do_direct_overtailcall ();
   check_empty "after direct overtail"

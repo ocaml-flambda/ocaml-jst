@@ -465,7 +465,7 @@ let rec lookup_keys i keys tables =
           set_next tables next;
           build_path (i-1) keys next
   in
-  lookup_key tables
+  lookup_key tables [@tail]
 
 let lookup_tables root keys =
   match get_data root with

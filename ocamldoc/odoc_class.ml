@@ -139,7 +139,7 @@ let rec class_elements ?(trans=true) cl =
          | _ -> []
         )
   in
-  iter_kind cl.cl_kind
+  iter_kind cl.cl_kind [@nontail]
 
 (** Returns the list of elements of a t_class_type. *)
 and class_type_elements ?(trans=true) clt =

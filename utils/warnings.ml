@@ -93,6 +93,7 @@ type t =
   | Unused_open_bang of string              (* 66 *)
   | Unused_functor_parameter of string      (* 67 *)
   | Match_on_mutable_state_prevent_uncurry  (* 68 *)
+  | Not_a_tailcall                          (* 200 *)
 ;;
 
 (* If you remove a warning, leave a hole in the numbering.  NEVER change
@@ -171,9 +172,10 @@ let number = function
   | Unused_open_bang _ -> 66
   | Unused_functor_parameter _ -> 67
   | Match_on_mutable_state_prevent_uncurry -> 68
+  | Not_a_tailcall -> 200
 ;;
 
-let last_warning_number = 68
+let last_warning_number = 200
 ;;
 
 (* Third component of each tuple is the list of names for each warning. The
@@ -332,6 +334,8 @@ let descriptions =
     68, "Pattern-matching depending on mutable state prevents the remaining \
          arguments from being uncurried.",
     ["match-on-mutable-state-prevent-uncurry"];
+    200, "Not a tailcall.",
+    ["not-a-tailcall"];
   ]
 ;;
 
@@ -815,6 +819,9 @@ let message = function
     "This pattern depends on mutable state.\n\
      It prevents the remaining arguments from being uncurried, which will \
      cause additional closure allocations."
+  | Not_a_tailcall ->
+    "This call is not a tail call.\n\
+     Hint: Silence this warning by explictly marking this call [@tail] or [@nontail]."
 ;;
 
 let nerrors = ref 0;;

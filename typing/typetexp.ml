@@ -247,7 +247,7 @@ and transl_type_aux env policy mode styp =
           ctyp (Ttyp_arrow (l, arg_cty, ret_cty)) ty
         | [] -> transl_type env policy ret_mode ret
       in
-      loop mode args
+      loop mode args [@nontail]
   | Ptyp_tuple stl ->
     assert (List.length stl >= 2);
     let ctys = List.map (transl_type env policy Alloc_mode.Global) stl in

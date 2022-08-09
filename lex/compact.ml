@@ -133,7 +133,7 @@ let do_pack state_num orig compact =
         if compact.c_check.(b + pos) = -1 then
           try_pack rem
         else pack_from (b+1) in
-    try_pack nondef in
+    try_pack nondef [@tail] in
   let base = pack_from 0 in
   List.iter
     (fun (pos, v) ->

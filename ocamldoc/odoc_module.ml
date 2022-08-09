@@ -240,7 +240,7 @@ let rec module_type_elements ?(trans=true) mt =
           []
   | Some (Module_type_typeof _) -> []
   in
-  iter_kind mt.mt_kind
+  iter_kind mt.mt_kind [@nontail]
 
 (** Returns the list of elements of a module.
    @param trans indicates if, for aliased modules, we must perform a transitive search.
@@ -294,7 +294,7 @@ let module_elements ?(trans=true) m =
    mt_loc = Odoc_types.dummy_loc }
 *)
     in
-    iter_kind m.m_kind in
+    iter_kind m.m_kind [@nontail] in
   module_elements String.Set.empty ~trans m
 
 (** Returns the list of values of a module.
@@ -389,7 +389,7 @@ let rec module_type_parameters ?(trans=true) mt =
       | None ->
         []
   in
-  iter mt.mt_kind
+  iter mt.mt_kind [@nontail]
 
 (** Access to the parameters, for a functor.
    @param trans indicates if, for aliased modules, we must perform a transitive search.*)
@@ -430,7 +430,7 @@ and module_parameters ?(trans=true) m =
     | Module_typeof _
     | Module_unpack _ -> []
   in
-  iter m.m_kind
+  iter m.m_kind [@nontail]
 
 (** access to all submodules and submodules of submodules ... of the given module.
   @param trans indicates if, for aliased modules, we must perform a transitive search.*)
@@ -458,7 +458,7 @@ let rec module_type_is_functor mt =
     | Some (Module_type_typeof _)
     | None -> false
   in
-  iter mt.mt_kind
+  iter mt.mt_kind [@nontail]
 
 (** The module is a functor if it is defined as a functor or if it is an alias for a functor. *)
 let module_is_functor m =

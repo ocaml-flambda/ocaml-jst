@@ -43,9 +43,9 @@ let decode_prefix str =
         if i + 1 = String.length str then
           errorf "invalid encoded string %S (trailing '%%')" str
         else begin match str.[i + 1] with
-            | '#' -> push '%'
-            | '+' -> push '='
-            | '.' -> push ':'
+            | '#' -> push '%' [@tail]
+            | '+' -> push '=' [@tail]
+            | '.' -> push ':' [@tail]
             | c -> errorf "invalid %%-escaped character '%c'" c
         end
       | c ->

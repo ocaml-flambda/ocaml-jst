@@ -377,7 +377,7 @@ let rec associate_in_module module_list (acc_b_modif, acc_incomplete_top_module_
                   (true, acc_inc, acc_names)
         end
   in
-  iter_kind (acc_b_modif, acc_incomplete_top_module_names, acc_names_not_found) m.m_kind
+  iter_kind (acc_b_modif, acc_incomplete_top_module_names, acc_names_not_found) m.m_kind [@nontail]
 
 and associate_in_module_type module_list (acc_b_modif, acc_incomplete_top_module_names, acc_names_not_found) mt =
   let rec iter_kind (acc_b, acc_inc, acc_names) k =
@@ -570,7 +570,7 @@ and associate_in_class module_list (acc_b_modif, acc_incomplete_top_module_names
               clt_kind = ctkind ;
               clt_loc = Odoc_types.dummy_loc }
   in
-  iter_kind (acc_b_modif, acc_incomplete_top_module_names, acc_names_not_found) c.cl_kind
+  iter_kind (acc_b_modif, acc_incomplete_top_module_names, acc_names_not_found) c.cl_kind [@nontail]
 
 and associate_in_class_type _module_list (acc_b_modif, acc_incomplete_top_module_names, acc_names_not_found) ct =
   let iter_kind (acc_b, acc_inc, acc_names) k =

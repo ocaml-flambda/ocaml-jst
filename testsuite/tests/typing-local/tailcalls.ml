@@ -57,7 +57,7 @@ let[@inline never][@specialise never][@local never] foo () =
   let with_ref = local_stack_offset () in
   assert (with_ref > original);
   use r;
-  bar original
+  bar original [@tail]
 
 let () = foo ()
 
@@ -102,6 +102,7 @@ let[@inline never][@specialise never][@local never] foo () =
      () () () () () () () () () ()
      () () () () () () () () () ()
      () () () () () () () () () ()
+     [@tail]
 
 let () = foo ()
 
