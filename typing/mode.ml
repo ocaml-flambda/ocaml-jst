@@ -289,6 +289,8 @@ module Locality = struct
   include T
   include Solver(T)
 
+  type t = Types.locality Types.mode
+
   let global = Amode Global
   let local = Amode Local
 
@@ -338,6 +340,8 @@ module Uniqueness = struct
   end
   include T
   include Solver(T)
+
+  type t = Types.uniqueness Types.mode
 
   let unique = Amode Unique
   let shared = Amode Shared

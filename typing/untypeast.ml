@@ -791,14 +791,18 @@ let class_type_field sub ctf =
   in
   Ctf.mk ~loc ~attrs desc
 
+let call_count = function
+  | Types.Amode Types.Unique -> Call_once
+  | _ -> Call_many
+
 let core_type sub ct =
   let loc = sub.location sub ct.ctyp_loc in
   let attrs = sub.attributes sub ct.ctyp_attributes in
   let desc = match ct.ctyp_desc with
       Ttyp_any -> Ptyp_any
     | Ttyp_var s -> Ptyp_var s
-    | Ttyp_arrow (label, ct1, ct2) ->
-        Ptyp_arrow (label, sub.typ sub ct1, sub.typ sub ct2)
+    | Ttyp_arrow (label, arr, ct1, ct2) ->
+        Ptyp_arrow (label, call_count arr, sub.typ sub ct1, sub.typ sub ct2)
     | Ttyp_tuple list -> Ptyp_tuple (List.map (sub.typ sub) list)
     | Ttyp_constr (_path, lid, list) ->
         Ptyp_constr (map_loc sub lid,

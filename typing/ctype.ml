@@ -1547,7 +1547,7 @@ let prim_mode mvar = function
 
 let rec instance_prim_locals locals mvar macc finalret ty =
   match locals, (repr ty).desc with
-  | l :: locals, Tarrow ((lbl,_,mret),arg,ret,commu) ->
+  | l :: locals, Tarrow ((lbl,_,marr,mret),arg,ret,commu) ->
      let marg = prim_mode mvar l in
      let macc = Mode.Alloc.join [marg; mret; macc] in
      let mret =
@@ -1556,7 +1556,7 @@ let rec instance_prim_locals locals mvar macc finalret ty =
        | _ :: _ -> macc (* curried arrow *)
      in
      let ret = instance_prim_locals locals mvar macc finalret ret in
-     newty2 ty.level (Tarrow ((lbl,marg,mret),arg,ret, commu))
+     newty2 ty.level (Tarrow ((lbl,marg,marr,mret),arg,ret, commu))
   | _ :: _, _ -> assert false
   | [], _ ->
      ty
@@ -2339,7 +2339,7 @@ let rec mcomp type_pairs env t1 t2 =
         | (Tvar _, _)
         | (_, Tvar _)  ->
             ()
-        | (Tarrow ((l1,_,_), t1, u1, _), Tarrow ((l2,_,_), t2, u2, _))
+        | (Tarrow ((l1,_,_,_), t1, u1, _), Tarrow ((l2,_,_,_), t2, u2, _))
           when l1 = l2 || not (is_optional l1 || is_optional l2) ->
             mcomp type_pairs env t1 t2;
             mcomp type_pairs env u1 u2;
@@ -2625,7 +2625,12 @@ let unify_package env unify_list lv1 p1 n1 tl1 lv2 p2 n2 tl2 =
 let unify_alloc_mode a b =
   match Mode.Alloc.equate a b with
   | Ok () -> ()
-  | Error _e -> raise (Unify [])
+  | Error _ -> raise (Unify [])
+
+let unify_uniqueness_mode a b =
+  match Mode.Uniqueness.equate a b with
+  | Ok () -> ()
+  | Error _ -> raise (Unify [])
 
 (* force unification in Reither when one side has a non-conjunctive type *)
 let rigid_variants = ref false
@@ -2773,13 +2778,14 @@ and unify3 env t1 t1' t2 t2' =
     end;
     try
       begin match (d1, d2) with
-        (Tarrow ((l1,a1,r1), t1, u1, c1),
-         Tarrow ((l2,a2,r2), t2, u2, c2))
+        (Tarrow ((l1,a1,m1,r1), t1, u1, c1),
+         Tarrow ((l2,a2,m2,r2), t2, u2, c2))
            when
              (l1 = l2 ||
               (!Clflags.classic || !umode = Pattern) &&
                not (is_optional l1 || is_optional l2)) ->
           unify_alloc_mode a1 a2;
+          unify_uniqueness_mode m1 m2;
           unify_alloc_mode r1 r2;
           unify  env t1 t2; unify env  u1 u2;
           begin match commu_repr c1, commu_repr c2 with
@@ -3265,13 +3271,14 @@ let filter_arrow env t l =
       let lv = t.level in
       let t1 = newvar2 lv and t2 = newvar2 lv in
       let marg = Mode.Alloc.newvar () in
+      let marr = Mode.Uniqueness.newvar () in
       let mret = Mode.Alloc.newvar () in
-      let t' = newty2 lv (Tarrow ((l,marg,mret), t1, t2, Cok)) in
+      let t' = newty2 lv (Tarrow ((l,marg,marr,mret), t1, t2, Cok)) in
       link_type t t';
-      (marg, t1, mret, t2)
-  | Tarrow((l', arg, ret), t1, t2, _)
+      (marg, t1, marr, mret, t2)
+  | Tarrow((l', arg, arr, ret), t1, t2, _)
     when (l = l' || !Clflags.classic && l = Nolabel && not (is_optional l)) ->
-      (arg, t1, ret, t2)
+      (arg, t1, arr, ret, t2)
   | _ ->
       raise (Unify [])
 
@@ -3442,13 +3449,14 @@ let rec moregen inst_nongen variance type_pairs env t1 t2 =
               moregen_occur env t1'.level t2;
               update_scope t1'.scope t2;
               link_type t1' t2
-          | (Tarrow ((l1,a1,r1), t1, u1, _),
-             Tarrow ((l2,a2,r2), t2, u2, _)) when
+          | (Tarrow ((l1,a1,_m1,r1), t1, u1, _),
+             Tarrow ((l2,a2,_m2,r2), t2, u2, _)) when
                (l1 = l2
                 || !Clflags.classic && not (is_optional l1 || is_optional l2)) ->
               moregen inst_nongen (neg_variance variance) type_pairs env t1 t2;
               moregen inst_nongen variance type_pairs env u1 u2;
               moregen_alloc_mode (neg_variance variance) a1 a2;
+              (* TODO anlorenzen for lwhite: what should I do for the arr_mode here? *)
               moregen_alloc_mode variance r1 r2
           | (Ttuple tl1, Ttuple tl2) ->
               moregen_list inst_nongen variance type_pairs env tl1 tl2
@@ -3742,13 +3750,14 @@ let rec eqtype rename type_pairs subst env t1 t2 =
                 then raise (Unify []);
                 subst := (t1', t2') :: !subst
               end
-          | (Tarrow ((l1,a1,r1), t1, u1, _),
-             Tarrow ((l2,a2,r2), t2, u2, _)) when
+          | (Tarrow ((l1,a1,m1,r1), t1, u1, _),
+             Tarrow ((l2,a2,m2,r2), t2, u2, _)) when
                (l1 = l2
                 || !Clflags.classic && not (is_optional l1 || is_optional l2)) ->
               eqtype rename type_pairs subst env t1 t2;
               eqtype rename type_pairs subst env u1 u2;
               eqtype_alloc_mode a1 a2;
+              eqtype_uniqueness_mode m1 m2;
               eqtype_alloc_mode r1 r2
           | (Ttuple tl1, Ttuple tl2) ->
               eqtype_list rename type_pairs subst env tl1 tl2
@@ -3859,6 +3868,9 @@ and eqtype_row rename type_pairs subst env row1 row2 =
 and eqtype_alloc_mode m1 m2 =
   (* FIXME implement properly *)
   unify_alloc_mode m1 m2
+and eqtype_uniqueness_mode m1 m2 =
+  (* FIXME implement properly *)
+  unify_uniqueness_mode m1 m2
 
 (* Must empty univar_pairs first *)
 let eqtype_list rename type_pairs subst env tl1 tl2 =
@@ -4249,7 +4261,7 @@ let rec build_subtype env visited loops posi level t =
           (t, Unchanged)
       else
         (t, Unchanged)
-  | Tarrow((l,a,r) , t1, t2, _) ->
+  | Tarrow((l,a,m,r) , t1, t2, _) ->
       if memq_warn t visited then (t, Unchanged) else
       let visited = t :: visited in
       let (t1', c1) = build_subtype env visited loops (not posi) level t1 in
@@ -4261,7 +4273,8 @@ let rec build_subtype env visited loops posi level t =
         if level > 2 then build_submode posi r else r, Unchanged
       in
       let c = max c1 (max c2 (max c3 c4)) in
-      if c > Unchanged then (newty (Tarrow((l,a',r'), t1', t2', Cok)), c)
+      (* TODO anlorenzen for lwhite: what should I do for arr_mode here? *)
+      if c > Unchanged then (newty (Tarrow((l,a',m,r'), t1', t2', Cok)), c)
       else (t, Unchanged)
   | Ttuple tlist ->
       if memq_warn t visited then (t, Unchanged) else
@@ -4435,6 +4448,11 @@ let subtype_alloc_mode env trace a1 a2 =
   | Ok () -> ()
   | Error _e -> subtype_error env trace
 
+let subtype_uniqueness_mode env trace a1 a2 =
+  match Mode.Uniqueness.submode a1 a2 with
+  | Ok () -> ()
+  | Error _e -> subtype_error env trace
+
 let rec subtype_rec env trace t1 t2 cstrs =
   let t1 = repr t1 in
   let t2 = repr t2 in
@@ -4447,12 +4465,13 @@ let rec subtype_rec env trace t1 t2 cstrs =
     match (t1.desc, t2.desc) with
       (Tvar _, _) | (_, Tvar _) ->
         (trace, t1, t2, !univar_pairs)::cstrs
-    | (Tarrow((l1,a1,r1), t1, u1, _),
-       Tarrow((l2,a2,r2), t2, u2, _)) when
+    | (Tarrow((l1,a1,m1,r1), t1, u1, _),
+       Tarrow((l2,a2,m2,r2), t2, u2, _)) when
          (l1 = l2
           || !Clflags.classic && not (is_optional l1 || is_optional l2)) ->
         let cstrs = subtype_rec env (Trace.diff t2 t1::trace) t2 t1 cstrs in
         subtype_alloc_mode env trace a2 a1;
+        subtype_uniqueness_mode env trace m2 m1;
         subtype_alloc_mode env trace r1 r2;
         subtype_rec env (Trace.diff u1 u2::trace) u1 u2 cstrs;
     | (Ttuple tl1, Ttuple tl2) ->
@@ -4695,8 +4714,9 @@ let remove_mode_variables ty =
     if TypeSet.mem ty !visited then () else begin
       visited := TypeSet.add ty !visited;
       match ty.desc with
-      | Tarrow ((_,marg,mret),targ,tret,_) ->
+      | Tarrow ((_,marg,marr,mret),targ,tret,_) ->
          let _ = Mode.Alloc.constrain_global_shared marg in
+         let _ = Mode.Uniqueness.constrain_upper marr in
          let _ = Mode.Alloc.constrain_global_shared mret in
          go targ; go tret
       | _ -> iter_type_expr go ty

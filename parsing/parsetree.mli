@@ -46,6 +46,11 @@ type constant =
 
 type location_stack = Location.t list
 
+(* Functions that close over unique values can only be called once. *)
+type call_count =
+  | Call_once (* !-> *)
+  | Call_many (* -> *)
+
 (** {1 Extension points} *)
 
 type attribute = {
@@ -92,7 +97,7 @@ and core_type_desc =
         (*  _ *)
   | Ptyp_var of string
         (* 'a *)
-  | Ptyp_arrow of arg_label * core_type * core_type
+  | Ptyp_arrow of arg_label * call_count * core_type * core_type
         (* T1 -> T2       Simple
            ~l:T1 -> T2    Labelled
            ?l:T1 -> T2    Optional

@@ -645,8 +645,8 @@ let typ sub x =
     match x.ctyp_desc with
     | Ttyp_any
     | Ttyp_var _ as d -> d
-    | Ttyp_arrow (label, ct1, ct2) ->
-        Ttyp_arrow (label, sub.typ sub ct1, sub.typ sub ct2)
+    | Ttyp_arrow (label, arr, ct1, ct2) ->
+        Ttyp_arrow (label, arr, sub.typ sub ct1, sub.typ sub ct2)
     | Ttyp_tuple list -> Ttyp_tuple (List.map (sub.typ sub) list)
     | Ttyp_constr (path, lid, list) ->
         Ttyp_constr (path, lid, List.map (sub.typ sub) list)

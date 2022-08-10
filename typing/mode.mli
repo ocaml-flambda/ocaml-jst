@@ -17,6 +17,29 @@
 
 open Types
 
+module Locality : sig
+  type const = Types.locality = Global | Local
+  val min_const : const
+  val max_const : const
+  val le_const : const -> const -> bool
+  val join_const : const -> const -> const
+  val meet_const : const -> const -> const
+  val print_const : Format.formatter -> const -> unit
+  val of_const : const -> locality mode
+
+  type t = Types.locality Types.mode
+  val global : t
+  val local : t
+  val submode : t -> t -> (unit, unit) result
+  val equate : t -> t -> (unit, unit) result
+  val constrain_upper : t -> const
+  val constrain_lower : t -> const
+  val newvar : unit -> t
+  val newvar_below : t -> t * bool
+  val newvar_above : t -> t * bool
+  val print : Format.formatter -> t -> unit
+end
+
 module Uniqueness : sig
   type const = Types.uniqueness = Unique | Shared
   val min_const : const
@@ -26,7 +49,18 @@ module Uniqueness : sig
   val meet_const : const -> const -> const
   val print_const : Format.formatter -> const -> unit
   val of_const : const -> uniqueness mode
-  val submode : uniqueness mode -> uniqueness mode -> (unit, unit) result
+
+  type t = Types.uniqueness Types.mode
+  val unique : t
+  val shared : t
+  val submode : t -> t -> (unit, unit) result
+  val equate : t -> t -> (unit, unit) result
+  val constrain_upper : t -> const
+  val constrain_lower : t -> const
+  val newvar : unit -> t
+  val newvar_below : t -> t * bool
+  val newvar_above : t -> t * bool
+  val print : Format.formatter -> t -> unit
 end
 
 module Alloc : sig

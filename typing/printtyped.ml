@@ -154,6 +154,10 @@ let arg_label i ppf = function
   | Optional s -> line i ppf "Optional \"%s\"\n" s
   | Labelled s -> line i ppf "Labelled \"%s\"\n" s
 ;;
+let call_count i ppf = function
+  | Types.Amode Types.Unique -> line i ppf "Call_once\n"
+  | _ -> line i ppf ""
+;;
 
 let record_representation i ppf = let open Types in function
   | Record_regular -> line i ppf "Record_regular\n"
@@ -195,9 +199,10 @@ let rec core_type i ppf x =
   match x.ctyp_desc with
   | Ttyp_any -> line i ppf "Ttyp_any\n";
   | Ttyp_var (s) -> line i ppf "Ttyp_var %s\n" s;
-  | Ttyp_arrow (l, ct1, ct2) ->
+  | Ttyp_arrow (l, arr, ct1, ct2) ->
       line i ppf "Ttyp_arrow\n";
       arg_label i ppf l;
+      call_count i ppf arr;
       core_type i ppf ct1;
       core_type i ppf ct2;
   | Ttyp_tuple l ->

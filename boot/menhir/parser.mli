@@ -121,6 +121,7 @@ type token =
   | BARRBRACKET
   | BARBAR
   | BAR
+  | BANGMINUSGREATER
   | BANG
   | BACKQUOTE
   | ASSERT

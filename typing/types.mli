@@ -130,7 +130,7 @@ and type_desc =
   (** Type of a first-class module (a.k.a package). *)
 
 and arrow_desc =
-  arg_label * alloc_mode * alloc_mode
+  arg_label * alloc_mode * uniqueness mode * alloc_mode
 
 and locality = Global | Local
 

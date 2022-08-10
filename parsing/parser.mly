@@ -722,6 +722,7 @@ let mk_directive ~loc name arg =
 %token ASSERT
 %token BACKQUOTE
 %token BANG
+%token BANGMINUSGREATER
 %token BAR
 %token BARBAR
 %token BARRBRACKET
@@ -3481,20 +3482,20 @@ strict_function_type:
       label = arg_label
       unique_local = ioption(mode_flags)
       domain = extra_rhs(tuple_type)
-      MINUSGREATER
+      arr = type_arrow
       codomain = strict_function_type
-        { Ptyp_arrow(label, mktyp_with_mode_maybe unique_local domain, codomain) }
+        { Ptyp_arrow(label, arr, mktyp_with_mode_maybe unique_local domain, codomain) }
     )
     { $1 }
   | mktyp(
       label = arg_label
       arg_unique_local = ioption(mode_flags)
       domain = extra_rhs(tuple_type)
-      MINUSGREATER
+      arr = type_arrow
       ret_unique_local = ioption(mode_flags)
       codomain = tuple_type
       %prec MINUSGREATER
-        { Ptyp_arrow(label,
+        { Ptyp_arrow(label, arr,
             mktyp_with_mode_maybe arg_unique_local domain,
             mktyp_with_mode_maybe ret_unique_local (maybe_curry_typ codomain)) }
     )
@@ -3513,6 +3514,10 @@ strict_function_type:
    | UNIQUE          { Unique }
    | LOCAL UNIQUE    { Unique_local }
    | UNIQUE LOCAL    { Unique_local }
+;
+%inline type_arrow:
+   | MINUSGREATER        { Call_many }
+   | BANGMINUSGREATER    { Call_once }
 ;
 (* Tuple types include:
    - atomic types (see below);

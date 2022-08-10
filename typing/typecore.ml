@@ -2502,7 +2502,7 @@ let rec list_labels_aux env visited ls ty_fun =
   if List.memq ty visited then
     List.rev ls, false
   else match ty.desc with
-    Tarrow ((l,_,_), _, ty_res, _) ->
+    Tarrow ((l,_,_,_), _, ty_res, _) ->
       list_labels_aux env (ty::visited) (l::ls) ty_res
   | _ ->
       List.rev ls, is_Tvar ty
@@ -4634,14 +4634,14 @@ and type_expect_
       let ty_func_result = newvar () in
       let ty_func =
         newty (Tarrow(
-          (Nolabel, Mode.Alloc.global, Mode.Alloc.global),
+          (Nolabel, Mode.Alloc.global, Mode.Uniqueness.shared, Mode.Alloc.global),
           ty_params, ty_func_result, Cok))
       in
       let ty_result = newvar () in
       let ty_andops = newvar () in
       let ty_op =
-        newty (Tarrow((Nolabel, Mode.Alloc.global, Mode.Alloc.global), ty_andops,
-          newty (Tarrow((Nolabel, Mode.Alloc.global, Mode.Alloc.global),
+        newty (Tarrow((Nolabel, Mode.Alloc.global, Mode.Uniqueness.shared, Mode.Alloc.global), ty_andops,
+          newty (Tarrow((Nolabel, Mode.Alloc.global, Mode.Uniqueness.shared, Mode.Alloc.global),
                         ty_func, ty_result, Cok)), Cok))
       in
       begin try
@@ -5314,14 +5314,14 @@ and type_argument ?explanation ?recarg env (mode : expected_mode) sarg
   let inferred = is_inferred sarg in
   let rec loosen_ret_modes ty' ty =
     match expand_head env ty', expand_head env ty with
-    | {desc = Tarrow((l', marg', mret'), ty_arg', ty_res', _); level = lv'},
-      {desc = Tarrow((l,  marg,  mret ), ty_arg,  ty_res,  _); level = lv }
+    | {desc = Tarrow((l', marg', marr', mret'), ty_arg', ty_res', _); level = lv'},
+      {desc = Tarrow((l,  marg,  marr, mret ), ty_arg,  ty_res,  _); level = lv }
       when lv' = generic_level || not !Clflags.principal ->
       let ty_res', ty_res = loosen_ret_modes ty_res' ty_res in
       let mret', _ = Mode.Alloc.newvar_below mret' in
       let mret,  _ = Mode.Alloc.newvar_below mret in
-      newty2 lv' (Tarrow((l', marg', mret'), ty_arg', ty_res', Cok)),
-      newty2 lv  (Tarrow((l,  marg,  mret),  ty_arg,  ty_res,  Cok))
+      newty2 lv' (Tarrow((l', marg', marr', mret'), ty_arg', ty_res', Cok)),
+      newty2 lv  (Tarrow((l,  marg, marr, mret),  ty_arg,  ty_res,  Cok))
     | _ ->
       ty', ty
   in

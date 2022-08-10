@@ -175,13 +175,13 @@ let rec extract_params styp =
     [], styp, get_alloc_mode styp
   in
   match styp.ptyp_desc with
-  | Ptyp_arrow (l, a, r) ->
+  | Ptyp_arrow (l, arr, a, r) ->
       let arg_mode = get_alloc_mode a in
       let params, ret, ret_mode =
         if Builtin_attributes.has_curry r.ptyp_attributes then final r
         else extract_params r
       in
-      (l, arg_mode, a) :: params, ret, ret_mode
+      (l, arr, arg_mode, a) :: params, ret, ret_mode
   | _ -> final styp
 
 let new_pre_univar ?name () =
@@ -227,17 +227,22 @@ and transl_type_aux env policy locality styp =
     ctyp (Ttyp_var name) ty
   | Ptyp_arrow _ ->
       let args, ret, ret_mode = extract_params styp in
-      let rec loop acc_mode args =
+      let rec loop locality_acc uniqueness_acc args =
         match args with
-        | (l, arg_mode, arg) :: rest ->
+        | (l, arr, arg_mode, arg) :: rest ->
+          let arr =
+            match arr with
+            | Call_once -> Mode.Uniqueness.Unique
+            | Call_many -> uniqueness_acc in
           let arg_cty = transl_type env policy (fst arg_mode) arg in
-          let acc_mode = Mode.Alloc.join_const acc_mode arg_mode in
+          let locality_acc = Mode.Locality.join_const locality_acc (fst arg_mode) in
+          let uniqueness_acc = Mode.Uniqueness.meet_const uniqueness_acc (snd arg_mode) in
           let ret_mode =
             match rest with
             | [] -> ret_mode
-            | _ :: _ -> acc_mode
+            | _ :: _ -> (locality_acc, uniqueness_acc)
           in
-          let ret_cty = loop acc_mode rest in
+          let ret_cty = loop locality_acc uniqueness_acc rest in
           let arg_ty = arg_cty.ctyp_type in
           let arg_ty =
             if Btype.is_optional l
@@ -245,15 +250,17 @@ and transl_type_aux env policy locality styp =
             else arg_ty
           in
           let arg_mode = Mode.Alloc.of_const arg_mode in
+          let arr_mode = Mode.Uniqueness.of_const arr in
           let ret_mode = Mode.Alloc.of_const ret_mode in
           let ty =
             newty
-              (Tarrow((l,arg_mode,ret_mode), arg_ty, ret_cty.ctyp_type, Cok))
+              (Tarrow((l,arg_mode,arr_mode,ret_mode), arg_ty, ret_cty.ctyp_type, Cok))
           in
-          ctyp (Ttyp_arrow (l, arg_cty, ret_cty)) ty
+          let arr_mode, _ = Mode.Uniqueness.newvar_below arr_mode in
+          ctyp (Ttyp_arrow (l, arr_mode, arg_cty, ret_cty)) ty
         | [] -> transl_type env policy (fst ret_mode) ret
       in
-      loop (locality, Shared) args
+      loop locality Shared args
   | Ptyp_tuple stl ->
     assert (List.length stl >= 2);
     let ctys = List.map (transl_type env policy Mode.Alloc.Global) stl in
