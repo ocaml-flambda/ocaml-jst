@@ -1277,7 +1277,7 @@ typing/typeclass.cmi : \
     parsing/asttypes.cmi
 typing/typecore.cmo : \
     utils/warnings.cmi \
-    typing/uniquenessAnalysis.cmi \
+    typing/uniqueness_analysis.cmi \
     typing/typetexp.cmi \
     typing/types.cmi \
     typing/typedtree.cmi \
@@ -1311,7 +1311,7 @@ typing/typecore.cmo : \
     typing/typecore.cmi
 typing/typecore.cmx : \
     utils/warnings.cmx \
-    typing/uniquenessAnalysis.cmx \
+    typing/uniqueness_analysis.cmx \
     typing/typetexp.cmx \
     typing/types.cmx \
     typing/typedtree.cmx \
@@ -1344,7 +1344,6 @@ typing/typecore.cmx : \
     parsing/ast_helper.cmx \
     typing/typecore.cmi
 typing/typecore.cmi : \
-    typing/uniquenessAnalysis.cmi \
     typing/types.cmi \
     typing/typedtree.cmi \
     typing/path.cmi \
@@ -1794,10 +1793,11 @@ typing/typetexp.cmi : \
     typing/env.cmi \
     typing/ctype.cmi \
     parsing/asttypes.cmi
-typing/uniquenessAnalysis.cmo : \
+typing/uniqueness_analysis.cmo : \
     typing/typetexp.cmi \
     typing/types.cmi \
     typing/typedtree.cmi \
+    typing/printtyp.cmi \
     typing/path.cmi \
     typing/mode.cmi \
     parsing/longident.cmi \
@@ -1806,11 +1806,12 @@ typing/uniquenessAnalysis.cmo : \
     typing/env.cmi \
     parsing/builtin_attributes.cmi \
     parsing/asttypes.cmi \
-    typing/uniquenessAnalysis.cmi
-typing/uniquenessAnalysis.cmx : \
+    typing/uniqueness_analysis.cmi
+typing/uniqueness_analysis.cmx : \
     typing/typetexp.cmx \
     typing/types.cmx \
     typing/typedtree.cmx \
+    typing/printtyp.cmx \
     typing/path.cmx \
     typing/mode.cmx \
     parsing/longident.cmx \
@@ -1819,12 +1820,9 @@ typing/uniquenessAnalysis.cmx : \
     typing/env.cmx \
     parsing/builtin_attributes.cmx \
     parsing/asttypes.cmi \
-    typing/uniquenessAnalysis.cmi
-typing/uniquenessAnalysis.cmi : \
-    typing/typedtree.cmi \
-    parsing/location.cmi \
-    typing/ident.cmi \
-    typing/env.cmi
+    typing/uniqueness_analysis.cmi
+typing/uniqueness_analysis.cmi : \
+    typing/typedtree.cmi
 typing/untypeast.cmo : \
     typing/typedtree.cmi \
     typing/path.cmi \

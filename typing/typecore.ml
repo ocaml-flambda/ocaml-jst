@@ -22,6 +22,7 @@ open Types
 open Typedtree
 open Btype
 open Ctype
+open Uniqueness_analysis
 
 type type_forcing_context =
   | If_conditional
@@ -68,8 +69,6 @@ type existential_restriction =
   | In_class_args (** or in class arguments *)
   | In_class_def  (** or in [class c = let ... in ...] *)
   | In_self_pattern (** or in self pattern *)
-
-type unique_error = UniquenessAnalysis.unique_error
 
 type error =
   | Constructor_arity_mismatch of Longident.t * int * int
@@ -143,7 +142,6 @@ type error =
   | Uncurried_function_escapes
   | Local_return_annotation_mismatch of Location.t
   | Bad_tail_annotation of [`Conflict|`Not_a_tailcall]
-  | Unique_failure of unique_error
 
 exception Error of Location.t * Env.t * error
 exception Error_forward of Location.error
@@ -394,16 +392,6 @@ let optimise_allocations () =
     (fun mode -> ignore (Mode.Alloc.constrain_upper mode))
     !allocations;
   reset_allocations ()
-
-(* Uniqueness analysis *)
-
-let check_uniqueness_exp exp =
-  try UniquenessAnalysis.check_uniqueness_exp exp
-  with | UniquenessAnalysis.Unique_error(loc, env, err) -> raise (Error(loc, env, Unique_failure(err)))
-
-let check_uniqueness_value_bindings vbs =
-  try UniquenessAnalysis.check_uniqueness_value_bindings vbs
-  with | UniquenessAnalysis.Unique_error(loc, env, err) -> raise (Error(loc, env, Unique_failure(err)))
 
 (* Typing of constants *)
 
@@ -6933,33 +6921,6 @@ let report_error ~loc env = function
         (match err with
          | `Conflict -> "is contradictory"
          | `Not_a_tailcall -> "is not on a tail call")
-  | Unique_failure err -> match err with
-    | UniquenessAnalysis.Not_owned_in_expression id ->
-      Location.errorf ~loc
-        "The identifier@ %s was inferred to be unique and thus can not be@ \
-          used in a context where unique use is not guaranteed."
-        (Ident.name id)
-    | UniquenessAnalysis.Seen_twice(id, _, r1, r2) ->
-      (* TODO: incorporate expression into the error *)
-      let get_reason r place = match r with
-        | UniquenessAnalysis.Seen_as id' ->
-          if Ident.same id id' then Format.dprintf ""
-          else Format.dprintf
-                 " It was seen %s because %s is a parent or alias of %s."
-                 place (Ident.name id') (Ident.name id)
-        | UniquenessAnalysis.Tuple_match_on_aliased_as(id', alias) ->
-          if Ident.same id id'
-          then Format.dprintf
-                 " It was seen %s because %s refers to a tuple containing %s."
-                  place (Ident.name alias) (Ident.name id')
-          else Format.dprintf
-                 " It was seen %s because %s refers to a tuple@ \
-                  containing %s, which is a parent of %s."
-                 place (Ident.name alias) (Ident.name id') (Ident.name id) in
-      Location.errorf ~loc
-        "@[The identifier@ %s was inferred to be unique and thus can not@ \
-          be used twice.%t%t @]"
-        (Ident.name id) (get_reason r1 "here") (get_reason r2 "previously")
 
 
 let report_error ~loc env err =

@@ -22,11 +22,11 @@ type unique_seen_reason =
   | Seen_as of Ident.t
   | Tuple_match_on_aliased_as of Ident.t * Ident.t
 
-type unique_error =
+type error =
   | Seen_twice of Ident.t * expression * unique_seen_reason * unique_seen_reason
   | Not_owned_in_expression of Ident.t
 
-exception Unique_error of Location.t * Env.t * unique_error
+exception Error of Location.t * Env.t * error
 
 let has_unique_attr loc attrs =
   match Builtin_attributes.has_unique attrs with
@@ -163,7 +163,7 @@ let get_subject has_recursed reason id uenv =
 let rec mark_seen_ has_recursed visit_children id reason exp uenv =
   let id = lookup_alias id uenv in
   let _ = if Ident.Set.mem id uenv.owned then () else
-    let err = Unique_error(exp.exp_loc, exp.exp_env, Not_owned_in_expression(id)) in
+    let err = Error(exp.exp_loc, exp.exp_env, Not_owned_in_expression(id)) in
     mark_shared id err uenv in
   match Ident.Map.find_opt id uenv.last_seen with
   | None ->
@@ -175,7 +175,7 @@ let rec mark_seen_ has_recursed visit_children id reason exp uenv =
       List.fold_left (fun uenv (_, c) -> mark_seen_ true true c reason exp uenv) uenv children
     else uenv
   | Some (exp', reason') ->
-    let err = Unique_error(exp.exp_loc, exp.exp_env, Seen_twice(id, exp', reason, reason')) in
+    let err = Error(exp.exp_loc, exp.exp_env, Seen_twice(id, exp', reason, reason')) in
     mark_shared (get_subject has_recursed reason' id uenv) err uenv; uenv
 let mark_seen id reason exp uenv =
   mark_seen_ false true id reason exp uenv
@@ -555,3 +555,44 @@ let check_uniqueness_value_bindings vbs =
         aliases = Ident.Map.empty;
         constraints = Ident.Map.empty; }
   in ()
+
+let report_error ~loc = function
+  | Not_owned_in_expression id ->
+    Location.errorf ~loc
+      "The identifier@ %s was inferred to be unique and thus can not be@ \
+        used in a context where unique use is not guaranteed."
+      (Ident.name id)
+  | Seen_twice(id, _, r1, r2) ->
+    (* TODO: incorporate expression into the error *)
+    let get_reason r place = match r with
+      | Seen_as id' ->
+        if Ident.same id id' then Format.dprintf ""
+        else Format.dprintf
+                " It was seen %s because %s is a parent or alias of %s."
+                place (Ident.name id') (Ident.name id)
+      | Tuple_match_on_aliased_as(id', alias) ->
+        if Ident.same id id'
+        then Format.dprintf
+                " It was seen %s because %s refers to a tuple containing %s."
+                place (Ident.name alias) (Ident.name id')
+        else Format.dprintf
+                " It was seen %s because %s refers to a tuple@ \
+                containing %s, which is a parent of %s."
+                place (Ident.name alias) (Ident.name id') (Ident.name id) in
+    Location.errorf ~loc
+      "@[The identifier@ %s was inferred to be unique and thus can not@ \
+        be used twice.%t%t @]"
+      (Ident.name id) (get_reason r1 "here") (get_reason r2 "previously")
+
+let report_error ~loc env err =
+  Printtyp.wrap_printing_env ~error:true env
+    (fun () -> report_error ~loc err)
+
+let () =
+  Location.register_error_of_exn
+    (function
+      | Error (loc, env, err) ->
+          Some (report_error ~loc env err)
+      | _ ->
+          None
+    )
