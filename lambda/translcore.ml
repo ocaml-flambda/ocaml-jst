@@ -96,8 +96,10 @@ let extract_float = function
 
 let transl_alloc_mode alloc_mode =
   match Mode.Alloc.constrain_global_shared alloc_mode with
-  | Global, _ -> alloc_heap
-  | Local, _ -> alloc_local
+  | Global, Unique -> alloc_heap_unique
+  | Local, Unique -> alloc_local_unique
+  | Global, Shared -> alloc_heap
+  | Local, Shared -> alloc_local
 
 let transl_value_mode mode =
   let alloc_mode = Mode.Value.regional_to_global_alloc mode in

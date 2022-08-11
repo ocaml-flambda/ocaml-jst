@@ -17,5 +17,11 @@ let fconstant_lift b =
   if b then p else { unique_ p with x = 2.0 }
 
 let () =
-  Printf.printf "%f %f %f\n" ((constant_lift true).x) ((constant_lift false).x) ((constant_lift true).x);
-  Printf.printf "%f %f %f\n" ((fconstant_lift true).x) ((fconstant_lift false).x) ((fconstant_lift true).x)
+  let x = (constant_lift true).x in
+  let y = (constant_lift false).x in
+  let z = (constant_lift true).x in
+  Printf.printf "%f %f %f\n" x y z;
+  let x = (fconstant_lift true).x in
+  let y = (fconstant_lift false).x in
+  let z = (fconstant_lift true).x in
+  Printf.printf "%f %f %f\n" x y z

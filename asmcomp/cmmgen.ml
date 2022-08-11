@@ -506,7 +506,7 @@ let rec transl env e =
               | Reuse_set _, (arg :: args) ->
                   (Csequence(remove_unit(
                        setfloatfield n
-                         (Lambda.Assignment mode) id (transl env arg) dbg), exp),
+                         (Lambda.Assignment mode) id (transl_unbox_float dbg env arg) dbg), exp),
                    args, n + 1)
             ) (id, args, 0) reuses
           in exp
