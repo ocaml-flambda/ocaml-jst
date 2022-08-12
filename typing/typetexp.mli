@@ -35,8 +35,7 @@ val transl_type_scheme:
         Env.t -> Parsetree.core_type -> Typedtree.core_type
 val reset_type_variables: unit -> unit
 val type_variable: Location.t -> string -> type_expr
-val transl_type_param:
-  Env.t -> Parsetree.core_type -> Typedtree.core_type
+val transl_type_param: Env.t -> Parsetree.core_type -> Type_layout.t -> Typedtree.core_type
 
 type variable_context
 val narrow: unit -> variable_context
@@ -65,6 +64,9 @@ type error =
   | Opened_object of Path.t option
   | Not_an_object of type_expr
   | Local_not_enabled
+  | Non_value_function of
+      {is_arg : bool; typ : type_expr; err : Type_layout.Violation.t}
+
 
 exception Error of Location.t * Env.t * error
 

@@ -135,7 +135,7 @@ and ident_none = ident_create "None"
 and ident_some = ident_create "Some"
 
 let mk_add_type add_type type_ident
-      ?manifest ?(kind=Types.kind_abstract) env =
+      ?manifest ?(kind=Types.kind_abstract_value) env =
   let decl =
     {type_params = [];
      type_arity = 0;
@@ -157,8 +157,11 @@ let mk_add_type add_type type_ident
 let common_initial_env add_type add_extension empty_env =
   let add_type = mk_add_type add_type
   and add_type1 type_ident
-      ~variance ~separability ?(kind=fun _ -> Types.kind_abstract) env =
-    let param = newgenvar () in
+      ~variance ~separability ?(kind=fun _ -> Types.kind_abstract_value) env =
+    (* CJC: Think harder - for now I'm just going to say the parameters of these
+       built-in types must have layout value.  Could we be less restrictive in
+       some cases?  Are there any phantom type parameters here? *)
+    let param = newgenvar Type_layout.value in
     let decl =
       {type_params = [param];
        type_arity = 1;
@@ -191,7 +194,6 @@ let common_initial_env add_type add_extension empty_env =
         ext_uid = Uid.of_predef_id id;
       }
   in
-  let kind_immediate = Type_abstract { immediate = Always } in
   add_extension ident_match_failure
                          [newgenty (Ttuple[type_string; type_int; type_int])] (
   add_extension ident_out_of_memory [] (
@@ -227,14 +229,14 @@ let common_initial_env add_type add_extension empty_env =
   add_type1 ident_array ~variance:Variance.full ~separability:Separability.Ind (
   add_type ident_exn ~kind:Type_open (
   add_type ident_unit
-    ~kind:(Type_variant([cstr ident_void []], Variant_regular)) (
+    ~kind:(Type_variant([cstr ident_void []], Variant_immediate)) (
   add_type ident_bool
     ~kind:(Type_variant([cstr ident_false []; cstr ident_true []],
-                        Variant_regular)) (
+                        Variant_immediate)) (
   add_type ident_float (
   add_type ident_string (
-  add_type ident_char ~kind:kind_immediate (
-  add_type ident_int ~kind:kind_immediate (
+  add_type ident_char ~kind:Types.kind_abstract_immediate (
+  add_type ident_int ~kind:Types.kind_abstract_immediate (
   add_type ident_extension_constructor (
   add_type ident_floatarray (
     empty_env))))))))))))))))))))))))))))

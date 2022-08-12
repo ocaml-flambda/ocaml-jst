@@ -305,7 +305,7 @@ let printer_type ppf typename =
 
 let match_simple_printer_type desc printer_type =
   Ctype.begin_def();
-  let ty_arg = Ctype.newvar() in
+  let ty_arg = Ctype.newvar Type_layout.value in
   Ctype.unify !toplevel_env
     (Ctype.newconstr printer_type [ty_arg])
     (Ctype.instance desc.val_type);
@@ -315,7 +315,7 @@ let match_simple_printer_type desc printer_type =
 
 let match_generic_printer_type desc path args printer_type =
   Ctype.begin_def();
-  let args = List.map (fun _ -> Ctype.newvar ()) args in
+  let args = List.map (fun _ -> Ctype.newvar Type_layout.value) args in
   let ty_target = Ctype.newty (Tconstr (path, args, ref Mnil)) in
   let ty_args =
     List.map (fun ty_var -> Ctype.newconstr printer_type [ty_var]) args in

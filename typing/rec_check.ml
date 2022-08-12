@@ -655,7 +655,7 @@ let rec expression : Typedtree.expression -> term_judg =
           | Record_float -> Dereference
           | Record_unboxed _ -> Return
           | Record_regular | Record_inlined _
-          | Record_extension _ -> Guard
+          | Record_extension _ | Record_immediate _ -> Guard
         in
         let field (_label, field_def) = match field_def with
             Kept _ -> empty

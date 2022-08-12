@@ -111,22 +111,28 @@ let constructor_descrs ~current_unit ty_path decl cstrs rep =
           | None -> ty_res
         in
         let (tag, descr_rem) =
-          match cd_args, rep with
-          | _, Variant_unboxed ->
+          match rep with
+          | Variant_unboxed _ ->
             assert (rem = []);
             (Cstr_unboxed, [])
-          | Cstr_tuple [], Variant_regular ->
+          | Variant_immediate ->
              (Cstr_constant idx_const,
               describe_constructors (idx_const+1) idx_nonconst rem)
-          | _, Variant_regular  ->
-             (Cstr_block idx_nonconst,
-              describe_constructors idx_const (idx_nonconst+1) rem) in
+          | Variant_regular -> begin
+              match cd_args with
+              | Cstr_tuple [] -> (Cstr_constant idx_const,
+                  describe_constructors (idx_const+1) idx_nonconst rem)
+              | _  -> (Cstr_block idx_nonconst,
+                  describe_constructors idx_const (idx_nonconst+1) rem)
+            end
+        in
         let cstr_name = Ident.name cd_id in
         let existentials, cstr_args, cstr_inlined =
           let representation =
             match rep with
-            | Variant_unboxed -> Record_unboxed true
+            | Variant_unboxed l -> Record_unboxed (true,l)
             | Variant_regular -> Record_inlined idx_nonconst
+            | Variant_immediate -> Record_immediate true
           in
           constructor_args ~current_unit decl.type_private cd_args cd_res
             (Path.Pdot (ty_path, cstr_name)) representation

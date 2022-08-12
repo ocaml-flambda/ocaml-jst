@@ -31,9 +31,9 @@ let gen_bindings bindings body =
   List.fold_right gen_binding bindings body
 
 let valuekind_of_arraykind = function
-  | Pgenarray -> Pgenval
-  | Paddrarray | Pintarray -> Pintval
-  | Pfloatarray -> Pfloatval
+  | Pgenarray -> Lambda.Value Pgenval
+  | Paddrarray | Pintarray -> Lambda.Value Pintval
+  | Pfloatarray -> Lambda.Value Pfloatval
 
 (* Pgenarray results in a mutable variable that should be referenced with
    Lmutvar *)
@@ -422,6 +422,7 @@ let transl_arr_comprehension ~transl_exp ~loc ~scopes
       ~array_kind exp blocks =
   let body = transl_exp ~scopes exp in
   let value_kind = Typeopt.value_kind exp.exp_env exp.exp_type in
+  let value_kind = Typeopt.value_kind_of_layout value_kind in
   match blocks with
   | [] -> assert false
   | [block] ->
@@ -468,7 +469,7 @@ let transl_list_comp type_comp body acc_var mats ~transl_exp ~scopes ~loc =
   let param, pval, args, func, body, mats =
     match type_comp with
     | From_to (param, _,e2,e3, dir) ->
-      let pval = Pintval in
+      let pval = Lambda.Value Pintval in
       let from_var = Ident.create_local "from" in
       let to_var = Ident.create_local "to_" in
       let args = [Lvar(from_var); Lvar(to_var); Lvar(new_acc)] in
@@ -489,6 +490,7 @@ let transl_list_comp type_comp body acc_var mats ~transl_exp ~scopes ~loc =
       let mats = (in_var, transl_exp ~scopes in_)::mats in
       pat_id , pval, args, func, body, mats
   in
+  let pval = Typeopt.value_kind_of_layout pval in
   let fn =
     Lfunction {kind = Curried {nlocal=0};
               params= [param, pval; acc_var, Pgenval];
@@ -514,6 +516,7 @@ let transl_list_comp type_comp body acc_var mats ~transl_exp ~scopes ~loc =
 let transl_list_comprehension ~transl_exp ~loc ~scopes body blocks =
   let acc_var = Ident.create_local "acc" in
   let value_kind = Typeopt.value_kind body.exp_env body.exp_type in
+  let value_kind = Typeopt.value_kind_of_layout value_kind in
   let bdy =
     Lprim(
       Pmakeblock(0, Immutable, None, alloc_heap),

@@ -416,7 +416,9 @@ module Analyser =
           { Typedtree.ld_id; ld_mutable; ld_type; ld_loc; ld_attributes } =
         get_field env comments @@
         {Types.ld_id; ld_mutable; ld_global = Unrestricted;
-         ld_type=ld_type.Typedtree.ctyp_type;
+         (* CJC XXX what is this used for.  Do I need to figure out if its actually void?
+            I can compute it from the core_type if needed. *)
+         ld_void=false; ld_type=ld_type.Typedtree.ctyp_type;
          ld_loc; ld_attributes; ld_uid=Types.Uid.internal_not_actually_unique} in
       let open Typedtree in
       function

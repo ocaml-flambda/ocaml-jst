@@ -547,11 +547,11 @@ let merge_constraint initial_env remove_aliases loc sg constr =
       when Ident.name id = s && Typedecl.is_fixed_type sdecl ->
         let decl_row =
           let arity = List.length sdecl.ptype_params in
-          {
+          { (* CJC XXX deal with layout annotations on parameters *)
             type_params =
-              List.map (fun _ -> Btype.newgenvar()) sdecl.ptype_params;
+              List.map (fun _ -> Btype.newgenvar Type_layout.value) sdecl.ptype_params;
             type_arity = arity;
-            type_kind = Types.kind_abstract;
+            type_kind = Types.kind_abstract ~layout:Type_layout.value;
             type_private = Private;
             type_manifest = None;
             type_variance =
@@ -2719,7 +2719,7 @@ let type_package env m p nl =
   in
   List.iter2
     (fun n ty ->
-      try Ctype.unify env ty (Ctype.newvar ())
+      try Ctype.unify env ty (Ctype.newvar Type_layout.value)
       with Ctype.Unify _ ->
         raise (Error(modl.mod_loc, env, Scoping_pack (n,ty))))
     nl' tl';

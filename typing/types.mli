@@ -62,7 +62,9 @@ type type_expr =
     id: int }
 
 and type_desc =
-  | Tvar of string option
+  (* CJC XXX todo make this tuple a record *)
+  | Tvar of string option * layout ref
+  (*  | Tvar of { name : string option; mutable layout : layout } *)
   (** [Tvar (Some "a")] ==> ['a] or ['_a]
       [Tvar None]       ==> [_] *)
 
@@ -117,7 +119,7 @@ and type_desc =
   | Tvariant of row_desc
   (** Representation of polymorphic variants, see [row_desc]. *)
 
-  | Tunivar of string option
+  | Tunivar of string option * layout
   (** Occurrence of a type variable introduced by a
       forall quantifier / [Tpoly]. *)
 
@@ -146,6 +148,22 @@ and alloc_mode =
   | Amode of alloc_mode_const
   | Amodevar of alloc_mode_var
 
+and sort =
+  | Var of sort option ref
+  (** Unification variable *)
+  | Value
+  (** Standard ocaml value representation *)
+  | Void
+  (** No run time representation *)
+
+and layout =
+  | Any
+  | Sort of sort
+  | Immediate64
+  (** We know for sure that values of this type are always immediate
+      on 64 bit platforms. For other platforms, we know nothing. *)
+  | Immediate
+  (** We know for sure that values of this type are always immediate *)
 
 (** [  `X | `Y ]       (row_closed = true)
     [< `X | `Y ]       (row_closed = true)
@@ -363,7 +381,6 @@ module Separability : sig
 end
 
 (* Type definitions *)
-
 type type_declaration =
   { type_params: type_expr list;
     type_arity: int;
@@ -383,7 +400,7 @@ type type_declaration =
   }
 
 and type_kind =
-    Type_abstract of {immediate: Type_immediacy.t}
+    Type_abstract of {layout : layout}
   | Type_record of label_declaration list  * record_representation
   | Type_variant of constructor_declaration list * variant_representation
   | Type_open
@@ -391,9 +408,11 @@ and type_kind =
 and record_representation =
     Record_regular                      (* All fields are boxed / tagged *)
   | Record_float                        (* All fields are floats *)
-  | Record_unboxed of bool    (* Unboxed single-field record, inlined or not *)
+  | Record_unboxed of bool*layout
+      (* Unboxed single-field record, inlined or not *)
   | Record_inlined of int               (* Inlined record *)
   | Record_extension of Path.t          (* Inlined record under extension *)
+  | Record_immediate of bool   (* inlined or not *)
 
 and global_flag =
   | Global
@@ -401,14 +420,16 @@ and global_flag =
   | Unrestricted
 
 and variant_representation =
-    Variant_regular          (* Constant or boxed constructors *)
-  | Variant_unboxed          (* One unboxed single-field constructor *)
+    Variant_regular           (* Constant or boxed constructors *)
+  | Variant_unboxed of layout (* One unboxed single-field constructor *)
+  | Variant_immediate         (* Variants with all constant constructors *)
 
 and label_declaration =
   {
     ld_id: Ident.t;
     ld_mutable: mutable_flag;
     ld_global: global_flag;
+    ld_void : bool;
     ld_type: type_expr;
     ld_loc: Location.t;
     ld_attributes: Parsetree.attributes;
@@ -429,7 +450,10 @@ and constructor_arguments =
   | Cstr_tuple of type_expr list
   | Cstr_record of label_declaration list
 
-val kind_abstract : type_kind
+val kind_abstract : layout:layout -> type_kind
+val kind_abstract_value : type_kind
+val kind_abstract_immediate : type_kind
+val kind_abstract_any : type_kind
 val decl_is_abstract : type_declaration -> bool
 
 type extension_constructor =
@@ -594,6 +618,10 @@ type label_description =
     lbl_attributes: Parsetree.attributes;
     lbl_uid: Uid.t;
   }
+
+(** The special value we assign to lbl_pos for label descriptions corresponding
+    to void types, because they can't sensibly be projected. *)
+val lbl_pos_void : int
 
 (** Extracts the list of "value" identifiers bound by a signature.
     "Value" identifiers are identifiers for signature components that

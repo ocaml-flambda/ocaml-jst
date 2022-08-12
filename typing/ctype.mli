@@ -70,6 +70,7 @@ module Unification_trace: sig
     | Escape of {context: type_expr option; kind:'a escape}
     | Incompatible_fields of {name:string; diff: type_expr diff }
     | Rec_occur of type_expr * type_expr
+    | Bad_layout of type_expr * Type_layout.Violation.t
 
   type t = desc elt list
 
@@ -124,10 +125,10 @@ val set_levels: levels -> unit
 val create_scope : unit -> int
 
 val newty: type_desc -> type_expr
-val newvar: ?name:string -> unit -> type_expr
-val newvar2: ?name:string -> int -> type_expr
+val newvar: ?name:string -> Type_layout.t -> type_expr
+val newvar2: ?name:string -> int -> Type_layout.t -> type_expr
         (* Return a fresh variable *)
-val new_global_var: ?name:string -> unit -> type_expr
+val new_global_var: ?name:string -> Type_layout.t -> type_expr
         (* Return a fresh variable, bound at toplevel
            (as type variables ['a] in type constraints). *)
 val newobj: type_expr -> type_expr
@@ -400,6 +401,7 @@ val reset_reified_var_counter: unit -> unit
 
 val maybe_pointer_type : Env.t -> type_expr -> bool
        (* True if type is possibly pointer, false if definitely not a pointer *)
+val is_void_type : Env.t -> type_expr -> bool
 
 (* Stubs *)
 val package_subtype :
@@ -410,6 +412,9 @@ val mcomp : Env.t -> type_expr -> type_expr -> unit
 
 val get_unboxed_type_representation : Env.t -> type_expr -> type_expr
 
-val kind_immediacy : type_kind -> Type_immediacy.t
-val check_decl_immediate : Env.t -> type_declaration -> Type_immediacy.t -> (unit, Type_immediacy.Violation.t) result
-val check_type_immediate : Env.t -> type_expr -> Type_immediacy.t -> (unit, Type_immediacy.Violation.t) result
+val check_decl_layout : Env.t -> type_declaration -> Type_layout.t
+  -> (unit, Type_layout.Violation.t) result
+val check_type_layout : Env.t -> type_expr -> Type_layout.t
+  -> (unit, Type_layout.Violation.t) result
+val constrain_type_layout : Env.t -> type_expr -> Type_layout.t
+  -> (unit, Type_layout.Violation.t) result

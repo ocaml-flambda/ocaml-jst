@@ -230,9 +230,8 @@ end = struct
       | `Var (id, s) -> continue p (`Alias (Patterns.omega, id, s))
       | `Alias (p, id, _) ->
           let k = Typeopt.value_kind p.pat_env p.pat_type in
-          aux
-            ( (General.view p, patl),
-              bind_with_value_kind Alias (id, k) arg action )
+          let action = bind_with_layout_rep Alias (id,k) arg action in
+          aux ((General.view p, patl), action)
       | `Record ([], _) as view -> stop p view
       | `Record (lbls, closed) ->
           let full_view = `Record (all_record_args lbls, closed) in
@@ -885,7 +884,7 @@ type 'row pattern_matching = {
 type handler = {
   provenance : matrix;
   exit : int;
-  vars : (Ident.t * Lambda.value_kind) list;
+  vars : (Ident.t * Lambda.layout_rep) list;
   pm : initial_clause pattern_matching
 }
 
@@ -2002,6 +2001,7 @@ let get_expr_args_record ~scopes head (arg, _mut) rem =
            Lprim (Pfloatfield (lbl.lbl_pos, sem, alloc_heap), [ arg ], loc)
         | Record_extension _ ->
             Lprim (Pfield (lbl.lbl_pos + 1, sem), [ arg ], loc)
+        | Record_immediate _ -> assert false (* CJC XXX come back *)
       in
       let str =
         match lbl.lbl_mut with
@@ -2155,6 +2155,8 @@ let rec do_make_string_test_tree loc kind arg sw delta d =
 
 (* Entry point *)
 let expand_stringswitch loc kind arg sw d =
+  (* CJC XXX obviously wrong *)
+  let kind = nonvoid_kind_of_layout_rep kind in
   match d with
   | None -> bind_sw arg (fun arg -> do_make_string_test_tree loc kind arg sw 0 None)
   | Some e ->
@@ -2985,18 +2987,26 @@ let compile_orhandlers value_kind compile_fun lambda1 total1 ctx to_catch =
           (* Whilst the handler is [lambda_unit] it is actually unused and only added
              to produce well-formed code. In reality this expression returns a
              [value_kind]. *)
+          (* CJC XXX void? *)
+          let vars =
+            List.map (fun (id,lr) -> (id,nonvoid_kind_of_layout_rep lr)) vars
+          in
           do_rec (Lstaticcatch (r, (i, vars), lambda_unit, value_kind)) total_r rem
         | handler_i, total_i ->
           begin match raw_action r with
           | Lstaticraise (j, args) ->
               if i = j then
                 ( List.fold_right2
-                    (bind_with_value_kind Alias)
+                    (bind_with_layout_rep Alias)
                     vars args handler_i,
                   Jumps.map (Context.rshift_num (ncols mat)) total_i )
               else
                 do_rec r total_r rem
           | _ ->
+              (* CJC XXX void? *)
+              let vars =
+                List.map (fun (id,lr) -> (id,nonvoid_kind_of_layout_rep lr)) vars
+              in
               do_rec
                 (Lstaticcatch (r, (i, vars), handler_i, value_kind))
                 (Jumps.union (Jumps.remove i total_r)
@@ -3468,6 +3478,8 @@ let for_trywith ~scopes value_kind loc param pat_act_list =
      It is important to *not* include location information in
      the reraise (hence the [_noloc]) to avoid seeing this
      silent reraise in exception backtraces. *)
+  (* CJC XXX obviously wrong *)
+  let value_kind = nonvoid_kind_of_layout_rep value_kind in
   compile_matching ~scopes value_kind loc ~failer:(Reraise_noloc param)
     None param pat_act_list Partial
 
@@ -3609,6 +3621,8 @@ let assign_pat ~scopes value_kind opt nraise catch_ids loc pat lam =
   List.fold_left push_sublet exit rev_sublets
 
 let for_let ~scopes loc param pat body_kind body =
+  (* CJC XXX obviously wrong *)
+  let body_kind = nonvoid_kind_of_layout_rep body_kind in
   match pat.pat_desc with
   | Tpat_any ->
       (* This eliminates a useless variable (and stack slot in bytecode)
@@ -3617,14 +3631,15 @@ let for_let ~scopes loc param pat body_kind body =
   | Tpat_var (id, _) ->
       (* fast path, and keep track of simple bindings to unboxable numbers *)
       let k = Typeopt.value_kind pat.pat_env pat.pat_type in
-      Llet (Strict, k, id, param, body)
+      bind_with_layout_rep Strict (id,k) param body
   | _ ->
       let opt = ref false in
       let nraise = next_raise_count () in
       let catch_ids = pat_bound_idents_full pat in
+      (* CJC XXX there can be void things here - rewrite to move them around *)
       let ids_with_kinds =
         List.map
-          (fun (id, _, typ) -> (id, Typeopt.value_kind pat.pat_env typ))
+          (fun (id, _, typ) -> (id, nonvoid_kind_of_layout_rep (Typeopt.value_kind pat.pat_env typ)))
           catch_ids
       in
       let ids = List.map (fun (id, _, _) -> id) catch_ids in
@@ -3813,6 +3828,8 @@ let bind_opt (v, eo) k =
   | Some e -> Lambda.bind Strict v e k
 
 let for_multiple_match ~scopes value_kind loc paraml mode pat_act_list partial =
+  (* CJC XXX obviously wrong *)
+  let value_kind = nonvoid_kind_of_layout_rep value_kind in
   let v_paraml = List.map param_to_var paraml in
   let paraml = List.map (fun (v, _) -> Lvar v) v_paraml in
   List.fold_right bind_opt v_paraml

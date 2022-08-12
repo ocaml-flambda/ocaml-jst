@@ -480,6 +480,7 @@ let specialize_primitive env ty ~has_constant_constructor prim =
     end
   | Primitive (Pmakeblock(tag, mut, None, mode), arity), fields -> begin
       let shape = List.map (Typeopt.value_kind env) fields in
+      let shape = List.map Typeopt.value_kind_of_layout shape in
       let useful = List.exists (fun knd -> knd <> Pgenval) shape in
       if useful then
         Some (Primitive (Pmakeblock(tag, mut, Some shape, mode),arity))

@@ -660,7 +660,7 @@ let enter_orpat_variables loc env  p1_vs p2_vs =
             pv1 :: vars, alist
           else begin
             begin try
-              unify_var env (newvar ()) t1;
+              unify_var env (newvar Type_layout.any) t1;
               unify env t1 t2
             with
             | Unify trace ->
@@ -733,7 +733,8 @@ and build_as_type_aux env p =
         else p.pat_mode
       in
       let ty =
-        newty (Tvariant{row_fields=[l, Rpresent ty]; row_more=newvar();
+        newty (Tvariant{row_fields=[l, Rpresent ty];
+                        row_more=newvar Type_layout.value;
                         row_bound=(); row_name=None;
                         row_fixed=None; row_closed=false})
       in
@@ -741,7 +742,7 @@ and build_as_type_aux env p =
   | Tpat_record (lpl,_) ->
       let lbl = snd3 (List.hd lpl) in
       if lbl.lbl_private = Private then p.pat_type, p.pat_mode else
-      let ty = newvar () in
+      let ty = newvar Type_layout.any in
       let ppl = List.map (fun (_, l, p) -> l.lbl_pos, p) lpl in
       let do_label lbl =
         let _, ty_arg, ty_res = instance_label false lbl in
@@ -780,7 +781,8 @@ and build_as_type_aux env p =
             else p.pat_mode
           in
           let ty =
-            newty (Tvariant{row with row_closed=false; row_more=newvar()})
+            newty (Tvariant{row with row_closed=false;
+                                     row_more=newvar Type_layout.value})
           in
           ty, mode
       end
@@ -795,7 +797,7 @@ and build_as_type_aux env p =
 
 let build_or_pat env loc mode lid =
   let path, decl = Env.lookup_type ~loc:lid.loc lid.txt env in
-  let tyl = List.map (fun _ -> newvar()) decl.type_params in
+  let tyl = List.map (fun _ -> newvar Type_layout.value) decl.type_params in
   let row0 =
     let ty = expand_head env (newty(Tconstr(path, tyl, ref Mnil))) in
     match ty.desc with
@@ -818,12 +820,13 @@ let build_or_pat env loc mode lid =
         | _ -> pats, fields)
       ([],[]) (row_repr row0).row_fields in
   let row =
-    { row_fields = List.rev fields; row_more = newvar(); row_bound = ();
+    { row_fields = List.rev fields; row_more = newvar Type_layout.value;
+      row_bound = ();
       row_closed = false; row_fixed = None; row_name = Some (path, tyl) }
   in
   let ty = newty (Tvariant row) in
   let gloc = {loc with Location.loc_ghost=true} in
-  let row' = ref {row with row_more=newvar()} in
+  let row' = ref {row with row_more=newvar Type_layout.value} in
   let pats =
     List.map
       (fun (l,p) ->
@@ -1132,8 +1135,10 @@ module Label = NameChoice (struct
     Env.lookup_all_labels_from_type ~loc path env
   let in_env lbl =
     match lbl.lbl_repres with
-    | Record_regular | Record_float | Record_unboxed false -> true
-    | Record_unboxed true | Record_inlined _ | Record_extension _ -> false
+    | Record_regular | Record_float
+    | Record_unboxed (false,_) | Record_immediate false -> true
+    | Record_unboxed (true,_) | Record_immediate true
+    | Record_inlined _ | Record_extension _ -> false
 end)
 
 (* In record-construction expressions and patterns, we have many labels
@@ -1311,7 +1316,9 @@ let unify_head_only ~refine loc env ty constr =
   let ty_res = repr ty_res in
   match ty_res.desc with
   | Tconstr(p,args,m) ->
-      ty_res.desc <- Tconstr(p,List.map (fun _ -> newvar ()) args,m);
+      (* CJC XXX - I need to compute the layout from the desc here? *)
+      ty_res.desc <-
+        Tconstr(p,List.map (fun _ -> newvar Type_layout.any) args,m);
       enforce_constraints !env ty_res;
       unify_pat_types ~refine loc env ty_res ty
   | _ -> assert false
@@ -1801,7 +1808,7 @@ and type_pat_aux
       in
       let spl_ann =
         List.map2
-          (fun p mode -> (p, newgenvar (), simple_pat_mode mode))
+          (fun p mode -> (p, newgenvar Type_layout.value, simple_pat_mode mode))
           spl arg_modes
       in
       let ty = newgenty (Ttuple(List.map snd3 spl_ann)) in
@@ -1942,12 +1949,16 @@ and type_pat_aux
             pat_attributes = sp.ppat_attributes;
             pat_env = !env })
   | Ppat_variant(l, sarg) ->
-      let arg_type = match sarg with None -> [] | Some _ -> [newgenvar()] in
+      let arg_type =
+        match sarg with
+          None -> []
+        | Some _ -> [newgenvar Type_layout.value]
+      in
       let row = { row_fields =
                     [l, Reither(sarg = None, arg_type, true, ref None)];
                   row_bound = ();
                   row_closed = false;
-                  row_more = newgenvar ();
+                  row_more = newgenvar Type_layout.value;
                   row_fixed = None;
                   row_name = None } in
       let expected_ty = generic_instance expected_ty in
@@ -1958,7 +1969,9 @@ and type_pat_aux
       else unify_pat_types ~refine loc env (newgenty(Tvariant row)) expected_ty;
       let k arg =
         rvp k {
-        pat_desc = Tpat_variant(l, arg, ref {row with row_more = newvar()});
+        pat_desc =
+          Tpat_variant(l, arg,
+                       ref {row with row_more = newvar Type_layout.value});
         pat_loc = loc; pat_extra=[];
         pat_type = instance expected_ty;
         pat_mode = alloc_mode.mode;
@@ -1980,7 +1993,7 @@ and type_pat_aux
             (repr expected_ty).level = generic_level || not !Clflags.principal
           in
           Some (p0, p, principal), ty
-        with Not_found -> None, newvar ()
+        with Not_found -> None, newvar Type_layout.any
       in
       let type_label_pat (label_lid, label, sarg) k =
         begin_def ();
@@ -2028,7 +2041,8 @@ and type_pat_aux
             lid_sp_list (fun lbl_pat_list -> k' (make_record_pat lbl_pat_list))
       end
   | Ppat_array spl ->
-      let ty_elt = newgenvar() in
+      (* CJC XXX presuably in the future we'll have arrays of other layouts *)
+      let ty_elt = newgenvar Type_layout.value in
       let expected_ty = generic_instance expected_ty in
       unify_pat_types ~refine
         loc env (Predef.type_array ty_elt) expected_ty;
@@ -2121,7 +2135,7 @@ and type_pat_aux
         end
       end
   | Ppat_lazy sp1 ->
-      let nv = newgenvar () in
+      let nv = newgenvar Type_layout.value in
       unify_pat_types ~refine loc env (Predef.type_lazy_t nv)
         (generic_instance expected_ty);
       (* do not explode under lazy: PR#7421 *)
@@ -2293,7 +2307,7 @@ let type_pattern_list
 
 let type_class_arg_pattern cl_num val_env met_env l spat =
   reset_pattern false;
-  let nv = newvar () in
+  let nv = newvar Type_layout.value in
   let alloc_mode = simple_pat_mode Value_mode.global in
   let pat =
     type_pat Value ~no_existentials:In_class_args ~alloc_mode
@@ -2303,7 +2317,8 @@ let type_class_arg_pattern cl_num val_env met_env l spat =
     finalize_variants pat;
   end;
   List.iter (fun f -> f()) (get_ref pattern_force);
-  if is_optional l then unify_pat (ref val_env) pat (type_option (newvar ()));
+  if is_optional l then
+    unify_pat (ref val_env) pat (type_option (newvar Type_layout.value));
   let (pv, val_env, met_env) =
     List.fold_right
       (fun {pv_id; pv_type; pv_loc; pv_as_var; pv_attributes}
@@ -2345,7 +2360,7 @@ let type_self_pattern cl_num privty val_env met_env par_env spat =
                         mknoloc ("selfpat-" ^ cl_num)))
   in
   reset_pattern false;
-  let nv = newvar() in
+  let nv = newvar Type_layout.value in
   let alloc_mode = simple_pat_mode Value_mode.global in
   let pat =
     type_pat Value ~no_existentials:In_self_pattern
@@ -2534,8 +2549,8 @@ let collect_unknown_apply_args env funct ty_fun mode_fun rev_args sargs =
           let ty_fun = expand_head env ty_fun in
           match ty_fun.desc with
           | Tvar _ ->
-              let ty_arg = newvar () in
-              let ty_res = newvar () in
+              let ty_arg = newvar Type_layout.value in
+              let ty_res = newvar Type_layout.value in
               if ty_fun.level >= ty_arg.level &&
                  not (is_prim ~name:"%identity" funct)
               then
@@ -2935,7 +2950,8 @@ let is_local_returning_function cases =
 let rec approx_type env sty =
   match sty.ptyp_desc with
     Ptyp_arrow (p, _, sty) ->
-      let ty1 = if is_optional p then type_option (newvar ()) else newvar () in
+      let var = newvar Type_layout.value in
+      let ty1 = if is_optional p then type_option var else var in
       let ret = approx_type env sty in
       let marg = Alloc_mode.newvar () and mret = Alloc_mode.newvar () in
       newty (Tarrow ((p,marg,mret), ty1, ret, Cok))
@@ -2943,14 +2959,14 @@ let rec approx_type env sty =
       newty (Ttuple (List.map (approx_type env) args))
   | Ptyp_constr (lid, ctl) ->
       let path, decl = Env.lookup_type ~use:false ~loc:lid.loc lid.txt env in
-      if List.length ctl <> decl.type_arity then newvar ()
+      if List.length ctl <> decl.type_arity then newvar Type_layout.any
       else begin
         let tyl = List.map (approx_type env) ctl in
         newconstr path tyl
       end
   | Ptyp_poly (_, sty) ->
       approx_type env sty
-  | _ -> newvar ()
+  | _ -> newvar Type_layout.any
 
 let rec type_approx env sexp =
   match sexp.pexp_desc with
@@ -2961,13 +2977,14 @@ let rec type_approx env sexp =
         else Alloc_mode.newvar ()
       in
       let mret = Alloc_mode.newvar () in
-      let ty = if is_optional p then type_option (newvar ()) else newvar () in
+      let tyvar = newvar Type_layout.value in
+      let ty = if is_optional p then type_option tyvar else tyvar in
       let ret = type_approx env e in
       newty (Tarrow((p,marg,mret), ty, ret, Cok))
   | Pexp_function ({pc_rhs=e}::_) ->
       let ret = type_approx env e in
       let marg = Alloc_mode.newvar () and mret = Alloc_mode.newvar () in
-      newty (Tarrow((Nolabel,marg,mret), newvar (), ret, Cok))
+      newty (Tarrow((Nolabel,marg,mret), newvar Type_layout.value, ret, Cok))
   | Pexp_match (_, {pc_rhs=e}::_) -> type_approx env e
   | Pexp_try (e, _) -> type_approx env e
   | Pexp_tuple l -> newty (Ttuple(List.map (type_approx env) l))
@@ -2982,7 +2999,7 @@ let rec type_approx env sexp =
       ty1
   | Pexp_coerce (e, sty1, sty2) ->
       let approx_ty_opt = function
-        | None -> newvar ()
+        | None -> newvar Type_layout.value
         | Some sty -> approx_type env sty
       in
       let ty = type_approx env e
@@ -3000,7 +3017,7 @@ let rec type_approx env sexp =
       ({ pexp_desc = Pexp_extension({txt = "extension.escape"}, PStr []) },
        [Nolabel, e]) ->
     type_approx env e
-  | _ -> newvar ()
+  | _ -> newvar Type_layout.any (* CJC XXX ?? *)
 
 (* Check that all univars are safe in a type. Both exp.exp_type and
    ty_expected should already be generalized. *)
@@ -3216,7 +3233,7 @@ let check_absent_variant env =
       let ty_arg =
         match arg with None -> [] | Some p -> [correct_levels p.pat_type] in
       let row' = {row_fields = [s, Reither(arg=None,ty_arg,true,ref None)];
-                  row_more = newvar (); row_bound = ();
+                  row_more = newvar Type_layout.value; row_bound = ();
                   row_closed = false; row_fixed = None; row_name = None} in
       (* Should fail *)
       unify_pat (ref env) {pat with pat_type = newty (Tvariant row')}
@@ -3279,7 +3296,8 @@ let rec is_inferred sexp =
 
 let rec type_exp ?recarg env expected_mode sexp =
   (* We now delegate everything to type_expect *)
-  type_expect ?recarg env expected_mode sexp (mk_expected (newvar ()))
+  type_expect ?recarg env expected_mode sexp
+    (mk_expected (newvar Type_layout.any))
 
 (* Typing of an expression with an expected type.
    This provide better error messages, and allows controlled
@@ -3526,7 +3544,8 @@ and type_expect_
         if List.memq ty seen then () else
           match ty.desc with
             Tarrow (_l, ty_arg, ty_fun, _com) ->
-              (try unify_var env (newvar()) ty_arg
+              (* CJC XXX layout *)
+              (try unify_var env (newvar Type_layout.value) ty_arg
                with Unify _ -> assert false);
               lower_args (ty::seen) ty_fun
           | _ -> ()
@@ -3571,7 +3590,7 @@ and type_expect_
         type_application env loc expected_mode position funct funct_mode sargs
       in
       end_def ();
-      unify_var env (newvar()) funct.exp_type;
+      unify_var env (newvar Type_layout.value) funct.exp_type;
       rue {
         exp_desc = Texp_apply(funct, args, position);
         exp_loc = loc; exp_extra = [];
@@ -3625,7 +3644,7 @@ and type_expect_
       let arity = List.length sexpl in
       assert (arity >= 2);
       register_allocation expected_mode;
-      let subtypes = List.map (fun _ -> newgenvar ()) sexpl in
+      let subtypes = List.map (fun _ -> newgenvar Type_layout.value) sexpl in
       let to_unify = newgenty (Ttuple subtypes) in
       with_explanation (fun () ->
         unify_exp_types loc env to_unify (generic_instance ty_expected));
@@ -3686,7 +3705,7 @@ and type_expect_
           exp_desc = Texp_variant(l, arg);
           exp_loc = loc; exp_extra = [];
           exp_type= newty (Tvariant{row_fields = [l, Rpresent arg_type];
-                                    row_more = newvar ();
+                                    row_more = newvar Type_layout.value;
                                     row_bound = ();
                                     row_closed = false;
                                     row_fixed = None;
@@ -3723,7 +3742,11 @@ and type_expect_
         let opath = get_path ty_expected in
         match opath with
           None | Some (_, _, false) ->
-            let ty = if opath = None then newvar () else ty_expected in
+            (* CJC XXX layout *)
+            let ty =
+              if opath = None then newvar (Type_layout.any_sort ())
+              else ty_expected
+            in
             begin match opt_exp with
               None -> ty, opath
             | Some exp ->
@@ -3867,7 +3890,9 @@ and type_expect_
       let (record, rmode, label, expected_type) =
         type_label_access env srecord lid in
       let ty_record =
-        if expected_type = None then newvar () else record.exp_type in
+        if expected_type = None then newvar (Type_layout.any_sort ())
+        else record.exp_type
+      in
       let (label_loc, label, newval) =
         type_label_exp false env (mode_nontail rmode) loc
           ty_record (lid, label, snewval) in
@@ -3883,7 +3908,7 @@ and type_expect_
         exp_env = env }
   | Pexp_array(sargl) ->
       register_allocation expected_mode;
-      let ty = newgenvar() in
+      let ty = newgenvar Type_layout.value in
       let to_unify = Predef.type_array ty in
       with_explanation (fun () ->
         unify_exp_types loc env to_unify (generic_instance ty_expected));
@@ -4036,7 +4061,7 @@ and type_expect_
             begin_def ();
             let arg = type_exp env expected_mode sarg in
             end_def ();
-            let tv = newvar () in
+            let tv = newvar Type_layout.value in
             let gen = generalizable tv.level arg.exp_type in
             unify_var env tv arg.exp_type;
             begin match arg.exp_desc, !self_coercion, (repr ty').desc with
@@ -4140,7 +4165,7 @@ and type_expect_
                   let (_, typ) =
                     filter_self_method env met Private meths privty
                   in
-                  let method_type = newvar () in
+                  let method_type = newvar Type_layout.value in
                   let (marg, obj_ty, mres, res_ty) =
                     filter_arrow env method_type Nolabel
                   in
@@ -4202,7 +4227,7 @@ and type_expect_
                   (Warnings.Not_principal "this use of a polymorphic method");
               snd (instance_poly false tl ty)
           | {desc = Tvar _} as ty ->
-              let ty' = newvar () in
+              let ty' = newvar Type_layout.value in
               unify env (instance ty) (newty(Tpoly(ty',[])));
               (* if not !Clflags.nolabels then
                  Location.prerr_warning loc (Warnings.Unknown_method met); *)
@@ -4315,7 +4340,7 @@ and type_expect_
           assert false
       end
   | Pexp_letmodule(name, smodl, sbody) ->
-      let ty = newvar() in
+      let ty = newvar Type_layout.value in
       (* remember original level *)
       begin_def ();
       let context = Typetexp.narrow () in
@@ -4390,7 +4415,7 @@ and type_expect_
         exp_env = env;
       }
   | Pexp_lazy e ->
-      let ty = newgenvar () in
+      let ty = newgenvar Type_layout.value in
       let to_unify = Predef.type_lazy_t ty in
       with_explanation (fun () ->
         unify_exp_types loc env to_unify (generic_instance ty_expected));
@@ -4458,11 +4483,17 @@ and type_expect_
       re { exp with exp_extra =
              (Texp_poly cty, loc, sexp.pexp_attributes) :: exp.exp_extra }
   | Pexp_newtype({txt=name}, sbody) ->
+    (* CJC XXX Defaulting locally abstract types to value - may revisit in the
+       future *)
+      let layout =
+        Type_layout.of_layout_annotation ~default:Type_layout.value
+          (Builtin_attributes.layout sexp.pexp_attributes)
+      in
       let ty =
         if Typetexp.valid_tyvar_name name then
-          newvar ~name ()
+          newvar ~name layout
         else
-          newvar ()
+          newvar layout
       in
       (* remember original level *)
       begin_def ();
@@ -4470,7 +4501,7 @@ and type_expect_
       let decl = {
         type_params = [];
         type_arity = 0;
-        type_kind = Types.kind_abstract;
+        type_kind = Types.kind_abstract ~layout;
         type_private = Public;
         type_manifest = None;
         type_variance = [];
@@ -4535,7 +4566,7 @@ and type_expect_
         exp_attributes = sexp.pexp_attributes;
         exp_env = env }
   | Pexp_open (od, e) ->
-      let tv = newvar () in
+      let tv = newvar Type_layout.any in
       let (od, _, newenv) = !type_open_decl env od in
       let exp = type_expect newenv expected_mode e ty_expected_explained in
       (* Force the return type to be well-formed in the original
@@ -4555,7 +4586,7 @@ and type_expect_
         match sands with
         | [] -> spat_acc, ty_acc
         | { pbop_pat = spat; _} :: rest ->
-            let ty = newvar () in
+            let ty = newvar Type_layout.value in
             let loc = { slet.pbop_op.loc with Location.loc_ghost = true } in
             let spat_acc = Ast_helper.Pat.tuple ~loc [spat_acc; spat] in
             let ty_acc = newty (Ttuple [ty_acc; ty]) in
@@ -4565,15 +4596,17 @@ and type_expect_
       let let_loc = slet.pbop_op.loc in
       let op_path, op_desc = type_binding_op_ident env slet.pbop_op in
       let op_type = instance op_desc.val_type in
-      let spat_params, ty_params = loop slet.pbop_pat (newvar ()) sands in
-      let ty_func_result = newvar () in
+      let spat_params, ty_params =
+        loop slet.pbop_pat (newvar Type_layout.value) sands
+      in
+      let ty_func_result = newvar Type_layout.value in
       let ty_func =
         newty (Tarrow(
           (Nolabel, Alloc_mode.global, Alloc_mode.global),
           ty_params, ty_func_result, Cok))
       in
-      let ty_result = newvar () in
-      let ty_andops = newvar () in
+      let ty_result = newvar Type_layout.value in
+      let ty_andops = newvar Type_layout.value in
       let ty_op =
         newty (Tarrow((Nolabel, Alloc_mode.global, Alloc_mode.global), ty_andops,
           newty (Tarrow((Nolabel, Alloc_mode.global, Alloc_mode.global),
@@ -4821,7 +4854,7 @@ and type_function ?in_function loc attrs env (expected_mode : expected_mode)
   end;
   let ty_arg =
     if is_optional l then
-      let tv = newvar() in
+      let tv = newvar Type_layout.value in
       begin
         try unify env ty_arg (type_option tv)
         with Unify _ -> assert false
@@ -5366,7 +5399,7 @@ and type_apply_arg env ~funct ~index ~position ~partial_app (lbl, arg) =
         mode_argument ~funct ~index ~position ~partial_app mode in
       let arg = type_expect env expected_mode sarg (mk_expected ty_arg) in
       if is_optional lbl then
-        unify_exp env arg (type_option(newvar()));
+        unify_exp env arg (type_option(newvar Type_layout.value));
       (lbl, Arg arg)
   | Arg (Known_arg { sarg; ty_arg; ty_arg0; mode_arg; wrapped_in_some }) ->
       let mode, _ = Alloc_mode.newvar_below mode_arg in
@@ -5523,10 +5556,11 @@ and type_construct env (expected_mode : expected_mode) loc lid sarg
   let argument_mode =
     match constr.cstr_tag with
     | Cstr_unboxed -> expected_mode
-    | Cstr_constant _ ->
-       assert (sargs = []);
-       expected_mode
-    | Cstr_block _ | Cstr_extension _ ->
+    (* CJC XXX In the Cstr_constant case, sargs used to always be empty, but now
+       may not be because the constructor may have a argument with layout void.
+       Is doing the same thing as we do in the block and extension cases overly
+       restrictive? *)
+    | Cstr_constant _ | Cstr_block _ | Cstr_extension _ ->
        register_allocation expected_mode;
        mode_subcomponent expected_mode
   in
@@ -5552,7 +5586,8 @@ and type_statement ?explanation env sexp =
   begin_def();
   let exp = type_exp env (mode_var ()) sexp in
   end_def();
-  let ty = expand_head env exp.exp_type and tv = newvar() in
+  (* CJC XXX consider not warning if void *)
+  let ty = expand_head env exp.exp_type and tv = newvar Type_layout.any in
   if is_Tvar ty && ty.level > tv.level then
     Location.prerr_warning
       (final_subexpression exp).exp_loc
@@ -5570,7 +5605,7 @@ and type_statement ?explanation env sexp =
 
 and type_unpacks ?in_function env (expected_mode : expected_mode) unpacks
       sbody expected_ty =
-  let ty = newvar() in
+  let ty = newvar Type_layout.value in
   (* remember original level *)
   let extended_env, tunpacks =
     List.fold_left (fun (env, unpacks) (name, loc, uid) ->
@@ -5707,7 +5742,7 @@ and type_cases
     else ty_res, (fun env -> env)
   in
   (* Unify all cases (delayed to keep it order-free) *)
-  let ty_arg' = newvar () in
+  let ty_arg' = newvar Type_layout.any in
   let unify_pats ty =
     List.iter (fun { typed_pat = pat; pat_type_for_unif = pat_ty; _ } ->
       unify_pat_types pat.pat_loc (ref env) pat_ty ty
@@ -5725,7 +5760,8 @@ and type_cases
   (* Post-processing and generalization *)
   if take_partial_instance <> None then unify_pats (instance ty_arg);
   List.iter (fun { pat_vars; _ } ->
-    iter_pattern_variables_type (fun t -> unify_var env (newvar()) t) pat_vars
+    iter_pattern_variables_type
+      (fun t -> unify_var env (newvar Type_layout.any) t) pat_vars
   ) half_typed_cases;
   end_def ();
   generalize ty_arg';
@@ -5828,7 +5864,7 @@ and type_cases
   if may_contain_gadts then begin
     end_def ();
     (* Ensure that existential types do not escape *)
-    unify_exp_types loc env (instance ty_res) (newvar ()) ;
+    unify_exp_types loc env (instance ty_res) (newvar Type_layout.any) ;
   end;
   cases, partial
 
@@ -5907,7 +5943,9 @@ and type_let
          in
          attrs, pat_mode, exp_mode, spat)
       spat_sexp_list in
-  let nvs = List.map (fun _ -> newvar ()) spatl in
+  (* Layouts: Type_layout.value to be relaxed to Type_layout.any_sort when we
+     allow binding other sorts *)
+  let nvs = List.map (fun _ -> newvar (Type_layout.any_sort())) spatl in
   let (pat_list, new_env, force, pvs, unpacks) =
     type_pattern_list Value existential_context env spatl nvs allow in
   let attrs_list = List.map (fun (attrs, _, _, _) -> attrs) spatl in
@@ -6149,9 +6187,9 @@ and type_andops env sarg sands expected_ty =
         if !Clflags.principal then begin_def ();
         let op_path, op_desc = type_binding_op_ident env sop in
         let op_type = op_desc.val_type in
-        let ty_arg = newvar () in
-        let ty_rest = newvar () in
-        let ty_result = newvar() in
+        let ty_arg = newvar Type_layout.value in
+        let ty_rest = newvar Type_layout.value in
+        let ty_result = newvar Type_layout.value in
         let ty_rest_fun =
           newty (Tarrow((Nolabel,Alloc_mode.global,Alloc_mode.global),
                         ty_arg, ty_result, Cok))
@@ -6209,7 +6247,7 @@ and type_andops env sarg sands expected_ty =
       ~sexp ~sbody ~comp_typell
       ~container_type ~build =
     if !Clflags.principal then begin_def ();
-    let without_arr_ty = Ctype.newvar ()  in
+    let without_arr_ty = Ctype.newvar Type_layout.value  in
     unify_exp_types loc env
       (instance (container_type without_arr_ty)) (instance ty_expected);
     if !Clflags.principal then begin
@@ -6242,7 +6280,7 @@ and type_andops env sarg sands expected_ty =
       in
       From_to(id, param, low, high, dir), new_env
     | In (param, siter) ->
-      let item_ty = newvar() in
+      let item_ty = newvar Type_layout.value in
       let iter_ty = instance (container_type item_ty) in
       let iter = type_expect env mode_global siter
           (mk_expected ~explanation:In_comprehension_argument iter_ty) in

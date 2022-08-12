@@ -191,6 +191,10 @@ and float_comparison =
 and array_kind =
     Pgenarray | Paddrarray | Pintarray | Pfloatarray
 
+and layout_rep =
+  | Value of value_kind
+  | Void
+
 and value_kind =
     Pgenval | Pfloatval | Pboxedintval of boxed_integer | Pintval
   | Pvariant of {
@@ -501,8 +505,15 @@ val shallow_map  :
   (** Rewrite each immediate sub-term with the function. *)
 
 val bind : let_kind -> Ident.t -> lambda -> lambda -> lambda
-val bind_with_value_kind:
-  let_kind -> (Ident.t * value_kind) -> lambda -> lambda -> lambda
+val bind_with_layout_rep:
+  let_kind -> (Ident.t * layout_rep) -> lambda -> lambda -> lambda
+
+(** [kind_of_layout_rep] defaults the Void layout rep to Pintval, and is
+    suitable for places in the translation where we treat void types as unit.
+    [nonvoid_kind_of_layout_rep] fails on the Void layout rep, and is suitable
+    for places where void values may not appear. *)
+val kind_of_layout_rep : layout_rep -> value_kind
+val nonvoid_kind_of_layout_rep : layout_rep -> value_kind
 
 val negate_integer_comparison : integer_comparison -> integer_comparison
 val swap_integer_comparison : integer_comparison -> integer_comparison

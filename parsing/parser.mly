@@ -3095,7 +3095,8 @@ type_parameters:
       { ps }
 ;
 type_parameter:
-    type_variance type_variable        { $2, $1 }
+    type_variance type_variable attributes
+      { {$2 with ptyp_attributes = $3}, $1 }
 ;
 type_variable:
   mktyp(

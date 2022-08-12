@@ -218,6 +218,10 @@ and integer_comparison =
 and float_comparison =
     CFeq | CFneq | CFlt | CFnlt | CFgt | CFngt | CFle | CFnle | CFge | CFnge
 
+and layout_rep =
+  | Value of value_kind
+  | Void
+
 and value_kind =
     Pgenval | Pfloatval | Pboxedintval of boxed_integer | Pintval
   | Pvariant of {
@@ -1093,14 +1097,26 @@ let map f =
   g
 
 (* To let-bind expressions to variables *)
-
-let bind_with_value_kind str (var, kind) exp body =
+let bind_with_layout_rep let_kind (var, layout_rep) exp body =
   match exp with
     Lvar var' when Ident.same var var' -> body
-  | _ -> Llet(str, kind, var, exp, body)
+  | _ ->
+    match layout_rep with
+    | Void -> Lsequence (exp, body)
+    | Value k -> Llet (let_kind, k, var, exp, body)
 
 let bind str var exp body =
-  bind_with_value_kind str (var, Pgenval) exp body
+  bind_with_layout_rep str (var, Value Pgenval) exp body
+
+let kind_of_layout_rep rep =
+  match rep with
+  | Void -> Pintval
+  | Value k -> k
+
+let nonvoid_kind_of_layout_rep rep =
+  match rep with
+  | Void -> assert false
+  | Value k -> k
 
 let negate_integer_comparison = function
   | Ceq -> Cne

@@ -64,7 +64,7 @@ type type_mismatch =
   | Record_mismatch of record_mismatch
   | Variant_mismatch of variant_mismatch
   | Unboxed_representation of position
-  | Immediate of Type_immediacy.Violation.t
+  | Layout of Type_layout.Violation.t
 
 val value_descriptions:
   loc:Location.t -> Env.t -> string ->

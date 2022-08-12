@@ -108,7 +108,8 @@ let match_printer_type desc typename =
         raise (Error(Unbound_identifier(Ldot(Lident "Topdirs", typename))))
   in
   Ctype.begin_def();
-  let ty_arg = Ctype.newvar() in
+  (* CJC XXX *)
+  let ty_arg = Ctype.newvar Type_layout.value in
   Ctype.unify Env.empty
     (Ctype.newconstr printer_type [ty_arg])
     (Ctype.instance desc.val_type);

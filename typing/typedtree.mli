@@ -308,16 +308,16 @@ and meth =
   | Tmeth_val of Ident.t
 
   and comprehension =
-  { 
+  {
      clauses: comprehension_clause list;
-     guard : expression option 
+     guard : expression option
   }
 
-and comprehension_clause = 
- | From_to of Ident.t * Parsetree.pattern * 
+and comprehension_clause =
+ | From_to of Ident.t * Parsetree.pattern *
      expression * expression * direction_flag
  | In of pattern * expression
- 
+
 and 'k case =
     {
      c_lhs: 'k general_pattern;
@@ -692,6 +692,7 @@ and type_declaration =
     typ_manifest: core_type option;
     typ_loc: Location.t;
     typ_attributes: attributes;
+    typ_layout_annotation: Builtin_attributes.layout_annotation option;
    }
 
 and type_kind =

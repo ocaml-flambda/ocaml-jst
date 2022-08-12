@@ -265,19 +265,23 @@ let explicit_arity =
        | _ -> false
     )
 
-let immediate =
-  List.exists
-    (fun a -> match a.attr_name.txt with
-       | "ocaml.immediate"|"immediate" -> true
-       | _ -> false
-    )
+type layout_annotation =
+  | Any
+  | Value
+  | Void
+  | Immediate64
+  | Immediate
 
-let immediate64 =
-  List.exists
+let layout attrs =
+  List.find_map
     (fun a -> match a.attr_name.txt with
-       | "ocaml.immediate64"|"immediate64" -> true
-       | _ -> false
-    )
+       | "ocaml.immediate"|"immediate" -> Some Immediate
+       | "ocaml.immediate64"|"immediate64" -> Some Immediate64
+       | "ocaml.void"|"void" -> Some Void
+       | "ocaml.value"|"value" -> Some Value
+       | "ocaml.any"|"any" -> Some Any
+       | _ -> None
+    ) attrs
 
 (* The "ocaml.boxed (default)" and "ocaml.unboxed (default)"
    attributes cannot be input by the user, they are added by the

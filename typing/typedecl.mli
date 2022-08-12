@@ -58,6 +58,8 @@ val is_fixed_type : Parsetree.type_declaration -> bool
 
 type native_repr_kind = Unboxed | Untagged
 
+type layout_loc = Fun_arg | Fun_ret | Tuple | Field
+
 type error =
     Repeated_parameter
   | Duplicate_constructor of string
@@ -92,7 +94,9 @@ type error =
   | Multiple_native_repr_attributes
   | Cannot_unbox_or_untag_type of native_repr_kind
   | Deep_unbox_or_untag_attribute of native_repr_kind
-  | Immediacy of Type_immediacy.Violation.t
+  | Layout of Type_layout.Violation.t
+  | Layout_value of
+      {lloc : layout_loc; typ : type_expr; err : Type_layout.Violation.t}
   | Separability of Typedecl_separability.error
   | Bad_unboxed_attribute of string
   | Boxed_and_unboxed

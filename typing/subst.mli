@@ -109,7 +109,13 @@ module Lazy : sig
       mtdl_uid: Uid.t;
     }
 
-  and signature
+  and signature' =
+    | S_eager of Types.signature
+    | S_lazy of signature_item list
+
+  and signature =
+    (scoping * t * signature', signature') Misc.EnvLazy.t
+  (*   and signature *)
 
   and signature_item =
       SigL_value of Ident.t * value_description * visibility

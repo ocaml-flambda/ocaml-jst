@@ -134,13 +134,15 @@ let newpersty desc =
   { desc; level = generic_level; scope = Btype.lowest_level; id = !new_id }
 
 (* ensure that all occurrences of 'Tvar None' are physically shared *)
+(* CJC XXX todo just get rid of these I guess *)
+(*
 let tvar_none = Tvar None
 let tunivar_none = Tunivar None
 let norm = function
   | Tvar None -> tvar_none
   | Tunivar None -> tunivar_none
   | d -> d
-
+*)
 let ctype_apply_env_empty = ref (fun _ -> assert false)
 
 (* Similar to [Ctype.nondep_type_rec]. *)
@@ -150,7 +152,7 @@ let rec typexp copy_scope s ty =
     Tvar _ | Tunivar _ as desc ->
       if s.for_saving || ty.id < 0 then
         let ty' =
-          if s.for_saving then newpersty (norm desc)
+          if s.for_saving then newpersty desc
           else newty2 ty.level desc
         in
         For_copy.save_desc copy_scope ty desc;
@@ -174,7 +176,12 @@ let rec typexp copy_scope s ty =
     let has_fixed_row =
       not (is_Tconstr ty) && is_constr_row ~allow_ident:false tm in
     (* Make a stub *)
-    let ty' = if s.for_saving then newpersty (Tvar None) else newgenvar () in
+    (* CJC XXX - do we want to estimate layout based on ty here ? *)
+    let layout = Type_layout.any in
+    let ty' =
+      if s.for_saving then newpersty (Tvar (None, ref layout))
+      else newgenvar layout
+    in
     ty'.scope <- ty.scope;
     ty.desc <- Tsubst ty';
     ty'.desc <-
@@ -227,7 +234,7 @@ let rec typexp copy_scope s ty =
                 | Tconstr _ | Tnil -> typexp copy_scope s more
                 | Tunivar _ | Tvar _ ->
                     For_copy.save_desc copy_scope more more.desc;
-                    if s.for_saving then newpersty (norm more.desc) else
+                    if s.for_saving then newpersty more.desc else
                     if dup && is_Tvar more then newgenty more.desc else more
                 | _ -> assert false
               in
@@ -263,6 +270,7 @@ let label_declaration copy_scope s l =
     ld_id = l.ld_id;
     ld_mutable = l.ld_mutable;
     ld_global = l.ld_global;
+    ld_void = l.ld_void;
     ld_type = typexp copy_scope s l.ld_type;
     ld_loc = loc s l.ld_loc;
     ld_attributes = attrs s l.ld_attributes;

@@ -496,7 +496,7 @@ and class_signature env {pcsig_self=sty; pcsig_fields=sign} =
 
   (* Check that the binder is a correct type, and introduce a dummy
      method preventing self type from being closed. *)
-  let dummy_obj = Ctype.newvar () in
+  let dummy_obj = Ctype.newvar Type_layout.value in
   Ctype.unify env (Ctype.filter_method env dummy_method Private dummy_obj)
     (Ctype.newty (Ttuple []));
   begin try
@@ -741,7 +741,7 @@ and class_field_aux self_loc cl_num self_type meths vars
           end;
           begin match (Ctype.repr ty).desc with
             Tvar _ ->
-              let ty' = Ctype.newvar () in
+              let ty' = Ctype.newvar Type_layout.value in
               Ctype.unify val_env (Ctype.newty (Tpoly (ty', []))) ty;
               Ctype.unify val_env (type_approx val_env sbody) ty'
           | Tpoly (ty1, tl) ->
@@ -830,7 +830,7 @@ and class_structure cl_num final val_env met_env loc
   (* Location of self. Used for locations of self arguments *)
   let self_loc = {spat.ppat_loc with Location.loc_ghost = true} in
 
-  let self_type = Ctype.newobj (Ctype.newvar ()) in
+  let self_type = Ctype.newobj (Ctype.newvar Type_layout.value) in
 
   (* Adding a dummy method to the self type prevents it from being closed /
      escaping.
@@ -841,7 +841,9 @@ and class_structure cl_num final val_env met_env loc
       (Ctype.newty (Ttuple []));
 
   (* Private self is used for private method calls *)
-  let private_self = if final then Ctype.newvar () else self_type in
+  let private_self =
+    if final then Ctype.newvar Type_layout.value else self_type
+  in
 
   (* Self binder *)
   let (pat, meths, vars, val_env, met_env, par_env) =
@@ -851,7 +853,7 @@ and class_structure cl_num final val_env met_env loc
 
   (* Check that the binder has a correct type *)
   let ty =
-    if final then Ctype.newobj (Ctype.newvar()) else self_type in
+    if final then Ctype.newobj (Ctype.newvar Type_layout.value) else self_type in
   begin try Ctype.unify val_env public_self ty with
     Ctype.Unify _ ->
       raise(Error(spat.ppat_loc, val_env, Pattern_type_clash public_self))
@@ -882,7 +884,7 @@ and class_structure cl_num final val_env met_env loc
            str
       )
   in
-  Ctype.unify val_env self_type (Ctype.newvar ()); (* useless ? *)
+  Ctype.unify val_env self_type (Ctype.newvar Type_layout.value); (* useless ? *)
   let sign =
     {csig_self = public_self;
      csig_vars = Vars.map (fun (_id, mut, vr, ty) -> (mut, vr, ty)) !vars;
@@ -930,7 +932,8 @@ and class_structure cl_num final val_env met_env loc
     meths :=
       Meths.map (fun (id,ty) -> (id, Ctype.generic_instance ty)) ms;
     (* But keep levels correct on the type of self *)
-    Meths.iter (fun _ (_,ty) -> Ctype.unify val_env ty (Ctype.newvar ())) ms
+    Meths.iter (fun _ (_,ty) ->
+      Ctype.unify val_env ty (Ctype.newvar Type_layout.value)) ms
   end;
   let fields = List.map Lazy.force (List.rev fields) in
   let meths = Meths.map (function (id, _ty) -> id) !meths in
@@ -1299,45 +1302,45 @@ and class_expr_aux cl_num val_env met_env scl =
 (* Approximate the type of the constructor to allow recursive use *)
 (* of optional parameters                                         *)
 
-let var_option = Predef.type_option (Btype.newgenvar ())
+let var_option = Predef.type_option (Btype.newgenvar Type_layout.value)
 
 let rec approx_declaration cl =
   match cl.pcl_desc with
     Pcl_fun (l, _, _, cl) ->
       let arg =
         if Btype.is_optional l then Ctype.instance var_option
-        else Ctype.newvar () in
+        else Ctype.newvar Type_layout.value in
       Ctype.newty (Tarrow ((l, Alloc_mode.global, Alloc_mode.global),
                            arg, approx_declaration cl, Cok))
   | Pcl_let (_, _, cl) ->
       approx_declaration cl
   | Pcl_constraint (cl, _) ->
       approx_declaration cl
-  | _ -> Ctype.newvar ()
+  | _ -> Ctype.newvar Type_layout.value
 
 let rec approx_description ct =
   match ct.pcty_desc with
     Pcty_arrow (l, _, ct) ->
       let arg =
         if Btype.is_optional l then Ctype.instance var_option
-        else Ctype.newvar () in
+        else Ctype.newvar Type_layout.value in
       Ctype.newty (Tarrow ((l, Alloc_mode.global, Alloc_mode.global),
                            arg, approx_description ct, Cok))
-  | _ -> Ctype.newvar ()
+  | _ -> Ctype.newvar Type_layout.value
 
 (*******************************)
 
 let temp_abbrev loc env id arity uid =
   let params = ref [] in
   for _i = 1 to arity do
-    params := Ctype.newvar () :: !params
+    params := Ctype.newvar Type_layout.value :: !params
   done;
-  let ty = Ctype.newobj (Ctype.newvar ()) in
+  let ty = Ctype.newobj (Ctype.newvar Type_layout.value) in
   let env =
     Env.add_type ~check:true id
       {type_params = !params;
        type_arity = arity;
-       type_kind = Types.kind_abstract;
+       type_kind = Types.kind_abstract_value;
        type_private = Public;
        type_manifest = Some ty;
        type_variance = Variance.unknown_signature ~injective:false ~arity;
@@ -1365,7 +1368,7 @@ let initial_env define_class approx
   if !Clflags.principal then Ctype.generalize_spine constr_type;
   let dummy_cty =
     Cty_signature
-      { csig_self = Ctype.newvar ();
+      { csig_self = Ctype.newvar Type_layout.value;
         csig_vars = Vars.empty;
         csig_concr = Concr.empty;
         csig_inher = [] }
@@ -1422,7 +1425,7 @@ let class_infos define_class kind
   let ci_params =
     let make_param (sty, v) =
       try
-          (transl_type_param env sty, v)
+          (transl_type_param env sty Type_layout.value, v)
       with Already_bound ->
         raise(Error(sty.ptyp_loc, env, Repeated_parameter))
     in
@@ -1597,7 +1600,7 @@ let class_infos define_class kind
     {
      type_params = obj_params;
      type_arity = arity;
-     type_kind = Types.kind_abstract;
+     type_kind = Types.kind_abstract_value;
      type_private = Public;
      type_manifest = Some obj_ty;
      type_variance = Variance.unknown_signature ~injective:false ~arity;
@@ -1620,7 +1623,7 @@ let class_infos define_class kind
     {
      type_params = cl_params;
      type_arity = arity;
-     type_kind = Types.kind_abstract;
+     type_kind = Types.kind_abstract_value;
      type_private = Public;
      type_manifest = Some cl_ty;
      type_variance = Variance.unknown_signature ~injective:false ~arity;

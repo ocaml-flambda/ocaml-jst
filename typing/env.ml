@@ -925,7 +925,9 @@ let find_ident_module id env =
 
 let rec find_module_components path env =
   match path with
-  | Pident id -> (find_ident_module id env).mda_components
+  | Pident id ->
+    let x = (find_ident_module id env).mda_components in
+    x
   | Pdot(p, s) ->
       let sc = find_structure_components p env in
       (NameMap.find s sc.comp_modules).mda_components

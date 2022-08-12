@@ -167,13 +167,15 @@ let print_bigarray name unsafe kind ppf layout =
      | Pbigarray_fortran_layout -> "Fortran")
 
 let record_rep ppf r =
+  (* CJC XXX print layout? *)
   match r with
   | Record_regular -> fprintf ppf "regular"
   | Record_inlined i -> fprintf ppf "inlined(%i)" i
-  | Record_unboxed false -> fprintf ppf "unboxed"
-  | Record_unboxed true -> fprintf ppf "inlined(unboxed)"
+  | Record_unboxed (false,_) -> fprintf ppf "unboxed"
+  | Record_unboxed (true,_) -> fprintf ppf "inlined(unboxed)"
   | Record_float -> fprintf ppf "float"
   | Record_extension path -> fprintf ppf "ext(%a)" Printtyp.path path
+  | Record_immediate _ -> fprintf ppf "immediate"
 ;;
 
 let block_shape ppf shape = match shape with

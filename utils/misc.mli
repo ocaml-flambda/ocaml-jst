@@ -487,7 +487,12 @@ module Bitmap : sig
 end
 
 module EnvLazy: sig
-  type ('a,'b) t
+  type ('a,'b) t = ('a,'b) eval ref
+
+  and ('a,'b) eval =
+    | Done of 'b
+    | Raise of exn
+    | Thunk of 'a
 
   type log
 

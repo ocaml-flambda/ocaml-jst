@@ -386,7 +386,11 @@ module Make(O : OBJ)(EVP : EVALPATH with type valu = O.t) = struct
                     tree_of_val depth obj
                       (instantiate_type env decl.type_params ty_list body)
                 | {type_kind = Type_variant (constr_list,rep)} ->
-                    let unbx = (rep = Variant_unboxed) in
+                    let unbx =
+                      match rep with
+                      | Variant_unboxed _ -> true
+                      | Variant_regular | Variant_immediate -> false
+                    in
                     let tag =
                       if unbx then Cstr_unboxed
                       else if O.is_block obj
