@@ -165,21 +165,39 @@ let inf2 (b : bool) (unique_ x : float) = unique_ let y = if b then x else 1.0 i
 val inf2 : bool -> unique_ float -> float = <fun>
 |}]
 
-let inf3 (b : bool) (y : float) (unique_ x : float) = unique_ let z = if b then x else y in z
+let inf3 : bool -> float -> unique_ float -> float = fun b y x ->
+  let _ = shared_id y in let unique_ z = if b then x else y in z
 [%%expect{|
-Line 1, characters 87-88:
-1 | let inf3 (b : bool) (y : float) (unique_ x : float) = unique_ let z = if b then x else y in z
-                                                                                           ^
+Line 2, characters 58-59:
+2 |   let _ = shared_id y in let unique_ z = if b then x else y in z
+                                                              ^
+Error: Found a shared value where a unique value was expected
+|}]
+
+let inf4 (b : bool) (y : float) (unique_ x : float) =
+  let _ = shared_id y in let unique_ z = if b then x else y in z
+[%%expect{|
+Line 2, characters 20-21:
+2 |   let _ = shared_id y in let unique_ z = if b then x else y in z
+                        ^
 Error: The identifier y was inferred to be unique and thus can not be
        used in a context where unique use is not guaranteed.
 |}]
-(* [%%expect{|
- *   Error: z is not unique
- * |}] *)
 
-let inf4 (unique_ x) = let f x = x in higher_order f x
+
+let inf5 (b : bool) (y : float) (unique_ x : float) =
+  let z = if b then x else y in unique_ z
 [%%expect{|
-val inf4 : unique_ 'a -> 'a = <fun>
+Line 2, characters 27-28:
+2 |   let z = if b then x else y in unique_ z
+                               ^
+Error: The identifier y was inferred to be unique and thus can not be
+       used in a context where unique use is not guaranteed.
+|}]
+
+let inf6 (unique_ x) = let f x = x in higher_order f x
+[%%expect{|
+val inf6 : unique_ 'a -> 'a = <fun>
 |}]
 
 let unique_default_args ?(unique_ x = 1.0) () = x
@@ -245,13 +263,59 @@ Line 2, characters 37-38:
 Error: Found a shared value where a unique value was expected
 |}]
 
+let or_patterns3 p =
+  let unique_ x = 3 in let unique_ y = 4 in
+  match p, x, y with
+  | true, z, _ | false, _, z -> let _ = unique_id z in unique_id y
+[%%expect{|
+Line 4, characters 65-66:
+4 |   | true, z, _ | false, _, z -> let _ = unique_id z in unique_id y
+                                                                     ^
+Error: The identifier y was inferred to be unique and thus can not
+       be used twice. It was seen previously because z is a parent or alias of y.
+|}]
+
+let or_patterns4 p =
+  let unique_ x = 3 in let unique_ y = 4 in
+  match p, x, y with
+  | true, z, _ | false, _, z -> let _ = unique_id x in unique_id y
+[%%expect{|
+val or_patterns4 : bool -> int = <fun>
+|}]
+
+let mark_top_shared =
+  let unique_ xs = 2 :: 3 :: [] in
+  match xs with
+  | x :: xx ->
+      let _ = unique_id xs in
+      unique_ xx
+  | [] -> []
+[%%expect{|
+Line 6, characters 6-16:
+6 |       unique_ xx
+          ^^^^^^^^^^
+Error: The identifier xx was inferred to be unique and thus can not
+       be used twice. It was seen previously because xs is a parent or alias of xx.
+|}]
+
+let mark_top_shared =
+  let unique_ xs = 2 :: 3 :: [] in
+  let _ = unique_id xs in
+  match xs with
+  | x :: xx -> unique_ xx
+  | [] -> []
+[%%expect{|
+val mark_top_shared : int list = [3]
+|}]
+
+
 (* ------------------------------------------------------------------------------------ *)
 (* Tests for locals, adapted to uniqueness *)
 (* ------------------------------------------------------------------------------------ *)
 
 (* If both type and mode are wrong, complain about type *)
 let f () =
-  let id2 (unique_ x : string) = x in
+  let id2 (x : string) = shared_id x in
   let unique_ r = 42 in
   id2 r
 [%%expect{|
