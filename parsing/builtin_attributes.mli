@@ -101,4 +101,4 @@ val has_nonlocal: Parsetree.attributes -> bool
 val has_local: Parsetree.attributes -> (bool,unit) result
 val tailcall : Parsetree.attributes -> ([`Tail|`Nontail] option, [`Conflict]) result
 val has_include_functor : Parsetree.attributes -> (bool,unit) result
-
+val has_let_mutable:  Parsetree.attributes -> (bool,unit) result

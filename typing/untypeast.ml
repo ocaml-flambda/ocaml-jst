@@ -409,6 +409,8 @@ let expression sub exp =
         Pexp_let (rec_flag,
           List.map (sub.value_binding sub) list,
           sub.expr sub exp)
+    | Texp_letmutable (vb, exp) ->
+        Pexp_let (Nonrecursive, [sub.value_binding sub vb], sub.expr sub exp)
 
     (* Pexp_function can't have a label, so we split in 3 cases. *)
     (* One case, no guard: It's a fun. *)
@@ -492,8 +494,15 @@ let expression sub exp =
     | Texp_new (_path, lid, _, _) -> Pexp_new (map_loc sub lid)
     | Texp_instvar (_, path, name) ->
       Pexp_ident ({loc = sub.location sub name.loc ; txt = lident_of_path path})
+    | Texp_mutvar id ->
+      Pexp_ident ({loc = sub.location sub id.loc;
+                   txt = lident_of_path (Pident id.txt)})
     | Texp_setinstvar (_, _path, lid, exp) ->
         Pexp_setinstvar (map_loc sub lid, sub.expr sub exp)
+    | Texp_setmutvar(lid, exp) ->
+        let lid = {loc = sub.location sub lid.loc;
+                   txt = Ident.name lid.txt} in
+        Pexp_setinstvar (lid, sub.expr sub exp)
     | Texp_override (_, list) ->
         Pexp_override (List.map (fun (_path, lid, exp) ->
               (map_loc sub lid, sub.expr sub exp)

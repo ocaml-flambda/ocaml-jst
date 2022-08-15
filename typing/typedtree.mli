@@ -180,6 +180,8 @@ and expression_desc =
         (** let P1 = E1 and ... and Pn = EN in E       (flag = Nonrecursive)
             let rec P1 = E1 and ... and Pn = EN in E   (flag = Recursive)
          *)
+  | Texp_letmutable of value_binding * expression
+        (** let mutable x [: t] = E in E' **)
   | Texp_function of { arg_label : arg_label; param : Ident.t;
       cases : value case list; partial : partial;
       region : bool; warnings : Warnings.state; }
@@ -276,7 +278,9 @@ and expression_desc =
   | Texp_new of
       Path.t * Longident.t loc * Types.class_declaration * apply_position
   | Texp_instvar of Path.t * Path.t * string loc
+  | Texp_mutvar of Ident.t loc
   | Texp_setinstvar of Path.t * Path.t * string loc * expression
+  | Texp_setmutvar of Ident.t loc * expression
   | Texp_override of Path.t * (Path.t * string loc * expression) list
   | Texp_letmodule of
       Ident.t option * string option loc * Types.module_presence * module_expr *
@@ -308,16 +312,16 @@ and meth =
   | Tmeth_val of Ident.t
 
   and comprehension =
-  { 
+  {
      clauses: comprehension_clause list;
-     guard : expression option 
+     guard : expression option
   }
 
-and comprehension_clause = 
- | From_to of Ident.t * Parsetree.pattern * 
+and comprehension_clause =
+ | From_to of Ident.t * Parsetree.pattern *
      expression * expression * direction_flag
  | In of pattern * expression
- 
+
 and 'k case =
     {
      c_lhs: 'k general_pattern;

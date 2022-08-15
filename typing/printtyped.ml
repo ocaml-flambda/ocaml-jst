@@ -338,11 +338,16 @@ and expression i ppf x =
   match x.exp_desc with
   | Texp_ident (li,_,_,_) -> line i ppf "Texp_ident %a\n" fmt_path li;
   | Texp_instvar (_, li,_) -> line i ppf "Texp_instvar %a\n" fmt_path li;
+  | Texp_mutvar id -> line i ppf "Texp_mutvar %a\n" fmt_ident id.txt;
   | Texp_constant (c) -> line i ppf "Texp_constant %a\n" fmt_constant c;
   | Texp_let (rf, l, e) ->
       line i ppf "Texp_let %a\n" fmt_rec_flag rf;
       list i value_binding ppf l;
       expression i ppf e;
+  | Texp_letmutable (vb, e) ->
+      line i ppf "Texp_letmutable\n";
+      value_binding i ppf vb;
+      expression i ppf e
   | Texp_function { arg_label = p; param = _; cases; partial = _; region } ->
       line i ppf "Texp_function\n";
       line i ppf "region %b\n" region;
@@ -436,6 +441,9 @@ and expression i ppf x =
   | Texp_new (li, _, _, _) -> line i ppf "Texp_new %a\n" fmt_path li;
   | Texp_setinstvar (_, s, _, e) ->
       line i ppf "Texp_setinstvar \"%a\"\n" fmt_path s;
+      expression i ppf e;
+  | Texp_setmutvar (lid, e) ->
+      line i ppf "Texp_setmutvar \"%a\"\n" fmt_ident lid.txt;
       expression i ppf e;
   | Texp_override (_, l) ->
       line i ppf "Texp_override\n";

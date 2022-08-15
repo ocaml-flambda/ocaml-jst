@@ -1202,8 +1202,11 @@ and class_expr_aux cl_num val_env met_env scl =
           cl_attributes = scl.pcl_attributes;
          }
   | Pcl_let (rec_flag, sdefs, scl') ->
+      let mut_flag =
+        value_bindings_mutability val_env ~restriction:In_class_def sdefs
+      in
       let (defs, val_env) =
-        Typecore.type_let In_class_def val_env rec_flag sdefs in
+        Typecore.type_let In_class_def val_env rec_flag mut_flag sdefs in
       let (vals, met_env) =
         List.fold_right
           (fun (id, modes) (vals, met_env) ->

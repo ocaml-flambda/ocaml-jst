@@ -445,3 +445,11 @@ let has_include_functor attr =
   else
     Ok false
 
+let has_let_mutable attr =
+  if List.exists (check ["extension.let_mutable"]) attr then
+    if not (Clflags.Extension.is_enabled Let_mutable) then
+      Error ()
+    else
+      Ok true
+  else
+    Ok false

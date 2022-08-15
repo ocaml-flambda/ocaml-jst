@@ -78,12 +78,18 @@ type existential_restriction =
   | In_class_def (** or in [class c = let ... in ...] *)
   | In_self_pattern (** or in self pattern *)
 
+type mutable_restriction =
+  | At_toplevel
+  | In_group
+  | In_rec
+  | In_class_def
+
 val type_binding:
         Env.t -> rec_flag ->
           Parsetree.value_binding list ->
           Typedtree.value_binding list * Env.t
 val type_let:
-        existential_restriction -> Env.t -> rec_flag ->
+        existential_restriction -> Env.t -> rec_flag -> Asttypes.mutable_flag ->
           Parsetree.value_binding list ->
           Typedtree.value_binding list * Env.t
 val type_expression:
@@ -121,6 +127,10 @@ val extract_option_type: Env.t -> type_expr -> type_expr
 val generalizable: int -> type_expr -> bool
 val reset_delayed_checks: unit -> unit
 val force_delayed_checks: unit -> unit
+
+val value_bindings_mutability :
+  Env.t -> ?restriction:mutable_restriction ->
+  Parsetree.value_binding list -> Asttypes.mutable_flag
 
 val reset_allocations: unit -> unit
 val optimise_allocations: unit -> unit
@@ -176,6 +186,7 @@ type error =
   | Cannot_infer_signature
   | Not_a_packed_module of type_expr
   | Unexpected_existential of existential_restriction * string * string list
+  | Unexpected_mutable of mutable_restriction
   | Invalid_interval
   | Invalid_for_loop_index
   | No_value_clauses
@@ -196,6 +207,7 @@ type error =
   | Literal_overflow of string
   | Unknown_literal of string * char
   | Illegal_letrec_pat
+  | Illegal_mutable_pat
   | Illegal_letrec_expr
   | Illegal_class_expr
   | Letop_type_clash of string * Ctype.Unification_trace.t

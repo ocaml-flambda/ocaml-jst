@@ -171,6 +171,11 @@ let include_functor_ext_loc = mknoloc "extension.include_functor"
 let include_functor_attr =
   Attr.mk ~loc:Location.none include_functor_ext_loc (PStr [])
 
+let let_mutable_ext_loc = mknoloc "extension.let_mutable"
+
+let let_mutable_attr =
+  Attr.mk ~loc:Location.none let_mutable_ext_loc (PStr [])
+
 let mkexp_stack ~loc exp =
   ghexp ~loc (Pexp_apply(local_extension, [Nolabel, exp]))
 
@@ -2606,15 +2611,19 @@ let_bindings(EXT):
     let_binding(EXT)                            { $1 }
   | let_bindings(EXT) and_let_binding           { addlb $1 $2 }
 ;
+let_and_mutable_attr:
+    LET MUTABLE { [let_mutable_attr] }
+  | LET         { [] }
+;
 %inline let_binding(EXT):
-  LET
+  attrs0 = let_and_mutable_attr
   ext = EXT
   attrs1 = attributes
   rec_flag = rec_flag
   body = let_binding_body
   attrs2 = post_item_attributes
     {
-      let attrs = attrs1 @ attrs2 in
+      let attrs = attrs0 @ attrs1 @ attrs2 in
       mklbs ~loc:$sloc ext rec_flag (mklb ~loc:$sloc true body attrs)
     }
 ;
