@@ -1246,12 +1246,7 @@ and transl_record ~scopes loc env mode fields repres opt_init_expr =
     | None -> None
     | Some exp -> match Builtin_attributes.has_unique exp.exp_attributes with
       | Ok false | Error _ -> None
-      | Ok true -> match exp with
-        | { exp_desc = Texp_ident(Path.Pident(_) as path, _, desc, kind) } ->
-            let t = transl_ident (of_location ~scopes exp.exp_loc)
-                      exp.exp_env exp.exp_type path desc kind
-            in Some t
-        | _ -> None in
+      | Ok true -> Some (transl_exp ~scopes exp) in
   let is_unique_update_on =
     match maybe_unique_update_on with | None -> false | Some _ -> true in
   let reuses =

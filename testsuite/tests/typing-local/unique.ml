@@ -224,11 +224,12 @@ let record_mode_vars (p : point) =
   let y = (p.x, p.y) in
   (x, y, unique_ p.z)
 [%%expect{|
-Line 3, characters 11-14:
+Line 3, characters 10-20:
 3 |   let y = (p.x, p.y) in
-               ^^^
+              ^^^^^^^^^^
 Error: The identifier anon was inferred to be unique and thus can not
-       be used twice. It was seen here because anon is a parent or alias of anon.
+       be used twice. It was seen here because y refers to a tuple
+       containing anon, which is a parent of anon.
 |}]
 
 (* Unique Local *)
@@ -281,6 +282,14 @@ let or_patterns4 p =
   | true, z, _ | false, _, z -> let _ = unique_id x in unique_id y
 [%%expect{|
 val or_patterns4 : bool -> int = <fun>
+|}]
+
+let or_patterns5 p =
+  let unique_ x = 3 in let unique_ y = 4 in
+  match p, x, y with
+  | true, z, _ | false, _, z -> let _ = unique_id z in unique_id x
+[%%expect{|
+val or_patterns5 : bool -> int = <fun>
 |}]
 
 let mark_top_shared =
