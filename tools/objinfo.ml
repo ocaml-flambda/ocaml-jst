@@ -170,8 +170,8 @@ let print_cmx_infos (ui, crc) =
   end;
   let pr_afuns _ fns =
     let mode = function
-      | Lambda.Alloc_heap, _ -> ""
-      | Lambda.Alloc_local, _ -> "L" in
+      | Lambda.Alloc_heap -> ""
+      | Lambda.Alloc_local -> "L" in
     List.iter (fun (arity,m) -> printf " %d%s" arity (mode m)) fns in
   let pr_cfuns _ fns =
     List.iter (function

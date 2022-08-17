@@ -170,7 +170,7 @@ and exp_extra =
 
 and expression_desc =
     Texp_ident of
-      Path.t * Longident.t loc * Types.value_description * ident_kind
+      Path.t * Longident.t loc * Types.value_description * ident_kind * Types.value_mode
         (** x
             M.x
          *)

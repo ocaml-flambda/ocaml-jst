@@ -316,7 +316,7 @@ val opaque : expression -> Debuginfo.t -> expression
 
 (** Get the symbol for the generic application with [n] arguments, and
     ensure its presence in the set of defined symbols *)
-val apply_function_sym : int -> Lambda.alloc_mode -> string
+val apply_function_sym : int -> Lambda.locality_mode -> string
 
 (** Get the symbol for the generic currying or tuplifying wrapper with
     [n] arguments, and ensure its presence in the set of defined symbols. *)

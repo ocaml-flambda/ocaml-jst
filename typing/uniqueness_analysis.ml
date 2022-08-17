@@ -16,7 +16,6 @@
 open Asttypes
 open Types
 open Typedtree
-module Uniqueness_mode = Mode.Uniqueness
 
 type unique_seen_reason =
   | Seen_as of Ident.t
@@ -66,6 +65,13 @@ module Projection = struct
   end
   include T
   module Map = Map.Make(T)
+
+  let to_string parent = function
+    | Tuple_field i -> Printf.sprintf "%s.%i" parent i
+    | Record_field s -> Printf.sprintf "%s.%s" parent s
+    | Construct_field (s, i) -> Printf.sprintf "%s|%s.%i" parent s i
+    | Variant_field l -> Printf.sprintf "%s|%s" parent l
+    | Array_field i -> Printf.sprintf "%s.%i" parent i
 end
 
 (* Whenever an identifier or its parent/child was seen twice,
@@ -102,7 +108,7 @@ type unique_env =
         they are mapped to the "representing" ident x that we saw first.
         We do not map x to itself in general (but we do for function params
         as it is more convenient there). *)
-    constraints: Types.uniqueness Types.mode list Ident.Map.t;
+    constraints: Mode.Uniqueness.t Ident.Map.t;
     (* Modevars that need to be constrained when an ident is not unique.
        This includes those of aliases, as well as mode variables
        created for projections. *)
@@ -132,13 +138,11 @@ let lookup_alias id uenv =
 let force_shared id err uenv =
   let rec loop seen id err uenv =
     if List.memq id seen then seen else
-      let ms = match Ident.Map.find_opt id uenv.constraints with
-        | None -> []
-        | Some ms -> ms in
-      List.iter
-        (fun m -> match Uniqueness_mode.submode (Amode Shared) m with
+      let _ = Option.iter
+        (fun m -> match Mode.Uniqueness.submode (Amode Shared) m with
            | Ok () -> ()
-           | Error () -> raise err) ms;
+           | Error () -> raise err)
+        (Ident.Map.find_opt id uenv.constraints) in
       let cs = match Ident.Map.find_opt id uenv.children with
         | None -> Projection.Map.empty
         | Some projs -> projs in
@@ -206,27 +210,33 @@ let add_mproj parent mproj id uenv =
         { uenv with aliases = Ident.Map.add id old uenv.aliases }
 
 let add_anon_mproj parent mproj uenv =
-  let id = Ident.create_local "anon" in
+  let name = match mproj with
+    | Some proj -> Projection.to_string (Ident.name parent) proj
+    | None -> Ident.name parent in
+  let id = Ident.create_local name in
   id, add_mproj parent mproj id uenv
 
-let add_mode id mode uenv =
+let add_mode id mode exp uenv =
   let id = lookup_alias id uenv in
-  let ms = match Ident.Map.find_opt id uenv.constraints with
-    | None -> []
-    | Some ms -> ms in
-  { uenv with constraints = Ident.Map.add id (mode :: ms) uenv.constraints }
+  let err exp' reason' =  Error(exp.exp_loc, exp.exp_env, Seen_twice(id, exp', Seen_as(id), reason')) in
+  let id_mode = match Ident.Map.find_opt id uenv.constraints with
+    | None -> let id_mode, _ = Mode.Uniqueness.newvar_below mode in id_mode
+    | Some id_mode -> match Mode.Uniqueness.submode id_mode mode with
+      | Ok () -> id_mode
+      | Error () -> match Ident.Map.find_opt id uenv.last_seen with
+        | None -> assert false (* Invariant: id_mode is shared only when seen at least twice. *)
+        | Some (exp', reason') -> raise (err exp' reason') in
+  let uenv = { uenv with constraints = Ident.Map.add id id_mode uenv.constraints } in
+  match Ident.Map.find_opt id uenv.last_seen with
+  | None -> uenv
+  | Some (exp', reason') -> force_shared id (err exp' reason') uenv; uenv
 
-let pat_var id mode parent mproj uenv =
+let pat_var id parent mproj uenv =
   match parent with
-  | NoParent ->
-      let uenv = mark_owned id uenv in
-      add_mode id mode.uniqueness uenv
-  | OneParent(p) ->
-      let uenv = add_mproj p mproj id uenv in
-      add_mode id mode.uniqueness uenv
+  | NoParent -> mark_owned id uenv
+  | OneParent(p) -> add_mproj p mproj id uenv
   | TupleParent(ps, exp) ->
       let uenv = mark_owned id uenv in
-      let uenv = add_mode id mode.uniqueness uenv in
       (* Mark all ps as seen, as we bind the tuple to a variable. *)
       List.fold_left (fun uenv p ->
           match p with
@@ -244,10 +254,10 @@ let pat_var id mode parent mproj uenv =
 let rec pat_to_map_ (pat : Typedtree.pattern) parent mproj uenv =
   match pat.pat_desc with
   | Tpat_any -> uenv
-  | Tpat_var(id, _, mode) ->
-      pat_var id mode parent mproj uenv
-  | Tpat_alias(pat',id, _, mode) ->
-      let uenv = pat_var id mode parent mproj uenv
+  | Tpat_var(id, _, _) ->
+      pat_var id parent mproj uenv
+  | Tpat_alias(pat',id, _, _) ->
+      let uenv = pat_var id parent mproj uenv
       in pat_to_map_ pat' (OneParent id) None uenv
   | Tpat_constant(_) -> uenv
   | Tpat_tuple(ps) ->
@@ -318,15 +328,15 @@ let ident_option_from_path p =
   | Path.Pdot _ -> None (* Pdot's can not be unique *)
   | Path.Papply _ -> assert false
 
-let mark_path p exp uenv =
-  match p with
-  | Path.Pident id -> mark_seen id (Seen_as id) exp uenv
-  | Path.Pdot _ -> uenv (* Pdot's can not be unique *)
-  | Path.Papply _ -> assert false
-
 let rec check_uniqueness_exp_ exp uenv =
   match exp.exp_desc with
-  | Texp_ident(p, _, _, _) -> mark_path p exp uenv
+  | Texp_ident(p, _, _, _, mode) -> begin
+      match ident_option_from_path p with
+      | Some id ->
+        let uenv = add_mode id mode.uniqueness exp uenv in
+        mark_seen id (Seen_as id) exp uenv
+      | None -> uenv
+      end
   | Texp_constant _ -> uenv
   | Texp_let(_, vbs, exp') ->
       let uenv = check_uniqueness_value_bindings_ vbs uenv in
@@ -341,8 +351,7 @@ let rec check_uniqueness_exp_ exp uenv =
           | Arg e -> check_uniqueness_exp_ e uenv
           | Omitted _ -> uenv) uenv xs
   | Texp_match(e, cs, _) ->
-      let uenv = check_uniqueness_parent e uenv in
-      let parent, uenv = exp_to_parent e uenv in
+      let parent, uenv = exp_to_parent ~check:true e uenv in
       check_uniqueness_comp_cases parent cs uenv
   | Texp_try(e, cs) ->
       let uenv = check_uniqueness_exp_ e uenv in
@@ -362,13 +371,12 @@ let rec check_uniqueness_exp_ exp uenv =
         Array.fold_left (fun uenv field -> match field with
             | l, Kept _ ->
                 let id, uenv = add_anon_mproj parent (Some (Projection.Record_field l.lbl_name)) uenv in
-                (* CR: Add new mode_vars in type checking *)
+                (* TODO Add new mode_vars in type checking; is this done? *)
                 mark_seen id (Seen_as id) exp uenv
             | _, Overridden (_, e) -> check_uniqueness_exp_ e uenv) uenv fields in
       match extended_expression with
       | Some exp when has_unique_attr_texp exp ->
-        let parent, uenv = path_to_parent exp uenv in
-        let uenv = check_uniqueness_path exp uenv in
+        let parent, uenv = path_to_parent ~check:true exp uenv in
         begin
           match parent with
           | None -> check_fields uenv
@@ -380,20 +388,20 @@ let rec check_uniqueness_exp_ exp uenv =
       | None -> check_fields uenv
       end
   | Texp_field(e, _, l, mode) -> begin
-      match (path_to_parent e uenv : Ident.t option * unique_env) with
+      match (path_to_parent ~check:true e uenv : Ident.t option * unique_env) with
       | Some parent, uenv ->
         let id, uenv = add_anon_mproj parent (Some (Projection.Record_field l.lbl_name)) uenv in
-        let uenv = add_mode id mode.uniqueness uenv in
-        mark_seen id (Seen_as id) exp uenv (* CR: Nicer Seen_as name for error messages *)
-      | None, uenv -> check_uniqueness_exp_ e uenv
+        let uenv = add_mode id mode.uniqueness exp uenv in
+        mark_seen id (Seen_as id) exp uenv
+      | None, uenv -> uenv
     end
   | Texp_setfield(exp', _, _, e) ->
-      let uenv = check_uniqueness_path exp' uenv in
+      let _, uenv = path_to_parent ~check:true exp' uenv in
       check_uniqueness_exp_ e uenv
   | Texp_array(es) ->
       List.fold_left (fun uenv e -> check_uniqueness_exp_ e uenv) uenv es
   | Texp_ifthenelse(if', then', else_opt) ->
-      let uenv = check_uniqueness_path if' uenv in
+      let _, uenv = path_to_parent ~check:true if' uenv in
       begin match else_opt with
       | Some else' -> check_uniqueness_parallel [then'; else'] uenv
       | None -> check_uniqueness_exp_ then' uenv
@@ -449,56 +457,56 @@ let rec check_uniqueness_exp_ exp uenv =
   | Texp_probe { handler } -> check_uniqueness_exp_ handler uenv
   | Texp_probe_is_enabled _ -> uenv
 
-(* This should be kept in-sync with check_uniqueness_path/parent. *)
-and path_to_parent : Typedtree.expression -> unique_env -> Ident.t option * unique_env = fun exp uenv ->
+and path_to_parent : check:bool -> Typedtree.expression -> unique_env -> Ident.t option * unique_env = fun ~check exp uenv ->
   match exp.exp_desc with
-  | Texp_ident(p, _, _, _) -> ident_option_from_path p, uenv
-  | Texp_field(e, _, l, _) -> begin
-      match path_to_parent e uenv with
+  | Texp_ident(p, _, _, _, mode) ->
+      let id = ident_option_from_path p in
+      let uenv = match id with | Some id -> add_mode id mode.uniqueness exp uenv | None -> uenv in
+      id, uenv
+  | Texp_field(e, _, l, mode) -> begin
+      match path_to_parent ~check e uenv with
       | Some parent, uenv ->
           let id, uenv = add_anon_mproj parent (Some (Projection.Record_field l.lbl_name)) uenv in
+          let uenv = add_mode id mode.uniqueness exp uenv in
           Some id, uenv
       | None, uenv -> None, uenv end
-  | _ -> None, uenv
-and exp_to_parent exp uenv =
+  | _ -> None, if check then check_uniqueness_exp_ exp uenv else uenv
+and exp_to_parent ~check exp uenv =
   match exp.exp_desc with
   | Texp_tuple(es) ->
       let swap (x, y) = (y, x) in
-      let uenv, ps = List.fold_left_map (fun uenv e -> swap (path_to_parent e uenv)) uenv es in
+      let uenv, ps = List.fold_left_map (fun uenv e -> swap (path_to_parent ~check e uenv)) uenv es in
       TupleParent(ps, exp), uenv
   | _ ->
-      match path_to_parent exp uenv with
+      match path_to_parent ~check exp uenv with
       | Some id, uenv -> OneParent id, uenv
       | None, uenv -> NoParent, uenv
-
-and check_uniqueness_path exp uenv =
-  match exp.exp_desc with
-  | Texp_ident _ -> uenv
-  | Texp_field(e, _, _, _) -> check_uniqueness_path e uenv
-  | _ -> check_uniqueness_exp_ exp uenv
-and check_uniqueness_parent exp uenv =
-  match exp.exp_desc with
-  | Texp_tuple(es) ->
-      List.fold_left (fun uenv e -> check_uniqueness_path e uenv) uenv es
-  | _ -> check_uniqueness_path exp uenv
 
 and check_uniqueness_value_bindings_ vbs uenv =
   let uenv = List.fold_left
       (fun uenv vb ->
-         let parent, uenv = exp_to_parent vb.vb_expr uenv in
+         let parent, uenv = exp_to_parent ~check:false vb.vb_expr uenv in
          pat_to_map vb.vb_pat parent uenv)
       uenv vbs in
-  List.fold_left (fun uenv vb -> check_uniqueness_parent vb.vb_expr uenv) uenv vbs
+  List.fold_left (fun uenv vb -> snd (exp_to_parent ~check:true vb.vb_expr uenv)) uenv vbs
 
 and check_uniqueness_parallel es uenv =
   let orig_last_seen = uenv.last_seen in
+  let orig_modes = uenv.constraints in
   let uenv, uenvs = List.fold_left_map (fun uenv e ->
-      let uenv = check_uniqueness_exp_ e {uenv with last_seen = orig_last_seen} in
-      uenv, uenv.last_seen) uenv es in
-  { uenv with last_seen =
-                List.fold_left
-                  (fun a b -> Ident.Map.union (fun _ x _ -> Some x) a b)
-                  Ident.Map.empty uenvs }
+      let uenv = check_uniqueness_exp_ e {
+          (* Maps that simply record information are scoped by idents and can be accumulated. *)
+          children = uenv.children; owned = uenv.owned; aliases = uenv.aliases;
+          last_seen = orig_last_seen; (* Do not share last_seens.  *)
+          constraints = Ident.Map.map (* Do not share constraints. *)
+              (fun m -> let v, _ = Mode.Uniqueness.newvar_below m in v) orig_modes } in
+      uenv, (uenv.last_seen, uenv.constraints)) uenv es in
+  let last_seens, modes = List.split uenvs in
+  { uenv with
+    last_seen = List.fold_left (fun a b -> Ident.Map.union (fun _ x _ -> Some x) a b)
+        Ident.Map.empty last_seens;
+    constraints = List.fold_left (fun a b -> Ident.Map.union (fun _ x y -> Some (Mode.Uniqueness.join [x; y])) a b)
+        Ident.Map.empty modes }
 
 and check_uniqueness_cases_
   : 'a. ('a Typedtree.general_pattern -> parent -> unique_env -> unique_env)
@@ -529,7 +537,9 @@ and check_uniqueness_comprehensions cs uenv =
     uenv cs
 
 and check_uniqueness_binding_op bo exp uenv =
-  let uenv = mark_path bo.bop_op_path exp uenv in
+  let uenv = match ident_option_from_path bo.bop_op_path with
+    | Some id -> mark_seen id (Seen_as id) exp uenv
+    | None -> uenv in
   check_uniqueness_exp_ bo.bop_exp uenv
 
 
@@ -572,7 +582,7 @@ let report_error ~loc = function
                 place (Ident.name alias) (Ident.name id')
         else Format.dprintf
                 " It was seen %s because %s refers to a tuple@ \
-                containing %s, which is a parent of %s."
+                containing %s, which is a parent or alias of %s."
                 place (Ident.name alias) (Ident.name id') (Ident.name id) in
     Location.errorf ~loc
       "@[%s is used uniquely so cannot be used twice.%t%t @]"

@@ -26,7 +26,19 @@ module Uniqueness : sig
   val meet_const : const -> const -> const
   val print_const : Format.formatter -> const -> unit
   val of_const : const -> uniqueness mode
-  val submode : uniqueness mode -> uniqueness mode -> (unit, unit) result
+
+  type t = Types.uniqueness Types.mode
+  val unique : t
+  val shared : t
+  val submode : t -> t -> (unit, unit) result
+  val equate : t -> t -> (unit, unit) result
+  val join : t list -> t
+  val constrain_upper : t -> const
+  val constrain_lower : t -> const
+  val newvar : unit -> t
+  val newvar_below : t -> t * bool
+  val newvar_above : t -> t * bool
+  val print : Format.formatter -> t -> unit
 end
 
 module Alloc : sig

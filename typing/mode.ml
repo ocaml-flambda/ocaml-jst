@@ -339,6 +339,8 @@ module Uniqueness = struct
   include T
   include Solver(T)
 
+  type t = Types.uniqueness Types.mode
+
   let unique = Amode Unique
   let shared = Amode Shared
 

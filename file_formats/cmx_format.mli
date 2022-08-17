@@ -35,7 +35,7 @@ type export_info =
   | Clambda of Clambda.value_approximation
   | Flambda of Export_info.t
 
-type apply_fn := int * Lambda.alloc_mode
+type apply_fn := int * Lambda.locality_mode
 type unit_infos =
   { mutable ui_name: modname;             (* Name of unit implemented *)
     mutable ui_symbol: string;            (* Prefix for symbols *)

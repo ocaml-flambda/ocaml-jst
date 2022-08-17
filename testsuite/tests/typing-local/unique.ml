@@ -17,8 +17,7 @@ let dup x = unique_ (x, x)
 Line 1, characters 24-25:
 1 | let dup x = unique_ (x, x)
                             ^
-Error: The identifier x was inferred to be unique and thus can not
-       be used twice.
+Error: x is used uniquely so cannot be used twice.
 |}]
 
 let dup (glob : 'a) : 'a glob * 'a glob = unique_ ({glob}, {glob})
@@ -45,8 +44,7 @@ let sequence (unique_ x : float) = unique_ let y = x in (x, y)
 Line 1, characters 60-61:
 1 | let sequence (unique_ x : float) = unique_ let y = x in (x, y)
                                                                 ^
-Error: The identifier x was inferred to be unique and thus can not
-       be used twice. It was seen here because y is a parent or alias of x.
+Error: x is used uniquely so cannot be used twice.
 |}]
 
 let children_unique (unique_ xs : float list) = unique_ match xs with
@@ -77,8 +75,7 @@ let dup_child (unique_ fs : 'a list) = unique_ match fs with
 Line 3, characters 26-28:
 3 |   | x :: xs as gs -> (gs, xs)
                               ^^
-Error: The identifier xs was inferred to be unique and thus can not
-       be used twice. It was seen previously because gs is a parent or alias of xs.
+Error: xs is used uniquely so cannot be used twice. It was seen previously because gs is a parent or alias of xs.
 |}]
 
 let unique_id : 'a. unique_ 'a -> unique_ 'a = fun x -> x
@@ -177,11 +174,10 @@ Error: Found a shared value where a unique value was expected
 let inf4 (b : bool) (y : float) (unique_ x : float) =
   let _ = shared_id y in let unique_ z = if b then x else y in z
 [%%expect{|
-Line 2, characters 20-21:
+Line 2, characters 58-59:
 2 |   let _ = shared_id y in let unique_ z = if b then x else y in z
-                        ^
-Error: The identifier y was inferred to be unique and thus can not be
-       used in a context where unique use is not guaranteed.
+                                                              ^
+Error: y is used uniquely so cannot be used twice.
 |}]
 
 
@@ -224,13 +220,23 @@ let record_mode_vars (p : point) =
   let y = (p.x, p.y) in
   (x, y, unique_ p.z)
 [%%expect{|
-Line 3, characters 10-20:
+Line 3, characters 11-14:
 3 |   let y = (p.x, p.y) in
-              ^^^^^^^^^^
-Error: The identifier anon was inferred to be unique and thus can not
-       be used twice. It was seen here because y refers to a tuple
-       containing anon, which is a parent of anon.
+               ^^^
+Error: p.x is used uniquely so cannot be used twice.
 |}]
+
+let record_mode_vars (p : point) =
+  let y = (p.x, p.y) in
+  let x = unique_id p.x in
+  (x, y, unique_ p.z)
+[%%expect{|
+Line 3, characters 20-23:
+3 |   let x = unique_id p.x in
+                        ^^^
+Error: p.x is used uniquely so cannot be used twice. It was seen previously because y refers to a tuple containing p.x.
+|}]
+
 
 (* Unique Local *)
 
@@ -272,8 +278,7 @@ let or_patterns3 p =
 Line 4, characters 65-66:
 4 |   | true, z, _ | false, _, z -> let _ = unique_id z in unique_id y
                                                                      ^
-Error: The identifier y was inferred to be unique and thus can not
-       be used twice. It was seen previously because z is a parent or alias of y.
+Error: y is used uniquely so cannot be used twice. It was seen previously because z is a parent or alias of y.
 |}]
 
 let or_patterns4 p =
@@ -303,8 +308,7 @@ let mark_top_shared =
 Line 6, characters 6-16:
 6 |       unique_ xx
           ^^^^^^^^^^
-Error: The identifier xx was inferred to be unique and thus can not
-       be used twice. It was seen previously because xs is a parent or alias of xx.
+Error: xx is used uniquely so cannot be used twice. It was seen previously because xs is a parent or alias of xx.
 |}]
 
 let mark_top_shared =
@@ -314,9 +318,27 @@ let mark_top_shared =
   | x :: xx -> unique_ xx
   | [] -> []
 [%%expect{|
-val mark_top_shared : int list = [3]
+Line 4, characters 8-10:
+4 |   match xs with
+            ^^
+Error: xs is used uniquely so cannot be used twice.
 |}]
 
+let mark_shared_in_one_branch b x =
+  if b then unique_id (x, 3.0)
+       else (x, x)
+[%%expect{|
+val mark_shared_in_one_branch : bool -> unique_ float -> float * float =
+  <fun>
+|}]
+
+let mark_shared_in_one_branch b x =
+  if b then (x, x)
+       else unique_id (x, 3.0)
+[%%expect{|
+val mark_shared_in_one_branch : bool -> unique_ float -> float * float =
+  <fun>
+|}]
 
 (* ------------------------------------------------------------------------------------ *)
 (* Tests for locals, adapted to uniqueness *)

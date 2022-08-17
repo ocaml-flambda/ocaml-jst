@@ -1051,7 +1051,7 @@ and class_expr_aux cl_num val_env met_env scl =
             (id,
              {exp_desc =
               Texp_ident(path, mknoloc (Longident.Lident (Ident.name id)), vd,
-                         Id_value);
+                         Id_value, Mode.Value.global);
               exp_loc = Location.none; exp_extra = [];
               exp_type = Ctype.instance vd.val_type;
               exp_mode = Mode.Value.global;
@@ -1215,7 +1215,7 @@ and class_expr_aux cl_num val_env met_env scl =
              let expr =
                {exp_desc =
                 Texp_ident(path, mknoloc(Longident.Lident (Ident.name id)),vd,
-                           Id_value);
+                           Id_value, Mode.Value.global);
                 exp_loc = Location.none; exp_extra = [];
                 exp_type = Ctype.instance vd.val_type;
                 exp_mode = Mode.Value.global;

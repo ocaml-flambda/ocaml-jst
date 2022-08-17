@@ -410,4 +410,4 @@ let () =
   Printf.printf "%d\n" (work ~insert:M1.insert ~fold ~empty);
   Printf.printf "%d\n" (unique_work ~insert:M2.insert ~fold ~empty);
   Printf.printf "%d\n" (unique_work ~insert:M3.insert ~fold:tagged_fold ~empty:tagged_empty);
-  Printf.printf "%d\n" (unique_work ~insert:M4.insert ~fold:tagged_fold ~empty:tagged_empty);
+  (* Printf.printf "%d\n" (unique_work ~insert:M4.insert ~fold:tagged_fold ~empty:tagged_empty); *)

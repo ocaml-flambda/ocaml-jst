@@ -147,7 +147,7 @@ let classify_expression : Typedtree.expression -> sd =
     | Texp_let (rec_flag, vb, e) ->
         let env = classify_value_bindings rec_flag env vb in
         classify_expression env e
-    | Texp_ident (path, _, _, _) ->
+    | Texp_ident (path, _, _, _, _) ->
         classify_path env path
 
     (* non-binding cases *)
@@ -168,7 +168,7 @@ let classify_expression : Typedtree.expression -> sd =
     | Texp_record _ ->
         Static
 
-    | Texp_apply ({exp_desc = Texp_ident (_, _, vd, Id_prim _)}, _, _)
+    | Texp_apply ({exp_desc = Texp_ident (_, _, vd, Id_prim _, _)}, _, _)
       when is_ref vd ->
         Static
     | Texp_apply (_, args, _)
@@ -522,7 +522,7 @@ let (>>) : bind_judg -> term_judg -> term_judg =
 *)
 let rec expression : Typedtree.expression -> term_judg =
   fun exp -> match exp.exp_desc with
-    | Texp_ident (pth, _, _, _) ->
+    | Texp_ident (pth, _, _, _, _) ->
       path pth
     | Texp_let (rec_flag, bindings, body) ->
       (*
@@ -587,7 +587,7 @@ let rec expression : Typedtree.expression -> term_judg =
     | Texp_instvar (self_path, pth, _inst_var) ->
         join [path self_path << Dereference; path pth]
     | Texp_apply
-        ({exp_desc = Texp_ident (_, _, vd, Id_prim _)}, [_, Arg arg], _)
+        ({exp_desc = Texp_ident (_, _, vd, Id_prim _, _)}, [_, Arg arg], _)
       when is_ref vd ->
       (*
         G |- e: m[Guard]

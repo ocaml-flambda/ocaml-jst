@@ -322,11 +322,11 @@ let mode_argument ~funct ~index ~position ~partial_app alloc_mode =
   else match funct.exp_desc, index, (position : apply_position) with
   | Texp_ident (_, _, {val_kind =
       Val_prim {Primitive.prim_name = ("%sequor"|"%sequand")}},
-                Id_prim _), 1, Tail ->
+                Id_prim _, _), 1, Tail ->
      (* The second argument to (&&) and (||) is in
         tail position if the call is *)
      mode_return (Mode.Value.local_to_regional vmode)
-  | Texp_ident (_, _, _, Id_prim _), _, _ ->
+  | Texp_ident (_, _, _, Id_prim _, _), _, _ ->
      (* Other primitives cannot be tail-called *)
      mode_nontail vmode
   | _, _, (Nontail | Default) ->
@@ -2480,7 +2480,7 @@ let rec final_subexpression exp =
 
 let is_prim ~name funct =
   match funct.exp_desc with
-  | Texp_ident (_, _, {val_kind=Val_prim{Primitive.prim_name; _}}, Id_prim _) ->
+  | Texp_ident (_, _, {val_kind=Val_prim{Primitive.prim_name; _}}, Id_prim _, _) ->
       prim_name = name
   | _ -> false
 
@@ -2806,7 +2806,7 @@ let rec is_nonexpansive exp =
       { exp_desc = Texp_ident (_, _, {val_kind =
              Val_prim {Primitive.prim_name =
                          ("%raise" | "%reraise" | "%raise_notrace")}},
-             Id_prim _) },
+             Id_prim _, _) },
       [Nolabel, Arg e], _) ->
      is_nonexpansive e
   | Texp_array (_ :: _)
@@ -3377,6 +3377,7 @@ and type_expect_
   match sexp.pexp_desc with
   | Pexp_ident lid ->
       let path, mode, desc, kind = type_ident env ~recarg lid in
+      let mode, _ = Mode.Value.newvar_above mode in
       let exp_desc =
         match desc.val_kind with
         | Val_ivar (_, cl_num) ->
@@ -3392,9 +3393,9 @@ and type_expect_
             let (path, _) =
               Env.find_value_by_name (Longident.Lident ("self-" ^ cl_num)) env
             in
-            Texp_ident(path, lid, desc, kind)
+            Texp_ident(path, lid, desc, kind, mode)
         | _ ->
-            Texp_ident(path, lid, desc, kind)
+            Texp_ident(path, lid, desc, kind, mode)
       in
       ruem ~mode ~expected_mode {
         exp_desc; exp_loc = loc; exp_extra = [];
@@ -3620,12 +3621,12 @@ and type_expect_
         let funct = type_sfunct sfunct in
         match funct.exp_desc, sargs with
         | Texp_ident (_, _, {val_kind = Val_prim {prim_name = "%revapply"}},
-                      Id_prim _),
+                      Id_prim _, _),
           [Nolabel, sarg; Nolabel, actual_sfunct]
           when is_inferred actual_sfunct ->
             type_sfunct_args actual_sfunct [Nolabel, sarg]
         | Texp_ident (_, _, {val_kind = Val_prim {prim_name = "%apply"}},
-                      Id_prim _),
+                      Id_prim _, _),
           [Nolabel, actual_sfunct; Nolabel, sarg] ->
             type_sfunct_args actual_sfunct [Nolabel, sarg]
         | _ ->
@@ -4092,7 +4093,7 @@ and type_expect_
             let gen = generalizable tv.level arg.exp_type in
             unify_var env tv arg.exp_type;
             begin match arg.exp_desc, !self_coercion, (repr ty').desc with
-              Texp_ident(_, _, {val_kind=Val_self _}, _), (path,r) :: _,
+              Texp_ident(_, _, {val_kind=Val_self _}, _, _), (path,r) :: _,
               Tconstr(path',_,_) when Path.same path path' ->
                 (* prerr_endline "self coercion"; *)
                 r := loc :: !r;
@@ -4163,7 +4164,7 @@ and type_expect_
       begin try
         let (meth, exp, typ) =
           match obj.exp_desc with
-            Texp_ident(_p, _, {val_kind = Val_self (meths, _, _, privty)}, _) ->
+            Texp_ident(_p, _, {val_kind = Val_self (meths, _, _, privty)}, _, _) ->
               obj_meths := Some meths;
               let (id, typ) =
                 filter_self_method env met Private meths privty
@@ -4172,7 +4173,7 @@ and type_expect_
                 Location.prerr_warning loc
                   (Warnings.Undeclared_virtual_method met);
               (Tmeth_val id, None, typ)
-          | Texp_ident(_p, lid, {val_kind = Val_anc (methods, cl_num)}, _) ->
+          | Texp_ident(_p, lid, {val_kind = Val_anc (methods, cl_num)}, _, _) ->
               let method_id =
                 begin try List.assoc met methods with Not_found ->
                   let valid_methods = List.map fst methods in
@@ -4212,14 +4213,14 @@ and type_expect_
                   let exp =
                     Texp_apply({exp_desc =
                                 Texp_ident(Path.Pident method_id,
-                                           lid, method_desc, Id_value);
+                                           lid, method_desc, Id_value, Mode.Value.global);
                                 exp_loc = loc; exp_extra = [];
                                 exp_type = method_type;
                                 exp_mode = Mode.Value.global;
                                 exp_attributes = []; (* check *)
                                 exp_env = exp_env},
                           [ Nolabel,
-                            Arg {exp_desc = Texp_ident(path, lid, desc, Id_value);
+                            Arg {exp_desc = Texp_ident(path, lid, desc, Id_value, Mode.Value.global);
                                   exp_loc = obj.exp_loc; exp_extra = [];
                                   exp_type = desc.val_type;
                                   exp_mode = Mode.Value.global;
@@ -5369,7 +5370,7 @@ and type_argument ?explanation ?recarg env (mode : expected_mode) sarg
          exp_extra = []; exp_attributes = [];
          exp_desc =
          Texp_ident(Path.Pident id, mknoloc (Longident.Lident name),
-                    desc, Id_value)}
+                    desc, Id_value, mode)}
       in
       let eta_mode = Mode.Value.local_to_regional (Mode.Value.of_alloc marg) in
       let eta_pat, eta_var = var_pair ~mode:eta_mode "eta" ty_arg in

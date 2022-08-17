@@ -232,7 +232,7 @@ let rec push_defaults loc bindings cases partial warnings =
             ({exp with exp_type = pat.pat_type; exp_env = env; exp_desc =
               Texp_ident
                 (Path.Pident param, mknoloc (Longident.Lident name),
-                 desc, Id_value)},
+                 desc, Id_value, Mode.Value.global)},
              cases, partial) }
       in
       push_defaults loc bindings
@@ -347,7 +347,7 @@ and transl_exp1 ~scopes ~in_new_scope e =
 
 and transl_exp0 ~in_new_scope ~scopes e =
   match e.exp_desc with
-  | Texp_ident(path, _, desc, kind) ->
+  | Texp_ident(path, _, desc, kind, _) ->
       transl_ident (of_location ~scopes e.exp_loc)
         e.exp_env e.exp_type path desc kind
   | Texp_constant cst ->
@@ -363,7 +363,7 @@ and transl_exp0 ~in_new_scope ~scopes e =
       in
       transl_function ~scopes e param cases partial warnings region
   | Texp_apply({ exp_desc = Texp_ident(path, _, {val_kind = Val_prim p},
-                                       Id_prim pmode);
+                                       Id_prim pmode, _);
                 exp_type = prim_type } as funct, oargs, pos)
     when can_apply_primitive p pmode pos oargs ->
       let argl, extra_args = cut p.prim_arity oargs in
