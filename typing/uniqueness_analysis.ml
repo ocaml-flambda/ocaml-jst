@@ -254,9 +254,9 @@ let pat_var id parent mproj uenv =
 let rec pat_to_map_ (pat : Typedtree.pattern) parent mproj uenv =
   match pat.pat_desc with
   | Tpat_any -> uenv
-  | Tpat_var(id, _, _) ->
+  | Tpat_var(id, _) ->
       pat_var id parent mproj uenv
-  | Tpat_alias(pat',id, _, _) ->
+  | Tpat_alias(pat',id, _) ->
       let uenv = pat_var id parent mproj uenv
       in pat_to_map_ pat' (OneParent id) None uenv
   | Tpat_constant(_) -> uenv
@@ -584,7 +584,8 @@ let report_error ~loc = function
                 " It was seen %s because %s refers to a tuple@ \
                 containing %s, which is a parent or alias of %s."
                 place (Ident.name alias) (Ident.name id') (Ident.name id) in
-    Location.errorf ~loc ~sub:[Location.msg ~loc:other.exp_loc "@[%t @]" (get_reason r2 "previously")]
+    Location.errorf ~loc
+      ~sub:[Location.msg ~loc:other.exp_loc "@[%t @]" (get_reason r2 "previously")]
       "@[%s is used uniquely so cannot be used twice.%t%s @]"
       (Ident.name id) (get_reason r1 "here") " It was seen previously at:"
 

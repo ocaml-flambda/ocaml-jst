@@ -744,7 +744,7 @@ and build_as_type env p =
 
 and build_as_type_aux env p =
   match p.pat_desc with
-    Tpat_alias(p1, _, _, _) -> build_as_type_and_mode env p1
+    Tpat_alias(p1, _, _) -> build_as_type_and_mode env p1
   | Tpat_tuple pl ->
       let tyl = List.map (build_as_type env) pl in
       newty (Ttuple tyl), p.pat_mode
@@ -1722,7 +1722,7 @@ and type_pat_aux
           enter_variable loc name mode ty sp.ppat_attributes
       in
       rvp k {
-        pat_desc = Tpat_var (id, name, mode);
+        pat_desc = Tpat_var (id, name);
         pat_loc = loc; pat_extra=[];
         pat_type = ty;
         pat_mode = alloc_mode.mode;
@@ -1747,7 +1747,7 @@ and type_pat_aux
           let id = enter_variable loc v mode
                      t ~is_module:true sp.ppat_attributes in
           rvp k {
-            pat_desc = Tpat_var (id, v, mode);
+            pat_desc = Tpat_var (id, v);
             pat_loc = sp.ppat_loc;
             pat_extra=[Tpat_unpack, loc, sp.ppat_attributes];
             pat_mode = alloc_mode.mode;
@@ -1775,7 +1775,7 @@ and type_pat_aux
           let mode, _ = Mode.Value.newvar_above alloc_mode.mode in
           let id = enter_variable lloc name mode ty' attrs in
           rvp k {
-            pat_desc = Tpat_var (id, name, mode);
+            pat_desc = Tpat_var (id, name);
             pat_loc = lloc;
             pat_extra = [Tpat_constraint cty, loc, sp.ppat_attributes];
             pat_type = ty;
@@ -1792,13 +1792,12 @@ and type_pat_aux
         let ty_var, mode = build_as_type_and_mode env q in
         end_def ();
         generalize ty_var;
-        let mode, _ = Mode.Value.newvar_above mode in
         let id =
           enter_variable ~is_as_variable:true loc name mode
             ty_var sp.ppat_attributes
         in
         rvp k {
-          pat_desc = Tpat_alias(q, id, name, mode);
+          pat_desc = Tpat_alias(q, id, name);
           pat_loc = loc; pat_extra=[];
           pat_type = q.pat_type;
           pat_mode = q.pat_mode;
@@ -2191,12 +2190,12 @@ and type_pat_aux
         let extra = (Tpat_constraint cty, loc, sp'.ppat_attributes) in
         let p : k general_pattern =
           match category, (p : k general_pattern) with
-          | Value, {pat_desc = Tpat_var (id,s,mode); _} ->
+          | Value, {pat_desc = Tpat_var (id,s); _} ->
             {p with
               pat_type = ty;
               pat_desc =
                 Tpat_alias
-                  ({p with pat_desc = Tpat_any; pat_attributes = []}, id, s, mode);
+                  ({p with pat_desc = Tpat_any; pat_attributes = []}, id, s);
               pat_extra = [extra];
             }
           | _, p ->
@@ -3296,8 +3295,8 @@ let rec name_pattern default = function
     [] -> Ident.create_local default
   | p :: rem ->
     match p.pat_desc with
-      Tpat_var (id, _, _) -> id
-    | Tpat_alias(_, id, _, _) -> id
+      Tpat_var (id, _) -> id
+    | Tpat_alias(_, id, _) -> id
     | _ -> name_pattern default rem
 
 let name_cases default lst =
@@ -5363,7 +5362,7 @@ and type_argument ?explanation ?recarg env (mode : expected_mode) sarg
           }
         in
         let exp_env = Env.add_value ~mode id desc env in
-        {pat_desc = Tpat_var (id, mknoloc name, mode); pat_type = ty;pat_extra=[];
+        {pat_desc = Tpat_var (id, mknoloc name); pat_type = ty;pat_extra=[];
          pat_mode = mode; pat_attributes = [];
          pat_loc = Location.none; pat_env = env},
         {exp_type = ty; exp_mode = mode; exp_loc = Location.none; exp_env = exp_env;
@@ -6175,7 +6174,7 @@ and type_let
     List.iter
       (fun {vb_pat=pat} -> match pat.pat_desc with
            Tpat_var _ -> ()
-         | Tpat_alias ({pat_desc=Tpat_any}, _, _, _) -> ()
+         | Tpat_alias ({pat_desc=Tpat_any}, _, _) -> ()
          | _ -> raise(Error(pat.pat_loc, env, Illegal_letrec_pat)))
       l;
   List.iter (function

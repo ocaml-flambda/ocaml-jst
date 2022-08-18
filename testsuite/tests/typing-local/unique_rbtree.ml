@@ -22,7 +22,7 @@ let work ~insert ~fold ~empty =
   let rec loop n t =
     if n <= 0 then t
       else loop (n - 1) (insert n (n mod 10 = 0) t) in
-  let tree = loop 4200000 empty in
+  let tree = loop 42000 empty in
   fold (fun _ v acc -> if v then acc + 1 else acc) 0 tree
 
 
@@ -204,7 +204,7 @@ let unique_work ~insert ~fold ~empty =
   let rec loop n (unique_ t) =
     if n <= 0 then t
     else loop (n - 1) (insert n (n mod 10 = 0) t) in
-  let unique_ tree = loop 4200000 empty in
+  let unique_ tree = loop 42000 empty in
   fold (fun _ v acc -> if v then acc + 1 else acc) 0 tree
 
 
