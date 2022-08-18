@@ -3441,7 +3441,7 @@ lambda/switch.cmi :
 lambda/transl_array_comprehension.cmo : \
     typing/typeopt.cmi \
     typing/typedtree.cmi \
-    typing/primitive.cmi \
+    lambda/transl_comprehension_utils.cmi \
     typing/predef.cmi \
     utils/misc.cmi \
     lambda/matching.cmi \
@@ -3454,7 +3454,7 @@ lambda/transl_array_comprehension.cmo : \
 lambda/transl_array_comprehension.cmx : \
     typing/typeopt.cmx \
     typing/typedtree.cmx \
-    typing/primitive.cmx \
+    lambda/transl_comprehension_utils.cmx \
     typing/predef.cmx \
     utils/misc.cmx \
     lambda/matching.cmx \
@@ -3466,13 +3466,23 @@ lambda/transl_array_comprehension.cmx : \
     lambda/transl_array_comprehension.cmi
 lambda/transl_array_comprehension.cmi : \
     typing/typedtree.cmi \
-    parsing/location.cmi \
     lambda/lambda.cmi \
     lambda/debuginfo.cmi
+lambda/transl_comprehension_utils.cmo : \
+    typing/primitive.cmi \
+    lambda/lambda.cmi \
+    lambda/transl_comprehension_utils.cmi
+lambda/transl_comprehension_utils.cmx : \
+    typing/primitive.cmx \
+    lambda/lambda.cmx \
+    lambda/transl_comprehension_utils.cmi
+lambda/transl_comprehension_utils.cmi : \
+    parsing/location.cmi \
+    lambda/lambda.cmi
 lambda/transl_list_comprehension.cmo : \
     typing/typeopt.cmi \
     typing/typedtree.cmi \
-    lambda/transl_array_comprehension.cmi \
+    lambda/transl_comprehension_utils.cmi \
     lambda/matching.cmi \
     lambda/lambda.cmi \
     typing/ident.cmi \
@@ -3481,7 +3491,7 @@ lambda/transl_list_comprehension.cmo : \
 lambda/transl_list_comprehension.cmx : \
     typing/typeopt.cmx \
     typing/typedtree.cmx \
-    lambda/transl_array_comprehension.cmx \
+    lambda/transl_comprehension_utils.cmx \
     lambda/matching.cmx \
     lambda/lambda.cmx \
     typing/ident.cmx \
@@ -3557,11 +3567,6 @@ lambda/translclass.cmi : \
     typing/ident.cmi \
     lambda/debuginfo.cmi \
     parsing/asttypes.cmi
-lambda/translcomprehension.cmo : \
-    lambda/translcomprehension.cmi
-lambda/translcomprehension.cmx : \
-    lambda/translcomprehension.cmi
-lambda/translcomprehension.cmi :
 lambda/translcore.cmo : \
     typing/types.cmi \
     typing/typeopt.cmi \

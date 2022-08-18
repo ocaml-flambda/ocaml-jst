@@ -1,31 +1,8 @@
 open Lambda
 open Typedtree
 open Asttypes
-
-(* CR aspectorzabusky: Needs to be factored out properly so this module doesn't
-   have to depend on [Transl_array_comprehension] *)
-open Transl_array_comprehension.Lambda_utils.Make
-
-(* CR aspectorzabusky: Should get unified with
-   [Transl_array_comprehension.Lambda_utils] *)
-module Lambda_utils = struct
-  let apply
-        ?(tailcall    = Default_tailcall)
-        ?(inlined     = Default_inlined)
-        ?(specialised = Default_specialise)
-        ?probe
-        ~loc
-        func
-        args =
-    Lapply { ap_loc         = loc
-           ; ap_func        = func
-           ; ap_args        = args
-           ; ap_tailcall    = tailcall
-           ; ap_inlined     = inlined
-           ; ap_specialised = specialised
-           ; ap_probe       = probe
-           }
-end
+open Transl_comprehension_utils
+open Lambda_utils.Make
 
 (* CR aspectorzabusky: I couldn't get this to build if these were run as soon as
    this file was processed *)
