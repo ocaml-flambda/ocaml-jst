@@ -488,7 +488,6 @@ let clauses ~transl_exp ~scopes ~loc = function
     it is still internally mutable.  This logic is important when translating
     comprehension bodies; see [body] for details. *)
 let initial_array ~loc ~array_kind ~array_sizing =
-  (* CR aspectorzabusky: I may be able to merge these two comments *)
   (* As discussed above, there are three cases to consider for how we allocate
      the array.
 
@@ -559,8 +558,6 @@ let transl_arr_body ~loc ~array_kind ~array_sizing ~array ~index ~body =
             it up by advancing the index of the element to update.
   *)
   let open (val Lambda_utils.int_ops ~loc) in
-  (* CR aspectorzabusky: I used to use shadowing for the three [set_element_*]
-     functions (calling them all [set_element]), but I think this is clearer? *)
   let set_element_raw elt =
     (* array.(index) <- elt *)
     Lprim(Parraysetu array_kind, [Lvar array; Lvar index; elt], loc)

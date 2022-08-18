@@ -93,9 +93,6 @@ module Lambda_utils = struct
       let prim = c_prim name 3 in
       fun ~loc x y z -> Lprim(prim, [x; y; z], loc)
 
-    (* CR aspectorzabusky: I wish there were a better way to provide parameter
-       names *)
-
     (* CR aspectorzabusky: These primitives are now created unconditionally on
        compiler startup.  Is that okay? *)
 
