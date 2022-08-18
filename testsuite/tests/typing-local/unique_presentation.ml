@@ -33,7 +33,11 @@ let sequence =
 Line 4, characters 17-18:
 4 |   let t = update r in
                      ^
-Error: r is used uniquely so cannot be used twice.
+Error: r is used uniquely so cannot be used twice. It was seen previously at:
+Line 3, characters 17-18:
+3 |   let s = update r in
+                     ^
+
 |}]
 
 let branching b =

@@ -567,7 +567,7 @@ let report_error ~loc = function
       "The identifier@ %s was inferred to be unique and thus can not be@ \
         used in a context where unique use is not guaranteed."
       (Ident.name id)
-  | Seen_twice(id, _, r1, r2) ->
+  | Seen_twice(id, other, r1, r2) ->
     (* TODO: incorporate expression into the error *)
     let get_reason r place = match r with
       | Seen_as id' ->
@@ -584,9 +584,9 @@ let report_error ~loc = function
                 " It was seen %s because %s refers to a tuple@ \
                 containing %s, which is a parent or alias of %s."
                 place (Ident.name alias) (Ident.name id') (Ident.name id) in
-    Location.errorf ~loc
-      "@[%s is used uniquely so cannot be used twice.%t%t @]"
-      (Ident.name id) (get_reason r1 "here") (get_reason r2 "previously")
+    Location.errorf ~loc ~sub:[Location.msg ~loc:other.exp_loc "@[%t @]" (get_reason r2 "previously")]
+      "@[%s is used uniquely so cannot be used twice.%t%s @]"
+      (Ident.name id) (get_reason r1 "here") " It was seen previously at:"
 
 let report_error ~loc env err =
   Printtyp.wrap_printing_env ~error:true env
