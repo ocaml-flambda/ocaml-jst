@@ -18,6 +18,12 @@
 open Asttypes
 open Types
 
+(* This variant is used for printing which type of comprehension something is
+   found in; it's used by [type_forcing_context], which see. *)
+type comprehension_type =
+  | List_comprehension
+  | Array_comprehension
+
 (* This variant is used to print improved error messages, and does not affect
    the behavior of the typechecker itself.
 
@@ -37,7 +43,7 @@ type type_forcing_context =
   | Assert_condition
   | Sequence_left_hand_side
   | When_guard
-  | Comprehension_in_iterator
+  | Comprehension_in_iterator of comprehension_type
   | Comprehension_for_start
   | Comprehension_for_stop
   | Comprehension_when

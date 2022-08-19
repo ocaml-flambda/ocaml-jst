@@ -23,6 +23,10 @@ open Typedtree
 open Btype
 open Ctype
 
+type comprehension_type =
+  | List_comprehension
+  | Array_comprehension
+
 type type_forcing_context =
   | If_conditional
   | If_no_else_branch
@@ -34,7 +38,7 @@ type type_forcing_context =
   | Assert_condition
   | Sequence_left_hand_side
   | When_guard
-  | Comprehension_in_iterator
+  | Comprehension_in_iterator of comprehension_type
   | Comprehension_for_start
   | Comprehension_for_stop
   | Comprehension_when
@@ -5201,12 +5205,28 @@ and type_expect_extension ~loc ~env ~ty_expected
 
 and type_comprehension_expr ~loc ~env ~ty_expected cexpr =
   let open Extensions.Comprehensions in
-  let container_type, make_texp, {body = sbody; clauses} = match cexpr with
+  (* CR aspectorzabusky: The first three things here are a bunch of pieces of
+     linked data that always vary together, but we need the different pieces.
+     Is there a more idiomatic approach to bundling these up? *)
+  (* - [comprehension_type]:
+         For printing nicer error messages.
+     - [container_type]:
+         For type checking [for]-[in] iterators and the type of the whole
+         comprehension.
+     - [make_texp]:
+         For building the final typedtree node containing the translated
+         comprehension.
+     - [{body = sbody; clauses}]:
+         The actual comprehension to be translated. *)
+  let comprehension_type, container_type, make_texp, {body = sbody; clauses} =
+    match cexpr with
     | Cexp_list_comprehension comp ->
+        List_comprehension,
         Predef.type_list,
         (fun tcomp -> Texp_list_comprehension tcomp),
         comp
     | Cexp_array_comprehension comp ->
+        Array_comprehension,
         Predef.type_array,
         (fun tcomp -> Texp_array_comprehension tcomp),
         comp
@@ -5223,7 +5243,8 @@ and type_comprehension_expr ~loc ~env ~ty_expected cexpr =
     generalize_structure element_ty;
   end;
   let new_env, comp_clauses =
-    type_comprehension_clauses ~loc ~env ~container_type clauses
+    type_comprehension_clauses
+      ~loc ~env ~comprehension_type ~container_type clauses
   in
   let comp_body = type_expect new_env sbody (mk_expected element_ty) in
   re { exp_desc       = make_texp { comp_body ; comp_clauses }
@@ -5234,18 +5255,22 @@ and type_comprehension_expr ~loc ~env ~ty_expected cexpr =
          (* CR aspectorzabusky: These should come from somewhere *)
      ; exp_env        = env }
 
-and type_comprehension_clauses ~loc ~env ~container_type clauses =
+and type_comprehension_clauses
+      ~loc ~env ~comprehension_type ~container_type clauses =
   List.fold_left_map
-    (type_comprehension_clause ~loc ~container_type)
+    (type_comprehension_clause ~loc ~comprehension_type ~container_type)
     env
     clauses
 
-and type_comprehension_clause ~loc ~container_type env
+and type_comprehension_clause ~loc ~comprehension_type ~container_type env
   : Extensions.Comprehensions.clause -> _ = function
   | For bindings ->
       let tbindings, pvss =
         List.split @@
-        List.map (type_comprehension_binding ~loc ~container_type ~env) bindings
+        List.map
+          (type_comprehension_binding
+             ~loc ~comprehension_type ~container_type ~env)
+          bindings
       in
       (* CR aspectorzabusky: Is there a nicer way to test for redundant
          variables?  I think it's as efficient as the [Multiply_bound_variable]
@@ -5301,15 +5326,18 @@ and type_comprehension_clause ~loc ~container_type env
 
 and type_comprehension_binding
       ~loc
+      ~comprehension_type
       ~container_type
       ~env
       Extensions.Comprehensions.{ pattern; iterator; attributes } =
   let comp_cb_iterator, pvs =
-    type_comprehension_iterator ~loc ~env ~container_type pattern iterator
+    type_comprehension_iterator
+      ~loc ~env ~comprehension_type ~container_type pattern iterator
   in
   { comp_cb_iterator ; comp_cb_attributes = attributes }, pvs
 
-and type_comprehension_iterator ~loc ~env ~container_type pattern
+and type_comprehension_iterator
+      ~loc ~env ~comprehension_type ~container_type pattern
   : Extensions.Comprehensions.iterator -> _ = function
   | Range { start; stop; direction } ->
       let tbound ~explanation bound =
@@ -5333,7 +5361,9 @@ and type_comprehension_iterator ~loc ~env ~container_type pattern
         type_expect
           env
           seq
-          (mk_expected ~explanation:Comprehension_in_iterator seq_ty)
+          (mk_expected
+             ~explanation:(Comprehension_in_iterator comprehension_type)
+             seq_ty)
       in
       let pattern =
         type_pat
@@ -5447,7 +5477,8 @@ let report_pattern_type_clash_hints
   | _ -> []
 
 let report_type_expected_explanation expl ppf =
-  let because expl_str = fprintf ppf "@ because it is in %s" expl_str in
+  let because1 expl_fmt = fprintf ppf "@ because it is in %(%s%)" expl_fmt in
+  let because = because1 "%s" in
   match expl with
   | If_conditional ->
       because "the condition of an if-statement"
@@ -5469,8 +5500,11 @@ let report_type_expected_explanation expl ppf =
       because "the left-hand side of a sequence"
   | When_guard ->
       because "a when-guard"
-  | Comprehension_in_iterator ->
-      because "a for-in iterator in a comprehension"
+  | Comprehension_in_iterator comp_ty ->
+      because1 "a for-in iterator in %s comprehension"
+        (match comp_ty with
+         | List_comprehension  -> "a list"
+         | Array_comprehension -> "an array")
   | Comprehension_for_start ->
       because "a range-based for iterator start index in a comprehension"
   | Comprehension_for_stop ->
