@@ -152,6 +152,86 @@ Warning 26 [unused-var]: unused variable x.
 |}];;
 
 (******************************************************************************)
+(**** Variable shadowing ****)
+
+(* QuickCheck found that Python doesn't shadow variables in list comprehensions;
+ * instead, using the same variable name as the binder in two `for`-clauses
+ * doesn't shadow, but rather overwrites the same mutable cell.  To confirm that
+ * we handle the subtle issue of shadowing correctly, we preserve here the cases
+ * that Python does not, as found by QuickCheck. *)
+
+(* Python: {v
+     [a for a in [0] for a in [1]] == [1]
+   v} *)
+[a for a in [0] and a in [1]];;
+[%%expect{|
+Line 1, characters 20-21:
+1 | [a for a in [0] and a in [1]];;
+                        ^
+Error: The variable a is bound several times in this comprehension's for-and binding
+|}];;
+
+(* Python: {v
+     [a for a in [0] for a in [1]] == [1]
+   v} *)
+[a for a in [1] for a in [0]];;
+[%%expect{|
+Line 1, characters 20-21:
+1 | [a for a in [1] for a in [0]];;
+                        ^
+Warning 26 [unused-var]: unused variable a.
+- : int list = [1]
+|}];;
+
+(* Python: {v
+     [(a, b)
+        for b in [0]
+        for _ in [0, 0]
+        for a in [b]
+        for b in range(0, -2, -1)]
+     == [(0, 0), (0, -1), (-1, 0), (-1, -1)]
+   v} *)
+[(a, b) for a in [b] and b = 0 downto -1 for _ in [0; 0] for b in [0]];;
+[%%expect{|
+- : (int * int) list = [(0, 0); (0, -1); (0, 0); (0, -1)]
+|}];;
+
+(* Python: {v
+     [(a, b) for b in [1] for b in [0] for a in []b]] == [(0, 0)
+   v} *)
+[(a, b) for b in [0] and a in [b] for b in [1]];;
+[%%expect{|
+- : (int * int) list = [(1, 0)]
+|}];;
+
+(* Python: {v
+     [a for a in [1] for _ in [0, 0] if a > 0 for a in [0]] == [0]
+   v} *)
+[a for a in [0] when a > 0 for a in [1] and _ in [0; 0]];;
+[%%expect{|
+- : int list = [0; 0]
+|}];;
+
+(* Python: {v
+     [a for a in [0] for _ in [0, 0] for a in [a, 1]] == [0, 1, 1, 1]
+   v} *)
+[a for a in [a; 1] for a in [0] and _ in [0; 0]];;
+[%%expect{|
+- : int list = [0; 1; 0; 1]
+|}];;
+
+(******************************************************************************)
+(**** Issues found by QuickCheck ****)
+
+(* At one time, this was correctly returning a singleton list as a list
+ * comprehension, but incorrectly returning the empty array as an array
+ * comprehension. *)
+[() for _ = 0 to 0];
+[%%expect{|
+- : unit list = [()]
+|}];;
+
+(******************************************************************************)
 (**** Errors ****)
 
 (* Can't iterate over non-lists *)
