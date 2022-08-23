@@ -8,40 +8,111 @@
  * analog for lists
  ******************************************************************************)
 
-let ( >> ) = Int.shift_right;;
-
 (* We pre-allocate the resulting array if it has a statically-knowable size,
    which we can see by including 0 in something that would otherwise run for
-   close enough to forever. *)
+   close enough to forever.  However, even if one of the iteratees is empty,
+   still fail if any individual [for]-[to] or [for]-[downto] iterator would
+   overflow an [int]. *)
 
-(* CR aspectorzabusky: Something is wrong here *)
+(* Zeros, even though we'd normally expect this to run for ~forever *)
 
-(* [|i,j,k for i = 1 to 0 and j = 0 to Int.max_int/1024 and k = 0 downto Int.min_int >> 8|];;
- * [%%expect{|
- * Line 1, characters 82-84:
- * 1 | [|i,j,k for i = 1 to 0 and j = 0 to Int.max_int/1024 and k = 0 downto Int.min_int >> 8|];;
- *                                                                                       ^^
- * Error: Unbound value >>
- * |}];;
- *
- * [|i,j,k for i = 0 to Int.max_int/1024 and j = 1 to 0 and k = 0 downto Int.min_int >> 8|];;
- * [%%expect{|
- * Line 1, characters 82-84:
- * 1 | [|i,j,k for i = 0 to Int.max_int/1024 and j = 1 to 0 and k = 0 downto Int.min_int >> 8|];;
- *                                                                                       ^^
- * Error: Unbound value >>
- * |}];;
- *
- * [|i,j,k for i = 0 to Int.max_int/1024 and j = 0 downto Int.min_int >> 8 and k = 1 to 0|];;
- * [%%expect{|
- * Line 1, characters 67-69:
- * 1 | [|i,j,k for i = 0 to Int.max_int/1024 and j = 0 downto Int.min_int >> 8 and k = 1 to 0|];;
- *                                                                        ^^
- * Error: Unbound value >>
- * |}];; *)
-
-
-
+[|i,j,k for i = 1 to 0
+        and j = 0 to Int.max_int / 256
+        and k = 1 to 2 |];;
 [%%expect{|
-val ( >> ) : int -> int -> int = <fun>
-|}]
+- : (int * int * int) array = [||]
+|}];;
+
+[|i,j,k for i = 0 to Int.max_int / 256
+        and j = 1 to 0
+        and k = 1 to 2 |];;
+[%%expect{|
+- : (int * int * int) array = [||]
+|}];;
+
+[|i,j,k for i = 0 to Int.max_int / 256
+        and j = 1 to 2
+        and k = 1 to 0|];;
+[%%expect{|
+- : (int * int * int) array = [||]
+|}];;
+
+(* Zeros, even though we'd normally expect the array size to overflow *)
+
+[|i,j,k for i = 1 to 0
+        and j = 0 to Int.max_int - 1
+        and k = 0 downto Int.min_int + 2|];;
+[%%expect{|
+- : (int * int * int) array = [||]
+|}];;
+
+[|i,j,k for i = 0 to Int.max_int - 1
+        and j = 1 to 0
+        and k = 0 downto Int.min_int + 2|];;
+[%%expect{|
+- : (int * int * int) array = [||]
+|}];;
+
+[|i,j,k for i = 0 to Int.max_int - 1
+        and j = 0 downto Int.min_int + 2
+        and k = 1 to 0|];;
+[%%expect{|
+- : (int * int * int) array = [||]
+|}];;
+
+(* Various kind of overflow *)
+
+[|i for i = 0 to Int.max_int |];;
+[%%expect{|
+Exception:
+Failure
+ "This for-to iterator in an array comprehension of known size would iterate over more elements than an int can hold".
+|}];;
+
+[|i for i = 0 downto Int.min_int |];;
+[%%expect{|
+Exception:
+Failure
+ "This for-downto iterator in an array comprehension of known size would iterate over more elements than an int can hold".
+|}];;
+
+[|i for i = 0 downto Int.min_int + 1 |];;
+[%%expect{|
+Exception:
+Failure
+ "This for-downto iterator in an array comprehension of known size would iterate over more elements than an int can hold".
+|}];;
+
+[|i,j for i = 0 to Int.max_int / 256
+      and j = 0 to 1023 |];;
+[%%expect{|
+Exception:
+Failure
+ "This array comprehension of known size would generate an array with more elements than fit in an int".
+|}];;
+
+[|i,j for i = 0 to 1023
+      and j = 0 to Int.max_int / 256 |];;
+[%%expect{|
+Exception:
+Failure
+ "This array comprehension of known size would generate an array with more elements than fit in an int".
+|}];;
+
+(* One case that works, whose output should be unremarkable *)
+
+[|i,j,k for i = 0 to 3 and j = 0 to 3 and k = 0 to 3|];;
+[%%expect{|
+- : (int * int * int) array =
+[|(0, 0, 0); (0, 0, 1); (0, 0, 2); (0, 0, 3); (0, 1, 0); (0, 1, 1);
+  (0, 1, 2); (0, 1, 3); (0, 2, 0); (0, 2, 1); (0, 2, 2); (0, 2, 3);
+  (0, 3, 0); (0, 3, 1); (0, 3, 2); (0, 3, 3); (1, 0, 0); (1, 0, 1);
+  (1, 0, 2); (1, 0, 3); (1, 1, 0); (1, 1, 1); (1, 1, 2); (1, 1, 3);
+  (1, 2, 0); (1, 2, 1); (1, 2, 2); (1, 2, 3); (1, 3, 0); (1, 3, 1);
+  (1, 3, 2); (1, 3, 3); (2, 0, 0); (2, 0, 1); (2, 0, 2); (2, 0, 3);
+  (2, 1, 0); (2, 1, 1); (2, 1, 2); (2, 1, 3); (2, 2, 0); (2, 2, 1);
+  (2, 2, 2); (2, 2, 3); (2, 3, 0); (2, 3, 1); (2, 3, 2); (2, 3, 3);
+  (3, 0, 0); (3, 0, 1); (3, 0, 2); (3, 0, 3); (3, 1, 0); (3, 1, 1);
+  (3, 1, 2); (3, 1, 3); (3, 2, 0); (3, 2, 1); (3, 2, 2); (3, 2, 3);
+  (3, 3, 0); (3, 3, 1); (3, 3, 2); (3, 3, 3)|]
+|}];;

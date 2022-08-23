@@ -136,6 +136,10 @@ let xs = [2;7;18;28] in
 - : int list = [0]
 |}];;
 
+(* This is expected to succeed for lists and fail for arrays (although it would
+   take ~forever for lists if the empty list were iterated over later); see
+   "array_comprehensions_special.ml" for more nuance on what can happen here
+   with arrays. *)
 [i,j,k for i in [] and j = 0 to Int.max_int and k = 0 downto Int.min_int];;
 [%%expect{|
 - : ('a * int * int) list = []
