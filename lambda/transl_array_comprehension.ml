@@ -59,64 +59,22 @@ module Usage = struct
   let list_of_reused (type u) : (u, 'a) if_reused -> 'a list = function
     | Used_once  -> []
     | Reusable x -> [x]
-end
 
-(** First-class let bindings; we sometimes need to collect these while
-    translating array comprehension clauses and bind them later *)
-module Let_binding = struct
-  (** The first-class (in OCaml) type of let bindings *)
-  type t =
-    { let_kind   : let_kind
-    ; value_kind : value_kind
-    ; id         : Ident.t
-    ; init       : lambda }
-
-  (** Create a let binding *)
-  let make let_kind value_kind id init =
-    {let_kind; value_kind; id; init}
-
-  (** Create a a fresh local identifier to bind (from a string), and return that
-      it along with the corresponding let binding *)
-  let make_id let_kind value_kind name init =
-    let id = Ident.create_local name in
-    id, make let_kind value_kind id init
-
-  (** Create a a fresh local identifier to bind (from a string), and return that
-      it along with the Lambda variable (with [Lvar]) for it and the
-      corresponding let binding *)
-  let make_id_var let_kind value_kind name init =
-    let id, binding = make_id let_kind value_kind name init in
-    id, Lvar id, binding
-
-  (** Create a a fresh local identifier to bind (from a string), and return its
-      corresponding Lambda variable (with [Lvar]) and let binding *)
-  let make_var let_kind value_kind name init =
-    let _id, var, binding = make_id_var let_kind value_kind name init in
-    var, binding
-
-  (** Create a Lambda let-binding (with [Llet]) from a first-class let
-      binding *)
-  let let_one {let_kind; value_kind; id; init} body =
-    Llet(let_kind, value_kind, id, init, body)
-
-  (** Create Lambda let-bindings (with [Llet]) from multiple first-class let
-      bindings *)
-  let let_all = List.fold_right let_one
-
-  (** Creates a new let binding only if necessary: if the value is to be used
-      (as per [usage]) [Once], then we don't need to create a binding, so we
-      just return it.  However, if the value is to be reused [Many] times, then
-      we create a binding with a fresh variable and return the variable (as a
-      lambda term).  Thus, in an environment where the returned binding is used,
-      the lambda term refers to the same value in either case. *)
-  let make_if_reused (type u)
-        ~(usage:u Usage.t) let_kind value_kind name value
-      : lambda * (u, t) Usage.if_reused =
+  (** Creates a new [Let_binding.t] only if necessary: if the value is to be
+      used (as per [usage]) [Once], then we don't need to create a binding, so
+      we just return it.  However, if the value is to be reused [Many] times,
+      then we create a binding with a fresh variable and return the variable (as
+      a lambda term).  Thus, in an environment where the returned binding is
+      used, the lambda term refers to the same value in either case. *)
+  let let_if_reused (type u) ~(usage : u t) let_kind value_kind name value
+      : lambda * (u, Let_binding.t) if_reused =
     match usage with
     | Once ->
         value, Used_once
     | Many ->
-        let var, binding = make_var let_kind value_kind name value in
+        let var, binding =
+          Let_binding.make_var let_kind value_kind name value
+        in
         var, Reusable binding
 end
 
@@ -401,7 +359,7 @@ let iterator ~transl_exp ~scopes ~loc ~(usage : 'u Usage.t)
       in
       let iter_arr_kind = Typeopt.array_kind iter_arr in
       let iter_len, iter_len_binding =
-        Let_binding.make_if_reused ~usage Alias Pintval
+        Usage.let_if_reused ~usage Alias Pintval
           "iter_len"
           (Lprim(Parraylength iter_arr_kind, [iter_arr_var], loc))
       in

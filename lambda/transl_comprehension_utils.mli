@@ -1,5 +1,38 @@
 open Lambda
 
+(** First-class let bindings; we sometimes need to collect these while
+    translating array comprehension clauses and bind them later. *)
+module Let_binding : sig
+  (** The first-class (in OCaml) type of let bindings. *)
+  type t =
+    { let_kind   : let_kind
+    ; value_kind : value_kind
+    ; id         : Ident.t
+    ; init       : lambda }
+
+  (** Create a fresh local identifier to bind (from a string), and return that
+      it along with the Lambda variable (with [Lvar]) for it and the
+      corresponding let binding. *)
+  val make_id_var :
+    let_kind -> value_kind -> string -> lambda -> Ident.t * lambda * t
+
+  (** Create a fresh local identifier to bind (from a string), and return it
+      along with the corresponding let binding. *)
+  val make_id : let_kind -> value_kind -> string -> lambda -> Ident.t * t
+
+  (** Create a fresh local identifier to bind (from a string), and return its
+      corresponding Lambda variable (with [Lvar]) and let binding. *)
+  val make_var : let_kind -> value_kind -> string -> lambda -> lambda * t
+
+  (** Create a Lambda let-binding (with [Llet]) from a first-class let
+      binding, providing the body. *)
+  val let_one : t -> lambda -> lambda
+
+  (** Create Lambda let-bindings (with [Llet]) from multiple first-class let
+      bindings, providing the body. *)
+  val let_all : t list -> lambda -> lambda
+end
+
 (** Convenience functions for working with the Lambda AST *)
 module Lambda_utils : sig
   (** Creating AST fragments from OCaml values *)

@@ -1,5 +1,30 @@
 open Lambda
 
+module Let_binding = struct
+  type t =
+    { let_kind   : let_kind
+    ; value_kind : value_kind
+    ; id         : Ident.t
+    ; init       : lambda }
+
+  let make_id let_kind value_kind name init =
+    let id = Ident.create_local name in
+    id, {let_kind; value_kind; id; init}
+
+  let make_id_var let_kind value_kind name init =
+    let id, binding = make_id let_kind value_kind name init in
+    id, Lvar id, binding
+
+  let make_var let_kind value_kind name init =
+    let _id, var, binding = make_id_var let_kind value_kind name init in
+    var, binding
+
+  let let_one {let_kind; value_kind; id; init} body =
+    Llet(let_kind, value_kind, id, init, body)
+
+  let let_all = List.fold_right let_one
+end
+
 module Lambda_utils = struct
   module Make = struct
     let int n = Lconst (const_int n)
