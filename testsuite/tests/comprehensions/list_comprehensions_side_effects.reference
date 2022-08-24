@@ -1,6 +1,6 @@
 first (from)
 second (to)
-third (and)
+third (in)
 > i = 0, j = 10 | when even i
 >> first (from)
 >> second (to)
@@ -19,11 +19,11 @@ third (and)
 >>> i = 0, j = 30, k = -1
 >>> i = 0, j = 30, k = -2
 >>> i = 0, j = 30, k = -3
-third (and)
+third (in)
 > i = 1, j = 10 | when even i
 > i = 1, j = 20 | when even i
 > i = 1, j = 30 | when even i
-third (and)
+third (in)
 > i = 2, j = 10 | when even i
 >> first (from)
 >> second (to)
@@ -42,7 +42,7 @@ third (and)
 >>> i = 2, j = 30, k = -1
 >>> i = 2, j = 30, k = -2
 >>> i = 2, j = 30, k = -3
-third (and)
+third (in)
 > i = 3, j = 10 | when even i
 > i = 3, j = 20 | when even i
 > i = 3, j = 30 | when even i
@@ -70,7 +70,7 @@ result = [
 
 first (from)
 second (to)
-third (and)
+third (in)
 fourth (downfrom)
 fifth (downto)
 >>> i = 0, j = 10, k = 100
@@ -89,7 +89,7 @@ fifth (downto)
 >>> i = 0, j = 30, k = 99
 >>> i = 0, j = 30, k = 98
 >>> i = 0, j = 30, k = 97
-third (and)
+third (in)
 fourth (downfrom)
 fifth (downto)
 >>> i = 1, j = 10, k = 100
@@ -108,7 +108,7 @@ fifth (downto)
 >>> i = 1, j = 30, k = 99
 >>> i = 1, j = 30, k = 98
 >>> i = 1, j = 30, k = 97
-third (and)
+third (in)
 fourth (downfrom)
 fifth (downto)
 >>> i = 2, j = 10, k = 100
@@ -127,7 +127,7 @@ fifth (downto)
 >>> i = 2, j = 30, k = 99
 >>> i = 2, j = 30, k = 98
 >>> i = 2, j = 30, k = 97
-third (and)
+third (in)
 fourth (downfrom)
 fifth (downto)
 >>> i = 3, j = 10, k = 100
@@ -196,4 +196,244 @@ result = [
   3, 30, 99;
   3, 30, 98;
   3, 30, 97;
+]
+
+first (from)
+second (to)
+third (in)
+fourth (downfrom)
+fifth (downto)
+> first (downfrom)
+> second (downto)
+> third (in)
+> fourth (from)
+> fifth (to)
+>>> i = 0, j = 10, k = 100, x = 1, y = 20, z = 99
+>>> i = 0, j = 10, k = 100, x = 1, y = 20, z = 100
+> fourth (from)
+> fifth (to)
+>>> i = 0, j = 10, k = 100, x = 1, y = 10, z = 99
+>>> i = 0, j = 10, k = 100, x = 1, y = 10, z = 100
+> third (in)
+> fourth (from)
+> fifth (to)
+>>> i = 0, j = 10, k = 100, x = 0, y = 20, z = 99
+>>> i = 0, j = 10, k = 100, x = 0, y = 20, z = 100
+> fourth (from)
+> fifth (to)
+>>> i = 0, j = 10, k = 100, x = 0, y = 10, z = 99
+>>> i = 0, j = 10, k = 100, x = 0, y = 10, z = 100
+> first (downfrom)
+> second (downto)
+> third (in)
+> fourth (from)
+> fifth (to)
+>>> i = 0, j = 10, k = 99, x = 1, y = 20, z = 99
+>>> i = 0, j = 10, k = 99, x = 1, y = 20, z = 100
+> fourth (from)
+> fifth (to)
+>>> i = 0, j = 10, k = 99, x = 1, y = 10, z = 99
+>>> i = 0, j = 10, k = 99, x = 1, y = 10, z = 100
+> third (in)
+> fourth (from)
+> fifth (to)
+>>> i = 0, j = 10, k = 99, x = 0, y = 20, z = 99
+>>> i = 0, j = 10, k = 99, x = 0, y = 20, z = 100
+> fourth (from)
+> fifth (to)
+>>> i = 0, j = 10, k = 99, x = 0, y = 10, z = 99
+>>> i = 0, j = 10, k = 99, x = 0, y = 10, z = 100
+fourth (downfrom)
+fifth (downto)
+> first (downfrom)
+> second (downto)
+> third (in)
+> fourth (from)
+> fifth (to)
+>>> i = 0, j = 20, k = 100, x = 1, y = 20, z = 99
+>>> i = 0, j = 20, k = 100, x = 1, y = 20, z = 100
+> fourth (from)
+> fifth (to)
+>>> i = 0, j = 20, k = 100, x = 1, y = 10, z = 99
+>>> i = 0, j = 20, k = 100, x = 1, y = 10, z = 100
+> third (in)
+> fourth (from)
+> fifth (to)
+>>> i = 0, j = 20, k = 100, x = 0, y = 20, z = 99
+>>> i = 0, j = 20, k = 100, x = 0, y = 20, z = 100
+> fourth (from)
+> fifth (to)
+>>> i = 0, j = 20, k = 100, x = 0, y = 10, z = 99
+>>> i = 0, j = 20, k = 100, x = 0, y = 10, z = 100
+> first (downfrom)
+> second (downto)
+> third (in)
+> fourth (from)
+> fifth (to)
+>>> i = 0, j = 20, k = 99, x = 1, y = 20, z = 99
+>>> i = 0, j = 20, k = 99, x = 1, y = 20, z = 100
+> fourth (from)
+> fifth (to)
+>>> i = 0, j = 20, k = 99, x = 1, y = 10, z = 99
+>>> i = 0, j = 20, k = 99, x = 1, y = 10, z = 100
+> third (in)
+> fourth (from)
+> fifth (to)
+>>> i = 0, j = 20, k = 99, x = 0, y = 20, z = 99
+>>> i = 0, j = 20, k = 99, x = 0, y = 20, z = 100
+> fourth (from)
+> fifth (to)
+>>> i = 0, j = 20, k = 99, x = 0, y = 10, z = 99
+>>> i = 0, j = 20, k = 99, x = 0, y = 10, z = 100
+third (in)
+fourth (downfrom)
+fifth (downto)
+> first (downfrom)
+> second (downto)
+> third (in)
+> fourth (from)
+> fifth (to)
+>>> i = 1, j = 10, k = 100, x = 1, y = 20, z = 99
+>>> i = 1, j = 10, k = 100, x = 1, y = 20, z = 100
+> fourth (from)
+> fifth (to)
+>>> i = 1, j = 10, k = 100, x = 1, y = 10, z = 99
+>>> i = 1, j = 10, k = 100, x = 1, y = 10, z = 100
+> third (in)
+> fourth (from)
+> fifth (to)
+>>> i = 1, j = 10, k = 100, x = 0, y = 20, z = 99
+>>> i = 1, j = 10, k = 100, x = 0, y = 20, z = 100
+> fourth (from)
+> fifth (to)
+>>> i = 1, j = 10, k = 100, x = 0, y = 10, z = 99
+>>> i = 1, j = 10, k = 100, x = 0, y = 10, z = 100
+> first (downfrom)
+> second (downto)
+> third (in)
+> fourth (from)
+> fifth (to)
+>>> i = 1, j = 10, k = 99, x = 1, y = 20, z = 99
+>>> i = 1, j = 10, k = 99, x = 1, y = 20, z = 100
+> fourth (from)
+> fifth (to)
+>>> i = 1, j = 10, k = 99, x = 1, y = 10, z = 99
+>>> i = 1, j = 10, k = 99, x = 1, y = 10, z = 100
+> third (in)
+> fourth (from)
+> fifth (to)
+>>> i = 1, j = 10, k = 99, x = 0, y = 20, z = 99
+>>> i = 1, j = 10, k = 99, x = 0, y = 20, z = 100
+> fourth (from)
+> fifth (to)
+>>> i = 1, j = 10, k = 99, x = 0, y = 10, z = 99
+>>> i = 1, j = 10, k = 99, x = 0, y = 10, z = 100
+fourth (downfrom)
+fifth (downto)
+> first (downfrom)
+> second (downto)
+> third (in)
+> fourth (from)
+> fifth (to)
+>>> i = 1, j = 20, k = 100, x = 1, y = 20, z = 99
+>>> i = 1, j = 20, k = 100, x = 1, y = 20, z = 100
+> fourth (from)
+> fifth (to)
+>>> i = 1, j = 20, k = 100, x = 1, y = 10, z = 99
+>>> i = 1, j = 20, k = 100, x = 1, y = 10, z = 100
+> third (in)
+> fourth (from)
+> fifth (to)
+>>> i = 1, j = 20, k = 100, x = 0, y = 20, z = 99
+>>> i = 1, j = 20, k = 100, x = 0, y = 20, z = 100
+> fourth (from)
+> fifth (to)
+>>> i = 1, j = 20, k = 100, x = 0, y = 10, z = 99
+>>> i = 1, j = 20, k = 100, x = 0, y = 10, z = 100
+> first (downfrom)
+> second (downto)
+> third (in)
+> fourth (from)
+> fifth (to)
+>>> i = 1, j = 20, k = 99, x = 1, y = 20, z = 99
+>>> i = 1, j = 20, k = 99, x = 1, y = 20, z = 100
+> fourth (from)
+> fifth (to)
+>>> i = 1, j = 20, k = 99, x = 1, y = 10, z = 99
+>>> i = 1, j = 20, k = 99, x = 1, y = 10, z = 100
+> third (in)
+> fourth (from)
+> fifth (to)
+>>> i = 1, j = 20, k = 99, x = 0, y = 20, z = 99
+>>> i = 1, j = 20, k = 99, x = 0, y = 20, z = 100
+> fourth (from)
+> fifth (to)
+>>> i = 1, j = 20, k = 99, x = 0, y = 10, z = 99
+>>> i = 1, j = 20, k = 99, x = 0, y = 10, z = 100
+
+result = [
+  0, 10, 100, 1, 20, 99;
+  0, 10, 100, 1, 20, 100;
+  0, 10, 100, 1, 10, 99;
+  0, 10, 100, 1, 10, 100;
+  0, 10, 100, 0, 20, 99;
+  0, 10, 100, 0, 20, 100;
+  0, 10, 100, 0, 10, 99;
+  0, 10, 100, 0, 10, 100;
+  0, 10, 99, 1, 20, 99;
+  0, 10, 99, 1, 20, 100;
+  0, 10, 99, 1, 10, 99;
+  0, 10, 99, 1, 10, 100;
+  0, 10, 99, 0, 20, 99;
+  0, 10, 99, 0, 20, 100;
+  0, 10, 99, 0, 10, 99;
+  0, 10, 99, 0, 10, 100;
+  0, 20, 100, 1, 20, 99;
+  0, 20, 100, 1, 20, 100;
+  0, 20, 100, 1, 10, 99;
+  0, 20, 100, 1, 10, 100;
+  0, 20, 100, 0, 20, 99;
+  0, 20, 100, 0, 20, 100;
+  0, 20, 100, 0, 10, 99;
+  0, 20, 100, 0, 10, 100;
+  0, 20, 99, 1, 20, 99;
+  0, 20, 99, 1, 20, 100;
+  0, 20, 99, 1, 10, 99;
+  0, 20, 99, 1, 10, 100;
+  0, 20, 99, 0, 20, 99;
+  0, 20, 99, 0, 20, 100;
+  0, 20, 99, 0, 10, 99;
+  0, 20, 99, 0, 10, 100;
+  1, 10, 100, 1, 20, 99;
+  1, 10, 100, 1, 20, 100;
+  1, 10, 100, 1, 10, 99;
+  1, 10, 100, 1, 10, 100;
+  1, 10, 100, 0, 20, 99;
+  1, 10, 100, 0, 20, 100;
+  1, 10, 100, 0, 10, 99;
+  1, 10, 100, 0, 10, 100;
+  1, 10, 99, 1, 20, 99;
+  1, 10, 99, 1, 20, 100;
+  1, 10, 99, 1, 10, 99;
+  1, 10, 99, 1, 10, 100;
+  1, 10, 99, 0, 20, 99;
+  1, 10, 99, 0, 20, 100;
+  1, 10, 99, 0, 10, 99;
+  1, 10, 99, 0, 10, 100;
+  1, 20, 100, 1, 20, 99;
+  1, 20, 100, 1, 20, 100;
+  1, 20, 100, 1, 10, 99;
+  1, 20, 100, 1, 10, 100;
+  1, 20, 100, 0, 20, 99;
+  1, 20, 100, 0, 20, 100;
+  1, 20, 100, 0, 10, 99;
+  1, 20, 100, 0, 10, 100;
+  1, 20, 99, 1, 20, 99;
+  1, 20, 99, 1, 20, 100;
+  1, 20, 99, 1, 10, 99;
+  1, 20, 99, 1, 10, 100;
+  1, 20, 99, 0, 20, 99;
+  1, 20, 99, 0, 20, 100;
+  1, 20, 99, 0, 10, 99;
+  1, 20, 99, 0, 10, 100;
 ]
