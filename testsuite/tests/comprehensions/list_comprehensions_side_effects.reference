@@ -1,21 +1,21 @@
-second (to)
 first (from)
+second (to)
 third (and)
 > i = 0, j = 10 | when even i
->> second (to)
 >> first (from)
+>> second (to)
 >>> i = 0, j = 10, k = -1
 >>> i = 0, j = 10, k = -2
 >>> i = 0, j = 10, k = -3
 > i = 0, j = 20 | when even i
->> second (to)
 >> first (from)
+>> second (to)
 >>> i = 0, j = 20, k = -1
 >>> i = 0, j = 20, k = -2
 >>> i = 0, j = 20, k = -3
 > i = 0, j = 30 | when even i
->> second (to)
 >> first (from)
+>> second (to)
 >>> i = 0, j = 30, k = -1
 >>> i = 0, j = 30, k = -2
 >>> i = 0, j = 30, k = -3
@@ -25,20 +25,20 @@ third (and)
 > i = 1, j = 30 | when even i
 third (and)
 > i = 2, j = 10 | when even i
->> second (to)
 >> first (from)
+>> second (to)
 >>> i = 2, j = 10, k = -1
 >>> i = 2, j = 10, k = -2
 >>> i = 2, j = 10, k = -3
 > i = 2, j = 20 | when even i
->> second (to)
 >> first (from)
+>> second (to)
 >>> i = 2, j = 20, k = -1
 >>> i = 2, j = 20, k = -2
 >>> i = 2, j = 20, k = -3
 > i = 2, j = 30 | when even i
->> second (to)
 >> first (from)
+>> second (to)
 >>> i = 2, j = 30, k = -1
 >>> i = 2, j = 30, k = -2
 >>> i = 2, j = 30, k = -3
@@ -68,80 +68,80 @@ result = [
   2, 30, -3;
 ]
 
-second (to)
 first (from)
+second (to)
 third (and)
-fifth (downto)
 fourth (downfrom)
+fifth (downto)
 >>> i = 0, j = 10, k = 100
 >>> i = 0, j = 10, k = 99
 >>> i = 0, j = 10, k = 98
 >>> i = 0, j = 10, k = 97
-fifth (downto)
 fourth (downfrom)
+fifth (downto)
 >>> i = 0, j = 20, k = 100
 >>> i = 0, j = 20, k = 99
 >>> i = 0, j = 20, k = 98
 >>> i = 0, j = 20, k = 97
-fifth (downto)
 fourth (downfrom)
+fifth (downto)
 >>> i = 0, j = 30, k = 100
 >>> i = 0, j = 30, k = 99
 >>> i = 0, j = 30, k = 98
 >>> i = 0, j = 30, k = 97
 third (and)
-fifth (downto)
 fourth (downfrom)
+fifth (downto)
 >>> i = 1, j = 10, k = 100
 >>> i = 1, j = 10, k = 99
 >>> i = 1, j = 10, k = 98
 >>> i = 1, j = 10, k = 97
-fifth (downto)
 fourth (downfrom)
+fifth (downto)
 >>> i = 1, j = 20, k = 100
 >>> i = 1, j = 20, k = 99
 >>> i = 1, j = 20, k = 98
 >>> i = 1, j = 20, k = 97
-fifth (downto)
 fourth (downfrom)
+fifth (downto)
 >>> i = 1, j = 30, k = 100
 >>> i = 1, j = 30, k = 99
 >>> i = 1, j = 30, k = 98
 >>> i = 1, j = 30, k = 97
 third (and)
-fifth (downto)
 fourth (downfrom)
+fifth (downto)
 >>> i = 2, j = 10, k = 100
 >>> i = 2, j = 10, k = 99
 >>> i = 2, j = 10, k = 98
 >>> i = 2, j = 10, k = 97
-fifth (downto)
 fourth (downfrom)
+fifth (downto)
 >>> i = 2, j = 20, k = 100
 >>> i = 2, j = 20, k = 99
 >>> i = 2, j = 20, k = 98
 >>> i = 2, j = 20, k = 97
-fifth (downto)
 fourth (downfrom)
+fifth (downto)
 >>> i = 2, j = 30, k = 100
 >>> i = 2, j = 30, k = 99
 >>> i = 2, j = 30, k = 98
 >>> i = 2, j = 30, k = 97
 third (and)
-fifth (downto)
 fourth (downfrom)
+fifth (downto)
 >>> i = 3, j = 10, k = 100
 >>> i = 3, j = 10, k = 99
 >>> i = 3, j = 10, k = 98
 >>> i = 3, j = 10, k = 97
-fifth (downto)
 fourth (downfrom)
+fifth (downto)
 >>> i = 3, j = 20, k = 100
 >>> i = 3, j = 20, k = 99
 >>> i = 3, j = 20, k = 98
 >>> i = 3, j = 20, k = 97
-fifth (downto)
 fourth (downfrom)
+fifth (downto)
 >>> i = 3, j = 30, k = 100
 >>> i = 3, j = 30, k = 99
 >>> i = 3, j = 30, k = 98
