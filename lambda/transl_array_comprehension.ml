@@ -251,12 +251,15 @@ module Iterator_bindings = struct
   (** This is the type of bindings generated when translating array
       comprehension iterators ([Typedtree.comprehension_iterator]).  If we are
       in the fixed-size array case, then ['u = many], and we remember all the
-      information about the right-hand sides of the iterators; if not, then ['u
-      = once], and we only remember a new binding for the array on the
-      right-hand side of an [in] iterator, using the other terms directly. *)
+      information about the right-hand sides of the iterators; if not, then
+      ['u = once], and we only remember those bindings that could have side
+      effects, using the other terms directly.  (This means that we remember the
+      [start] and [stop] of [to] and [downto] iterators, and the array on the
+      right-hand side of an [in] iterator; this last binding is also always
+      referenced multiple times.) *)
   type 'u t =
-    | Range of { start     : ('u, Let_binding.t)  Usage.if_reused
-               ; stop      : ('u, Let_binding.t)  Usage.if_reused
+    | Range of { start     : Let_binding.t (* Always bound *)
+               ; stop      : Let_binding.t (* Always bound *)
                ; direction : ('u, direction_flag) Usage.if_reused }
     (** The translation of [Typedtree.Texp_comp_range], an integer iterator
         ([... = ... (down)to ...]) *)
@@ -269,7 +272,7 @@ module Iterator_bindings = struct
   (** Get the [Let_binding.t]s out of a translated iterator *)
   let let_bindings = function
     | Range {start; stop; direction = _} ->
-        List.concat_map Usage.list_of_reused [start; stop]
+        [start; stop]
     | Array {iter_arr; iter_len} ->
         iter_arr :: Usage.list_of_reused iter_len
 
@@ -285,8 +288,8 @@ module Iterator_bindings = struct
       the length of the array being iterated over.  In the range case, we also
       have to check for overflow. *)
   let size ~loc : Usage.many t -> lambda = function
-    | Range { start     = Reusable start
-            ; stop      = Reusable stop
+    | Range { start     = start
+            ; stop      = stop
             ; direction = Reusable direction }
       ->
         let open (val Lambda_utils.int_ops ~loc) in
@@ -380,7 +383,7 @@ let iterator ~transl_exp ~scopes ~loc ~(usage : 'u Usage.t)
         -> (lambda -> lambda) * 'u Iterator_bindings.t = function
   | Texp_comp_range { ident; pattern = _; start; stop; direction } ->
       let transl_bound name bound =
-        Let_binding.make_if_reused ~usage Strict Pintval
+        Let_binding.make_var Strict Pintval
           name (transl_exp ~scopes bound)
       in
       let start, start_binding = transl_bound "start" start in
