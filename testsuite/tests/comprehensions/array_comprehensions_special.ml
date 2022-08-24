@@ -3,14 +3,11 @@
    * expect
 *)
 
-(*******************************************************************************
- * Tests for special array comprehension behavior that don't have a direct
- * analog for lists
- ******************************************************************************)
-
-(* We pre-allocate the resulting array if it has a statically-knowable size,
-   which we can see by including 0 in something that would otherwise run for
-   close enough to forever.  However, even if one of the iteratees is empty,
+(* Tests for special array comprehension behavior that don't have a direct
+   analog for lists.  For array comprehensions, we pre-allocate the resulting
+   array if it has a statically-knowable size, which we can see by including 0
+   in something that would otherwise run for close enough to forever.  However,
+   even if one of the iteratees is empty, these optimized comprehensions will
    still fail if any individual [for]-[to] or [for]-[downto] iterator would
    overflow an [int]. *)
 

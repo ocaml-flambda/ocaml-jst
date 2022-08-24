@@ -2,12 +2,13 @@
   flags = "-extension Comprehensions"
 *)
 
-(*******************************************************************************
- *                         ******** ATTENTION! ********
- *
- * This file should be kept in sync with "array_comprehensions_side_effects.ml".
- * If you're adding a test to one, add it to the other as well; if the test
- * output changes in one file and not the other, this is a bug.
+(******************************************************************************
+ *                        ******** ATTENTION! ********                        *
+ *                                                                            *
+ * This file should be kept in sync with the file                             *
+ * "array_comprehensions_side_effects.ml".  If you're adding a test to one,   *
+ * add it to the other as well; if the test output changes in one file and    *
+ * not the other (except as documented in comments), this is a bug.           *
  ******************************************************************************)
 
 (******************************************************************************)

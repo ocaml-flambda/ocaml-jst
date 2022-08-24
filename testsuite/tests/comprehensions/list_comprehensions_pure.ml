@@ -3,12 +3,13 @@
    * expect
 *)
 
-(*******************************************************************************
- *                         ******** ATTENTION! ********
- *
- * This file should be kept in sync with "array_comprehensions_pure.ml".  If
- * you're adding a test to one, add it to the other as well; if a test's output
- * changes in one file and not the other, this is a bug.
+(******************************************************************************
+ *                        ******** ATTENTION! ********                        *
+ *                                                                            *
+ * This file should be kept in sync with the file                             *
+ * "array_comprehensions_pure.ml".  If you're adding a test to one, add it to *
+ * the other as well; if the test output changes in one file and not the      *
+ * other (except as documented in comments), this is a bug.                   *
  ******************************************************************************)
 
 (******************************************************************************)
@@ -159,10 +160,10 @@ Warning 26 [unused-var]: unused variable x.
 (**** Variable shadowing ****)
 
 (* QuickCheck found that Python doesn't shadow variables in list comprehensions;
- * instead, using the same variable name as the binder in two `for`-clauses
- * doesn't shadow, but rather overwrites the same mutable cell.  To confirm that
- * we handle the subtle issue of shadowing correctly, we preserve here the cases
- * that Python does not, as found by QuickCheck. *)
+   instead, using the same variable name as the binder in two `for`-clauses
+   doesn't shadow, but rather overwrites the same mutable cell.  To confirm that
+   we handle the subtle issue of shadowing correctly, we preserve here the cases
+   that Python does not, as found by QuickCheck. *)
 
 (* Python: {v
      [a for a in [0] for a in [1]] == [1]
@@ -225,7 +226,7 @@ Warning 26 [unused-var]: unused variable a.
 |}];;
 
 (******************************************************************************)
-(**** Issues found by QuickCheck ****)
+(**** Bugs found by QuickCheck ****)
 
 (* At one time, this was correctly returning a singleton list as a list
  * comprehension, but incorrectly returning the empty array as an array
