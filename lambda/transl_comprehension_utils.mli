@@ -24,6 +24,10 @@ module Let_binding : sig
       corresponding Lambda variable (with [Lvar]) and let binding. *)
   val make_var : let_kind -> value_kind -> string -> lambda -> lambda * t
 
+  (** Create a fresh local identifier to bind (from a string), and return the
+      corresponding let binding. *)
+  val make_id' : let_kind -> value_kind -> string -> lambda -> t
+
   (** Create a Lambda let-binding (with [Llet]) from a first-class let
       binding, providing the body. *)
   val let_one : t -> lambda -> lambda

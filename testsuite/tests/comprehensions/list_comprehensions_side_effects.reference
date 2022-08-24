@@ -19,11 +19,9 @@ third (in)
 >>> i = 0, j = 30, k = -1
 >>> i = 0, j = 30, k = -2
 >>> i = 0, j = 30, k = -3
-third (in)
 > i = 1, j = 10 | when even i
 > i = 1, j = 20 | when even i
 > i = 1, j = 30 | when even i
-third (in)
 > i = 2, j = 10 | when even i
 >> first (from)
 >> second (to)
@@ -42,7 +40,6 @@ third (in)
 >>> i = 2, j = 30, k = -1
 >>> i = 2, j = 30, k = -2
 >>> i = 2, j = 30, k = -3
-third (in)
 > i = 3, j = 10 | when even i
 > i = 3, j = 20 | when even i
 > i = 3, j = 30 | when even i
@@ -77,71 +74,46 @@ fifth (downto)
 >>> i = 0, j = 10, k = 99
 >>> i = 0, j = 10, k = 98
 >>> i = 0, j = 10, k = 97
-fourth (downfrom)
-fifth (downto)
 >>> i = 0, j = 20, k = 100
 >>> i = 0, j = 20, k = 99
 >>> i = 0, j = 20, k = 98
 >>> i = 0, j = 20, k = 97
-fourth (downfrom)
-fifth (downto)
 >>> i = 0, j = 30, k = 100
 >>> i = 0, j = 30, k = 99
 >>> i = 0, j = 30, k = 98
 >>> i = 0, j = 30, k = 97
-third (in)
-fourth (downfrom)
-fifth (downto)
 >>> i = 1, j = 10, k = 100
 >>> i = 1, j = 10, k = 99
 >>> i = 1, j = 10, k = 98
 >>> i = 1, j = 10, k = 97
-fourth (downfrom)
-fifth (downto)
 >>> i = 1, j = 20, k = 100
 >>> i = 1, j = 20, k = 99
 >>> i = 1, j = 20, k = 98
 >>> i = 1, j = 20, k = 97
-fourth (downfrom)
-fifth (downto)
 >>> i = 1, j = 30, k = 100
 >>> i = 1, j = 30, k = 99
 >>> i = 1, j = 30, k = 98
 >>> i = 1, j = 30, k = 97
-third (in)
-fourth (downfrom)
-fifth (downto)
 >>> i = 2, j = 10, k = 100
 >>> i = 2, j = 10, k = 99
 >>> i = 2, j = 10, k = 98
 >>> i = 2, j = 10, k = 97
-fourth (downfrom)
-fifth (downto)
 >>> i = 2, j = 20, k = 100
 >>> i = 2, j = 20, k = 99
 >>> i = 2, j = 20, k = 98
 >>> i = 2, j = 20, k = 97
-fourth (downfrom)
-fifth (downto)
 >>> i = 2, j = 30, k = 100
 >>> i = 2, j = 30, k = 99
 >>> i = 2, j = 30, k = 98
 >>> i = 2, j = 30, k = 97
-third (in)
-fourth (downfrom)
-fifth (downto)
 >>> i = 3, j = 10, k = 100
 >>> i = 3, j = 10, k = 99
 >>> i = 3, j = 10, k = 98
 >>> i = 3, j = 10, k = 97
-fourth (downfrom)
-fifth (downto)
 >>> i = 3, j = 20, k = 100
 >>> i = 3, j = 20, k = 99
 >>> i = 3, j = 20, k = 98
 >>> i = 3, j = 20, k = 97
-fourth (downfrom)
-fifth (downto)
 >>> i = 3, j = 30, k = 100
 >>> i = 3, j = 30, k = 99
 >>> i = 3, j = 30, k = 98
@@ -210,17 +182,10 @@ fifth (downto)
 > fifth (to)
 >>> i = 0, j = 10, k = 100, x = 1, y = 20, z = 99
 >>> i = 0, j = 10, k = 100, x = 1, y = 20, z = 100
-> fourth (from)
-> fifth (to)
 >>> i = 0, j = 10, k = 100, x = 1, y = 10, z = 99
 >>> i = 0, j = 10, k = 100, x = 1, y = 10, z = 100
-> third (in)
-> fourth (from)
-> fifth (to)
 >>> i = 0, j = 10, k = 100, x = 0, y = 20, z = 99
 >>> i = 0, j = 10, k = 100, x = 0, y = 20, z = 100
-> fourth (from)
-> fifth (to)
 >>> i = 0, j = 10, k = 100, x = 0, y = 10, z = 99
 >>> i = 0, j = 10, k = 100, x = 0, y = 10, z = 100
 > first (downfrom)
@@ -230,21 +195,12 @@ fifth (downto)
 > fifth (to)
 >>> i = 0, j = 10, k = 99, x = 1, y = 20, z = 99
 >>> i = 0, j = 10, k = 99, x = 1, y = 20, z = 100
-> fourth (from)
-> fifth (to)
 >>> i = 0, j = 10, k = 99, x = 1, y = 10, z = 99
 >>> i = 0, j = 10, k = 99, x = 1, y = 10, z = 100
-> third (in)
-> fourth (from)
-> fifth (to)
 >>> i = 0, j = 10, k = 99, x = 0, y = 20, z = 99
 >>> i = 0, j = 10, k = 99, x = 0, y = 20, z = 100
-> fourth (from)
-> fifth (to)
 >>> i = 0, j = 10, k = 99, x = 0, y = 10, z = 99
 >>> i = 0, j = 10, k = 99, x = 0, y = 10, z = 100
-fourth (downfrom)
-fifth (downto)
 > first (downfrom)
 > second (downto)
 > third (in)
@@ -252,17 +208,10 @@ fifth (downto)
 > fifth (to)
 >>> i = 0, j = 20, k = 100, x = 1, y = 20, z = 99
 >>> i = 0, j = 20, k = 100, x = 1, y = 20, z = 100
-> fourth (from)
-> fifth (to)
 >>> i = 0, j = 20, k = 100, x = 1, y = 10, z = 99
 >>> i = 0, j = 20, k = 100, x = 1, y = 10, z = 100
-> third (in)
-> fourth (from)
-> fifth (to)
 >>> i = 0, j = 20, k = 100, x = 0, y = 20, z = 99
 >>> i = 0, j = 20, k = 100, x = 0, y = 20, z = 100
-> fourth (from)
-> fifth (to)
 >>> i = 0, j = 20, k = 100, x = 0, y = 10, z = 99
 >>> i = 0, j = 20, k = 100, x = 0, y = 10, z = 100
 > first (downfrom)
@@ -272,22 +221,12 @@ fifth (downto)
 > fifth (to)
 >>> i = 0, j = 20, k = 99, x = 1, y = 20, z = 99
 >>> i = 0, j = 20, k = 99, x = 1, y = 20, z = 100
-> fourth (from)
-> fifth (to)
 >>> i = 0, j = 20, k = 99, x = 1, y = 10, z = 99
 >>> i = 0, j = 20, k = 99, x = 1, y = 10, z = 100
-> third (in)
-> fourth (from)
-> fifth (to)
 >>> i = 0, j = 20, k = 99, x = 0, y = 20, z = 99
 >>> i = 0, j = 20, k = 99, x = 0, y = 20, z = 100
-> fourth (from)
-> fifth (to)
 >>> i = 0, j = 20, k = 99, x = 0, y = 10, z = 99
 >>> i = 0, j = 20, k = 99, x = 0, y = 10, z = 100
-third (in)
-fourth (downfrom)
-fifth (downto)
 > first (downfrom)
 > second (downto)
 > third (in)
@@ -295,17 +234,10 @@ fifth (downto)
 > fifth (to)
 >>> i = 1, j = 10, k = 100, x = 1, y = 20, z = 99
 >>> i = 1, j = 10, k = 100, x = 1, y = 20, z = 100
-> fourth (from)
-> fifth (to)
 >>> i = 1, j = 10, k = 100, x = 1, y = 10, z = 99
 >>> i = 1, j = 10, k = 100, x = 1, y = 10, z = 100
-> third (in)
-> fourth (from)
-> fifth (to)
 >>> i = 1, j = 10, k = 100, x = 0, y = 20, z = 99
 >>> i = 1, j = 10, k = 100, x = 0, y = 20, z = 100
-> fourth (from)
-> fifth (to)
 >>> i = 1, j = 10, k = 100, x = 0, y = 10, z = 99
 >>> i = 1, j = 10, k = 100, x = 0, y = 10, z = 100
 > first (downfrom)
@@ -315,21 +247,12 @@ fifth (downto)
 > fifth (to)
 >>> i = 1, j = 10, k = 99, x = 1, y = 20, z = 99
 >>> i = 1, j = 10, k = 99, x = 1, y = 20, z = 100
-> fourth (from)
-> fifth (to)
 >>> i = 1, j = 10, k = 99, x = 1, y = 10, z = 99
 >>> i = 1, j = 10, k = 99, x = 1, y = 10, z = 100
-> third (in)
-> fourth (from)
-> fifth (to)
 >>> i = 1, j = 10, k = 99, x = 0, y = 20, z = 99
 >>> i = 1, j = 10, k = 99, x = 0, y = 20, z = 100
-> fourth (from)
-> fifth (to)
 >>> i = 1, j = 10, k = 99, x = 0, y = 10, z = 99
 >>> i = 1, j = 10, k = 99, x = 0, y = 10, z = 100
-fourth (downfrom)
-fifth (downto)
 > first (downfrom)
 > second (downto)
 > third (in)
@@ -337,17 +260,10 @@ fifth (downto)
 > fifth (to)
 >>> i = 1, j = 20, k = 100, x = 1, y = 20, z = 99
 >>> i = 1, j = 20, k = 100, x = 1, y = 20, z = 100
-> fourth (from)
-> fifth (to)
 >>> i = 1, j = 20, k = 100, x = 1, y = 10, z = 99
 >>> i = 1, j = 20, k = 100, x = 1, y = 10, z = 100
-> third (in)
-> fourth (from)
-> fifth (to)
 >>> i = 1, j = 20, k = 100, x = 0, y = 20, z = 99
 >>> i = 1, j = 20, k = 100, x = 0, y = 20, z = 100
-> fourth (from)
-> fifth (to)
 >>> i = 1, j = 20, k = 100, x = 0, y = 10, z = 99
 >>> i = 1, j = 20, k = 100, x = 0, y = 10, z = 100
 > first (downfrom)
@@ -357,17 +273,10 @@ fifth (downto)
 > fifth (to)
 >>> i = 1, j = 20, k = 99, x = 1, y = 20, z = 99
 >>> i = 1, j = 20, k = 99, x = 1, y = 20, z = 100
-> fourth (from)
-> fifth (to)
 >>> i = 1, j = 20, k = 99, x = 1, y = 10, z = 99
 >>> i = 1, j = 20, k = 99, x = 1, y = 10, z = 100
-> third (in)
-> fourth (from)
-> fifth (to)
 >>> i = 1, j = 20, k = 99, x = 0, y = 20, z = 99
 >>> i = 1, j = 20, k = 99, x = 0, y = 20, z = 100
-> fourth (from)
-> fifth (to)
 >>> i = 1, j = 20, k = 99, x = 0, y = 10, z = 99
 >>> i = 1, j = 20, k = 99, x = 0, y = 10, z = 100
 
