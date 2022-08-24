@@ -4,6 +4,12 @@ open Asttypes
 open Transl_comprehension_utils
 open Lambda_utils.Make
 
+(** Many of the functions in this file need to translate expressions from
+    Typedtree to lambda; to avoid strange dependency ordering, we parameterize
+    those functions by [Translcore.transl_exp], and pass it in as a labeled
+    argument, along with the necessary [scopes] labeled argument that it
+    requires. *)
+
 (* CR aspectorzabusky: I couldn't get this to build if these were run as soon as
    this file was processed *)
 (** The functions that are required to build the results of list comprehensions;

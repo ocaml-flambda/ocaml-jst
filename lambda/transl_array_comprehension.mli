@@ -12,7 +12,11 @@ open Debuginfo.Scoped_location
 
     The only variables this term refers to are those that come from the array
     comprehension itself; some C primitives are referenced, but no standard
-    library functions. *)
+    library functions.
+
+    This function needs to translate expressions from Typedtree into Lambda, and
+    so is parameterized by [Translcore.transl_exp], its [scopes] argument, and
+    the [loc]ation. *)
 val comprehension
   :  transl_exp:(scopes:scopes -> expression -> lambda)
   -> scopes:scopes

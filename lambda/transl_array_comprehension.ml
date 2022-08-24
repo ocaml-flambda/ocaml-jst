@@ -5,6 +5,12 @@ open Transl_comprehension_utils
 open Lambda_utils.Make
 open Lambda_utils.Primitive
 
+(** Many of the functions in this file need to translate expressions from
+    Typedtree to lambda; to avoid strange dependency ordering, we parameterize
+    those functions by [Translcore.transl_exp], and pass it in as a labeled
+    argument, along with the necessary [scopes] labeled argument that it
+    requires. *)
+
 (** Sometimes the generated code for array comprehensions reuses certain
     expressions more than once, and sometimes it uses them exactly once. We want
     to avoid using let bindings in the case where the expressions are used
