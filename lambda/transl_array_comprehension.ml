@@ -81,24 +81,21 @@ end
 module Precompute_array_size : sig
   (** Generates the lambda expression that throws the exception once we've
       determined that precomputing the array size has overflowed.  The check for
-      overflow is done elsewhere, this just throws the exception
+      overflow is done elsewhere; this just throws the exception
       unconditionally. *)
-  val raise_overflow_exn : loc:scoped_location -> string -> lambda
+  val raise_overflow_exn : loc:scoped_location -> lambda
 
-  (** [safe_product_nonneg ~loc xs] generates the lambda expression that
+  (** [safe_product_pos_vals ~loc xs] generates the lambda expression that
       computes the product of all the lambda terms in [xs] assuming they are all
-      nonnegative integers, failing if the total product would overflow.  This
-      is the same as checking for overflow pairwise, except zero is returned if
-      any of the inputs is zero.  This function must look at its inputs multiple
-      times, so it saves them all in variables; the optional argument
-      [variable_name] customizes the string used to name these variables. *)
-  val safe_product_nonneg :
+      strictly positive (nonzero!) integers, failing if any product overflows
+      (equivalently, if the whole product would overflow).  This function must
+      look at its inputs multiple times, as they are evaluated more than once
+      due to the overflow check; the optional argument [variable_name]
+      customizes the string used to name these variables. *)
+  val safe_product_pos :
     ?variable_name:string -> loc:scoped_location -> lambda list -> lambda
 end = struct
-  (* CR aspectorzabusky: This currently raises an [Failure] exception with an
-     explanatory argument; should I stick with that, or create a new exception
-     and use it instead?  *)
-  let raise_overflow_exn ~loc message =
+  let raise_overflow_exn ~loc =
     (* CR aspectorzabusky: Is this idiomatic?  Should the argument to [string]
        (a string constant) just get [Location.none] instead? *)
     let loc' = Debuginfo.Scoped_location.to_location loc in
@@ -112,7 +109,11 @@ end = struct
        [Translcore.asssert_failed] does (via a local intermediary). *)
     Lprim(Praise Raise_regular,
           [Lprim(Pmakeblock(0, Immutable, None),
-                 [slot; (string ~loc:loc' message)],
+                 [ slot
+                 ; string
+                     ~loc:loc'
+                     "integer overflow when precomputing the size of an array \
+                      comprehension" ],
                  loc)],
           loc)
 
@@ -131,16 +132,13 @@ end = struct
     Let_binding.let_one product_binding
       (Lifthenelse(product / y = x,
          product,
-         raise_overflow_exn
-           ~loc
-           "This array comprehension of known size would generate an array \
-            with more elements than fit in an int"))
+         raise_overflow_exn ~loc))
 
-  (** [safe_product_pos ~loc xs] generates the lambda expression that computes
-      the product of all the lambda values in [xs] assuming they are all
-      strictly positive (nonzero!) integers, failing if any product overflows;
-      the inputs are required to be values, are they are evaluated more than
-      once *)
+  (** [safe_product_pos_vals ~loc xs] generates the lambda expression that
+      computes the product of all the lambda values in [xs] assuming they are
+      all strictly positive (nonzero!) integers, failing if any product
+      overflows; the inputs are required to be values, as they are evaluated
+      more than once *)
   let safe_product_pos_vals ~loc = function
     (* This operation is associative, so the fact that [List.fold_left] brackets
        as [(((one * two) * three) * four)] shouldn't matter *)
@@ -149,26 +147,8 @@ end = struct
       (* The empty list case can't happen with comprehensions; we could raise an
          error here instead of returning 1 *)
 
-  (** [if_any_zero] generates the lambda expression that checks if any of the
-      provided terms is zero, and then continues with the appropriate lambda
-      term.  The inputs are not required to be values, as they are evaluated
-      exactly once. *)
-  let if_any_zero ~loc ~if_zero ~if_nonzero xs =
-    let open (val Lambda_utils.int_ops ~loc) in
-    match List.map (fun x -> x = l0) xs with
-    | is_zero :: are_zeros ->
-        (* This operation is associative, so the fact that [List.fold_left]
-           brackets as [(((one || two) || three) || four)] shouldn't matter *)
-        Lifthenelse(List.fold_left ( || ) is_zero are_zeros,
-          if_zero,
-          if_nonzero)
-    | [] ->
-        if_nonzero
-        (* The empty list case can't happen with comprehensions; we could
-           raise an error here instead *)
-
   (* The inputs are *not* required to be values, as we save them in variables *)
-  let safe_product_nonneg ?(variable_name = "x") ~loc factors =
+  let safe_product_pos ?(variable_name = "x") ~loc factors =
     let map_snd f (x, y) = x, f y in
     let factors, factor_bindings =
       factors
@@ -182,12 +162,7 @@ end = struct
       |> List.split
       |> map_snd (List.filter_map Fun.id)
     in
-    let open (val Lambda_utils.int_ops ~loc) in
-    Let_binding.let_all
-      factor_bindings
-      (if_any_zero ~loc factors
-         ~if_zero:l0
-         ~if_nonzero:(safe_product_pos_vals ~loc factors))
+    Let_binding.let_all factor_bindings (safe_product_pos_vals ~loc factors)
 end
 
 (** This module contains the type of bindings generated when translating array
@@ -239,13 +214,49 @@ module Iterator_bindings = struct
       ([Typedtree.Texp_comp_for]). *)
   let all_let_bindings bindings = List.concat_map let_bindings bindings
 
-  (** Compute the size of a single array iterator in the fixed-size array case.
-      This is either the size of a range, which itself is either
+  (** Check if a translated iterator is empty in the fixed-size array case; that
+      is, check if this iterator will iterate over zero things. *)
+  let is_empty ~loc (t : Usage.many t) =
+    let open (val Lambda_utils.int_ops ~loc) in
+    match t with
+    | Range { start; stop; direction = Reusable direction} -> begin
+        let start = Lvar start.id in
+        let stop  = Lvar stop.id  in
+        match direction with
+        | Upto   -> start > stop
+        | Downto -> start < stop
+      end
+    | Array { iter_arr = _; iter_len = Reusable iter_len } ->
+        Lvar iter_len.id = l0
+
+  (** Check if any of the translated iterators are empty in the fixed-size array
+      case; that is, check if any of these iterators will iterate over zero
+      things, and thus check if iterating over all of these iterators together
+      will actually iterate over zero things.  This is the information we need
+      to optimize away iterating over the values at all if the result would have
+      zero elements. *)
+  let are_any_empty ~loc ts =
+    let open (val Lambda_utils.int_ops ~loc) in
+    match List.map (is_empty ~loc) ts with
+    | is_empty :: are_empty ->
+        (* ( || ) is associative, so the fact that [List.fold_left] brackets as
+           [(((one || two) || three) || four)] shouldn't matter *)
+        List.fold_left ( || ) is_empty are_empty
+    | [] ->
+        l0 (* false *)
+        (* The empty list case can't happen with comprehensions; we could
+           raise an error here instead *)
+
+  (** Compute the size of a single nonempty array iterator in the fixed-size
+      array case.  This is either the size of a range, which itself is either
       [stop - start + 1] or [start - stop + 1] depending on if the array is
-      counting up ([to]) or down ([downto]), clamped to being nonnegative; or is
-      the length of the array being iterated over.  In the range case, we also
-      have to check for overflow. *)
-  let size ~loc : Usage.many t -> lambda = function
+      counting up ([to]) or down ([downto]), clamped to being nonnegative; or it
+      is the length of the array being iterated over.  In the range case, we
+      also have to check for overflow.  We require that the iterators be
+      nonempty, although this is only important for the range case; generate
+      Lambda code that checks the result of [are_any_empty] before entering
+      [size_nonempty] to ensure this. *)
+  let size_nonempty ~loc : Usage.many t -> lambda = function
     | Range { start     = start
             ; stop      = stop
             ; direction = Reusable direction }
@@ -257,38 +268,30 @@ module Iterator_bindings = struct
           | Upto   -> start, stop
           | Downto -> stop,  start
         in
-        Lifthenelse(low <= high,
-          (* The range has content *)
-          (let range_size = Ident.create_local "range_size" in
-           Llet(Alias, Pintval, range_size, (high - low) + l1,
-             (* If the computed size of the range is nonpositive, there was
-                overflow.  (The zero case is checked for when we check to see
-                if the bounds are in the right order.) *)
-             Lifthenelse(Lvar range_size > l0,
-               Lvar range_size,
-               Precompute_array_size.raise_overflow_exn
-                 ~loc
-                 ("This for-"
-                  ^ (match direction with
-                    | Upto -> "to"
-                    | Downto -> "downto")
-                  ^ " iterator in an array comprehension of known size would \
-                     iterate over more elements than an int can hold" )))),
-          (* The range is empty *)
-          l0)
+        (* We can assume that the range is nonempty, but computing its size
+           still might overflow *)
+        let range_size = Ident.create_local "range_size" in
+        Llet(Alias, Pintval, range_size, (high - low) + l1,
+          (* If the computed size of the range is positive, there was no
+             overflow; if it was zero or negative, then there was overflow *)
+          Lifthenelse(Lvar range_size > l0,
+            Lvar range_size,
+            Precompute_array_size.raise_overflow_exn ~loc))
     | Array { iter_arr = _; iter_len = Reusable iter_len } ->
         Lvar iter_len.id
 
   (** Compute the total size of an array built out of a list of translated
-      iterators in the fixed-size array case; since this forms a cartesian
-      product, we take the product of the [size]s.  This can overflow, in which
-      case we will raise an exception.  This is the operation needed to
-      precompute the fixed size of a fixed-size array. *)
-  let total_size ~loc (iterators : Usage.many t list) =
-    Precompute_array_size.safe_product_nonneg
+      iterators in the fixed-size array case, as long as all the iterators are
+      nonempty; since this forms a cartesian product, we take the product of the
+      sizes (see [size_nonempty]).  This can overflow, in which case we will
+      raise an exception.  This is the operation needed to precompute the fixed
+      size of a nonempty fixed-size array; check against [are_any_empty] first
+      to address the case of fixedly-empty array. *)
+  let total_size_nonempty ~loc (iterators : Usage.many t list) =
+    Precompute_array_size.safe_product_pos
       ~variable_name:"iterator_size"
       ~loc
-      (List.map (size ~loc) iterators)
+      (List.map (size_nonempty ~loc) iterators)
 end
 
 (** Machinery for working with resizable arrays for the results of an array
@@ -465,16 +468,17 @@ type translated_clauses =
   { array_size         : array_size
   (** Whether the array is of a fixed size or must be grown dynamically, and the
       attendant information; see the [array_size] type for more details. *)
-  ; outer_bindings     : Let_binding.t list
-  (** The bindings that must be available throughout the entire translated
-      comprehension, save for the ones that are universal (the definition of the
-      initial array and current index) and the definition of the array size
-      ([array_size_binding]); these bindings are "outer" because they must come
-      so far outside that the [Llet] forms aren't generated by the
-      translation. *)
+  ; outside_context    : lambda -> lambda
+  (** The context that must be in force throughout the entire translated
+      comprehension, even before the universal let bindings (the definition of
+      the initial array, its current index, and the array size
+      ([array_size_binding])); this context is "outside" because it must come so
+      far outwards that it isn't generated by the translation.  This will
+      generally contain let bindings and checks to enforce conditions required
+      by things that come later. *)
   ; array_size_binding : Let_binding.t
   (** The binding that defines the array size ([array_size.array_size]); comes
-      in between the [outer_bindings] and the definition of the array. *)
+      in between the [outside_context] and the definition of the array. *)
   ; make_comprehension : lambda -> lambda
   (** The translation of the comprehension's iterators, awaiting the translation
       of the comprehension's body.  All that remains to be done after this
@@ -496,16 +500,28 @@ let clauses ~transl_exp ~scopes ~loc = function
       let make_comprehension, var_bindings =
         for_and_clause ~transl_exp ~loc ~scopes ~usage:Many bindings
       in
-      let starting_size = Iterator_bindings.total_size ~loc var_bindings in
       let array_size, array_size_binding =
         Let_binding.make_id
           Alias Pintval
-          "array_size" starting_size
+          "array_size" (Iterator_bindings.total_size_nonempty ~loc var_bindings)
+      in
+      let outside_context comprehension =
+        Let_binding.let_all
+          (Iterator_bindings.all_let_bindings var_bindings)
+          (Lifthenelse(Iterator_bindings.are_any_empty ~loc var_bindings,
+             (* If the array is known to be empty, we short-circuit and return
+                the empty array *)
+             (* CR aspectorzabusky: It's safe to make the array immutable
+                because it's empty, right? *)
+             Lprim(Pmakearray(Pgenarray, Immutable), [], loc),
+             (* Otherwise, we translate it normally *)
+             comprehension))
       in
       { array_size         = { array_size; array_sizing = Fixed_size }
-      ; outer_bindings     = Iterator_bindings.all_let_bindings var_bindings
+      ; outside_context
       ; array_size_binding
-      ; make_comprehension }
+      ; make_comprehension
+      }
   | clauses ->
       let array_size, array_size_binding =
         Let_binding.make_id
@@ -516,7 +532,7 @@ let clauses ~transl_exp ~scopes ~loc = function
         Cps_utils.compose_map (clause ~transl_exp ~loc ~scopes) clauses
       in
       { array_size         = { array_size; array_sizing = Dynamic_size }
-      ; outer_bindings     = [array_size_binding]
+      ; outside_context    = Fun.id
       ; array_size_binding
       ; make_comprehension }
 
@@ -667,7 +683,7 @@ let transl_arr_body
 
 let comprehension
       ~transl_exp ~scopes ~loc ~array_kind { comp_body; comp_clauses } =
-  let { array_size; outer_bindings; array_size_binding; make_comprehension } =
+  let { array_size; outside_context; array_size_binding; make_comprehension } =
     clauses ~transl_exp ~scopes ~loc comp_clauses
   in
   let array, array_binding = initial_array ~loc ~array_kind ~array_size in
@@ -675,12 +691,13 @@ let comprehension
     Let_binding.make_id_var Variable Pintval "index" (int 0)
   in
   (* The core of the comprehension: the array, the index, and the iteration that
-     fills everything in.  This is guarded by a check to see if we can avoid
-     doing the hard work, which is the case when the array is known to be empty
-     after the fixed-size array optimization.  *)
+     fills everything in.  The translation of the clauses will produce a check
+     to see if we can avoid doing the hard work of growing the array, which is
+     the case when the array is known to be empty after the fixed-size array
+     optimization; we also have to check again when we're done.  *)
   let comprehension =
     Let_binding.let_all
-      [array_binding; index_binding]
+      [array_size_binding; array_binding; index_binding]
       (Lsequence(
          (* Create the array *)
          make_comprehension
@@ -698,17 +715,6 @@ let comprehension
          | Dynamic_size ->
              array_sub ~loc (Lvar array) ~offset:(int 0) ~length:index_var))
   in
-  Let_binding.let_all
-    (outer_bindings @ [array_size_binding])
-    (match array_size.array_sizing with
-     | Fixed_size ->
-         let open (val Lambda_utils.int_ops ~loc) in
-         Lifthenelse(Lvar array_size.array_size = l0,
-           (* If the array is known to be empty, we're done *)
-           (* CR aspectorzabusky: It's safe to make the array immutable because
-              it's empty, right? *)
-           Lprim(Pmakearray(Pgenarray, Immutable), [], loc),
-           (* Otherwise, we translate it normally *)
-           comprehension)
-     | Dynamic_size ->
-         comprehension)
+  (* Wrap the core of the comprehension in any outside context necessary; this
+     helps handle the fixed-size array optimization *)
+  outside_context comprehension

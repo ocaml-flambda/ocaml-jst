@@ -138,15 +138,13 @@ let xs = [|2;7;18;28|] in
 - : int array = [|0|]
 |}];;
 
-(* This is expected to fail for arrays and succeed for lists (although it would
-   take ~forever for lists if the empty list were iterated over later); see
+(* This works no matter where the empty array is, but would take ~forever for
+   lists if the empty list were iterated over later; see
    "array_comprehensions_special.ml" for more nuance on what can happen here
    with arrays. *)
 [|i,j,k for i in [||] and j = 0 to Int.max_int and k = 0 downto Int.min_int|];;
 [%%expect{|
-Exception:
-Invalid_argument
- "This for-to iterator in an array comprehension of known size would iterate over more elements than an int can hold".
+- : ('_weak2 * int * int) array = [||]
 |}];;
 
 [|x for x in [|"one"; "two"; "three"|] for x in [|10; 20; 30|]|];;
