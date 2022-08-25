@@ -229,9 +229,9 @@ module Iterator_bindings = struct
 
   (** Get the [Let_binding.t]s out of a translated iterator *)
   let let_bindings = function
-    | Range {start; stop; direction = _} ->
+    | Range { start; stop; direction = _ } ->
         [start; stop]
-    | Array {iter_arr; iter_len} ->
+    | Array { iter_arr; iter_len } ->
         iter_arr :: Usage.list_of_reused iter_len
 
   (** Get the [Let_binding.t]s out of a list of translated iterators; this is
