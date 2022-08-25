@@ -5354,7 +5354,7 @@ and type_comprehension_iterator
       , Option.to_list opv )
   | In seq ->
       let item_ty = newvar () in
-      let seq_ty = instance (container_type item_ty) in
+      let seq_ty = container_type item_ty in
       let sequence =
         type_expect
           env
