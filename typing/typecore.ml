@@ -2337,9 +2337,6 @@ let rec type_approx env sexp =
 
 and type_approx_extension : Extensions.extension_expr -> _ = function
   | _ -> newvar ()
-  (* CR aspectorzabusky: Since [Pexp_array] doesn't get approximated, we don't
-     approximate comprehensions -- but why doesn't [Pexp_array] get
-     approximated?  Should we approximate comprehensions? *)
 
 (* List labels in a function type, and whether return type is a variable *)
 let rec list_labels_aux env visited ls ty_fun =
