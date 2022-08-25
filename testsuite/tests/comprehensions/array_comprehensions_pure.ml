@@ -326,10 +326,7 @@ Error: This expression has type int but an expression was expected of type
 |}];;
 
 (******************************************************************************)
-(**** Type-directed constructor disambiguation ****)
-
-(* CR aspectorzabusky: Are these tests adding anything?  I inherited them from
-   the old test suite, but I don't know what we're really learning here. *)
+(**** Test that types are being propagated inwards correctly ****)
 
 (* Prepare a module for later use *)
 module M = struct
