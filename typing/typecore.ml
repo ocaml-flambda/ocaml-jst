@@ -2277,6 +2277,7 @@ let is_prim ~name funct =
   | Texp_ident (_, _, {val_kind=Val_prim{Primitive.prim_name; _}}) ->
       prim_name = name
   | _ -> false
+
 (* Approximate the type of an expression, for better recursion *)
 
 let rec approx_type env sty =
