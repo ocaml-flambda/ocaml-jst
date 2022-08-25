@@ -145,7 +145,7 @@ let xs = [|2;7;18;28|] in
 [|i,j,k for i in [||] and j = 0 to Int.max_int and k = 0 downto Int.min_int|];;
 [%%expect{|
 Exception:
-Failure
+Invalid_argument
  "This for-to iterator in an array comprehension of known size would iterate over more elements than an int can hold".
 |}];;
 

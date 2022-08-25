@@ -106,7 +106,7 @@ end = struct
       transl_extension_path
         loc
         Env.initial_safe_string
-        Predef.path_failure
+        Predef.path_invalid_argument
     in
     (* CR aspectorzabusky: Should I call [Translprim.event_after] here?
        [Translcore.asssert_failed] does (via a local intermediary). *)

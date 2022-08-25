@@ -55,7 +55,6 @@ val path_floatarray: Path.t
 
 val path_match_failure: Path.t
 val path_invalid_argument: Path.t
-val path_failure: Path.t
 val path_assert_failure : Path.t
 val path_undefined_recursive_module : Path.t
 

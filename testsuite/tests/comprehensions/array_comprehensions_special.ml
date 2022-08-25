@@ -62,21 +62,21 @@
 [|i for i = 0 to Int.max_int |];;
 [%%expect{|
 Exception:
-Failure
+Invalid_argument
  "This for-to iterator in an array comprehension of known size would iterate over more elements than an int can hold".
 |}];;
 
 [|i for i = 0 downto Int.min_int |];;
 [%%expect{|
 Exception:
-Failure
+Invalid_argument
  "This for-downto iterator in an array comprehension of known size would iterate over more elements than an int can hold".
 |}];;
 
 [|i for i = 0 downto Int.min_int + 1 |];;
 [%%expect{|
 Exception:
-Failure
+Invalid_argument
  "This for-downto iterator in an array comprehension of known size would iterate over more elements than an int can hold".
 |}];;
 
@@ -84,7 +84,7 @@ Failure
       and j = 0 to 1023 |];;
 [%%expect{|
 Exception:
-Failure
+Invalid_argument
  "This array comprehension of known size would generate an array with more elements than fit in an int".
 |}];;
 
@@ -92,7 +92,7 @@ Failure
       and j = 0 to Int.max_int / 256 |];;
 [%%expect{|
 Exception:
-Failure
+Invalid_argument
  "This array comprehension of known size would generate an array with more elements than fit in an int".
 |}];;
 
