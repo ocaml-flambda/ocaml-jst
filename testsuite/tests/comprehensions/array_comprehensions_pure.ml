@@ -168,17 +168,6 @@ Warning 26 [unused-var]: unused variable x.
 (* Python: {v
      [a for a in [0] for a in [1]] == [1]
    v} *)
-[|a for a in [|0|] and a in [|1|]|];;
-[%%expect{|
-Line 1, characters 23-24:
-1 | [|a for a in [|0|] and a in [|1|]|];;
-                           ^
-Error: The variable a is bound several times in this comprehension's for-and binding
-|}];;
-
-(* Python: {v
-     [a for a in [0] for a in [1]] == [1]
-   v} *)
 [|a for a in [|0|] for a in [|1|]|];;
 [%%expect{|
 Line 1, characters 8-9:
