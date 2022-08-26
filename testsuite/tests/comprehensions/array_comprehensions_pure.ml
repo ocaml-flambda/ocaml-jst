@@ -138,13 +138,20 @@ let xs = [|2;7;18;28|] in
 - : int array = [|0|]
 |}];;
 
+(* This would take ~forever if the empty array were iterated over later;
+   however, for arrays, using [and] lets us get more flexibility (see below). *)
+[|i,j,k for i in [||] for j = 0 to Int.max_int for k = 0 downto Int.min_int|];;
+[%%expect{|
+- : ('_weak2 * int * int) array = [||]
+|}];;
+
 (* This works no matter where the empty array is, but would take ~forever for
    lists if the empty list were iterated over later; see
    "array_comprehensions_special.ml" for more nuance on what can happen here
    with arrays. *)
 [|i,j,k for i in [||] and j = 0 to Int.max_int and k = 0 downto Int.min_int|];;
 [%%expect{|
-- : ('_weak2 * int * int) array = [||]
+- : ('_weak3 * int * int) array = [||]
 |}];;
 
 [|x for x in [|"one"; "two"; "three"|] for x in [|10; 20; 30|]|];;

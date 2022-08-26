@@ -137,6 +137,13 @@ let xs = [2;7;18;28] in
 - : int list = [0]
 |}];;
 
+(* This would take ~forever if the empty list were iterated over later; however,
+   for arrays, using [and] lets us get more flexibility (see below). *)
+[i,j,k for i in [] for j = 0 to Int.max_int for k = 0 downto Int.min_int];;
+[%%expect{|
+- : ('a * int * int) list = []
+|}];;
+
 (* This would take ~forever for lists if the empty list were iterated over
    later, but works no matter where the empty array is, ; see
    "array_comprehensions_special.ml" for more nuance on what can happen here
