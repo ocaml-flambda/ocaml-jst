@@ -5234,7 +5234,12 @@ and type_comprehension_expr ~loc ~env ~ty_expected cexpr =
   unify_exp_types
     loc
     env
-    (instance (container_type element_ty))
+    (* CR aspectorzabusky: I deleted a call to [instance] here; I'm not sure if
+       I can delete the call to [instance] on the next line, but it seems to
+       work.  The call to instance in the return value seems to be necessary, as
+       test output gets worse if I delete it.  How should I be thinking about
+       this? *)
+    (container_type element_ty)
     (instance ty_expected);
   if !Clflags.principal then begin
     end_def();
