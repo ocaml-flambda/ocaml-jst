@@ -818,6 +818,16 @@ module Comprehension = struct
                 "in range" ^ tuple ([int_term start; stop] @ step)
           end
         | Sequence seq ->
+            (* There is one edge case where Haskell can report an ambiguous type
+               error: if two variables are drawn from empty lists, and then one
+               is enumerated to the other, such as in
+               [[(a,b,c) | a <- [], b <- [], c <- [a..b]]], or even more simply
+               in [[(a,b) | a <- [], b <- [a..a]]].  Thus, if we have an empty
+               list in Haskell, we give it a type. *)
+            let maybe_type_annotation = match o, seq with
+              | Haskell, [] -> ["::"; "[Int]"]
+              | _, _ -> []
+            in
             let sep = match o with
               | OCaml_list | OCaml_array -> ";"
               | Haskell | Python -> ","
@@ -831,7 +841,7 @@ module Comprehension = struct
               | OCaml_list | OCaml_array | Python -> "in"
               | Haskell                           -> "<-"
             in
-            tokens [bind; seq]
+            tokens ([bind; seq] @ maybe_type_annotation)
       in
       tokens [var; iter]
 
