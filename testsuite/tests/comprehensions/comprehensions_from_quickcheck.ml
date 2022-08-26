@@ -7,21 +7,21 @@
  * tests of reasonable size; and reflowed to fit in 80-character lines. *)
 
 [(g, l, n, s, t)
-   for s = 3 downto l
-   when abs g mod 2 = 0
-   for l = 2 downto 0 and n = -3 to 2
+   for g in [1] and t = -2 to 3
    when abs g mod 2 = 1
-   for g in [1] and t = -2 to 3];;
+   for l = 2 downto 0 and n = -3 to 2
+   when abs g mod 2 = 0
+   for s = 3 downto l];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(g, l, n, s, t)
-  for s = 3 downto l
-  when abs g mod 2 = 0
-  for l = 2 downto 0 and n = -3 to 2
+  for g in [|1|] and t = -2 to 3
   when abs g mod 2 = 1
-  for g in [|1|] and t = -2 to 3|];;
+  for l = 2 downto 0 and n = -3 to 2
+  when abs g mod 2 = 0
+  for s = 3 downto l|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
@@ -37,142 +37,142 @@
 |}];;
 
 [(b, h, n, o, p, t, v)
-  for p in []
-  for t = 2 downto 1 and o = -2 to 1
+  for h = -1 to -1 and b in [-1] and v in [2; 2; 3; -2; 2; -1; 3]
   for n = 0 downto -3
-  for h = -1 to -1 and b in [-1] and v in [2; 2; 3; -2; 2; -1; 3]];;
+  for t = 2 downto 1 and o = -2 to 1
+  for p in []];;
 [%%expect{|
 - : (int * int * int * int * 'a * int * int) list = []
 |}];;
 
 [|(b, h, n, o, p, t, v)
-  for p in [||]
-  for t = 2 downto 1 and o = -2 to 1
+  for h = -1 to -1 and b in [|-1|] and v in [|2; 2; 3; -2; 2; -1; 3|]
   for n = 0 downto -3
-  for h = -1 to -1 and b in [|-1|] and v in [|2; 2; 3; -2; 2; -1; 3|]|];;
+  for t = 2 downto 1 and o = -2 to 1
+  for p in [||]|];;
 [%%expect{|
 - : (int * int * int * int * '_weak1 * int * int) array = [||]
 |}];;
 
 [(a, e, n, q, u)
-  for e = n downto 2 and u = 0 downto 3 and _ in [-1; 2; -1; 2; -1]
-  when q < 0
+  for q in [-1; -2; 1; -2; 0] and _ = 3 downto 3
   for n in [3; 3] and a = -2 to -3
-  for q in [-1; -2; 1; -2; 0] and _ = 3 downto 3];;
+  when q < 0
+  for e = n downto 2 and u = 0 downto 3 and _ in [-1; 2; -1; 2; -1]];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(a, e, n, q, u)
-  for e = n downto 2 and u = 0 downto 3 and _ in [|-1; 2; -1; 2; -1|]
-  when q < 0
+  for q in [|-1; -2; 1; -2; 0|] and _ = 3 downto 3
   for n in [|3; 3|] and a = -2 to -3
-  for q in [|-1; -2; 1; -2; 0|] and _ = 3 downto 3|];;
+  when q < 0
+  for e = n downto 2 and u = 0 downto 3 and _ in [|-1; 2; -1; 2; -1|]|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(c, h, p, s, t, z)
-  for h in [] and s = 1 downto 3 and z in [3; -3; 2; 2; 1; t; -1]
-  for p = 3 to c
+  for c in [0; 0; -3; 1; 1]
   for t in [1; 3; 0; c]
-  for c in [0; 0; -3; 1; 1]];;
+  for p = 3 to c
+  for h in [] and s = 1 downto 3 and z in [3; -3; 2; 2; 1; t; -1]];;
 [%%expect{|
 - : (int * 'a * int * int * int * int) list = []
 |}];;
 
 [|(c, h, p, s, t, z)
-  for h in [||] and s = 1 downto 3 and z in [|3; -3; 2; 2; 1; t; -1|]
-  for p = 3 to c
+  for c in [|0; 0; -3; 1; 1|]
   for t in [|1; 3; 0; c|]
-  for c in [|0; 0; -3; 1; 1|]|];;
+  for p = 3 to c
+  for h in [||] and s = 1 downto 3 and z in [|3; -3; 2; 2; 1; t; -1|]|];;
 [%%expect{|
 - : (int * '_weak2 * int * int * int * int) array = [||]
 |}];;
 
 [(b, d, l, o, q)
-  for b in [-1; 3; -3] and o in [] and l = -1 downto -1
-  when d < 0
+  for d = 0 to 1 and q = 1 downto 2
   when abs d mod 2 = 1
-  for d = 0 to 1 and q = 1 downto 2];;
+  when d < 0
+  for b in [-1; 3; -3] and o in [] and l = -1 downto -1];;
 [%%expect{|
 - : (int * int * int * 'a * int) list = []
 |}];;
 
 [|(b, d, l, o, q)
-  for b in [|-1; 3; -3|] and o in [||] and l = -1 downto -1
-  when d < 0
+  for d = 0 to 1 and q = 1 downto 2
   when abs d mod 2 = 1
-  for d = 0 to 1 and q = 1 downto 2|];;
+  when d < 0
+  for b in [|-1; 3; -3|] and o in [||] and l = -1 downto -1|];;
 [%%expect{|
 - : (int * int * int * '_weak3 * int) array = [||]
 |}];;
 
 [(e, f, l, m, q, r, x, y)
+  for y in [3] and l = 0 downto 0 and q = 3 downto -1
+  for m = 1 to 2
   for e in [q]
   and x = l downto -1
   and r = 3 to -2
-  and f in [-1; 0; 2; -3; l; 1; 1]
-  for m = 1 to 2
-  for y in [3] and l = 0 downto 0 and q = 3 downto -1];;
+  and f in [-1; 0; 2; -3; l; 1; 1]];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(e, f, l, m, q, r, x, y)
+  for y in [|3|] and l = 0 downto 0 and q = 3 downto -1
+  for m = 1 to 2
   for e in [|q|]
   and x = l downto -1
   and r = 3 to -2
-  and f in [|-1; 0; 2; -3; l; 1; 1|]
-  for m = 1 to 2
-  for y in [|3|] and l = 0 downto 0 and q = 3 downto -1|];;
+  and f in [|-1; 0; 2; -3; l; 1; 1|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(l, q, z)
-  when abs z mod 2 = 1
-  for q in [-3; -1; -1]
-  for z = -2 to -2
+  for l in [-2]
   when abs l mod 2 = 1
-  for l in [-2]];;
+  for z = -2 to -2
+  for q in [-3; -1; -1]
+  when abs z mod 2 = 1];;
 [%%expect{|
 - : (int * int * int) list = []
 |}];;
 
 [|(l, q, z)
-  when abs z mod 2 = 1
-  for q in [|-3; -1; -1|]
-  for z = -2 to -2
+  for l in [|-2|]
   when abs l mod 2 = 1
-  for l in [|-2|]|];;
+  for z = -2 to -2
+  for q in [|-3; -1; -1|]
+  when abs z mod 2 = 1|];;
 [%%expect{|
 - : (int * int * int) array = [||]
 |}];;
 
 [(c, i, l, p, v, z)
-  for l in [-3] and c = -1 to -1 and p = -1 to -1
+  for z = 3 to 3 and v in [-1; 0; 0; 1; 2; -2] and i = -3 to -2
   when z < 0
-  for z = 3 to 3 and v in [-1; 0; 0; 1; 2; -2] and i = -3 to -2];;
+  for l in [-3] and c = -1 to -1 and p = -1 to -1];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(c, i, l, p, v, z)
-  for l in [|-3|] and c = -1 to -1 and p = -1 to -1
+  for z = 3 to 3 and v in [|-1; 0; 0; 1; 2; -2|] and i = -3 to -2
   when z < 0
-  for z = 3 to 3 and v in [|-1; 0; 0; 1; 2; -2|] and i = -3 to -2|];;
+  for l in [|-3|] and c = -1 to -1 and p = -1 to -1|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(a, d, e, m, v, w, z)
-  for m = 0 downto 0 and a = w downto -1 and z = 2 downto -1 and d in []
   for v = -1 downto -3
   and _ in [-2; -2; 0]
   and e in [-1; -3; 2; -2; 0]
   and z in [-2; 0]
-  and w in [0; -1]];;
+  and w in [0; -1]
+  for m = 0 downto 0 and a = w downto -1 and z = 2 downto -1 and d in []];;
 [%%expect{|
 Line 6, characters 6-7:
 6 |   and z in [-2; 0]
@@ -182,12 +182,12 @@ Warning 26 [unused-var]: unused variable z.
 |}];;
 
 [|(a, d, e, m, v, w, z)
-  for m = 0 downto 0 and a = w downto -1 and z = 2 downto -1 and d in [||]
   for v = -1 downto -3
   and _ in [|-2; -2; 0|]
   and e in [|-1; -3; 2; -2; 0|]
   and z in [|-2; 0|]
-  and w in [|0; -1|]|];;
+  and w in [|0; -1|]
+  for m = 0 downto 0 and a = w downto -1 and z = 2 downto -1 and d in [||]|];;
 [%%expect{|
 Line 6, characters 6-7:
 6 |   and z in [|-2; 0|]
@@ -197,33 +197,33 @@ Warning 26 [unused-var]: unused variable z.
 |}];;
 
 [(e, i, p, q, r, w, x, y)
-  for e in [-3; w; -3; -2]
-  for w in [] and i in [1; q; 1; 2] and p = -1 downto -1
+  for q = 1 to 1
   for r in [1] and x in [] and y in [2; 2; -3; 2; -2; -3]
-  for q = 1 to 1];;
+  for w in [] and i in [1; q; 1; 2] and p = -1 downto -1
+  for e in [-3; w; -3; -2]];;
 [%%expect{|
 - : (int * int * int * int * int * int * 'a * int) list = []
 |}];;
 
 [|(e, i, p, q, r, w, x, y)
-  for e in [|-3; w; -3; -2|]
-  for w in [||] and i in [|1; q; 1; 2|] and p = -1 downto -1
+  for q = 1 to 1
   for r in [|1|] and x in [||] and y in [|2; 2; -3; 2; -2; -3|]
-  for q = 1 to 1|];;
+  for w in [||] and i in [|1; q; 1; 2|] and p = -1 downto -1
+  for e in [|-3; w; -3; -2|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int * '_weak5 * int) array = [||]
 |}];;
 
 [(a, c, h, q, t, v)
-  for h in [] and q = 3 downto -2 and c = 2 downto -3
-  for t in [3; 1; -3; 0] and v in [2; -2; 2; 3; 2] and a in [1; 3]];;
+  for t in [3; 1; -3; 0] and v in [2; -2; 2; 3; 2] and a in [1; 3]
+  for h in [] and q = 3 downto -2 and c = 2 downto -3];;
 [%%expect{|
 - : (int * int * 'a * int * int * int) list = []
 |}];;
 
 [|(a, c, h, q, t, v)
-  for h in [||] and q = 3 downto -2 and c = 2 downto -3
-  for t in [|3; 1; -3; 0|] and v in [|2; -2; 2; 3; 2|] and a in [|1; 3|]|];;
+  for t in [|3; 1; -3; 0|] and v in [|2; -2; 2; 3; 2|] and a in [|1; 3|]
+  for h in [||] and q = 3 downto -2 and c = 2 downto -3|];;
 [%%expect{|
 - : (int * int * '_weak6 * int * int * int) array = [||]
 |}];;
@@ -281,91 +281,91 @@ Warning 26 [unused-var]: unused variable z.
 |}];;
 
 [(a, e, g, x, y)
-  for g in [y]
-  when abs x mod 2 = 0
-  for y = e downto 3
+  for a = -3 downto 1
   for e in [-1; 0] and x in [1; -1; -3; a]
-  for a = -3 downto 1];;
+  for y = e downto 3
+  when abs x mod 2 = 0
+  for g in [y]];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(a, e, g, x, y)
-  for g in [|y|]
-  when abs x mod 2 = 0
-  for y = e downto 3
+  for a = -3 downto 1
   for e in [|-1; 0|] and x in [|1; -1; -3; a|]
-  for a = -3 downto 1|];;
+  for y = e downto 3
+  when abs x mod 2 = 0
+  for g in [|y|]|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(h, l, p, x, y)
-  for h = -1 downto -3
-  for p = -2 downto l and y in [0; -3; 3]
-  for x = -2 to 2
+  for y = 2 downto 3
   for l = 0 to -3
-  for y = 2 downto 3];;
+  for x = -2 to 2
+  for p = -2 downto l and y in [0; -3; 3]
+  for h = -1 downto -3];;
 [%%expect{|
 Lines 1-6, characters 0-21:
 1 | [(h, l, p, x, y)
-2 |   for h = -1 downto -3
-3 |   for p = -2 downto l and y in [0; -3; 3]
-4 |   for x = -2 to 2
-5 |   for l = 0 to -3
-6 |   for y = 2 downto 3]..
-Warning 26 [unused-var]: unused variable y.
+2 |
 - : (int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable y. for y = 2 downto 3]..
+6 | for l = 0 to -3
+5 | for x = -2 to 2
+4 | for p = -2 downto l and y in [0; -3; 3]
+3 | for h = -1 downto -3
 |}];;
 
 [|(h, l, p, x, y)
-  for h = -1 downto -3
-  for p = -2 downto l and y in [|0; -3; 3|]
-  for x = -2 to 2
+  for y = 2 downto 3
   for l = 0 to -3
-  for y = 2 downto 3|];;
+  for x = -2 to 2
+  for p = -2 downto l and y in [|0; -3; 3|]
+  for h = -1 downto -3|];;
 [%%expect{|
 Lines 1-6, characters 0-22:
 1 | [|(h, l, p, x, y)
-2 |   for h = -1 downto -3
-3 |   for p = -2 downto l and y in [|0; -3; 3|]
-4 |   for x = -2 to 2
-5 |   for l = 0 to -3
-6 |   for y = 2 downto 3|]..
-Warning 26 [unused-var]: unused variable y.
+2 |
 - : (int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable y. for y = 2 downto 3|]..
+6 | for l = 0 to -3
+5 | for x = -2 to 2
+4 | for p = -2 downto l and y in [|0; -3; 3|]
+3 | for h = -1 downto -3
 |}];;
 
 [(b, f, g, n, o, u, y)
-  for _ in [] and y in [-2; 3; -2; 2; 3; 0]
-  for b in [-3; 1; 2; 2; -1; 3; 2]
+  for o = -1 to 0 and g in [-3] and u in [0; 1; 0; 3; 2]
   for f = 3 to 2 and n in [-2; 3; u; 1; -3; 1]
-  for o = -1 to 0 and g in [-3] and u in [0; 1; 0; 3; 2]];;
+  for b in [-3; 1; 2; 2; -1; 3; 2]
+  for _ in [] and y in [-2; 3; -2; 2; 3; 0]];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(b, f, g, n, o, u, y)
-  for _ in [||] and y in [|-2; 3; -2; 2; 3; 0|]
-  for b in [|-3; 1; 2; 2; -1; 3; 2|]
+  for o = -1 to 0 and g in [|-3|] and u in [|0; 1; 0; 3; 2|]
   for f = 3 to 2 and n in [|-2; 3; u; 1; -3; 1|]
-  for o = -1 to 0 and g in [|-3|] and u in [|0; 1; 0; 3; 2|]|];;
+  for b in [|-3; 1; 2; 2; -1; 3; 2|]
+  for _ in [||] and y in [|-2; 3; -2; 2; 3; 0|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(a, g, j, l, y, z)
-  for g = 2 to -2 and j = -3 downto 2 and a = z to 1
+  for z = 1 downto -3
   for y = 0 downto 2 and l = z to 2
-  for z = 1 downto -3];;
+  for g = 2 to -2 and j = -3 downto 2 and a = z to 1];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, g, j, l, y, z)
-  for g = 2 to -2 and j = -3 downto 2 and a = z to 1
+  for z = 1 downto -3
   for y = 0 downto 2 and l = z to 2
-  for z = 1 downto -3|];;
+  for g = 2 to -2 and j = -3 downto 2 and a = z to 1|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
@@ -381,134 +381,134 @@ Warning 26 [unused-var]: unused variable y.
 |}];;
 
 [(e, f, m, w)
-  for w = 0 downto 3
-  when e <> 0
+  for e = -3 to 0 and m in [-1; 3]
   for f = 0 to 0
-  for e = -3 to 0 and m in [-1; 3]];;
+  when e <> 0
+  for w = 0 downto 3];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(e, f, m, w)
-  for w = 0 downto 3
-  when e <> 0
+  for e = -3 to 0 and m in [|-1; 3|]
   for f = 0 to 0
-  for e = -3 to 0 and m in [|-1; 3|]|];;
+  when e <> 0
+  for w = 0 downto 3|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(d, e, o, t, u)
-  for u in [3; -1]
-  for t in [1; -1; -2; 0; 1; 2]
-  for d in [-1; 1; -3]
+  for e = 1 to -3 and o in [3; -1]
   when e > 0
-  for e = 1 to -3 and o in [3; -1]];;
+  for d in [-1; 1; -3]
+  for t in [1; -1; -2; 0; 1; 2]
+  for u in [3; -1]];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(d, e, o, t, u)
-  for u in [|3; -1|]
-  for t in [|1; -1; -2; 0; 1; 2|]
-  for d in [|-1; 1; -3|]
+  for e = 1 to -3 and o in [|3; -1|]
   when e > 0
-  for e = 1 to -3 and o in [|3; -1|]|];;
+  for d in [|-1; 1; -3|]
+  for t in [|1; -1; -2; 0; 1; 2|]
+  for u in [|3; -1|]|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(g, k, p, r, u)
-  for k = 0 downto 1 and r = 1 downto -1
-  for g in [] and u in [-1; 3] and p in [0; -3]];;
+  for g in [] and u in [-1; 3] and p in [0; -3]
+  for k = 0 downto 1 and r = 1 downto -1];;
 [%%expect{|
 - : ('a * int * int * int * int) list = []
 |}];;
 
 [|(g, k, p, r, u)
-  for k = 0 downto 1 and r = 1 downto -1
-  for g in [||] and u in [|-1; 3|] and p in [|0; -3|]|];;
+  for g in [||] and u in [|-1; 3|] and p in [|0; -3|]
+  for k = 0 downto 1 and r = 1 downto -1|];;
 [%%expect{|
 - : ('_weak7 * int * int * int * int) array = [||]
 |}];;
 
 [(g, h, j, l, o, p)
-  for h in [2; -3; 0; p; p; o; 3] and j = -3 downto -3
-  for p in [-1; -2; 1; -2; 3; -1]
-  when g < 0
+  for o = 3 to -3 and p in [-2; -2]
   for g in [-2; 0; o; 1; 0; p; -2] and l = 1 downto 1
-  for o = 3 to -3 and p in [-2; -2]];;
+  when g < 0
+  for p in [-1; -2; 1; -2; 3; -1]
+  for h in [2; -3; 0; p; p; o; 3] and j = -3 downto -3];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(g, h, j, l, o, p)
-  for h in [|2; -3; 0; p; p; o; 3|] and j = -3 downto -3
-  for p in [|-1; -2; 1; -2; 3; -1|]
-  when g < 0
+  for o = 3 to -3 and p in [|-2; -2|]
   for g in [|-2; 0; o; 1; 0; p; -2|] and l = 1 downto 1
-  for o = 3 to -3 and p in [|-2; -2|]|];;
+  when g < 0
+  for p in [|-1; -2; 1; -2; 3; -1|]
+  for h in [|2; -3; 0; p; p; o; 3|] and j = -3 downto -3|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(h, j, k, v, z)
-  for z = -3 to -3
-  for k = -3 downto 1 and z = 1 downto -2
-  for v = -3 downto 0
+  for h in [] and j in [-2; -3; -1]
   when j < 0
-  for h in [] and j in [-2; -3; -1]];;
+  for v = -3 downto 0
+  for k = -3 downto 1 and z = 1 downto -2
+  for z = -3 to -3];;
 [%%expect{|
 Lines 1-6, characters 0-36:
 1 | [(h, j, k, v, z)
-2 |   for z = -3 to -3
-3 |   for k = -3 downto 1 and z = 1 downto -2
-4 |   for v = -3 downto 0
-5 |   when j < 0
-6 |   for h in [] and j in [-2; -3; -1]]..
-Warning 26 [unused-var]: unused variable z.
+2 |
 - : ('a * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable z. for h in [] and j in [-2; -3; -1]]..
+6 | when j < 0
+5 | for v = -3 downto 0
+4 | for k = -3 downto 1 and z = 1 downto -2
+3 | for z = -3 to -3
 |}];;
 
 [|(h, j, k, v, z)
-  for z = -3 to -3
-  for k = -3 downto 1 and z = 1 downto -2
-  for v = -3 downto 0
+  for h in [||] and j in [|-2; -3; -1|]
   when j < 0
-  for h in [||] and j in [|-2; -3; -1|]|];;
+  for v = -3 downto 0
+  for k = -3 downto 1 and z = 1 downto -2
+  for z = -3 to -3|];;
 [%%expect{|
 Lines 1-6, characters 0-41:
 1 | [|(h, j, k, v, z)
-2 |   for z = -3 to -3
-3 |   for k = -3 downto 1 and z = 1 downto -2
-4 |   for v = -3 downto 0
-5 |   when j < 0
-6 |   for h in [||] and j in [|-2; -3; -1|]|]..
-Warning 26 [unused-var]: unused variable z.
+2 |
 - : ('_weak8 * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable z. for h in [||] and j in [|-2; -3; -1|]|]..
+6 | when j < 0
+5 | for v = -3 downto 0
+4 | for k = -3 downto 1 and z = 1 downto -2
+3 | for z = -3 to -3
 |}];;
 
 [(a, c, e, l, v, y)
-  for v = 0 downto a
-  for y in [2; 2; 2; 1; 2] and c = -3 to 2
+  for e in [3; 0; -3; 2; -3; -3] and c in [-3; -3; -3] and a = 0 to 2
   for l = -2 downto 1
-  for e in [3; 0; -3; 2; -3; -3] and c in [-3; -3; -3] and a = 0 to 2];;
+  for y in [2; 2; 2; 1; 2] and c = -3 to 2
+  for v = 0 downto a];;
 [%%expect{|
 Line 5, characters 37-38:
-5 |   for e in [3; 0; -3; 2; -3; -3] and c in [-3; -3; -3] and a = 0 to 2];;
+5 | for e in [3; 0; -3; 2; -3; -3] and c in [-3; -3; -3] and a = 0 to 2];;
                                          ^
 Warning 26 [unused-var]: unused variable c.
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, c, e, l, v, y)
-  for v = 0 downto a
-  for y in [|2; 2; 2; 1; 2|] and c = -3 to 2
+  for e in [|3; 0; -3; 2; -3; -3|] and c in [|-3; -3; -3|] and a = 0 to 2
   for l = -2 downto 1
-  for e in [|3; 0; -3; 2; -3; -3|] and c in [|-3; -3; -3|] and a = 0 to 2|];;
+  for y in [|2; 2; 2; 1; 2|] and c = -3 to 2
+  for v = 0 downto a|];;
 [%%expect{|
 Line 5, characters 39-40:
-5 |   for e in [|3; 0; -3; 2; -3; -3|] and c in [|-3; -3; -3|] and a = 0 to 2|];;
+5 | for e in [|3; 0; -3; 2; -3; -3|] and c in [|-3; -3; -3|] and a = 0 to 2|];;
                                            ^
 Warning 26 [unused-var]: unused variable c.
 - : (int * int * int * int * int * int) array = [||]
@@ -531,101 +531,101 @@ Warning 26 [unused-var]: unused variable c.
 |}];;
 
 [(d, g, h, t, y)
-  when d > 0
   for d in [-2; -3; -1; 0]
   and y = 3 downto 3
   and g = -2 downto -1
   and t = 2 to 3
-  and h = 3 to 3];;
+  and h = 3 to 3
+  when d > 0];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(d, g, h, t, y)
-  when d > 0
   for d in [|-2; -3; -1; 0|]
   and y = 3 downto 3
   and g = -2 downto -1
   and t = 2 to 3
-  and h = 3 to 3|];;
+  and h = 3 to 3
+  when d > 0|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(a, b, c, k, u, y)
-  for b = a downto -1 and u = -1 downto c
-  for c in [0; 2; 1; -3; 2] and y in [2; -3; 0; -2; -1; 2; -2]
-  for k = -1 to 1
+  for _ in [0; 2; 3; -1; 1; 1] and a = -1 downto 3
   when abs a mod 2 = 0
-  for _ in [0; 2; 3; -1; 1; 1] and a = -1 downto 3];;
+  for k = -1 to 1
+  for c in [0; 2; 1; -3; 2] and y in [2; -3; 0; -2; -1; 2; -2]
+  for b = a downto -1 and u = -1 downto c];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, b, c, k, u, y)
-  for b = a downto -1 and u = -1 downto c
-  for c in [|0; 2; 1; -3; 2|] and y in [|2; -3; 0; -2; -1; 2; -2|]
-  for k = -1 to 1
+  for _ in [|0; 2; 3; -1; 1; 1|] and a = -1 downto 3
   when abs a mod 2 = 0
-  for _ in [|0; 2; 3; -1; 1; 1|] and a = -1 downto 3|];;
+  for k = -1 to 1
+  for c in [|0; 2; 1; -3; 2|] and y in [|2; -3; 0; -2; -1; 2; -2|]
+  for b = a downto -1 and u = -1 downto c|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(p, y)
-  when abs p mod 2 = 1
-  when abs y mod 2 = 1
-  when abs y mod 2 = 0
+  for y = -2 downto 3 and p in [-3]
   when p <> 0
-  for y = -2 downto 3 and p in [-3]];;
+  when abs y mod 2 = 0
+  when abs y mod 2 = 1
+  when abs p mod 2 = 1];;
 [%%expect{|
 - : (int * int) list = []
 |}];;
 
 [|(p, y)
-  when abs p mod 2 = 1
-  when abs y mod 2 = 1
-  when abs y mod 2 = 0
+  for y = -2 downto 3 and p in [|-3|]
   when p <> 0
-  for y = -2 downto 3 and p in [|-3|]|];;
+  when abs y mod 2 = 0
+  when abs y mod 2 = 1
+  when abs p mod 2 = 1|];;
 [%%expect{|
 - : (int * int) array = [||]
 |}];;
 
 [(d, f, g, i, n, p)
-  for g in [2; 1; -1] and f = -2 to 0
-  for d = -1 to -2
-  for i = -2 to 3 and n in [-3; 3; -2; -3]
+  for f = -1 downto -1
   for _ = 1 downto 0 and p = 2 to 3
-  for f = -1 downto -1];;
+  for i = -2 to 3 and n in [-3; 3; -2; -3]
+  for d = -1 to -2
+  for g in [2; 1; -1] and f = -2 to 0];;
 [%%expect{|
 Lines 1-6, characters 0-23:
 1 | [(d, f, g, i, n, p)
-2 |   for g in [2; 1; -1] and f = -2 to 0
-3 |   for d = -1 to -2
-4 |   for i = -2 to 3 and n in [-3; 3; -2; -3]
-5 |   for _ = 1 downto 0 and p = 2 to 3
-6 |   for f = -1 downto -1]..
-Warning 26 [unused-var]: unused variable f.
+2 |
 - : (int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable f. for f = -1 downto -1]..
+6 | for _ = 1 downto 0 and p = 2 to 3
+5 | for i = -2 to 3 and n in [-3; 3; -2; -3]
+4 | for d = -1 to -2
+3 | for g in [2; 1; -1] and f = -2 to 0
 |}];;
 
 [|(d, f, g, i, n, p)
-  for g in [|2; 1; -1|] and f = -2 to 0
-  for d = -1 to -2
-  for i = -2 to 3 and n in [|-3; 3; -2; -3|]
+  for f = -1 downto -1
   for _ = 1 downto 0 and p = 2 to 3
-  for f = -1 downto -1|];;
+  for i = -2 to 3 and n in [|-3; 3; -2; -3|]
+  for d = -1 to -2
+  for g in [|2; 1; -1|] and f = -2 to 0|];;
 [%%expect{|
 Lines 1-6, characters 0-24:
 1 | [|(d, f, g, i, n, p)
-2 |   for g in [|2; 1; -1|] and f = -2 to 0
-3 |   for d = -1 to -2
-4 |   for i = -2 to 3 and n in [|-3; 3; -2; -3|]
-5 |   for _ = 1 downto 0 and p = 2 to 3
-6 |   for f = -1 downto -1|]..
-Warning 26 [unused-var]: unused variable f.
+2 |
 - : (int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable f. for f = -1 downto -1|]..
+6 | for _ = 1 downto 0 and p = 2 to 3
+5 | for i = -2 to 3 and n in [|-3; 3; -2; -3|]
+4 | for d = -1 to -2
+3 | for g in [|2; 1; -1|] and f = -2 to 0
 |}];;
 
 [(f, q, v, w, x)
@@ -651,131 +651,131 @@ Warning 26 [unused-var]: unused variable f.
 |}];;
 
 [(a, c, h, i, j, k)
-  for j = 3 to -3 and a in [0]
-  for c in [-3; 3; 3; i]
   for h in [1; -3; 2; 1; -1; -3; -3]
   and i = 3 to -2
-  and k in [-3; 1; 2; -2; 0]];;
+  and k in [-3; 1; 2; -2; 0]
+  for c in [-3; 3; 3; i]
+  for j = 3 to -3 and a in [0]];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, c, h, i, j, k)
-  for j = 3 to -3 and a in [|0|]
-  for c in [|-3; 3; 3; i|]
   for h in [|1; -3; 2; 1; -1; -3; -3|]
   and i = 3 to -2
-  and k in [|-3; 1; 2; -2; 0|]|];;
+  and k in [|-3; 1; 2; -2; 0|]
+  for c in [|-3; 3; 3; i|]
+  for j = 3 to -3 and a in [|0|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(e, p, r, s, t)
-  when abs r mod 2 = 1
-  for s in [2; 0; -2; -3]
-  for r = -3 to 0
+  for p in [-2]
   for t in [-3; 2] and e in []
-  for p in [-2]];;
+  for r = -3 to 0
+  for s in [2; 0; -2; -3]
+  when abs r mod 2 = 1];;
 [%%expect{|
 - : ('a * int * int * int * int) list = []
 |}];;
 
 [|(e, p, r, s, t)
-  when abs r mod 2 = 1
-  for s in [|2; 0; -2; -3|]
-  for r = -3 to 0
+  for p in [|-2|]
   for t in [|-3; 2|] and e in [||]
-  for p in [|-2|]|];;
+  for r = -3 to 0
+  for s in [|2; 0; -2; -3|]
+  when abs r mod 2 = 1|];;
 [%%expect{|
 - : ('_weak9 * int * int * int * int) array = [||]
 |}];;
 
 [(a, d, f, l, n, o, v)
-  for f = a to -2
-  for n = -2 to 0
+  for d in [-1; 2] and v = 0 downto 1
   for l in [2; 3; 3] and a in [0; 0; 1] and o = -1 to -2
-  for d in [-1; 2] and v = 0 downto 1];;
+  for n = -2 to 0
+  for f = a to -2];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, d, f, l, n, o, v)
-  for f = a to -2
-  for n = -2 to 0
+  for d in [|-1; 2|] and v = 0 downto 1
   for l in [|2; 3; 3|] and a in [|0; 0; 1|] and o = -1 to -2
-  for d in [|-1; 2|] and v = 0 downto 1|];;
+  for n = -2 to 0
+  for f = a to -2|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(c, d, j, p, s)
-  for s = 1 to j and p in [-2; 3; j; -1; 2; 1] and d in [0; 1; 3; -2; -3; -2]
-  when abs c mod 2 = 1
+  for c = -1 downto 1 and _ in [1; 1; 1; -3; 1; 2; -2]
   for _ in [c; 2; -3; -2; 3; 1] and j in [1; -1; 1; 1; -3]
-  for c = -1 downto 1 and _ in [1; 1; 1; -3; 1; 2; -2]];;
+  when abs c mod 2 = 1
+  for s = 1 to j and p in [-2; 3; j; -1; 2; 1] and d in [0; 1; 3; -2; -3; -2]];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(c, d, j, p, s)
-  for s = 1 to j and p in [|-2; 3; j; -1; 2; 1|] and d in [|0; 1; 3; -2; -3; -2|]
-  when abs c mod 2 = 1
+  for c = -1 downto 1 and _ in [|1; 1; 1; -3; 1; 2; -2|]
   for _ in [|c; 2; -3; -2; 3; 1|] and j in [|1; -1; 1; 1; -3|]
-  for c = -1 downto 1 and _ in [|1; 1; 1; -3; 1; 2; -2|]|];;
+  when abs c mod 2 = 1
+  for s = 1 to j and p in [|-2; 3; j; -1; 2; 1|] and d in [|0; 1; 3; -2; -3; -2|]|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(c, m, z)
-  when m < 0
-  for z = 1 downto 3
-  for m = 0 downto 2
+  for c = -2 to -1
   when c > 0
-  for c = -2 to -1];;
+  for m = 0 downto 2
+  for z = 1 downto 3
+  when m < 0];;
 [%%expect{|
 - : (int * int * int) list = []
 |}];;
 
 [|(c, m, z)
-  when m < 0
-  for z = 1 downto 3
-  for m = 0 downto 2
+  for c = -2 to -1
   when c > 0
-  for c = -2 to -1|];;
+  for m = 0 downto 2
+  for z = 1 downto 3
+  when m < 0|];;
 [%%expect{|
 - : (int * int * int) array = [||]
 |}];;
 
 [(a, h, k, y, z)
-  for y in [-2; -1; -3; -3] and z = 1 to 3
-  for k in [1; 0; -3; -2; 2; 2] and h = -3 to -3 and a = -3 downto 3];;
+  for k in [1; 0; -3; -2; 2; 2] and h = -3 to -3 and a = -3 downto 3
+  for y in [-2; -1; -3; -3] and z = 1 to 3];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(a, h, k, y, z)
-  for y in [|-2; -1; -3; -3|] and z = 1 to 3
-  for k in [|1; 0; -3; -2; 2; 2|] and h = -3 to -3 and a = -3 downto 3|];;
+  for k in [|1; 0; -3; -2; 2; 2|] and h = -3 to -3 and a = -3 downto 3
+  for y in [|-2; -1; -3; -3|] and z = 1 to 3|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(b, f, i, k, q, w, y)
-  for y in [-1]
-  when b > 0
-  for b = 3 to 3 and k = 3 to -1
+  for w in [1; -2; -3] and i in [0]
   for f in [-2; 3; 0; 0] and q = -3 to -1
-  for w in [1; -2; -3] and i in [0]];;
+  for b = 3 to 3 and k = 3 to -1
+  when b > 0
+  for y in [-1]];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(b, f, i, k, q, w, y)
-  for y in [|-1|]
-  when b > 0
-  for b = 3 to 3 and k = 3 to -1
+  for w in [|1; -2; -3|] and i in [|0|]
   for f in [|-2; 3; 0; 0|] and q = -3 to -1
-  for w in [|1; -2; -3|] and i in [|0|]|];;
+  for b = 3 to 3 and k = 3 to -1
+  when b > 0
+  for y in [|-1|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
@@ -825,33 +825,33 @@ Warning 26 [unused-var]: unused variable f.
 |}];;
 
 [(d, o, q, v, w)
-  for q = v to -1 and d in [1; 0; 3] and w in [] and o = -3 to -1
+  for v = 1 to -2 and _ = -1 downto 1
   when v <> 0
-  for v = 1 to -2 and _ = -1 downto 1];;
+  for q = v to -1 and d in [1; 0; 3] and w in [] and o = -3 to -1];;
 [%%expect{|
 - : (int * int * int * int * 'a) list = []
 |}];;
 
 [|(d, o, q, v, w)
-  for q = v to -1 and d in [|1; 0; 3|] and w in [||] and o = -3 to -1
+  for v = 1 to -2 and _ = -1 downto 1
   when v <> 0
-  for v = 1 to -2 and _ = -1 downto 1|];;
+  for q = v to -1 and d in [|1; 0; 3|] and w in [||] and o = -3 to -1|];;
 [%%expect{|
 - : (int * int * int * int * '_weak11) array = [||]
 |}];;
 
 [(a, i, z)
-  for z in [-2; 0; -3; 1; a; 1]
+  for i = -3 downto -1 and a in [2; 1; -2; 0; 2; -1; -1]
   when abs i mod 2 = 1
-  for i = -3 downto -1 and a in [2; 1; -2; 0; 2; -1; -1]];;
+  for z in [-2; 0; -3; 1; a; 1]];;
 [%%expect{|
 - : (int * int * int) list = []
 |}];;
 
 [|(a, i, z)
-  for z in [|-2; 0; -3; 1; a; 1|]
+  for i = -3 downto -1 and a in [|2; 1; -2; 0; 2; -1; -1|]
   when abs i mod 2 = 1
-  for i = -3 downto -1 and a in [|2; 1; -2; 0; 2; -1; -1|]|];;
+  for z in [|-2; 0; -3; 1; a; 1|]|];;
 [%%expect{|
 - : (int * int * int) array = [||]
 |}];;
@@ -867,19 +867,19 @@ Warning 26 [unused-var]: unused variable f.
 |}];;
 
 [(b, e, i, m, n, q, v, x)
-  for e in [] and n = 2 to 2
-  for m = -2 to -3 and v in [2; -1; -3; q; -1; 3; -2] and x in []
+  for q = 2 to -2 and b = 2 downto -3 and i in [0]
   when b > 0
-  for q = 2 to -2 and b = 2 downto -3 and i in [0]];;
+  for m = -2 to -3 and v in [2; -1; -3; q; -1; 3; -2] and x in []
+  for e in [] and n = 2 to 2];;
 [%%expect{|
 - : (int * 'a * int * int * int * int * int * 'b) list = []
 |}];;
 
 [|(b, e, i, m, n, q, v, x)
-  for e in [||] and n = 2 to 2
-  for m = -2 to -3 and v in [|2; -1; -3; q; -1; 3; -2|] and x in [||]
+  for q = 2 to -2 and b = 2 downto -3 and i in [|0|]
   when b > 0
-  for q = 2 to -2 and b = 2 downto -3 and i in [|0|]|];;
+  for m = -2 to -3 and v in [|2; -1; -3; q; -1; 3; -2|] and x in [||]
+  for e in [||] and n = 2 to 2|];;
 [%%expect{|
 - : (int * '_weak12 * int * int * int * int * int * '_weak13) array = [||]
 |}];;
@@ -895,43 +895,43 @@ Warning 26 [unused-var]: unused variable f.
 |}];;
 
 [(b, q, s, t, u)
-  for q in [3; -3; 0; 2; -2; 0] and u in [-1; -1] and s in []
+  for t = -1 to 2 and s = 1 to 3
   for s = -3 to 1 and b = 3 to 2
-  for t = -1 to 2 and s = 1 to 3];;
+  for q in [3; -3; 0; 2; -2; 0] and u in [-1; -1] and s in []];;
 [%%expect{|
 Lines 1-4, characters 0-33:
 1 | [(b, q, s, t, u)
-2 |   for q in [3; -3; 0; 2; -2; 0] and u in [-1; -1] and s in []
-3 |   for s = -3 to 1 and b = 3 to 2
-4 |   for t = -1 to 2 and s = 1 to 3]..
-Warning 26 [unused-var]: unused variable s.
-Lines 1-4, characters 0-33:
-1 | [(b, q, s, t, u)
-2 |   for q in [3; -3; 0; 2; -2; 0] and u in [-1; -1] and s in []
-3 |   for s = -3 to 1 and b = 3 to 2
-4 |   for t = -1 to 2 and s = 1 to 3]..
-Warning 26 [unused-var]: unused variable s.
+2 |
 - : (int * int * 'a * int * int) list = []
+Warning 26 [unused-var]: unused variable s. for t = -1 to 2 and s = 1 to 3]..
+4 | for s = -3 to 1 and b = 3 to 2
+3 | for q in [3; -3; 0; 2; -2; 0] and u in [-1; -1] and s in []
+2 |
+1 | [(b, q, s, t, u)
+Lines 1-4, characters 0-33:
+Warning 26 [unused-var]: unused variable s. for t = -1 to 2 and s = 1 to 3]..
+4 | for s = -3 to 1 and b = 3 to 2
+3 | for q in [3; -3; 0; 2; -2; 0] and u in [-1; -1] and s in []
 |}];;
 
 [|(b, q, s, t, u)
-  for q in [|3; -3; 0; 2; -2; 0|] and u in [|-1; -1|] and s in [||]
+  for t = -1 to 2 and s = 1 to 3
   for s = -3 to 1 and b = 3 to 2
-  for t = -1 to 2 and s = 1 to 3|];;
+  for q in [|3; -3; 0; 2; -2; 0|] and u in [|-1; -1|] and s in [||]|];;
 [%%expect{|
 Lines 1-4, characters 0-34:
 1 | [|(b, q, s, t, u)
-2 |   for q in [|3; -3; 0; 2; -2; 0|] and u in [|-1; -1|] and s in [||]
-3 |   for s = -3 to 1 and b = 3 to 2
-4 |   for t = -1 to 2 and s = 1 to 3|]..
-Warning 26 [unused-var]: unused variable s.
-Lines 1-4, characters 0-34:
-1 | [|(b, q, s, t, u)
-2 |   for q in [|3; -3; 0; 2; -2; 0|] and u in [|-1; -1|] and s in [||]
-3 |   for s = -3 to 1 and b = 3 to 2
-4 |   for t = -1 to 2 and s = 1 to 3|]..
-Warning 26 [unused-var]: unused variable s.
+2 |
 - : (int * int * '_weak14 * int * int) array = [||]
+Warning 26 [unused-var]: unused variable s. for t = -1 to 2 and s = 1 to 3|]..
+4 | for s = -3 to 1 and b = 3 to 2
+3 | for q in [|3; -3; 0; 2; -2; 0|] and u in [|-1; -1|] and s in [||]
+2 |
+1 | [|(b, q, s, t, u)
+Lines 1-4, characters 0-34:
+Warning 26 [unused-var]: unused variable s. for t = -1 to 2 and s = 1 to 3|]..
+4 | for s = -3 to 1 and b = 3 to 2
+3 | for q in [|3; -3; 0; 2; -2; 0|] and u in [|-1; -1|] and s in [||]
 |}];;
 
 [(b, h, j, n)
@@ -953,8 +953,8 @@ Warning 26 [unused-var]: unused variable s.
 |}];;
 
 [(b, q, w, x)
-  for q in [-3; 0; 3] and x = 1 to 2
-  for b = 1 to 2 and w in [-3; -1; 3; 0]];;
+  for b = 1 to 2 and w in [-3; -1; 3; 0]
+  for q in [-3; 0; 3] and x = 1 to 2];;
 [%%expect{|
 - : (int * int * int * int) list =
 [(1, -3, -3, 1); (1, -3, -3, 2); (1, 0, -3, 1); (1, 0, -3, 2); (1, 3, -3, 1);
@@ -970,8 +970,8 @@ Warning 26 [unused-var]: unused variable s.
 |}];;
 
 [|(b, q, w, x)
-  for q in [|-3; 0; 3|] and x = 1 to 2
-  for b = 1 to 2 and w in [|-3; -1; 3; 0|]|];;
+  for b = 1 to 2 and w in [|-3; -1; 3; 0|]
+  for q in [|-3; 0; 3|] and x = 1 to 2|];;
 [%%expect{|
 - : (int * int * int * int) array =
 [|(1, -3, -3, 1); (1, -3, -3, 2); (1, 0, -3, 1); (1, 0, -3, 2);
@@ -988,147 +988,147 @@ Warning 26 [unused-var]: unused variable s.
 |}];;
 
 [(k, q, s, x)
-  for q in [-2; 3; -3; -3; 1]
-  when abs x mod 2 = 1
-  for k in [0; s; s; -3; -1; -3]
+  for x = 1 to -3 and s = 2 to 1
   when x > 0
-  for x = 1 to -3 and s = 2 to 1];;
+  for k in [0; s; s; -3; -1; -3]
+  when abs x mod 2 = 1
+  for q in [-2; 3; -3; -3; 1]];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(k, q, s, x)
-  for q in [|-2; 3; -3; -3; 1|]
-  when abs x mod 2 = 1
-  for k in [|0; s; s; -3; -1; -3|]
+  for x = 1 to -3 and s = 2 to 1
   when x > 0
-  for x = 1 to -3 and s = 2 to 1|];;
+  for k in [|0; s; s; -3; -1; -3|]
+  when abs x mod 2 = 1
+  for q in [|-2; 3; -3; -3; 1|]|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(a, b, d, m, o, t, x)
-  for t in [1; 0; 2; b; o; 3] and m = 1 to -1
-  when abs d mod 2 = 0
-  for d in [] and x = 2 downto o
+  for x in [2; -1; 2; -1; 0; -1; -1] and o = 3 downto 1
   for b = -1 downto 2 and a = x to x
-  for x in [2; -1; 2; -1; 0; -1; -1] and o = 3 downto 1];;
+  for d in [] and x = 2 downto o
+  when abs d mod 2 = 0
+  for t in [1; 0; 2; b; o; 3] and m = 1 to -1];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, b, d, m, o, t, x)
-  for t in [|1; 0; 2; b; o; 3|] and m = 1 to -1
-  when abs d mod 2 = 0
-  for d in [||] and x = 2 downto o
+  for x in [|2; -1; 2; -1; 0; -1; -1|] and o = 3 downto 1
   for b = -1 downto 2 and a = x to x
-  for x in [|2; -1; 2; -1; 0; -1; -1|] and o = 3 downto 1|];;
+  for d in [||] and x = 2 downto o
+  when abs d mod 2 = 0
+  for t in [|1; 0; 2; b; o; 3|] and m = 1 to -1|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(a, c, h, u)
-  for u = h to 3
+  for a in [-1; 0; 0] and h = 1 downto -1
   for c = 1 to -3
-  for a in [-1; 0; 0] and h = 1 downto -1];;
+  for u = h to 3];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(a, c, h, u)
-  for u = h to 3
+  for a in [|-1; 0; 0|] and h = 1 downto -1
   for c = 1 to -3
-  for a in [|-1; 0; 0|] and h = 1 downto -1|];;
+  for u = h to 3|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(e, m, u)
-  when u < 0
-  for u = 3 downto -3 and e = -1 to -3 and m = -3 downto 1];;
+  for u = 3 downto -3 and e = -1 to -3 and m = -3 downto 1
+  when u < 0];;
 [%%expect{|
 - : (int * int * int) list = []
 |}];;
 
 [|(e, m, u)
-  when u < 0
-  for u = 3 downto -3 and e = -1 to -3 and m = -3 downto 1|];;
+  for u = 3 downto -3 and e = -1 to -3 and m = -3 downto 1
+  when u < 0|];;
 [%%expect{|
 - : (int * int * int) array = [||]
 |}];;
 
 [(d, g, j, p, u)
-  for g in [d; 3; 3; 0] and _ in [d; 0; -1]
-  when j > 0
-  for j = -1 downto 2
+  for p in [0; 0; -1]
   for d = 2 downto -1 and u = 2 to p
-  for p in [0; 0; -1]];;
+  for j = -1 downto 2
+  when j > 0
+  for g in [d; 3; 3; 0] and _ in [d; 0; -1]];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(d, g, j, p, u)
-  for g in [|d; 3; 3; 0|] and _ in [|d; 0; -1|]
-  when j > 0
-  for j = -1 downto 2
+  for p in [|0; 0; -1|]
   for d = 2 downto -1 and u = 2 to p
-  for p in [|0; 0; -1|]|];;
+  for j = -1 downto 2
+  when j > 0
+  for g in [|d; 3; 3; 0|] and _ in [|d; 0; -1|]|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(a, n, o, z)
-  for n in [1] and z = 0 downto 3 and o in [1; 3; 0; -3; 0; 3]
+  for _ in [0; 0; -1; 3; 3; 0] and n = -3 to -3 and _ in [-1]
   for a = n downto 1
-  for _ in [0; 0; -1; 3; 3; 0] and n = -3 to -3 and _ in [-1]];;
+  for n in [1] and z = 0 downto 3 and o in [1; 3; 0; -3; 0; 3]];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(a, n, o, z)
-  for n in [|1|] and z = 0 downto 3 and o in [|1; 3; 0; -3; 0; 3|]
+  for _ in [|0; 0; -1; 3; 3; 0|] and n = -3 to -3 and _ in [|-1|]
   for a = n downto 1
-  for _ in [|0; 0; -1; 3; 3; 0|] and n = -3 to -3 and _ in [|-1|]|];;
+  for n in [|1|] and z = 0 downto 3 and o in [|1; 3; 0; -3; 0; 3|]|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(b, c, i, j, t, y)
-  for i in [2; 2; -3]
-  for y in [3]
+  for b in [-3; -2; 3]
   for c = b to 1 and t = -3 downto 1 and j = 3 to -3
-  for b in [-3; -2; 3]];;
+  for y in [3]
+  for i in [2; 2; -3]];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(b, c, i, j, t, y)
-  for i in [|2; 2; -3|]
-  for y in [|3|]
+  for b in [|-3; -2; 3|]
   for c = b to 1 and t = -3 downto 1 and j = 3 to -3
-  for b in [|-3; -2; 3|]|];;
+  for y in [|3|]
+  for i in [|2; 2; -3|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(d, g, l, m, o, q, s, z)
-  for s = 2 downto 0 and g = -1 downto -1 and q = 1 to -1
   for o = 2 downto -2
   and l = 1 downto -3
   and z = -1 to 3
   and d = -3 downto 1
-  and m in [1; 0; 1; -3; 3; -2]];;
+  and m in [1; 0; 1; -3; 3; -2]
+  for s = 2 downto 0 and g = -1 downto -1 and q = 1 to -1];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(d, g, l, m, o, q, s, z)
-  for s = 2 downto 0 and g = -1 downto -1 and q = 1 to -1
   for o = 2 downto -2
   and l = 1 downto -3
   and z = -1 to 3
   and d = -3 downto 1
-  and m in [|1; 0; 1; -3; 3; -2|]|];;
+  and m in [|1; 0; 1; -3; 3; -2|]
+  for s = 2 downto 0 and g = -1 downto -1 and q = 1 to -1|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) array = [||]
 |}];;
@@ -1152,105 +1152,105 @@ Warning 26 [unused-var]: unused variable s.
 |}];;
 
 [(e, i, j, p, s, u, v)
-  for u = 3 to 2 and j = -2 to 2 and v = -3 to 0
-  for i = -2 downto 1 and j in [2; 3; 1] and p in [1]
+  for i = -1 to -2
   for e = -2 downto -2 and s = 2 downto -3
-  for i = -1 to -2];;
+  for i = -2 downto 1 and j in [2; 3; 1] and p in [1]
+  for u = 3 to 2 and j = -2 to 2 and v = -3 to 0];;
 [%%expect{|
 Lines 1-5, characters 0-19:
 1 | [(e, i, j, p, s, u, v)
-2 |   for u = 3 to 2 and j = -2 to 2 and v = -3 to 0
-3 |   for i = -2 downto 1 and j in [2; 3; 1] and p in [1]
-4 |   for e = -2 downto -2 and s = 2 downto -3
-5 |   for i = -1 to -2]..
-Warning 26 [unused-var]: unused variable i.
-Line 3, characters 26-27:
-3 |   for i = -2 downto 1 and j in [2; 3; 1] and p in [1]
-                              ^
-Warning 26 [unused-var]: unused variable j.
+2 |
 - : (int * int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable j.
+                              ^ for i = -2 downto 1 and j in [2; 3; 1] and p in [1]
+3 |
+Line 3, characters 26-27:
+Warning 26 [unused-var]: unused variable i. for i = -1 to -2]..
+5 | for e = -2 downto -2 and s = 2 downto -3
+4 | for i = -2 downto 1 and j in [2; 3; 1] and p in [1]
+3 | for u = 3 to 2 and j = -2 to 2 and v = -3 to 0
 |}];;
 
 [|(e, i, j, p, s, u, v)
-  for u = 3 to 2 and j = -2 to 2 and v = -3 to 0
-  for i = -2 downto 1 and j in [|2; 3; 1|] and p in [|1|]
+  for i = -1 to -2
   for e = -2 downto -2 and s = 2 downto -3
-  for i = -1 to -2|];;
+  for i = -2 downto 1 and j in [|2; 3; 1|] and p in [|1|]
+  for u = 3 to 2 and j = -2 to 2 and v = -3 to 0|];;
 [%%expect{|
 Lines 1-5, characters 0-20:
 1 | [|(e, i, j, p, s, u, v)
-2 |   for u = 3 to 2 and j = -2 to 2 and v = -3 to 0
-3 |   for i = -2 downto 1 and j in [|2; 3; 1|] and p in [|1|]
-4 |   for e = -2 downto -2 and s = 2 downto -3
-5 |   for i = -1 to -2|]..
-Warning 26 [unused-var]: unused variable i.
-Line 3, characters 26-27:
-3 |   for i = -2 downto 1 and j in [|2; 3; 1|] and p in [|1|]
-                              ^
-Warning 26 [unused-var]: unused variable j.
+2 |
 - : (int * int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable j.
+                              ^ for i = -2 downto 1 and j in [|2; 3; 1|] and p in [|1|]
+3 |
+Line 3, characters 26-27:
+Warning 26 [unused-var]: unused variable i. for i = -1 to -2|]..
+5 | for e = -2 downto -2 and s = 2 downto -3
+4 | for i = -2 downto 1 and j in [|2; 3; 1|] and p in [|1|]
+3 | for u = 3 to 2 and j = -2 to 2 and v = -3 to 0
 |}];;
 
 [(d, f, h, k, o, x, y)
-  for o = 0 to 1 and h in []
   for d = -1 downto -1
   and k = 3 to 2
   and x in [1]
   and y in []
-  and f = 2 downto -3];;
+  and f = 2 downto -3
+  for o = 0 to 1 and h in []];;
 [%%expect{|
 - : (int * int * 'a * int * int * int * 'b) list = []
 |}];;
 
 [|(d, f, h, k, o, x, y)
-  for o = 0 to 1 and h in [||]
   for d = -1 downto -1
   and k = 3 to 2
   and x in [|1|]
   and y in [||]
-  and f = 2 downto -3|];;
+  and f = 2 downto -3
+  for o = 0 to 1 and h in [||]|];;
 [%%expect{|
 - : (int * int * '_weak16 * int * int * int * '_weak17) array = [||]
 |}];;
 
 [(e, j, o, p, t, w, y)
+  for e in [] and j in [0; -1]
   for o = 2 downto -2
   and p in [3; -2; 1; 2; 0; 2; 3]
   and w in [e; -2; -1; j; -2; 1; -2]
   and t = -1 to 2
-  and y in []
-  for e in [] and j in [0; -1]];;
+  and y in []];;
 [%%expect{|
 - : (int * int * int * int * int * int * 'a) list = []
 |}];;
 
 [|(e, j, o, p, t, w, y)
+  for e in [||] and j in [|0; -1|]
   for o = 2 downto -2
   and p in [|3; -2; 1; 2; 0; 2; 3|]
   and w in [|e; -2; -1; j; -2; 1; -2|]
   and t = -1 to 2
-  and y in [||]
-  for e in [||] and j in [|0; -1|]|];;
+  and y in [||]|];;
 [%%expect{|
 - : (int * int * int * int * int * int * '_weak18) array = [||]
 |}];;
 
 [(h, k, m, u, x, y)
-  for y in [2; 2; -3; 0] and k = m to 2
-  for m = 0 to 1 and u = -1 to -1
-  when h <> 0
+  for x = -3 to 3 and h = 0 to -3
   when h > 0
-  for x = -3 to 3 and h = 0 to -3];;
+  when h <> 0
+  for m = 0 to 1 and u = -1 to -1
+  for y in [2; 2; -3; 0] and k = m to 2];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(h, k, m, u, x, y)
-  for y in [|2; 2; -3; 0|] and k = m to 2
-  for m = 0 to 1 and u = -1 to -1
-  when h <> 0
+  for x = -3 to 3 and h = 0 to -3
   when h > 0
-  for x = -3 to 3 and h = 0 to -3|];;
+  when h <> 0
+  for m = 0 to 1 and u = -1 to -1
+  for y in [|2; 2; -3; 0|] and k = m to 2|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
@@ -1276,320 +1276,320 @@ Warning 26 [unused-var]: unused variable j.
 |}];;
 
 [(i, j, k, l, p, s, t)
-  for j in [1; 0; -1; 2; 2] and _ = 3 to -3 and t = 3 downto -1
-  for p in [3; 0; -3; 1; -2; 0; -2] and l = 0 downto 0 and i = 0 to 0
+  for k = -3 to -2 and s in [-3; -1; -2; -2]
   for i = -2 downto -1
-  for k = -3 to -2 and s in [-3; -1; -2; -2]];;
+  for p in [3; 0; -3; 1; -2; 0; -2] and l = 0 downto 0 and i = 0 to 0
+  for j in [1; 0; -1; 2; 2] and _ = 3 to -3 and t = 3 downto -1];;
 [%%expect{|
 Lines 1-5, characters 0-45:
 1 | [(i, j, k, l, p, s, t)
-2 |   for j in [1; 0; -1; 2; 2] and _ = 3 to -3 and t = 3 downto -1
-3 |   for p in [3; 0; -3; 1; -2; 0; -2] and l = 0 downto 0 and i = 0 to 0
-4 |   for i = -2 downto -1
-5 |   for k = -3 to -2 and s in [-3; -1; -2; -2]]..
-Warning 26 [unused-var]: unused variable i.
+2 |
 - : (int * int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable i. for k = -3 to -2 and s in [-3; -1; -2; -2]]..
+5 | for i = -2 downto -1
+4 | for p in [3; 0; -3; 1; -2; 0; -2] and l = 0 downto 0 and i = 0 to 0
+3 | for j in [1; 0; -1; 2; 2] and _ = 3 to -3 and t = 3 downto -1
 |}];;
 
 [|(i, j, k, l, p, s, t)
-  for j in [|1; 0; -1; 2; 2|] and _ = 3 to -3 and t = 3 downto -1
-  for p in [|3; 0; -3; 1; -2; 0; -2|] and l = 0 downto 0 and i = 0 to 0
+  for k = -3 to -2 and s in [|-3; -1; -2; -2|]
   for i = -2 downto -1
-  for k = -3 to -2 and s in [|-3; -1; -2; -2|]|];;
+  for p in [|3; 0; -3; 1; -2; 0; -2|] and l = 0 downto 0 and i = 0 to 0
+  for j in [|1; 0; -1; 2; 2|] and _ = 3 to -3 and t = 3 downto -1|];;
 [%%expect{|
 Lines 1-5, characters 0-48:
 1 | [|(i, j, k, l, p, s, t)
-2 |   for j in [|1; 0; -1; 2; 2|] and _ = 3 to -3 and t = 3 downto -1
-3 |   for p in [|3; 0; -3; 1; -2; 0; -2|] and l = 0 downto 0 and i = 0 to 0
-4 |   for i = -2 downto -1
-5 |   for k = -3 to -2 and s in [|-3; -1; -2; -2|]|]..
-Warning 26 [unused-var]: unused variable i.
+2 |
 - : (int * int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable i. for k = -3 to -2 and s in [|-3; -1; -2; -2|]|]..
+5 | for i = -2 downto -1
+4 | for p in [|3; 0; -3; 1; -2; 0; -2|] and l = 0 downto 0 and i = 0 to 0
+3 | for j in [|1; 0; -1; 2; 2|] and _ = 3 to -3 and t = 3 downto -1
 |}];;
 
 [(f, l, o, u, x)
-  for u in [3; -2; 1; -1; -2; 0; -1] and l = -1 to 3
+  for f = -3 to -2 and o = -3 downto -2 and u = 0 downto 0
   for l in [-2; -1; -2] and x in [] and f in [-2; 3; 0; -1; o; 0]
-  for f = -3 to -2 and o = -3 downto -2 and u = 0 downto 0];;
+  for u in [3; -2; 1; -1; -2; 0; -1] and l = -1 to 3];;
 [%%expect{|
 Lines 1-4, characters 0-59:
 1 | [(f, l, o, u, x)
-2 |   for u in [3; -2; 1; -1; -2; 0; -1] and l = -1 to 3
-3 |   for l in [-2; -1; -2] and x in [] and f in [-2; 3; 0; -1; o; 0]
-4 |   for f = -3 to -2 and o = -3 downto -2 and u = 0 downto 0]..
-Warning 26 [unused-var]: unused variable u.
-Lines 1-4, characters 0-59:
-1 | [(f, l, o, u, x)
-2 |   for u in [3; -2; 1; -1; -2; 0; -1] and l = -1 to 3
-3 |   for l in [-2; -1; -2] and x in [] and f in [-2; 3; 0; -1; o; 0]
-4 |   for f = -3 to -2 and o = -3 downto -2 and u = 0 downto 0]..
-Warning 26 [unused-var]: unused variable f.
-Line 3, characters 6-7:
-3 |   for l in [-2; -1; -2] and x in [] and f in [-2; 3; 0; -1; o; 0]
-          ^
-Warning 26 [unused-var]: unused variable l.
+2 |
 - : (int * int * int * int * 'a) list = []
+Warning 26 [unused-var]: unused variable l.
+          ^ for l in [-2; -1; -2] and x in [] and f in [-2; 3; 0; -1; o; 0]
+3 |
+Line 3, characters 6-7:
+Warning 26 [unused-var]: unused variable f. for f = -3 to -2 and o = -3 downto -2 and u = 0 downto 0]..
+4 | for l in [-2; -1; -2] and x in [] and f in [-2; 3; 0; -1; o; 0]
+3 | for u in [3; -2; 1; -1; -2; 0; -1] and l = -1 to 3
+2 |
+1 | [(f, l, o, u, x)
+Lines 1-4, characters 0-59:
+Warning 26 [unused-var]: unused variable u. for f = -3 to -2 and o = -3 downto -2 and u = 0 downto 0]..
+4 | for l in [-2; -1; -2] and x in [] and f in [-2; 3; 0; -1; o; 0]
+3 | for u in [3; -2; 1; -1; -2; 0; -1] and l = -1 to 3
 |}];;
 
 [|(f, l, o, u, x)
-  for u in [|3; -2; 1; -1; -2; 0; -1|] and l = -1 to 3
+  for f = -3 to -2 and o = -3 downto -2 and u = 0 downto 0
   for l in [|-2; -1; -2|] and x in [||] and f in [|-2; 3; 0; -1; o; 0|]
-  for f = -3 to -2 and o = -3 downto -2 and u = 0 downto 0|];;
+  for u in [|3; -2; 1; -1; -2; 0; -1|] and l = -1 to 3|];;
 [%%expect{|
 Lines 1-4, characters 0-60:
 1 | [|(f, l, o, u, x)
-2 |   for u in [|3; -2; 1; -1; -2; 0; -1|] and l = -1 to 3
-3 |   for l in [|-2; -1; -2|] and x in [||] and f in [|-2; 3; 0; -1; o; 0|]
-4 |   for f = -3 to -2 and o = -3 downto -2 and u = 0 downto 0|]..
-Warning 26 [unused-var]: unused variable u.
-Lines 1-4, characters 0-60:
-1 | [|(f, l, o, u, x)
-2 |   for u in [|3; -2; 1; -1; -2; 0; -1|] and l = -1 to 3
-3 |   for l in [|-2; -1; -2|] and x in [||] and f in [|-2; 3; 0; -1; o; 0|]
-4 |   for f = -3 to -2 and o = -3 downto -2 and u = 0 downto 0|]..
-Warning 26 [unused-var]: unused variable f.
-Line 3, characters 6-7:
-3 |   for l in [|-2; -1; -2|] and x in [||] and f in [|-2; 3; 0; -1; o; 0|]
-          ^
-Warning 26 [unused-var]: unused variable l.
+2 |
 - : (int * int * int * int * '_weak19) array = [||]
+Warning 26 [unused-var]: unused variable l.
+          ^ for l in [|-2; -1; -2|] and x in [||] and f in [|-2; 3; 0; -1; o; 0|]
+3 |
+Line 3, characters 6-7:
+Warning 26 [unused-var]: unused variable f. for f = -3 to -2 and o = -3 downto -2 and u = 0 downto 0|]..
+4 | for l in [|-2; -1; -2|] and x in [||] and f in [|-2; 3; 0; -1; o; 0|]
+3 | for u in [|3; -2; 1; -1; -2; 0; -1|] and l = -1 to 3
+2 |
+1 | [|(f, l, o, u, x)
+Lines 1-4, characters 0-60:
+Warning 26 [unused-var]: unused variable u. for f = -3 to -2 and o = -3 downto -2 and u = 0 downto 0|]..
+4 | for l in [|-2; -1; -2|] and x in [||] and f in [|-2; 3; 0; -1; o; 0|]
+3 | for u in [|3; -2; 1; -1; -2; 0; -1|] and l = -1 to 3
 |}];;
 
 [(b, n, r, y, z)
-  when abs y mod 2 = 1
-  for y = -3 downto -1 and z = 3 downto -2
-  for b in [2] and r = 3 to 2
+  for b in [-1; 3; 3; 2; 3; -3; 0] and y = -1 downto 1
   for n = b downto b
-  for b in [-1; 3; 3; 2; 3; -3; 0] and y = -1 downto 1];;
+  for b in [2] and r = 3 to 2
+  for y = -3 downto -1 and z = 3 downto -2
+  when abs y mod 2 = 1];;
 [%%expect{|
 Lines 1-6, characters 0-55:
 1 | [(b, n, r, y, z)
-2 |   when abs y mod 2 = 1
-3 |   for y = -3 downto -1 and z = 3 downto -2
-4 |   for b in [2] and r = 3 to 2
-5 |   for n = b downto b
-6 |   for b in [-1; 3; 3; 2; 3; -3; 0] and y = -1 downto 1]..
-Warning 26 [unused-var]: unused variable y.
+2 |
 - : (int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable y. for b in [-1; 3; 3; 2; 3; -3; 0] and y = -1 downto 1]..
+6 | for n = b downto b
+5 | for b in [2] and r = 3 to 2
+4 | for y = -3 downto -1 and z = 3 downto -2
+3 | when abs y mod 2 = 1
 |}];;
 
 [|(b, n, r, y, z)
-  when abs y mod 2 = 1
-  for y = -3 downto -1 and z = 3 downto -2
-  for b in [|2|] and r = 3 to 2
+  for b in [|-1; 3; 3; 2; 3; -3; 0|] and y = -1 downto 1
   for n = b downto b
-  for b in [|-1; 3; 3; 2; 3; -3; 0|] and y = -1 downto 1|];;
+  for b in [|2|] and r = 3 to 2
+  for y = -3 downto -1 and z = 3 downto -2
+  when abs y mod 2 = 1|];;
 [%%expect{|
 Lines 1-6, characters 0-58:
 1 | [|(b, n, r, y, z)
-2 |   when abs y mod 2 = 1
-3 |   for y = -3 downto -1 and z = 3 downto -2
-4 |   for b in [|2|] and r = 3 to 2
-5 |   for n = b downto b
-6 |   for b in [|-1; 3; 3; 2; 3; -3; 0|] and y = -1 downto 1|]..
-Warning 26 [unused-var]: unused variable y.
+2 |
 - : (int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable y. for b in [|-1; 3; 3; 2; 3; -3; 0|] and y = -1 downto 1|]..
+6 | for n = b downto b
+5 | for b in [|2|] and r = 3 to 2
+4 | for y = -3 downto -1 and z = 3 downto -2
+3 | when abs y mod 2 = 1
 |}];;
 
 [(h, i, o, t, x)
-  when abs i mod 2 = 1
-  for i = -3 downto -3
+  for h = -1 downto 1 and o = -3 to -3
   for t in [1; 2; -2; -1; -2; -2; o] and x in [-3; 2]
-  for h = -1 downto 1 and o = -3 to -3];;
+  for i = -3 downto -3
+  when abs i mod 2 = 1];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(h, i, o, t, x)
-  when abs i mod 2 = 1
-  for i = -3 downto -3
+  for h = -1 downto 1 and o = -3 to -3
   for t in [|1; 2; -2; -1; -2; -2; o|] and x in [|-3; 2|]
-  for h = -1 downto 1 and o = -3 to -3|];;
+  for i = -3 downto -3
+  when abs i mod 2 = 1|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(k, o, q, r, u, v)
-  when o < 0
-  for o = 0 to u
+  for k = 2 downto -3 and r = 0 to 2 and u = 0 downto 3
   for v in [k; -2] and q = -1 downto 1
-  for k = 2 downto -3 and r = 0 to 2 and u = 0 downto 3];;
+  for o = 0 to u
+  when o < 0];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(k, o, q, r, u, v)
-  when o < 0
-  for o = 0 to u
+  for k = 2 downto -3 and r = 0 to 2 and u = 0 downto 3
   for v in [|k; -2|] and q = -1 downto 1
-  for k = 2 downto -3 and r = 0 to 2 and u = 0 downto 3|];;
+  for o = 0 to u
+  when o < 0|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(c, e, i, n, q)
-  for i = -1 to -2 and c in [3; 0]
+  for e in []
   for n = -3 downto 3 and e in [-1; 0; -1] and q = 1 downto -3
-  for e in []];;
+  for i = -1 to -2 and c in [3; 0]];;
 [%%expect{|
 Line 4, characters 6-7:
-4 |   for e in []];;
+4 | for e in []];;
           ^
 Warning 26 [unused-var]: unused variable e.
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(c, e, i, n, q)
-  for i = -1 to -2 and c in [|3; 0|]
+  for e in [||]
   for n = -3 downto 3 and e in [|-1; 0; -1|] and q = 1 downto -3
-  for e in [||]|];;
+  for i = -1 to -2 and c in [|3; 0|]|];;
 [%%expect{|
 Line 4, characters 6-7:
-4 |   for e in [||]|];;
+4 | for e in [||]|];;
           ^
 Warning 26 [unused-var]: unused variable e.
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(b, i, n, o, u, v)
-  for u = b downto -1
-  for v in [] and b = -2 downto 2
-  for n in [o]
+  for _ in [3; 0; -1; 3; -3; -3; -2]
   for i = -3 downto -2 and o = 2 to 1
-  for _ in [3; 0; -1; 3; -3; -3; -2]];;
+  for n in [o]
+  for v in [] and b = -2 downto 2
+  for u = b downto -1];;
 [%%expect{|
 - : (int * int * int * int * int * 'a) list = []
 |}];;
 
 [|(b, i, n, o, u, v)
-  for u = b downto -1
-  for v in [||] and b = -2 downto 2
-  for n in [|o|]
+  for _ in [|3; 0; -1; 3; -3; -3; -2|]
   for i = -3 downto -2 and o = 2 to 1
-  for _ in [|3; 0; -1; 3; -3; -3; -2|]|];;
+  for n in [|o|]
+  for v in [||] and b = -2 downto 2
+  for u = b downto -1|];;
 [%%expect{|
 - : (int * int * int * int * int * '_weak20) array = [||]
 |}];;
 
 [(c, h, m, n, s, x, y)
-  for h in [0; -1; 3; -3; 3; -1; 2]
-  and c = 0 to y
-  and x = -3 downto 2
-  and n = y downto 1
-  when abs y mod 2 = 0
   for m in [2; 1; 2; -2; -3; -3; -1]
   and s = 1 to -1
   and y = 1 downto -3
-  and n = -3 downto -2];;
+  and n = -3 downto -2
+  when abs y mod 2 = 0
+  for h in [0; -1; 3; -3; 3; -1; 2]
+  and c = 0 to y
+  and x = -3 downto 2
+  and n = y downto 1];;
 [%%expect{|
 Lines 1-10, characters 0-23:
  1 | [(c, h, m, n, s, x, y)
- 2 |   for h in [0; -1; 3; -3; 3; -1; 2]
- 3 |   and c = 0 to y
- 4 |   and x = -3 downto 2
- 5 |   and n = y downto 1
- 6 |   when abs y mod 2 = 0
- 7 |   for m in [2; 1; 2; -2; -3; -3; -1]
- 8 |   and s = 1 to -1
- 9 |   and y = 1 downto -3
-10 |   and n = -3 downto -2]..
-Warning 26 [unused-var]: unused variable n.
+ 2 |
 - : (int * int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable n.
+10 |   and n = -3 downto -2]..
+ 9 |   and y = 1 downto -3
+ 8 |   and s = 1 to -1 for m in [2; 1; 2; -2; -3; -3; -1]
+ 7 | when abs y mod 2 = 0
+ 6 |
+ 5 |   and n = y downto 1
+ 4 |   and x = -3 downto 2
+ 3 |   and c = 0 to y for h in [0; -1; 3; -3; 3; -1; 2]
 |}];;
 
 [|(c, h, m, n, s, x, y)
-  for h in [|0; -1; 3; -3; 3; -1; 2|]
-  and c = 0 to y
-  and x = -3 downto 2
-  and n = y downto 1
-  when abs y mod 2 = 0
   for m in [|2; 1; 2; -2; -3; -3; -1|]
   and s = 1 to -1
   and y = 1 downto -3
-  and n = -3 downto -2|];;
+  and n = -3 downto -2
+  when abs y mod 2 = 0
+  for h in [|0; -1; 3; -3; 3; -1; 2|]
+  and c = 0 to y
+  and x = -3 downto 2
+  and n = y downto 1|];;
 [%%expect{|
 Lines 1-10, characters 0-24:
  1 | [|(c, h, m, n, s, x, y)
- 2 |   for h in [|0; -1; 3; -3; 3; -1; 2|]
- 3 |   and c = 0 to y
- 4 |   and x = -3 downto 2
- 5 |   and n = y downto 1
- 6 |   when abs y mod 2 = 0
- 7 |   for m in [|2; 1; 2; -2; -3; -3; -1|]
- 8 |   and s = 1 to -1
- 9 |   and y = 1 downto -3
-10 |   and n = -3 downto -2|]..
-Warning 26 [unused-var]: unused variable n.
+ 2 |
 - : (int * int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable n.
+10 |   and n = -3 downto -2|]..
+ 9 |   and y = 1 downto -3
+ 8 |   and s = 1 to -1 for m in [|2; 1; 2; -2; -3; -3; -1|]
+ 7 | when abs y mod 2 = 0
+ 6 |
+ 5 |   and n = y downto 1
+ 4 |   and x = -3 downto 2
+ 3 |   and c = 0 to y for h in [|0; -1; 3; -3; 3; -1; 2|]
 |}];;
 
 [(e, k, m, n, p, q, y)
-  for n = -1 downto q
-  for n = -3 downto 3 and p in [1; 2; -3; 1; 2]
-  for m in [3; 0; -1] and q = 3 downto -2
+  for e in [-3; 2; 0; -2; -3] and y in [-2]
   for k in [0]
-  for e in [-3; 2; 0; -2; -3] and y in [-2]];;
+  for m in [3; 0; -1] and q = 3 downto -2
+  for n = -3 downto 3 and p in [1; 2; -3; 1; 2]
+  for n = -1 downto q];;
 [%%expect{|
 Lines 1-6, characters 0-44:
 1 | [(e, k, m, n, p, q, y)
-2 |   for n = -1 downto q
-3 |   for n = -3 downto 3 and p in [1; 2; -3; 1; 2]
-4 |   for m in [3; 0; -1] and q = 3 downto -2
-5 |   for k in [0]
-6 |   for e in [-3; 2; 0; -2; -3] and y in [-2]]..
-Warning 26 [unused-var]: unused variable n.
+2 |
 - : (int * int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable n. for e in [-3; 2; 0; -2; -3] and y in [-2]]..
+6 | for k in [0]
+5 | for m in [3; 0; -1] and q = 3 downto -2
+4 | for n = -3 downto 3 and p in [1; 2; -3; 1; 2]
+3 | for n = -1 downto q
 |}];;
 
 [|(e, k, m, n, p, q, y)
-  for n = -1 downto q
-  for n = -3 downto 3 and p in [|1; 2; -3; 1; 2|]
-  for m in [|3; 0; -1|] and q = 3 downto -2
+  for e in [|-3; 2; 0; -2; -3|] and y in [|-2|]
   for k in [|0|]
-  for e in [|-3; 2; 0; -2; -3|] and y in [|-2|]|];;
+  for m in [|3; 0; -1|] and q = 3 downto -2
+  for n = -3 downto 3 and p in [|1; 2; -3; 1; 2|]
+  for n = -1 downto q|];;
 [%%expect{|
 Lines 1-6, characters 0-49:
 1 | [|(e, k, m, n, p, q, y)
-2 |   for n = -1 downto q
-3 |   for n = -3 downto 3 and p in [|1; 2; -3; 1; 2|]
-4 |   for m in [|3; 0; -1|] and q = 3 downto -2
-5 |   for k in [|0|]
-6 |   for e in [|-3; 2; 0; -2; -3|] and y in [|-2|]|]..
-Warning 26 [unused-var]: unused variable n.
+2 |
 - : (int * int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable n. for e in [|-3; 2; 0; -2; -3|] and y in [|-2|]|]..
+6 | for k in [|0|]
+5 | for m in [|3; 0; -1|] and q = 3 downto -2
+4 | for n = -3 downto 3 and p in [|1; 2; -3; 1; 2|]
+3 | for n = -1 downto q
 |}];;
 
 [(b, d, j, m, z)
-  for m = 0 downto -3 and j = 2 to 3
-  when abs b mod 2 = 1
+  for z = 0 to 2
   for d = 1 downto -2 and b = -2 downto 3
-  for z = 0 to 2];;
+  when abs b mod 2 = 1
+  for m = 0 downto -3 and j = 2 to 3];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(b, d, j, m, z)
-  for m = 0 downto -3 and j = 2 to 3
-  when abs b mod 2 = 1
+  for z = 0 to 2
   for d = 1 downto -2 and b = -2 downto 3
-  for z = 0 to 2|];;
+  when abs b mod 2 = 1
+  for m = 0 downto -3 and j = 2 to 3|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(b, o, p, q)
-  when p < 0
-  for o in [-1; -1; 0] and b = -2 to 1 and p in [] and q in [3; -2; 3; -3]];;
+  for o in [-1; -1; 0] and b = -2 to 1 and p in [] and q in [3; -2; 3; -3]
+  when p < 0];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(b, o, p, q)
-  when p < 0
   for o in [|-1; -1; 0|]
   and b = -2 to 1
   and p in [||]
-  and q in [|3; -2; 3; -3|]|];;
+  and q in [|3; -2; 3; -3|]
+  when p < 0|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
@@ -1617,29 +1617,29 @@ Warning 26 [unused-var]: unused variable n.
 |}];;
 
 [(b, f, g, s, w)
-  for f in [-1; 2; 0]
-  for w in [-2; -2; 2] and s in [3; 2; 1; b; 3; 2; 0] and g = 1 to 0
+  for b = -2 to 1
   for _ in [2; 2; -2] and w in []
-  for b = -2 to 1];;
+  for w in [-2; -2; 2] and s in [3; 2; 1; b; 3; 2; 0] and g = 1 to 0
+  for f in [-1; 2; 0]];;
 [%%expect{|
 Line 4, characters 26-27:
-4 |   for _ in [2; 2; -2] and w in []
-                              ^
-Warning 26 [unused-var]: unused variable w.
+4 |
 - : (int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable w.
+                              ^ for _ in [2; 2; -2] and w in []
 |}];;
 
 [|(b, f, g, s, w)
-  for f in [|-1; 2; 0|]
-  for w in [|-2; -2; 2|] and s in [|3; 2; 1; b; 3; 2; 0|] and g = 1 to 0
+  for b = -2 to 1
   for _ in [|2; 2; -2|] and w in [||]
-  for b = -2 to 1|];;
+  for w in [|-2; -2; 2|] and s in [|3; 2; 1; b; 3; 2; 0|] and g = 1 to 0
+  for f in [|-1; 2; 0|]|];;
 [%%expect{|
 Line 4, characters 28-29:
-4 |   for _ in [|2; 2; -2|] and w in [||]
-                                ^
-Warning 26 [unused-var]: unused variable w.
+4 |
 - : (int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable w.
+                                ^ for _ in [|2; 2; -2|] and w in [||]
 |}];;
 
 [(k, n, v, z)
@@ -1655,59 +1655,59 @@ Warning 26 [unused-var]: unused variable w.
 |}];;
 
 [(e, j, r, t, v, x)
-  for r in [-1; -2; -3] and v in [-3; -1; 1; 2; 0] and t = 2 to 1
-  when x <> 0
+  for x in [-2; 3; 3] and e in [-2; 3; 3; 3] and j in []
   when j <> 0
-  for x in [-2; 3; 3] and e in [-2; 3; 3; 3] and j in []];;
+  when x <> 0
+  for r in [-1; -2; -3] and v in [-3; -1; 1; 2; 0] and t = 2 to 1];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(e, j, r, t, v, x)
-  for r in [|-1; -2; -3|] and v in [|-3; -1; 1; 2; 0|] and t = 2 to 1
-  when x <> 0
+  for x in [|-2; 3; 3|] and e in [|-2; 3; 3; 3|] and j in [||]
   when j <> 0
-  for x in [|-2; 3; 3|] and e in [|-2; 3; 3; 3|] and j in [||]|];;
+  when x <> 0
+  for r in [|-1; -2; -3|] and v in [|-3; -1; 1; 2; 0|] and t = 2 to 1|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(c, d, f, g, w)
-  for w = -2 downto 0 and f in [2; 2]
-  when c < 0
-  when d > 0
+  for g = -2 to -2
   for d = -1 to g and c in [2; 1; g; -2; g; g]
-  for g = -2 to -2];;
+  when d > 0
+  when c < 0
+  for w = -2 downto 0 and f in [2; 2]];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(c, d, f, g, w)
-  for w = -2 downto 0 and f in [|2; 2|]
-  when c < 0
-  when d > 0
+  for g = -2 to -2
   for d = -1 to g and c in [|2; 1; g; -2; g; g|]
-  for g = -2 to -2|];;
+  when d > 0
+  when c < 0
+  for w = -2 downto 0 and f in [|2; 2|]|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(a, j, o, t)
-  for a in [-3; j; 2; 3]
-  for o in [1; 3; -1; 0; -1]
-  when abs j mod 2 = 1
+  for j = 0 downto 1 and t in [3; -1; 3; -2; -1; -1]
   when j <> 0
-  for j = 0 downto 1 and t in [3; -1; 3; -2; -1; -1]];;
+  when abs j mod 2 = 1
+  for o in [1; 3; -1; 0; -1]
+  for a in [-3; j; 2; 3]];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(a, j, o, t)
-  for a in [|-3; j; 2; 3|]
-  for o in [|1; 3; -1; 0; -1|]
-  when abs j mod 2 = 1
+  for j = 0 downto 1 and t in [|3; -1; 3; -2; -1; -1|]
   when j <> 0
-  for j = 0 downto 1 and t in [|3; -1; 3; -2; -1; -1|]|];;
+  when abs j mod 2 = 1
+  for o in [|1; 3; -1; 0; -1|]
+  for a in [|-3; j; 2; 3|]|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
@@ -1735,47 +1735,47 @@ Warning 26 [unused-var]: unused variable w.
 |}];;
 
 [(i, j, l, m, p, q, y)
-  for p in [-3; 0] and j = 0 to 2 and l = -2 to m
   for y = -2 downto 3
   and i in [-2; -1]
   and q in [3; -3; 3; -2; 0; -3; -2]
-  and m in [2; 1]];;
+  and m in [2; 1]
+  for p in [-3; 0] and j = 0 to 2 and l = -2 to m];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(i, j, l, m, p, q, y)
-  for p in [|-3; 0|] and j = 0 to 2 and l = -2 to m
   for y = -2 downto 3
   and i in [|-2; -1|]
   and q in [|3; -3; 3; -2; 0; -3; -2|]
-  and m in [|2; 1|]|];;
+  and m in [|2; 1|]
+  for p in [|-3; 0|] and j = 0 to 2 and l = -2 to m|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(a, k, m, s, u)
-  for m in [-3; 2]
+  for u = 3 to -2
   for k in [] and a = -2 to u and s in [2; -1; u]
-  for u = 3 to -2];;
+  for m in [-3; 2]];;
 [%%expect{|
 - : (int * 'a * int * int * int) list = []
 |}];;
 
 [|(a, k, m, s, u)
-  for m in [|-3; 2|]
+  for u = 3 to -2
   for k in [||] and a = -2 to u and s in [|2; -1; u|]
-  for u = 3 to -2|];;
+  for m in [|-3; 2|]|];;
 [%%expect{|
 - : (int * '_weak21 * int * int * int) array = [||]
 |}];;
 
 [(b, i)
-  for i in [3; -1; 1; -1; 0]
+  for i in [-1]
+  when abs i mod 2 = 1
+  when abs i mod 2 = 1
   for b in [-1; 0]
-  when abs i mod 2 = 1
-  when abs i mod 2 = 1
-  for i in [-1]];;
+  for i in [3; -1; 1; -1; 0]];;
 [%%expect{|
 - : (int * int) list =
 [(-1, 3); (-1, -1); (-1, 1); (-1, -1); (-1, 0); (0, 3); (0, -1); (0, 1);
@@ -1783,11 +1783,11 @@ Warning 26 [unused-var]: unused variable w.
 |}];;
 
 [|(b, i)
-  for i in [|3; -1; 1; -1; 0|]
+  for i in [|-1|]
+  when abs i mod 2 = 1
+  when abs i mod 2 = 1
   for b in [|-1; 0|]
-  when abs i mod 2 = 1
-  when abs i mod 2 = 1
-  for i in [|-1|]|];;
+  for i in [|3; -1; 1; -1; 0|]|];;
 [%%expect{|
 - : (int * int) array =
 [|(-1, 3); (-1, -1); (-1, 1); (-1, -1); (-1, 0); (0, 3); (0, -1); (0, 1);
@@ -1817,97 +1817,97 @@ Warning 26 [unused-var]: unused variable w.
 |}];;
 
 [(b, d, r)
-  for r = 1 to -2 and b = r downto 2 and d = -3 to 0
-  for r = -3 downto -2 and _ = -3 to -3 and _ = 1 to 3];;
+  for r = -3 downto -2 and _ = -3 to -3 and _ = 1 to 3
+  for r = 1 to -2 and b = r downto 2 and d = -3 to 0];;
 [%%expect{|
 - : (int * int * int) list = []
 |}];;
 
 [|(b, d, r)
-  for r = 1 to -2 and b = r downto 2 and d = -3 to 0
-  for r = -3 downto -2 and _ = -3 to -3 and _ = 1 to 3|];;
+  for r = -3 downto -2 and _ = -3 to -3 and _ = 1 to 3
+  for r = 1 to -2 and b = r downto 2 and d = -3 to 0|];;
 [%%expect{|
 - : (int * int * int) array = [||]
 |}];;
 
 [(a, c, f, j, t)
-  when abs j mod 2 = 1
+  for f = -1 downto 1
   for a = -1 downto 3
   and c in [1; 2; f]
   and j in [-3; 1; 2; 1]
   and t in [0; -3; -1; 1; -1; -3; f]
-  for f = -1 downto 1];;
+  when abs j mod 2 = 1];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(a, c, f, j, t)
-  when abs j mod 2 = 1
+  for f = -1 downto 1
   for a = -1 downto 3
   and c in [|1; 2; f|]
   and j in [|-3; 1; 2; 1|]
   and t in [|0; -3; -1; 1; -1; -3; f|]
-  for f = -1 downto 1|];;
+  when abs j mod 2 = 1|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(b, c, g, i, l, s, x, y)
-  for s = -2 to 0
-  for x in [3] and l = -2 downto 2
-  for b in [1] and c = 2 downto 0
+  for i in [-3; -3; 2; -3]
   for y in [i; 2; 3; -1; 1; -1; 3] and g in [1; -3; 2]
-  for i in [-3; -3; 2; -3]];;
+  for b in [1] and c = 2 downto 0
+  for x in [3] and l = -2 downto 2
+  for s = -2 to 0];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(b, c, g, i, l, s, x, y)
-  for s = -2 to 0
-  for x in [|3|] and l = -2 downto 2
-  for b in [|1|] and c = 2 downto 0
+  for i in [|-3; -3; 2; -3|]
   for y in [|i; 2; 3; -1; 1; -1; 3|] and g in [|1; -3; 2|]
-  for i in [|-3; -3; 2; -3|]|];;
+  for b in [|1|] and c = 2 downto 0
+  for x in [|3|] and l = -2 downto 2
+  for s = -2 to 0|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(c, d, k, o, u, w, x)
-  for w in [-2]
-  for x in [2; -2; -3; 0; 1] and o in [2; 2; 3; 0; 3; 1]
-  for c = u to -1 and k in [-2; 1; 0; 0; -2]
+  for w in [1; 1; 0; 3; 0; 0]
   for d in [-3; 2] and u = w to 1
-  for w in [1; 1; 0; 3; 0; 0]];;
+  for c = u to -1 and k in [-2; 1; 0; 0; -2]
+  for x in [2; -2; -3; 0; 1] and o in [2; 2; 3; 0; 3; 1]
+  for w in [-2]];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(c, d, k, o, u, w, x)
-  for w in [|-2|]
-  for x in [|2; -2; -3; 0; 1|] and o in [|2; 2; 3; 0; 3; 1|]
-  for c = u to -1 and k in [|-2; 1; 0; 0; -2|]
+  for w in [|1; 1; 0; 3; 0; 0|]
   for d in [|-3; 2|] and u = w to 1
-  for w in [|1; 1; 0; 3; 0; 0|]|];;
+  for c = u to -1 and k in [|-2; 1; 0; 0; -2|]
+  for x in [|2; -2; -3; 0; 1|] and o in [|2; 2; 3; 0; 3; 1|]
+  for w in [|-2|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(b, c, d, p, r, s, z)
-  for p in [1; -1; -1; c]
-  for d = 0 to 1 and b = 0 downto -2
-  when abs z mod 2 = 0
+  for s = 2 downto -2 and c in [1; -1; 2; 0; -1; -3; -2]
   for r = -2 downto 1 and z in [-1; 0]
-  for s = 2 downto -2 and c in [1; -1; 2; 0; -1; -3; -2]];;
+  when abs z mod 2 = 0
+  for d = 0 to 1 and b = 0 downto -2
+  for p in [1; -1; -1; c]];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(b, c, d, p, r, s, z)
-  for p in [|1; -1; -1; c|]
-  for d = 0 to 1 and b = 0 downto -2
-  when abs z mod 2 = 0
+  for s = 2 downto -2 and c in [|1; -1; 2; 0; -1; -3; -2|]
   for r = -2 downto 1 and z in [|-1; 0|]
-  for s = 2 downto -2 and c in [|1; -1; 2; 0; -1; -3; -2|]|];;
+  when abs z mod 2 = 0
+  for d = 0 to 1 and b = 0 downto -2
+  for p in [|1; -1; -1; c|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
@@ -1931,63 +1931,63 @@ Warning 26 [unused-var]: unused variable w.
 |}];;
 
 [(g, k, p, q, r, t, u, w, x)
-  for t = 1 downto -1
-  for k = -3 downto -2 and q in [-1; 1; 0; 3]
-  for w = 0 downto 2 and g = 2 downto r
+  for r in [2] and u = -1 downto -1
   for x in [1; -2; 2; -2] and p = 3 downto u
-  for r in [2] and u = -1 downto -1];;
+  for w = 0 downto 2 and g = 2 downto r
+  for k = -3 downto -2 and q in [-1; 1; 0; 3]
+  for t = 1 downto -1];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(g, k, p, q, r, t, u, w, x)
-  for t = 1 downto -1
-  for k = -3 downto -2 and q in [|-1; 1; 0; 3|]
-  for w = 0 downto 2 and g = 2 downto r
+  for r in [|2|] and u = -1 downto -1
   for x in [|1; -2; 2; -2|] and p = 3 downto u
-  for r in [|2|] and u = -1 downto -1|];;
+  for w = 0 downto 2 and g = 2 downto r
+  for k = -3 downto -2 and q in [|-1; 1; 0; 3|]
+  for t = 1 downto -1|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(g, h, i, j, p, r, y)
+  for h = -3 to 2 and r = 0 to -1 and i = 1 to -3
+  for y = -3 to 0 and p in [-3; 3; 0]
   for g in [2; 2; 3; -1; -3; -2]
   and h = 0 downto 0
   and _ = -3 downto 1
-  and j = -2 downto -3
-  for y = -3 to 0 and p in [-3; 3; 0]
-  for h = -3 to 2 and r = 0 to -1 and i = 1 to -3];;
+  and j = -2 downto -3];;
 [%%expect{|
 Lines 1-7, characters 0-50:
 1 | [(g, h, i, j, p, r, y)
-2 |   for g in [2; 2; 3; -1; -3; -2]
-3 |   and h = 0 downto 0
-4 |   and _ = -3 downto 1
-5 |   and j = -2 downto -3
-6 |   for y = -3 to 0 and p in [-3; 3; 0]
-7 |   for h = -3 to 2 and r = 0 to -1 and i = 1 to -3]..
-Warning 26 [unused-var]: unused variable h.
+2 |
 - : (int * int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable h. for h = -3 to 2 and r = 0 to -1 and i = 1 to -3]..
+7 | for y = -3 to 0 and p in [-3; 3; 0]
+6 |
+5 |   and j = -2 downto -3
+4 |   and _ = -3 downto 1
+3 |   and h = 0 downto 0 for g in [2; 2; 3; -1; -3; -2]
 |}];;
 
 [|(g, h, i, j, p, r, y)
+  for h = -3 to 2 and r = 0 to -1 and i = 1 to -3
+  for y = -3 to 0 and p in [|-3; 3; 0|]
   for g in [|2; 2; 3; -1; -3; -2|]
   and h = 0 downto 0
   and _ = -3 downto 1
-  and j = -2 downto -3
-  for y = -3 to 0 and p in [|-3; 3; 0|]
-  for h = -3 to 2 and r = 0 to -1 and i = 1 to -3|];;
+  and j = -2 downto -3|];;
 [%%expect{|
 Lines 1-7, characters 0-51:
 1 | [|(g, h, i, j, p, r, y)
-2 |   for g in [|2; 2; 3; -1; -3; -2|]
-3 |   and h = 0 downto 0
-4 |   and _ = -3 downto 1
-5 |   and j = -2 downto -3
-6 |   for y = -3 to 0 and p in [|-3; 3; 0|]
-7 |   for h = -3 to 2 and r = 0 to -1 and i = 1 to -3|]..
-Warning 26 [unused-var]: unused variable h.
+2 |
 - : (int * int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable h. for h = -3 to 2 and r = 0 to -1 and i = 1 to -3|]..
+7 | for y = -3 to 0 and p in [|-3; 3; 0|]
+6 |
+5 |   and j = -2 downto -3
+4 |   and _ = -3 downto 1
+3 |   and h = 0 downto 0 for g in [|2; 2; 3; -1; -3; -2|]
 |}];;
 
 [(c, d, n, r, s, w)
@@ -2013,79 +2013,79 @@ Warning 26 [unused-var]: unused variable h.
 |}];;
 
 [(d, t, u, v, w, x, z)
-  for t in [-1; -3; 2; 1; 3]
+  for v = 0 to 1 and u in [-1; 0] and w in [2; 1; 1; 0]
   for d = 0 to -3 and x in [1; 3] and z = -2 to 2
-  for v = 0 to 1 and u in [-1; 0] and w in [2; 1; 1; 0]];;
+  for t in [-1; -3; 2; 1; 3]];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(d, t, u, v, w, x, z)
-  for t in [|-1; -3; 2; 1; 3|]
+  for v = 0 to 1 and u in [|-1; 0|] and w in [|2; 1; 1; 0|]
   for d = 0 to -3 and x in [|1; 3|] and z = -2 to 2
-  for v = 0 to 1 and u in [|-1; 0|] and w in [|2; 1; 1; 0|]|];;
+  for t in [|-1; -3; 2; 1; 3|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(e, m, o, r, v)
+  for v = 2 downto -3 and e = -2 to -3 and o in [2; -3; -2; 1]
+  when o < 0
   for r = -2 to e
   and _ in [-1; -1; 0]
   and m in [0; 1; -1; -2]
-  and _ in [1; -3; 3; -1; 2; -1]
-  when o < 0
-  for v = 2 downto -3 and e = -2 to -3 and o in [2; -3; -2; 1]];;
+  and _ in [1; -3; 3; -1; 2; -1]];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(e, m, o, r, v)
+  for v = 2 downto -3 and e = -2 to -3 and o in [|2; -3; -2; 1|]
+  when o < 0
   for r = -2 to e
   and _ in [|-1; -1; 0|]
   and m in [|0; 1; -1; -2|]
-  and _ in [|1; -3; 3; -1; 2; -1|]
-  when o < 0
-  for v = 2 downto -3 and e = -2 to -3 and o in [|2; -3; -2; 1|]|];;
+  and _ in [|1; -3; 3; -1; 2; -1|]|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(f, g, h, l, t)
-  for g = -2 to l
-  for _ in [3; -2]
-  for t in []
+  for f = -3 downto 1 and h in [0; 1; 3; 3; -1; -3; 0]
   for l = -1 to 1
-  for f = -3 downto 1 and h in [0; 1; 3; 3; -1; -3; 0]];;
+  for t in []
+  for _ in [3; -2]
+  for g = -2 to l];;
 [%%expect{|
 - : (int * int * int * int * 'a) list = []
 |}];;
 
 [|(f, g, h, l, t)
-  for g = -2 to l
-  for _ in [|3; -2|]
-  for t in [||]
+  for f = -3 downto 1 and h in [|0; 1; 3; 3; -1; -3; 0|]
   for l = -1 to 1
-  for f = -3 downto 1 and h in [|0; 1; 3; 3; -1; -3; 0|]|];;
+  for t in [||]
+  for _ in [|3; -2|]
+  for g = -2 to l|];;
 [%%expect{|
 - : (int * int * int * int * '_weak24) array = [||]
 |}];;
 
-[a when abs a mod 2 = 0 for a in [-2; 2]];;
+[a for a in [-2; 2] when abs a mod 2 = 0];;
 [%%expect{|
 - : int list = [-2; 2]
 |}];;
 
-[|a when abs a mod 2 = 0 for a in [|-2; 2|]|];;
+[|a for a in [|-2; 2|] when abs a mod 2 = 0|];;
 [%%expect{|
 - : int array = [|-2; 2|]
 |}];;
 
 [(f, x, z)
-  when abs x mod 2 = 0
-  when abs f mod 2 = 0
   for z in [3; 1; 1; 2]
   and x in [-3; -3; 0; -1; 3]
-  and f in [1; -1; 2; -3; 1; -2]];;
+  and f in [1; -1; 2; -3; 1; -2]
+  when abs f mod 2 = 0
+  when abs x mod 2 = 0];;
 [%%expect{|
 - : (int * int * int) list =
 [(2, 0, 3); (-2, 0, 3); (2, 0, 1); (-2, 0, 1); (2, 0, 1); (-2, 0, 1);
@@ -2093,11 +2093,11 @@ Warning 26 [unused-var]: unused variable h.
 |}];;
 
 [|(f, x, z)
-  when abs x mod 2 = 0
-  when abs f mod 2 = 0
   for z in [|3; 1; 1; 2|]
   and x in [|-3; -3; 0; -1; 3|]
-  and f in [|1; -1; 2; -3; 1; -2|]|];;
+  and f in [|1; -1; 2; -3; 1; -2|]
+  when abs f mod 2 = 0
+  when abs x mod 2 = 0|];;
 [%%expect{|
 - : (int * int * int) array =
 [|(2, 0, 3); (-2, 0, 3); (2, 0, 1); (-2, 0, 1); (2, 0, 1); (-2, 0, 1);
@@ -2105,45 +2105,45 @@ Warning 26 [unused-var]: unused variable h.
 |}];;
 
 [(c, e, f, j, m, p, y)
-  for j in [-2; -1] and c = 2 to 3 and m in [-3; -2; 3; 0; 1; y; -3]
-  when e < 0
+  for f = 2 downto -3 and y in [-1; -3; -3]
   for e = 1 to 2 and p in [1; 2; 3; -2] and y = 0 downto 2
-  for f = 2 downto -3 and y in [-1; -3; -3]];;
+  when e < 0
+  for j in [-2; -1] and c = 2 to 3 and m in [-3; -2; 3; 0; 1; y; -3]];;
 [%%expect{|
 Line 5, characters 26-27:
-5 |   for f = 2 downto -3 and y in [-1; -3; -3]];;
+5 | for f = 2 downto -3 and y in [-1; -3; -3]];;
                               ^
 Warning 26 [unused-var]: unused variable y.
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(c, e, f, j, m, p, y)
-  for j in [|-2; -1|] and c = 2 to 3 and m in [|-3; -2; 3; 0; 1; y; -3|]
-  when e < 0
+  for f = 2 downto -3 and y in [|-1; -3; -3|]
   for e = 1 to 2 and p in [|1; 2; 3; -2|] and y = 0 downto 2
-  for f = 2 downto -3 and y in [|-1; -3; -3|]|];;
+  when e < 0
+  for j in [|-2; -1|] and c = 2 to 3 and m in [|-3; -2; 3; 0; 1; y; -3|]|];;
 [%%expect{|
 Line 5, characters 26-27:
-5 |   for f = 2 downto -3 and y in [|-1; -3; -3|]|];;
+5 | for f = 2 downto -3 and y in [|-1; -3; -3|]|];;
                               ^
 Warning 26 [unused-var]: unused variable y.
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(d, h, o, p, t, x)
-  for p in [1; -1; -3; 1; 0; -2; 3] and o in [-1; -1; -1]
-  for x = -2 downto 1
+  for t = 0 to -1 and d in [0; 0; 2; 1; -1] and h in [3; 3]
   when abs t mod 2 = 1
-  for t = 0 to -1 and d in [0; 0; 2; 1; -1] and h in [3; 3]];;
+  for x = -2 downto 1
+  for p in [1; -1; -3; 1; 0; -2; 3] and o in [-1; -1; -1]];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(d, h, o, p, t, x)
-  for p in [|1; -1; -3; 1; 0; -2; 3|] and o in [|-1; -1; -1|]
-  for x = -2 downto 1
+  for t = 0 to -1 and d in [|0; 0; 2; 1; -1|] and h in [|3; 3|]
   when abs t mod 2 = 1
-  for t = 0 to -1 and d in [|0; 0; 2; 1; -1|] and h in [|3; 3|]|];;
+  for x = -2 downto 1
+  for p in [|1; -1; -3; 1; 0; -2; 3|] and o in [|-1; -1; -1|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
@@ -2169,12 +2169,12 @@ Warning 26 [unused-var]: unused variable y.
 |}];;
 
 [(a, c, e, i, t, x)
-  for i = 2 to -2 and a = -1 downto 3 and c in [-3; 0; -2]
   for e = 3 downto -2
   and i = 3 downto 2
   and t in [2; 1; 1; 2; -1]
   and c in [3; -1]
-  and x = 3 downto 2];;
+  and x = 3 downto 2
+  for i = 2 to -2 and a = -1 downto 3 and c in [-3; 0; -2]];;
 [%%expect{|
 Line 6, characters 6-7:
 6 |   and c in [3; -1]
@@ -2182,23 +2182,23 @@ Line 6, characters 6-7:
 Warning 26 [unused-var]: unused variable c.
 Lines 1-7, characters 0-21:
 1 | [(a, c, e, i, t, x)
-2 |   for i = 2 to -2 and a = -1 downto 3 and c in [-3; 0; -2]
-3 |   for e = 3 downto -2
-4 |   and i = 3 downto 2
-5 |   and t in [2; 1; 1; 2; -1]
-6 |   and c in [3; -1]
-7 |   and x = 3 downto 2]..
-Warning 26 [unused-var]: unused variable i.
+2 |
 - : (int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable i.
+7 |   and x = 3 downto 2]..
+6 |   and c in [3; -1]
+5 |   and t in [2; 1; 1; 2; -1]
+4 |   and i = 3 downto 2 for e = 3 downto -2
+3 | for i = 2 to -2 and a = -1 downto 3 and c in [-3; 0; -2]
 |}];;
 
 [|(a, c, e, i, t, x)
-  for i = 2 to -2 and a = -1 downto 3 and c in [|-3; 0; -2|]
   for e = 3 downto -2
   and i = 3 downto 2
   and t in [|2; 1; 1; 2; -1|]
   and c in [|3; -1|]
-  and x = 3 downto 2|];;
+  and x = 3 downto 2
+  for i = 2 to -2 and a = -1 downto 3 and c in [|-3; 0; -2|]|];;
 [%%expect{|
 Line 6, characters 6-7:
 6 |   and c in [|3; -1|]
@@ -2206,185 +2206,185 @@ Line 6, characters 6-7:
 Warning 26 [unused-var]: unused variable c.
 Lines 1-7, characters 0-22:
 1 | [|(a, c, e, i, t, x)
-2 |   for i = 2 to -2 and a = -1 downto 3 and c in [|-3; 0; -2|]
-3 |   for e = 3 downto -2
-4 |   and i = 3 downto 2
-5 |   and t in [|2; 1; 1; 2; -1|]
-6 |   and c in [|3; -1|]
-7 |   and x = 3 downto 2|]..
-Warning 26 [unused-var]: unused variable i.
+2 |
 - : (int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable i.
+7 |   and x = 3 downto 2|]..
+6 |   and c in [|3; -1|]
+5 |   and t in [|2; 1; 1; 2; -1|]
+4 |   and i = 3 downto 2 for e = 3 downto -2
+3 | for i = 2 to -2 and a = -1 downto 3 and c in [|-3; 0; -2|]
 |}];;
 
 [(e, l, s, x, z)
-  for l = 0 to -3
+  for x = -3 to 2
   for z = 2 to x and l = 1 to -2 and s = 0 downto 2 and e in [0; -3; -2; 1; 3]
-  for x = -3 to 2];;
+  for l = 0 to -3];;
 [%%expect{|
 Lines 1-4, characters 0-18:
 1 | [(e, l, s, x, z)
-2 |   for l = 0 to -3
-3 |   for z = 2 to x and l = 1 to -2 and s = 0 downto 2 and e in [0; -3; -2; 1; 3]
-4 |   for x = -3 to 2]..
-Warning 26 [unused-var]: unused variable l.
+2 |
 - : (int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable l. for x = -3 to 2]..
+4 | for z = 2 to x and l = 1 to -2 and s = 0 downto 2 and e in [0; -3; -2; 1; 3]
+3 | for l = 0 to -3
 |}];;
 
 [|(e, l, s, x, z)
-  for l = 0 to -3
+  for x = -3 to 2
   for z = 2 to x and l = 1 to -2 and s = 0 downto 2 and e in [|0; -3; -2; 1; 3|]
-  for x = -3 to 2|];;
+  for l = 0 to -3|];;
 [%%expect{|
 Lines 1-4, characters 0-19:
 1 | [|(e, l, s, x, z)
-2 |   for l = 0 to -3
-3 |   for z = 2 to x and l = 1 to -2 and s = 0 downto 2 and e in [|0; -3; -2; 1; 3|]
-4 |   for x = -3 to 2|]..
-Warning 26 [unused-var]: unused variable l.
+2 |
 - : (int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable l. for x = -3 to 2|]..
+4 | for z = 2 to x and l = 1 to -2 and s = 0 downto 2 and e in [|0; -3; -2; 1; 3|]
+3 | for l = 0 to -3
 |}];;
 
 [(e, g, l, u)
-  when abs u mod 2 = 0
-  for l in [] and u in [1; -3; 1] and g = -3 downto -1 and e = 2 downto 0];;
+  for l in [] and u in [1; -3; 1] and g = -3 downto -1 and e = 2 downto 0
+  when abs u mod 2 = 0];;
 [%%expect{|
 - : (int * int * 'a * int) list = []
 |}];;
 
 [|(e, g, l, u)
-  when abs u mod 2 = 0
   for l in [||]
   and u in [|1; -3; 1|]
   and g = -3 downto -1
-  and e = 2 downto 0|];;
+  and e = 2 downto 0
+  when abs u mod 2 = 0|];;
 [%%expect{|
 - : (int * int * '_weak25 * int) array = [||]
 |}];;
 
 [(d, f, q, t)
-  for t in [3]
-  when d < 0
-  for f in [-2; 0; 1; q]
+  for q in [3; 0] and d in []
   when q > 0
-  for q in [3; 0] and d in []];;
+  for f in [-2; 0; 1; q]
+  when d < 0
+  for t in [3]];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(d, f, q, t)
-  for t in [|3|]
-  when d < 0
-  for f in [|-2; 0; 1; q|]
+  for q in [|3; 0|] and d in [||]
   when q > 0
-  for q in [|3; 0|] and d in [||]|];;
+  for f in [|-2; 0; 1; q|]
+  when d < 0
+  for t in [|3|]|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(f, s, t, w, z)
-  for s in [] and t = -3 to -2
-  when abs z mod 2 = 1
+  for w in [1] and z = 2 to 2 and f = -1 downto -1
   for s in [1; 0; 0; -1]
-  for w in [1] and z = 2 to 2 and f = -1 downto -1];;
+  when abs z mod 2 = 1
+  for s in [] and t = -3 to -2];;
 [%%expect{|
 Line 4, characters 6-7:
-4 |   for s in [1; 0; 0; -1]
-          ^
-Warning 26 [unused-var]: unused variable s.
+4 |
 - : (int * 'a * int * int * int) list = []
+Warning 26 [unused-var]: unused variable s.
+          ^ for s in [1; 0; 0; -1]
 |}];;
 
 [|(f, s, t, w, z)
-  for s in [||] and t = -3 to -2
-  when abs z mod 2 = 1
+  for w in [|1|] and z = 2 to 2 and f = -1 downto -1
   for s in [|1; 0; 0; -1|]
-  for w in [|1|] and z = 2 to 2 and f = -1 downto -1|];;
+  when abs z mod 2 = 1
+  for s in [||] and t = -3 to -2|];;
 [%%expect{|
 Line 4, characters 6-7:
-4 |   for s in [|1; 0; 0; -1|]
-          ^
-Warning 26 [unused-var]: unused variable s.
+4 |
 - : (int * '_weak26 * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable s.
+          ^ for s in [|1; 0; 0; -1|]
 |}];;
 
 [(a, f, k, l, o, r)
-  for k in [r; 3; r; -3; 0; -2]
-  for f = -1 to 2
-  for l = 1 to -3
+  for r in [1; 1; 1; -1] and o = -2 to -2
   for a = -2 to 0
-  for r in [1; 1; 1; -1] and o = -2 to -2];;
+  for l = 1 to -3
+  for f = -1 to 2
+  for k in [r; 3; r; -3; 0; -2]];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, f, k, l, o, r)
-  for k in [|r; 3; r; -3; 0; -2|]
-  for f = -1 to 2
-  for l = 1 to -3
+  for r in [|1; 1; 1; -1|] and o = -2 to -2
   for a = -2 to 0
-  for r in [|1; 1; 1; -1|] and o = -2 to -2|];;
+  for l = 1 to -3
+  for f = -1 to 2
+  for k in [|r; 3; r; -3; 0; -2|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(j, p, u, z)
-  for j in [0]
+  for p = 2 to 1 and z = -3 downto 1 and u = -3 downto -2
   when abs z mod 2 = 1
-  for p = 2 to 1 and z = -3 downto 1 and u = -3 downto -2];;
+  for j in [0]];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(j, p, u, z)
-  for j in [|0|]
+  for p = 2 to 1 and z = -3 downto 1 and u = -3 downto -2
   when abs z mod 2 = 1
-  for p = 2 to 1 and z = -3 downto 1 and u = -3 downto -2|];;
+  for j in [|0|]|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(a, b, e, h, j, n)
-  when e <> 0
-  for n in [b; 3] and _ in [] and a in [-1; -2]
+  for b in [1; -2; -2; 3; 2; 2]
   for e in [1; -1; 1; 2] and j = -2 downto -2 and h in []
-  for b in [1; -2; -2; 3; 2; 2]];;
+  for n in [b; 3] and _ in [] and a in [-1; -2]
+  when e <> 0];;
 [%%expect{|
 - : (int * int * int * 'a * int * int) list = []
 |}];;
 
 [|(a, b, e, h, j, n)
-  when e <> 0
-  for n in [|b; 3|] and _ in [||] and a in [|-1; -2|]
+  for b in [|1; -2; -2; 3; 2; 2|]
   for e in [|1; -1; 1; 2|] and j = -2 downto -2 and h in [||]
-  for b in [|1; -2; -2; 3; 2; 2|]|];;
+  for n in [|b; 3|] and _ in [||] and a in [|-1; -2|]
+  when e <> 0|];;
 [%%expect{|
 - : (int * int * int * '_weak27 * int * int) array = [||]
 |}];;
 
 [(d, e, f, g, s, u, v, w)
+  for f = 3 downto -1
+  and e in [1; 1]
+  and u = -1 downto -2
+  and d = -1 downto -2
   for g = 0 downto 1
   and e = -2 downto -1
   and v = -2 downto 2
   and s in [-3; 0; 1; f; e; -1; 2]
-  and w in [3; -1; -2; 3; 1; u; -2]
-  for f = 3 downto -1
-  and e in [1; 1]
-  and u = -1 downto -2
-  and d = -1 downto -2];;
+  and w in [3; -1; -2; 3; 1; u; -2]];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(d, e, f, g, s, u, v, w)
+  for f = 3 downto -1
+  and e in [|1; 1|]
+  and u = -1 downto -2
+  and d = -1 downto -2
   for g = 0 downto 1
   and e = -2 downto -1
   and v = -2 downto 2
   and s in [|-3; 0; 1; f; e; -1; 2|]
-  and w in [|3; -1; -2; 3; 1; u; -2|]
-  for f = 3 downto -1
-  and e in [|1; 1|]
-  and u = -1 downto -2
-  and d = -1 downto -2|];;
+  and w in [|3; -1; -2; 3; 1; u; -2|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) array = [||]
 |}];;
@@ -2400,76 +2400,76 @@ Warning 26 [unused-var]: unused variable s.
 |}];;
 
 [(f, l, n, o, q, u, z)
-  when abs n mod 2 = 0
-  for u in [2; 0; -3] and n = z to 2 and l = -2 to -3
+  for o = 1 to -1
   for f in [o; 1] and q in [] and z = 0 to 2
-  for o = 1 to -1];;
+  for u in [2; 0; -3] and n = z to 2 and l = -2 to -3
+  when abs n mod 2 = 0];;
 [%%expect{|
 - : (int * int * int * int * 'a * int * int) list = []
 |}];;
 
 [|(f, l, n, o, q, u, z)
-  when abs n mod 2 = 0
-  for u in [|2; 0; -3|] and n = z to 2 and l = -2 to -3
+  for o = 1 to -1
   for f in [|o; 1|] and q in [||] and z = 0 to 2
-  for o = 1 to -1|];;
+  for u in [|2; 0; -3|] and n = z to 2 and l = -2 to -3
+  when abs n mod 2 = 0|];;
 [%%expect{|
 - : (int * int * int * int * '_weak28 * int * int) array = [||]
 |}];;
 
-[(e, l, o, t) for t in [] and e = -3 to -3 and l = o to 2 for o = 0 to 0];;
+[(e, l, o, t) for o = 0 to 0 for t in [] and e = -3 to -3 and l = o to 2];;
 [%%expect{|
 - : (int * int * int * 'a) list = []
 |}];;
 
-[|(e, l, o, t) for t in [||] and e = -3 to -3 and l = o to 2 for o = 0 to 0|];;
+[|(e, l, o, t) for o = 0 to 0 for t in [||] and e = -3 to -3 and l = o to 2|];;
 [%%expect{|
 - : (int * int * int * '_weak29) array = [||]
 |}];;
 
 [(n, u)
-  when n > 0
-  when abs n mod 2 = 0
+  for u = 3 downto 1 and n = -2 to -1
   when abs n mod 2 = 1
-  for u = 3 downto 1 and n = -2 to -1];;
+  when abs n mod 2 = 0
+  when n > 0];;
 [%%expect{|
 - : (int * int) list = []
 |}];;
 
 [|(n, u)
-  when n > 0
-  when abs n mod 2 = 0
+  for u = 3 downto 1 and n = -2 to -1
   when abs n mod 2 = 1
-  for u = 3 downto 1 and n = -2 to -1|];;
+  when abs n mod 2 = 0
+  when n > 0|];;
 [%%expect{|
 - : (int * int) array = [||]
 |}];;
 
 [(a, c, i, q, w, x, z)
+  for a in [-2; 1; 1] and q in [] and z = -1 downto -1 and c in [-3; 2]
+  when q > 0
   for w = -1 downto 1
   and i in [0; -2; -2; -2; q; 2]
   and c in []
-  and x = 0 downto 2
-  when q > 0
-  for a in [-2; 1; 1] and q in [] and z = -1 downto -1 and c in [-3; 2]];;
+  and x = 0 downto 2];;
 [%%expect{|
 Line 7, characters 59-60:
-7 |   for a in [-2; 1; 1] and q in [] and z = -1 downto -1 and c in [-3; 2]];;
+7 | for a in [-2; 1; 1] and q in [] and z = -1 downto -1 and c in [-3; 2]];;
                                                                ^
 Warning 26 [unused-var]: unused variable c.
 - : (int * 'a * int * int * int * int * int) list = []
 |}];;
 
 [|(a, c, i, q, w, x, z)
-  for w = -1 downto 1
-  and i in [|0; -2; -2; -2; q; 2|]
-  and c in [||]
-  and x = 0 downto 2
-  when q > 0
   for a in [|-2; 1; 1|]
   and q in [||]
   and z = -1 downto -1
-  and c in [|-3; 2|]|];;
+  and c in [|-3; 2|]
+  when q > 0
+  for w = -1 downto 1
+  and i in [|0; -2; -2; -2; q; 2|]
+  and c in [||]
+  and x = 0 downto 2|];;
 [%%expect{|
 Line 10, characters 6-7:
 10 |   and c in [|-3; 2|]|];;
@@ -2479,41 +2479,41 @@ Warning 26 [unused-var]: unused variable c.
 |}];;
 
 [(a, b, g, w, x, z)
-  for z in [-2; 1; 2; 3; -2]
-  for a in [0; 3; -3]
-  for b in [0; -1] and g in [x]
   for z in [-3; 0; 2; 0; -3; 2; 0]
   and w = 0 downto 3
-  and x in [2; 1; -2; -3; 1]];;
+  and x in [2; 1; -2; -3; 1]
+  for b in [0; -1] and g in [x]
+  for a in [0; 3; -3]
+  for z in [-2; 1; 2; 3; -2]];;
 [%%expect{|
 Line 5, characters 6-7:
-5 |   for z in [-3; 0; 2; 0; -3; 2; 0]
-          ^
-Warning 26 [unused-var]: unused variable z.
+5 |
 - : (int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable z.
+          ^ for z in [-3; 0; 2; 0; -3; 2; 0]
 |}];;
 
 [|(a, b, g, w, x, z)
-  for z in [|-2; 1; 2; 3; -2|]
-  for a in [|0; 3; -3|]
-  for b in [|0; -1|] and g in [|x|]
   for z in [|-3; 0; 2; 0; -3; 2; 0|]
   and w = 0 downto 3
-  and x in [|2; 1; -2; -3; 1|]|];;
+  and x in [|2; 1; -2; -3; 1|]
+  for b in [|0; -1|] and g in [|x|]
+  for a in [|0; 3; -3|]
+  for z in [|-2; 1; 2; 3; -2|]|];;
 [%%expect{|
 Line 5, characters 6-7:
-5 |   for z in [|-3; 0; 2; 0; -3; 2; 0|]
-          ^
-Warning 26 [unused-var]: unused variable z.
+5 |
 - : (int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable z.
+          ^ for z in [|-3; 0; 2; 0; -3; 2; 0|]
 |}];;
 
-[(c, q) when c > 0 for q in [] and c in [-3; -3; -3; -1; 3; -1]];;
+[(c, q) for q in [] and c in [-3; -3; -3; -1; 3; -1] when c > 0];;
 [%%expect{|
 - : (int * 'a) list = []
 |}];;
 
-[|(c, q) when c > 0 for q in [||] and c in [|-3; -3; -3; -1; 3; -1|]|];;
+[|(c, q) for q in [||] and c in [|-3; -3; -3; -1; 3; -1|] when c > 0|];;
 [%%expect{|
 - : (int * '_weak31) array = [||]
 |}];;
@@ -2529,58 +2529,58 @@ Warning 26 [unused-var]: unused variable z.
 |}];;
 
 [(a, i, m, p, t, v, w)
-  when v < 0
+  for t in [-3; 2] and p = -1 downto 1 and a = 2 to -3 and v = -2 to 2
   for v in [1; -1; -3] and w in [a; -1] and m = 0 to -2 and i = 0 downto 0
-  for t in [-3; 2] and p = -1 downto 1 and a = 2 to -3 and v = -2 to 2];;
+  when v < 0];;
 [%%expect{|
 Lines 1-4, characters 0-71:
 1 | [(a, i, m, p, t, v, w)
-2 |   when v < 0
-3 |   for v in [1; -1; -3] and w in [a; -1] and m = 0 to -2 and i = 0 downto 0
-4 |   for t in [-3; 2] and p = -1 downto 1 and a = 2 to -3 and v = -2 to 2]..
-Warning 26 [unused-var]: unused variable v.
+2 |
 - : (int * int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable v. for t in [-3; 2] and p = -1 downto 1 and a = 2 to -3 and v = -2 to 2]..
+4 | for v in [1; -1; -3] and w in [a; -1] and m = 0 to -2 and i = 0 downto 0
+3 | when v < 0
 |}];;
 
 [|(a, i, m, p, t, v, w)
-  when v < 0
+  for t in [|-3; 2|] and p = -1 downto 1 and a = 2 to -3 and v = -2 to 2
   for v in [|1; -1; -3|] and w in [|a; -1|] and m = 0 to -2 and i = 0 downto 0
-  for t in [|-3; 2|] and p = -1 downto 1 and a = 2 to -3 and v = -2 to 2|];;
+  when v < 0|];;
 [%%expect{|
 Lines 1-4, characters 0-74:
 1 | [|(a, i, m, p, t, v, w)
-2 |   when v < 0
-3 |   for v in [|1; -1; -3|] and w in [|a; -1|] and m = 0 to -2 and i = 0 downto 0
-4 |   for t in [|-3; 2|] and p = -1 downto 1 and a = 2 to -3 and v = -2 to 2|]..
-Warning 26 [unused-var]: unused variable v.
+2 |
 - : (int * int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable v. for t in [|-3; 2|] and p = -1 downto 1 and a = 2 to -3 and v = -2 to 2|]..
+4 | for v in [|1; -1; -3|] and w in [|a; -1|] and m = 0 to -2 and i = 0 downto 0
+3 | when v < 0
 |}];;
 
 [(d, i, j, k, u)
-  for i = k downto -1
-  for u in [-1; -3; 2; j; i; 0] and k = 2 to -3
+  for j = -1 to -3 and d in [-2]
   for i = 2 to d
-  for j = -1 to -3 and d in [-2]];;
+  for u in [-1; -3; 2; j; i; 0] and k = 2 to -3
+  for i = k downto -1];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(d, i, j, k, u)
-  for i = k downto -1
-  for u in [|-1; -3; 2; j; i; 0|] and k = 2 to -3
+  for j = -1 to -3 and d in [|-2|]
   for i = 2 to d
-  for j = -1 to -3 and d in [|-2|]|];;
+  for u in [|-1; -3; 2; j; i; 0|] and k = 2 to -3
+  for i = k downto -1|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(j, s, v, x, z)
-  for j in [-1]
-  for s = v downto -2
+  for x = -3 downto 2
   for v = -3 downto -3
   and s in [-3; -2; -1; -3; 2; 3; 2]
   and z in [2; 2; 2; 3; 0; 0; -2]
-  for x = -3 downto 2];;
+  for s = v downto -2
+  for j in [-1]];;
 [%%expect{|
 Line 5, characters 6-7:
 5 |   and s in [-3; -2; -1; -3; 2; 3; 2]
@@ -2590,12 +2590,12 @@ Warning 26 [unused-var]: unused variable s.
 |}];;
 
 [|(j, s, v, x, z)
-  for j in [|-1|]
-  for s = v downto -2
+  for x = -3 downto 2
   for v = -3 downto -3
   and s in [|-3; -2; -1; -3; 2; 3; 2|]
   and z in [|2; 2; 2; 3; 0; 0; -2|]
-  for x = -3 downto 2|];;
+  for s = v downto -2
+  for j in [|-1|]|];;
 [%%expect{|
 Line 5, characters 6-7:
 5 |   and s in [|-3; -2; -1; -3; 2; 3; 2|]
@@ -2604,120 +2604,120 @@ Warning 26 [unused-var]: unused variable s.
 - : (int * int * int * int * int) array = [||]
 |}];;
 
-[(f, l) when l <> 0 for l = -2 to 0 and f in [-1; 3; 3; 0; 0]];;
+[(f, l) for l = -2 to 0 and f in [-1; 3; 3; 0; 0] when l <> 0];;
 [%%expect{|
 - : (int * int) list =
 [(-1, -2); (3, -2); (3, -2); (0, -2); (0, -2); (-1, -1); (3, -1); (3, -1);
  (0, -1); (0, -1)]
 |}];;
 
-[|(f, l) when l <> 0 for l = -2 to 0 and f in [|-1; 3; 3; 0; 0|]|];;
+[|(f, l) for l = -2 to 0 and f in [|-1; 3; 3; 0; 0|] when l <> 0|];;
 [%%expect{|
 - : (int * int) array =
 [|(-1, -2); (3, -2); (3, -2); (0, -2); (0, -2); (-1, -1); (3, -1); (3, -1);
   (0, -1); (0, -1)|]
 |}];;
 
-[b when abs b mod 2 = 0 for b = -1 to 0];;
+[b for b = -1 to 0 when abs b mod 2 = 0];;
 [%%expect{|
 - : int list = [0]
 |}];;
 
-[|b when abs b mod 2 = 0 for b = -1 to 0|];;
+[|b for b = -1 to 0 when abs b mod 2 = 0|];;
 [%%expect{|
 - : int array = [|0|]
 |}];;
 
 [(b, f, k, m, p, w, z)
-  for p in [-1; -2; -1] and w in [1; 1]
-  for m in [-3; k; -2; 3; m; 1; 3] and f in [1; -3; 2; -3; -2; -3]
+  for b in [] and z = 0 to -1 and m = 2 downto 1
   for k in [-1; -2; 3; 3; 0]
-  for b in [] and z = 0 to -1 and m = 2 downto 1];;
+  for m in [-3; k; -2; 3; m; 1; 3] and f in [1; -3; 2; -3; -2; -3]
+  for p in [-1; -2; -1] and w in [1; 1]];;
 [%%expect{|
 - : ('a * int * int * int * int * int * int) list = []
 |}];;
 
 [|(b, f, k, m, p, w, z)
-  for p in [|-1; -2; -1|] and w in [|1; 1|]
-  for m in [|-3; k; -2; 3; m; 1; 3|] and f in [|1; -3; 2; -3; -2; -3|]
+  for b in [||] and z = 0 to -1 and m = 2 downto 1
   for k in [|-1; -2; 3; 3; 0|]
-  for b in [||] and z = 0 to -1 and m = 2 downto 1|];;
+  for m in [|-3; k; -2; 3; m; 1; 3|] and f in [|1; -3; 2; -3; -2; -3|]
+  for p in [|-1; -2; -1|] and w in [|1; 1|]|];;
 [%%expect{|
 - : ('_weak32 * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(b, c, f, g, u, w)
-  for b in [-1; -1; 2; 1; 0] and u = 0 downto -1 and g = 0 to -1
-  for f in [0; -3] and c in [-2] and w in [2; -2; 3; 1] and u = -2 downto 0];;
+  for f in [0; -3] and c in [-2] and w in [2; -2; 3; 1] and u = -2 downto 0
+  for b in [-1; -1; 2; 1; 0] and u = 0 downto -1 and g = 0 to -1];;
 [%%expect{|
 Lines 1-3, characters 0-76:
 1 | [(b, c, f, g, u, w)
-2 |   for b in [-1; -1; 2; 1; 0] and u = 0 downto -1 and g = 0 to -1
-3 |   for f in [0; -3] and c in [-2] and w in [2; -2; 3; 1] and u = -2 downto 0]..
-Warning 26 [unused-var]: unused variable u.
+2 |
 - : (int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable u. for f in [0; -3] and c in [-2] and w in [2; -2; 3; 1] and u = -2 downto 0]..
+3 | for b in [-1; -1; 2; 1; 0] and u = 0 downto -1 and g = 0 to -1
 |}];;
 
 [|(b, c, f, g, u, w)
-  for b in [|-1; -1; 2; 1; 0|] and u = 0 downto -1 and g = 0 to -1
   for f in [|0; -3|]
   and c in [|-2|]
   and w in [|2; -2; 3; 1|]
-  and u = -2 downto 0|];;
+  and u = -2 downto 0
+  for b in [|-1; -1; 2; 1; 0|] and u = 0 downto -1 and g = 0 to -1|];;
 [%%expect{|
 Lines 1-6, characters 0-23:
 1 | [|(b, c, f, g, u, w)
-2 |   for b in [|-1; -1; 2; 1; 0|] and u = 0 downto -1 and g = 0 to -1
-3 |   for f in [|0; -3|]
-4 |   and c in [|-2|]
-5 |   and w in [|2; -2; 3; 1|]
-6 |   and u = -2 downto 0|]..
-Warning 26 [unused-var]: unused variable u.
+2 |
 - : (int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable u.
+6 |   and u = -2 downto 0|]..
+5 |   and w in [|2; -2; 3; 1|]
+4 |   and c in [|-2|] for f in [|0; -3|]
+3 | for b in [|-1; -1; 2; 1; 0|] and u = 0 downto -1 and g = 0 to -1
 |}];;
 
 [(g, k, m, u, v, y)
-  for _ = -3 downto k and m = v downto 2
-  when abs k mod 2 = 1
+  for g in [2; 2; 0] and k in [2; 1; -2; 2; 2; 3; 2]
   for u in [] and y = -1 downto 2 and v in []
-  for g in [2; 2; 0] and k in [2; 1; -2; 2; 2; 3; 2]];;
+  when abs k mod 2 = 1
+  for _ = -3 downto k and m = v downto 2];;
 [%%expect{|
 - : (int * int * int * 'a * int * int) list = []
 |}];;
 
 [|(g, k, m, u, v, y)
-  for _ = -3 downto k and m = v downto 2
-  when abs k mod 2 = 1
+  for g in [|2; 2; 0|] and k in [|2; 1; -2; 2; 2; 3; 2|]
   for u in [||] and y = -1 downto 2 and v in [||]
-  for g in [|2; 2; 0|] and k in [|2; 1; -2; 2; 2; 3; 2|]|];;
+  when abs k mod 2 = 1
+  for _ = -3 downto k and m = v downto 2|];;
 [%%expect{|
 - : (int * int * int * '_weak33 * int * int) array = [||]
 |}];;
 
 [(b, g, l, r, y)
-  for r = 2 downto -3
-  for _ = 3 to 1 and g in [-3; b; 3; 1; -1]
+  for y = -2 downto 3
   for l = 1 to -1 and r in [1; y; y; 1; 0; -2] and b = 3 to 3
-  for y = -2 downto 3];;
+  for _ = 3 to 1 and g in [-3; b; 3; 1; -1]
+  for r = 2 downto -3];;
 [%%expect{|
 Line 4, characters 22-23:
-4 |   for l = 1 to -1 and r in [1; y; y; 1; 0; -2] and b = 3 to 3
-                          ^
-Warning 26 [unused-var]: unused variable r.
+4 |
 - : (int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable r.
+                          ^ for l = 1 to -1 and r in [1; y; y; 1; 0; -2] and b = 3 to 3
 |}];;
 
 [|(b, g, l, r, y)
-  for r = 2 downto -3
-  for _ = 3 to 1 and g in [|-3; b; 3; 1; -1|]
+  for y = -2 downto 3
   for l = 1 to -1 and r in [|1; y; y; 1; 0; -2|] and b = 3 to 3
-  for y = -2 downto 3|];;
+  for _ = 3 to 1 and g in [|-3; b; 3; 1; -1|]
+  for r = 2 downto -3|];;
 [%%expect{|
 Line 4, characters 22-23:
-4 |   for l = 1 to -1 and r in [|1; y; y; 1; 0; -2|] and b = 3 to 3
-                          ^
-Warning 26 [unused-var]: unused variable r.
+4 |
 - : (int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable r.
+                          ^ for l = 1 to -1 and r in [|1; y; y; 1; 0; -2|] and b = 3 to 3
 |}];;
 
 [(d, g, k, s, u)
@@ -2741,17 +2741,17 @@ Warning 26 [unused-var]: unused variable r.
 |}];;
 
 [(i, o, s, y)
-  for s = -1 downto 3 and o in [1; 2; 0] and _ in [0; -1] and y in [1]
+  for i in [2; -2; -1; -1]
   when i > 0
-  for i in [2; -2; -1; -1]];;
+  for s = -1 downto 3 and o in [1; 2; 0] and _ in [0; -1] and y in [1]];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(i, o, s, y)
-  for s = -1 downto 3 and o in [|1; 2; 0|] and _ in [|0; -1|] and y in [|1|]
+  for i in [|2; -2; -1; -1|]
   when i > 0
-  for i in [|2; -2; -1; -1|]|];;
+  for s = -1 downto 3 and o in [|1; 2; 0|] and _ in [|0; -1|] and y in [|1|]|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
@@ -2769,63 +2769,63 @@ Warning 26 [unused-var]: unused variable r.
 |}];;
 
 [(i, q)
-  when abs i mod 2 = 1
-  when i <> 0
-  when q > 0
+  for i in [-2; 1]
   for i = 1 downto 2 and q in [0; -3; 2; 3]
-  for i in [-2; 1]];;
+  when q > 0
+  when i <> 0
+  when abs i mod 2 = 1];;
 [%%expect{|
 Line 6, characters 6-7:
-6 |   for i in [-2; 1]];;
+6 | for i in [-2; 1]];;
           ^
 Warning 26 [unused-var]: unused variable i.
 - : (int * int) list = []
 |}];;
 
 [|(i, q)
-  when abs i mod 2 = 1
-  when i <> 0
-  when q > 0
+  for i in [|-2; 1|]
   for i = 1 downto 2 and q in [|0; -3; 2; 3|]
-  for i in [|-2; 1|]|];;
+  when q > 0
+  when i <> 0
+  when abs i mod 2 = 1|];;
 [%%expect{|
 Line 6, characters 6-7:
-6 |   for i in [|-2; 1|]|];;
+6 | for i in [|-2; 1|]|];;
           ^
 Warning 26 [unused-var]: unused variable i.
 - : (int * int) array = [||]
 |}];;
 
 [(b, c, g, n, t, v)
-  for n in [g] and g = 3 to 1 and c in [0; b; -3; b; -2; t]
-  when t <> 0
+  for t = 0 to -2 and b = -2 to -3 and g in [-2; 2; 3; 0]
   for t in [1; -2; b; -2; 2] and v in [-3; -2; 3] and _ = 1 downto 3
-  for t = 0 to -2 and b = -2 to -3 and g in [-2; 2; 3; 0]];;
+  when t <> 0
+  for n in [g] and g = 3 to 1 and c in [0; b; -3; b; -2; t]];;
 [%%expect{|
 Lines 1-5, characters 0-58:
 1 | [(b, c, g, n, t, v)
-2 |   for n in [g] and g = 3 to 1 and c in [0; b; -3; b; -2; t]
-3 |   when t <> 0
-4 |   for t in [1; -2; b; -2; 2] and v in [-3; -2; 3] and _ = 1 downto 3
-5 |   for t = 0 to -2 and b = -2 to -3 and g in [-2; 2; 3; 0]]..
-Warning 26 [unused-var]: unused variable t.
+2 |
 - : (int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable t. for t = 0 to -2 and b = -2 to -3 and g in [-2; 2; 3; 0]]..
+5 | for t in [1; -2; b; -2; 2] and v in [-3; -2; 3] and _ = 1 downto 3
+4 | when t <> 0
+3 | for n in [g] and g = 3 to 1 and c in [0; b; -3; b; -2; t]
 |}];;
 
 [|(b, c, g, n, t, v)
-  for n in [|g|] and g = 3 to 1 and c in [|0; b; -3; b; -2; t|]
-  when t <> 0
+  for t = 0 to -2 and b = -2 to -3 and g in [|-2; 2; 3; 0|]
   for t in [|1; -2; b; -2; 2|] and v in [|-3; -2; 3|] and _ = 1 downto 3
-  for t = 0 to -2 and b = -2 to -3 and g in [|-2; 2; 3; 0|]|];;
+  when t <> 0
+  for n in [|g|] and g = 3 to 1 and c in [|0; b; -3; b; -2; t|]|];;
 [%%expect{|
 Lines 1-5, characters 0-61:
 1 | [|(b, c, g, n, t, v)
-2 |   for n in [|g|] and g = 3 to 1 and c in [|0; b; -3; b; -2; t|]
-3 |   when t <> 0
-4 |   for t in [|1; -2; b; -2; 2|] and v in [|-3; -2; 3|] and _ = 1 downto 3
-5 |   for t = 0 to -2 and b = -2 to -3 and g in [|-2; 2; 3; 0|]|]..
-Warning 26 [unused-var]: unused variable t.
+2 |
 - : (int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable t. for t = 0 to -2 and b = -2 to -3 and g in [|-2; 2; 3; 0|]|]..
+5 | for t in [|1; -2; b; -2; 2|] and v in [|-3; -2; 3|] and _ = 1 downto 3
+4 | when t <> 0
+3 | for n in [|g|] and g = 3 to 1 and c in [|0; b; -3; b; -2; t|]
 |}];;
 
 [(g, k, m, u, x)
@@ -2869,118 +2869,118 @@ Warning 26 [unused-var]: unused variable t.
 |}];;
 
 [(f, g, j, m, q, v)
-  for j = 3 to -2 and q in [] and g in [3; 2; 1; -3; -1]
-  for f in [1; 2; -1; 3] and m in [] and v in [2; 0]];;
+  for f in [1; 2; -1; 3] and m in [] and v in [2; 0]
+  for j = 3 to -2 and q in [] and g in [3; 2; 1; -3; -1]];;
 [%%expect{|
 - : (int * int * int * 'a * 'b * int) list = []
 |}];;
 
 [|(f, g, j, m, q, v)
-  for j = 3 to -2 and q in [||] and g in [|3; 2; 1; -3; -1|]
-  for f in [|1; 2; -1; 3|] and m in [||] and v in [|2; 0|]|];;
+  for f in [|1; 2; -1; 3|] and m in [||] and v in [|2; 0|]
+  for j = 3 to -2 and q in [||] and g in [|3; 2; 1; -3; -1|]|];;
 [%%expect{|
 - : (int * int * int * '_weak36 * '_weak37 * int) array = [||]
 |}];;
 
 [(c, d, j, l, m, n, o, p, u)
-  for o in [1; 0; -3] and u in [0; -3] and j in [-2; -2]
+  for l = -2 downto 0 and m = -3 downto -1 and _ in [-2; 1]
   for n in [-1; l; -1; -2]
   and p in [1; 2; -1; 1; 3; -2]
   and c in [3]
   and d in [-1; -1; 3; 1; l; -1; 1]
-  for l = -2 downto 0 and m = -3 downto -1 and _ in [-2; 1]];;
+  for o in [1; 0; -3] and u in [0; -3] and j in [-2; -2]];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(c, d, j, l, m, n, o, p, u)
-  for o in [|1; 0; -3|] and u in [|0; -3|] and j in [|-2; -2|]
+  for l = -2 downto 0 and m = -3 downto -1 and _ in [|-2; 1|]
   for n in [|-1; l; -1; -2|]
   and p in [|1; 2; -1; 1; 3; -2|]
   and c in [|3|]
   and d in [|-1; -1; 3; 1; l; -1; 1|]
-  for l = -2 downto 0 and m = -3 downto -1 and _ in [|-2; 1|]|];;
+  for o in [|1; 0; -3|] and u in [|0; -3|] and j in [|-2; -2|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(c, g, i, k, s)
-  for i = 2 downto 3 and s = -1 to -3
-  for k in [3; -3; -3; 3; -2]
+  for k = 1 to -1
   for c in [3; k; -2; -3] and k = -1 to 0 and g in [-1; k; 0; 3; -1]
-  for k = 1 to -1];;
+  for k in [3; -3; -3; 3; -2]
+  for i = 2 downto 3 and s = -1 to -3];;
 [%%expect{|
 Lines 1-5, characters 0-18:
 1 | [(c, g, i, k, s)
-2 |   for i = 2 downto 3 and s = -1 to -3
-3 |   for k in [3; -3; -3; 3; -2]
-4 |   for c in [3; k; -2; -3] and k = -1 to 0 and g in [-1; k; 0; 3; -1]
-5 |   for k = 1 to -1]..
-Warning 26 [unused-var]: unused variable k.
+2 |
 - : (int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable k. for k = 1 to -1]..
+5 | for c in [3; k; -2; -3] and k = -1 to 0 and g in [-1; k; 0; 3; -1]
+4 | for k in [3; -3; -3; 3; -2]
+3 | for i = 2 downto 3 and s = -1 to -3
 |}];;
 
 [|(c, g, i, k, s)
-  for i = 2 downto 3 and s = -1 to -3
-  for k in [|3; -3; -3; 3; -2|]
+  for k = 1 to -1
   for c in [|3; k; -2; -3|] and k = -1 to 0 and g in [|-1; k; 0; 3; -1|]
-  for k = 1 to -1|];;
+  for k in [|3; -3; -3; 3; -2|]
+  for i = 2 downto 3 and s = -1 to -3|];;
 [%%expect{|
 Lines 1-5, characters 0-19:
 1 | [|(c, g, i, k, s)
-2 |   for i = 2 downto 3 and s = -1 to -3
-3 |   for k in [|3; -3; -3; 3; -2|]
-4 |   for c in [|3; k; -2; -3|] and k = -1 to 0 and g in [|-1; k; 0; 3; -1|]
-5 |   for k = 1 to -1|]..
-Warning 26 [unused-var]: unused variable k.
+2 |
 - : (int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable k. for k = 1 to -1|]..
+5 | for c in [|3; k; -2; -3|] and k = -1 to 0 and g in [|-1; k; 0; 3; -1|]
+4 | for k in [|3; -3; -3; 3; -2|]
+3 | for i = 2 downto 3 and s = -1 to -3
 |}];;
 
 [(b, f, g, j, n, p, x)
-  when abs j mod 2 = 1
-  for f = -2 to -1 and n in [-3; -1; 2] and _ in []
+  for x in [3; 2; -1; 2] and p = 1 to 0 and f in [-1; 0]
   for g = -2 to -3 and b = 1 downto 3 and j = 3 to x
-  for x in [3; 2; -1; 2] and p = 1 to 0 and f in [-1; 0]];;
+  for f = -2 to -1 and n in [-3; -1; 2] and _ in []
+  when abs j mod 2 = 1];;
 [%%expect{|
 Line 5, characters 44-45:
-5 |   for x in [3; 2; -1; 2] and p = 1 to 0 and f in [-1; 0]];;
+5 | for x in [3; 2; -1; 2] and p = 1 to 0 and f in [-1; 0]];;
                                                 ^
 Warning 26 [unused-var]: unused variable f.
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(b, f, g, j, n, p, x)
-  when abs j mod 2 = 1
-  for f = -2 to -1 and n in [|-3; -1; 2|] and _ in [||]
+  for x in [|3; 2; -1; 2|] and p = 1 to 0 and f in [|-1; 0|]
   for g = -2 to -3 and b = 1 downto 3 and j = 3 to x
-  for x in [|3; 2; -1; 2|] and p = 1 to 0 and f in [|-1; 0|]|];;
+  for f = -2 to -1 and n in [|-3; -1; 2|] and _ in [||]
+  when abs j mod 2 = 1|];;
 [%%expect{|
 Line 5, characters 46-47:
-5 |   for x in [|3; 2; -1; 2|] and p = 1 to 0 and f in [|-1; 0|]|];;
+5 | for x in [|3; 2; -1; 2|] and p = 1 to 0 and f in [|-1; 0|]|];;
                                                   ^
 Warning 26 [unused-var]: unused variable f.
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
 
-[n when n <> 0 when abs n mod 2 = 1 when n > 0 when n < 0 for n = 2 to -2];;
+[n for n = 2 to -2 when n < 0 when n > 0 when abs n mod 2 = 1 when n <> 0];;
 [%%expect{|
 - : int list = []
 |}];;
 
-[|n when n <> 0 when abs n mod 2 = 1 when n > 0 when n < 0 for n = 2 to -2|];;
+[|n for n = 2 to -2 when n < 0 when n > 0 when abs n mod 2 = 1 when n <> 0|];;
 [%%expect{|
 - : int array = [||]
 |}];;
 
 [(a, o, r, t, u, y)
+  for o in [1; -1; 2; 0]
+  and u in [-2; -1; -2]
+  and y in [3; 0; -1; -3; -3; -2; -2]
   for t = y downto 3
   and u in [-3; 3; 2; -3; -1; y; -2]
   and a in [-3; -2; -2; 3; -2; 0]
   and o in []
-  and r in [-1; 2; o; 3; -3]
-  for o in [1; -1; 2; 0]
-  and u in [-2; -1; -2]
-  and y in [3; 0; -1; -3; -3; -2; -2]];;
+  and r in [-1; 2; o; 3; -3]];;
 [%%expect{|
 Line 8, characters 6-7:
 8 |   and u in [-2; -1; -2]
@@ -2990,14 +2990,14 @@ Warning 26 [unused-var]: unused variable u.
 |}];;
 
 [|(a, o, r, t, u, y)
+  for o in [|1; -1; 2; 0|]
+  and u in [|-2; -1; -2|]
+  and y in [|3; 0; -1; -3; -3; -2; -2|]
   for t = y downto 3
   and u in [|-3; 3; 2; -3; -1; y; -2|]
   and a in [|-3; -2; -2; 3; -2; 0|]
   and o in [||]
-  and r in [|-1; 2; o; 3; -3|]
-  for o in [|1; -1; 2; 0|]
-  and u in [|-2; -1; -2|]
-  and y in [|3; 0; -1; -3; -3; -2; -2|]|];;
+  and r in [|-1; 2; o; 3; -3|]|];;
 [%%expect{|
 Line 8, characters 6-7:
 8 |   and u in [|-2; -1; -2|]
@@ -3007,32 +3007,32 @@ Warning 26 [unused-var]: unused variable u.
 |}];;
 
 [(a, f, h, i, p, q, r, w)
-  for q in [0] and p = 0 to -3 and w = 1 downto 0
-  for a in [1; -2; 2; -1; 3] and r in [-1; -1; 2; 3] and h in [2; q; -3; -2; 2]
+  for i in [] and f = -3 downto 3 and q in [1; -1; 0; 0; -1; -2]
   when q <> 0
-  for i in [] and f = -3 downto 3 and q in [1; -1; 0; 0; -1; -2]];;
+  for a in [1; -2; 2; -1; 3] and r in [-1; -1; 2; 3] and h in [2; q; -3; -2; 2]
+  for q in [0] and p = 0 to -3 and w = 1 downto 0];;
 [%%expect{|
 - : (int * int * int * 'a * int * int * int * int) list = []
 |}];;
 
 [|(a, f, h, i, p, q, r, w)
-  for q in [|0|] and p = 0 to -3 and w = 1 downto 0
+  for i in [||] and f = -3 downto 3 and q in [|1; -1; 0; 0; -1; -2|]
+  when q <> 0
   for a in [|1; -2; 2; -1; 3|]
   and r in [|-1; -1; 2; 3|]
   and h in [|2; q; -3; -2; 2|]
-  when q <> 0
-  for i in [||] and f = -3 downto 3 and q in [|1; -1; 0; 0; -1; -2|]|];;
+  for q in [|0|] and p = 0 to -3 and w = 1 downto 0|];;
 [%%expect{|
 - : (int * int * int * '_weak39 * int * int * int * int) array = [||]
 |}];;
 
 [(d, f, g, h, v)
-  for h in [] and v = -3 to 1
-  when f > 0
   for f = 2 to -1
   and g in [-1; -3; -1; 0; 3; 2]
   and h in [0; -1; -1; -3; 0; -1; -1]
-  and d in []];;
+  and d in []
+  when f > 0
+  for h in [] and v = -3 to 1];;
 [%%expect{|
 Line 6, characters 6-7:
 6 |   and h in [0; -1; -1; -3; 0; -1; -1]
@@ -3042,12 +3042,12 @@ Warning 26 [unused-var]: unused variable h.
 |}];;
 
 [|(d, f, g, h, v)
-  for h in [||] and v = -3 to 1
-  when f > 0
   for f = 2 to -1
   and g in [|-1; -3; -1; 0; 3; 2|]
   and h in [|0; -1; -1; -3; 0; -1; -1|]
-  and d in [||]|];;
+  and d in [||]
+  when f > 0
+  for h in [||] and v = -3 to 1|];;
 [%%expect{|
 Line 6, characters 6-7:
 6 |   and h in [|0; -1; -1; -3; 0; -1; -1|]
@@ -3056,27 +3056,27 @@ Warning 26 [unused-var]: unused variable h.
 - : ('_weak40 * int * int * '_weak41 * int) array = [||]
 |}];;
 
-[(b, c, j) when j <> 0 for b = -1 to -2 and c = 2 downto 3 and j = 3 to -3];;
+[(b, c, j) for b = -1 to -2 and c = 2 downto 3 and j = 3 to -3 when j <> 0];;
 [%%expect{|
 - : (int * int * int) list = []
 |}];;
 
-[|(b, c, j) when j <> 0 for b = -1 to -2 and c = 2 downto 3 and j = 3 to -3|];;
+[|(b, c, j) for b = -1 to -2 and c = 2 downto 3 and j = 3 to -3 when j <> 0|];;
 [%%expect{|
 - : (int * int * int) array = [||]
 |}];;
 
 [(a, b, d, n, s, w, x)
-  for x in [-1; 2]
-  and a = 3 downto -3
-  and s = -2 downto 0
-  and d in [2; -3; -2; -3; s; b; -2]
-  and w = 3 downto -3
   for _ in [-3; 2; 1]
   and x in [-3; -3]
   and s in [0; 3; -2]
   and b = 1 downto 0
-  and n = 3 to 1];;
+  and n = 3 to 1
+  for x in [-1; 2]
+  and a = 3 downto -3
+  and s = -2 downto 0
+  and d in [2; -3; -2; -3; s; b; -2]
+  and w = 3 downto -3];;
 [%%expect{|
 Line 8, characters 6-7:
 8 |   and x in [-3; -3]
@@ -3086,16 +3086,16 @@ Warning 26 [unused-var]: unused variable x.
 |}];;
 
 [|(a, b, d, n, s, w, x)
-  for x in [|-1; 2|]
-  and a = 3 downto -3
-  and s = -2 downto 0
-  and d in [|2; -3; -2; -3; s; b; -2|]
-  and w = 3 downto -3
   for _ in [|-3; 2; 1|]
   and x in [|-3; -3|]
   and s in [|0; 3; -2|]
   and b = 1 downto 0
-  and n = 3 to 1|];;
+  and n = 3 to 1
+  for x in [|-1; 2|]
+  and a = 3 downto -3
+  and s = -2 downto 0
+  and d in [|2; -3; -2; -3; s; b; -2|]
+  and w = 3 downto -3|];;
 [%%expect{|
 Line 8, characters 6-7:
 8 |   and x in [|-3; -3|]
@@ -3105,90 +3105,90 @@ Warning 26 [unused-var]: unused variable x.
 |}];;
 
 [(b, c, h, i)
-  when abs b mod 2 = 0
-  for h in [] and b in [2; -2]
-  when abs i mod 2 = 0
+  for i = -2 to 1
   for c = i downto i
-  for i = -2 to 1];;
+  when abs i mod 2 = 0
+  for h in [] and b in [2; -2]
+  when abs b mod 2 = 0];;
 [%%expect{|
 - : (int * int * 'a * int) list = []
 |}];;
 
 [|(b, c, h, i)
-  when abs b mod 2 = 0
-  for h in [||] and b in [|2; -2|]
-  when abs i mod 2 = 0
+  for i = -2 to 1
   for c = i downto i
-  for i = -2 to 1|];;
+  when abs i mod 2 = 0
+  for h in [||] and b in [|2; -2|]
+  when abs b mod 2 = 0|];;
 [%%expect{|
 - : (int * int * '_weak42 * int) array = [||]
 |}];;
 
 [(a, c, m, x)
-  when abs m mod 2 = 0
   for _ = 2 to -2
   and a in [-3; 2; 3; -3; 2; -3; 1]
   and m in [2; 0]
   and x = 1 to -3
-  and c = -1 to -3];;
+  and c = -1 to -3
+  when abs m mod 2 = 0];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(a, c, m, x)
-  when abs m mod 2 = 0
   for _ = 2 to -2
   and a in [|-3; 2; 3; -3; 2; -3; 1|]
   and m in [|2; 0|]
   and x = 1 to -3
-  and c = -1 to -3|];;
+  and c = -1 to -3
+  when abs m mod 2 = 0|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(a, e, g, o, v, z)
-  for g in [0; 0; -1; 3; -3; 0; 3] and z in [-3; -3] and o in [3] and v = 1 to 1
-  for v in [-1; 2] and a = -2 downto 3 and e = -1 downto 0];;
+  for v in [-1; 2] and a = -2 downto 3 and e = -1 downto 0
+  for g in [0; 0; -1; 3; -3; 0; 3] and z in [-3; -3] and o in [3] and v = 1 to 1];;
 [%%expect{|
 Line 3, characters 6-7:
-3 |   for v in [-1; 2] and a = -2 downto 3 and e = -1 downto 0];;
+3 | for v in [-1; 2] and a = -2 downto 3 and e = -1 downto 0];;
           ^
 Warning 26 [unused-var]: unused variable v.
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, e, g, o, v, z)
+  for v in [|-1; 2|] and a = -2 downto 3 and e = -1 downto 0
   for g in [|0; 0; -1; 3; -3; 0; 3|]
   and z in [|-3; -3|]
   and o in [|3|]
-  and v = 1 to 1
-  for v in [|-1; 2|] and a = -2 downto 3 and e = -1 downto 0|];;
+  and v = 1 to 1|];;
 [%%expect{|
 Line 6, characters 6-7:
-6 |   for v in [|-1; 2|] and a = -2 downto 3 and e = -1 downto 0|];;
+6 | for v in [|-1; 2|] and a = -2 downto 3 and e = -1 downto 0|];;
           ^
 Warning 26 [unused-var]: unused variable v.
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(b, i, j, m, p, r, s)
+  for j in [] and m = 0 to 0 and s in [0]
   for i = j downto 2
   and _ in [-1; -2; 0; 2; 2; 2]
   and p = 2 downto -1
   and r in [2; 1]
-  and b in [j; 3; 2; 2; 2]
-  for j in [] and m = 0 to 0 and s in [0]];;
+  and b in [j; 3; 2; 2; 2]];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(b, i, j, m, p, r, s)
+  for j in [||] and m = 0 to 0 and s in [|0|]
   for i = j downto 2
   and _ in [|-1; -2; 0; 2; 2; 2|]
   and p = 2 downto -1
   and r in [|2; 1|]
-  and b in [|j; 3; 2; 2; 2|]
-  for j in [||] and m = 0 to 0 and s in [|0|]|];;
+  and b in [|j; 3; 2; 2; 2|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
@@ -3204,19 +3204,19 @@ Warning 26 [unused-var]: unused variable v.
 |}];;
 
 [(a, d, m, n)
-  for n in [2; -2; 2; -1; d; -1; 3]
-  when abs a mod 2 = 0
+  for m in [-1; 1]
   for a = 2 to -3 and d in [0; 3; 2; -1; 0]
-  for m in [-1; 1]];;
+  when abs a mod 2 = 0
+  for n in [2; -2; 2; -1; d; -1; 3]];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(a, d, m, n)
-  for n in [|2; -2; 2; -1; d; -1; 3|]
-  when abs a mod 2 = 0
+  for m in [|-1; 1|]
   for a = 2 to -3 and d in [|0; 3; 2; -1; 0|]
-  for m in [|-1; 1|]|];;
+  when abs a mod 2 = 0
+  for n in [|2; -2; 2; -1; d; -1; 3|]|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
@@ -3244,32 +3244,32 @@ Warning 26 [unused-var]: unused variable v.
 |}];;
 
 [(d, g, h, j, l, p, t, x, y)
-  for d in [j] and t in [1; 2; 0; 3; -2] and p = 3 to 1
-  for y = 3 to 2 and l in [-2]
+  for x in [-3; -1] and l in [3; -2; -2; -2; 3] and h in [2; 3; -1; -1]
   for d = -2 to 3 and g in [-1; -3; -3; -3] and j = 3 to -3
-  for x in [-3; -1] and l in [3; -2; -2; -2; 3] and h in [2; 3; -1; -1]];;
+  for y = 3 to 2 and l in [-2]
+  for d in [j] and t in [1; 2; 0; 3; -2] and p = 3 to 1];;
 [%%expect{|
 Line 5, characters 24-25:
-5 |   for x in [-3; -1] and l in [3; -2; -2; -2; 3] and h in [2; 3; -1; -1]];;
+5 | for x in [-3; -1] and l in [3; -2; -2; -2; 3] and h in [2; 3; -1; -1]];;
                             ^
 Warning 26 [unused-var]: unused variable l.
 Lines 1-5, characters 0-72:
 1 | [(d, g, h, j, l, p, t, x, y)
-2 |   for d in [j] and t in [1; 2; 0; 3; -2] and p = 3 to 1
-3 |   for y = 3 to 2 and l in [-2]
-4 |   for d = -2 to 3 and g in [-1; -3; -3; -3] and j = 3 to -3
-5 |   for x in [-3; -1] and l in [3; -2; -2; -2; 3] and h in [2; 3; -1; -1]]..
-Warning 26 [unused-var]: unused variable d.
+2 |
 - : (int * int * int * int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable d. for x in [-3; -1] and l in [3; -2; -2; -2; 3] and h in [2; 3; -1; -1]]..
+5 | for d = -2 to 3 and g in [-1; -3; -3; -3] and j = 3 to -3
+4 | for y = 3 to 2 and l in [-2]
+3 | for d in [j] and t in [1; 2; 0; 3; -2] and p = 3 to 1
 |}];;
 
 [|(d, g, h, j, l, p, t, x, y)
-  for d in [|j|] and t in [|1; 2; 0; 3; -2|] and p = 3 to 1
-  for y = 3 to 2 and l in [|-2|]
-  for d = -2 to 3 and g in [|-1; -3; -3; -3|] and j = 3 to -3
   for x in [|-3; -1|]
   and l in [|3; -2; -2; -2; 3|]
-  and h in [|2; 3; -1; -1|]|];;
+  and h in [|2; 3; -1; -1|]
+  for d = -2 to 3 and g in [|-1; -3; -3; -3|] and j = 3 to -3
+  for y = 3 to 2 and l in [|-2|]
+  for d in [|j|] and t in [|1; 2; 0; 3; -2|] and p = 3 to 1|];;
 [%%expect{|
 Line 6, characters 6-7:
 6 |   and l in [|3; -2; -2; -2; 3|]
@@ -3277,195 +3277,195 @@ Line 6, characters 6-7:
 Warning 26 [unused-var]: unused variable l.
 Lines 1-7, characters 0-29:
 1 | [|(d, g, h, j, l, p, t, x, y)
-2 |   for d in [|j|] and t in [|1; 2; 0; 3; -2|] and p = 3 to 1
-3 |   for y = 3 to 2 and l in [|-2|]
-4 |   for d = -2 to 3 and g in [|-1; -3; -3; -3|] and j = 3 to -3
-5 |   for x in [|-3; -1|]
-6 |   and l in [|3; -2; -2; -2; 3|]
-7 |   and h in [|2; 3; -1; -1|]|]..
-Warning 26 [unused-var]: unused variable d.
+2 |
 - : (int * int * int * int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable d.
+7 |   and h in [|2; 3; -1; -1|]|]..
+6 |   and l in [|3; -2; -2; -2; 3|] for x in [|-3; -1|]
+5 | for d = -2 to 3 and g in [|-1; -3; -3; -3|] and j = 3 to -3
+4 | for y = 3 to 2 and l in [|-2|]
+3 | for d in [|j|] and t in [|1; 2; 0; 3; -2|] and p = 3 to 1
 |}];;
 
 [(d, k, l, w)
-  when k > 0
+  for k in [-2] and l = -1 downto 2 and w in [0; 0; 2; 2] and d in []
   when abs w mod 2 = 1
-  for k in [-2] and l = -1 downto 2 and w in [0; 0; 2; 2] and d in []];;
+  when k > 0];;
 [%%expect{|
 - : ('a * int * int * int) list = []
 |}];;
 
 [|(d, k, l, w)
-  when k > 0
+  for k in [|-2|] and l = -1 downto 2 and w in [|0; 0; 2; 2|] and d in [||]
   when abs w mod 2 = 1
-  for k in [|-2|] and l = -1 downto 2 and w in [|0; 0; 2; 2|] and d in [||]|];;
+  when k > 0|];;
 [%%expect{|
 - : ('_weak43 * int * int * int) array = [||]
 |}];;
 
 [(b, f, j, l, n, q, w, y)
-  for n in [1]
-  for f in [1; -1; 0] and y = 1 to 1 and b in [-3; 2; -3; 1; 3; 2]
+  for j in [0] and q = 3 to 2
   for w = 1 downto 3 and l = 1 to 0
-  for j in [0] and q = 3 to 2];;
+  for f in [1; -1; 0] and y = 1 to 1 and b in [-3; 2; -3; 1; 3; 2]
+  for n in [1]];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(b, f, j, l, n, q, w, y)
-  for n in [|1|]
-  for f in [|1; -1; 0|] and y = 1 to 1 and b in [|-3; 2; -3; 1; 3; 2|]
+  for j in [|0|] and q = 3 to 2
   for w = 1 downto 3 and l = 1 to 0
-  for j in [|0|] and q = 3 to 2|];;
+  for f in [|1; -1; 0|] and y = 1 to 1 and b in [|-3; 2; -3; 1; 3; 2|]
+  for n in [|1|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) array = [||]
 |}];;
 
-[(q, u, y) for q = -1 to -3 for y in [-2] for u = 1 downto -3];;
+[(q, u, y) for u = 1 downto -3 for y in [-2] for q = -1 to -3];;
 [%%expect{|
 - : (int * int * int) list = []
 |}];;
 
-[|(q, u, y) for q = -1 to -3 for y in [|-2|] for u = 1 downto -3|];;
+[|(q, u, y) for u = 1 downto -3 for y in [|-2|] for q = -1 to -3|];;
 [%%expect{|
 - : (int * int * int) array = [||]
 |}];;
 
 [(e, h, i, l, o, q, r, w)
-  for w in [0; 2; 2; 3; 0; i] and o = 0 to -2 and e = -3 downto 3
+  for w in [-3] and i = -2 to 1 and r in [1; 3; 2; -2; 2; 1]
   for l in [-3; 2; 2; 1] and q = 1 to 3 and h in []
-  for w in [-3] and i = -2 to 1 and r in [1; 3; 2; -2; 2; 1]];;
+  for w in [0; 2; 2; 3; 0; i] and o = 0 to -2 and e = -3 downto 3];;
 [%%expect{|
 Line 4, characters 6-7:
-4 |   for w in [-3] and i = -2 to 1 and r in [1; 3; 2; -2; 2; 1]];;
+4 | for w in [-3] and i = -2 to 1 and r in [1; 3; 2; -2; 2; 1]];;
           ^
 Warning 26 [unused-var]: unused variable w.
 - : (int * 'a * int * int * int * int * int * int) list = []
 |}];;
 
 [|(e, h, i, l, o, q, r, w)
-  for w in [|0; 2; 2; 3; 0; i|] and o = 0 to -2 and e = -3 downto 3
+  for w in [|-3|] and i = -2 to 1 and r in [|1; 3; 2; -2; 2; 1|]
   for l in [|-3; 2; 2; 1|] and q = 1 to 3 and h in [||]
-  for w in [|-3|] and i = -2 to 1 and r in [|1; 3; 2; -2; 2; 1|]|];;
+  for w in [|0; 2; 2; 3; 0; i|] and o = 0 to -2 and e = -3 downto 3|];;
 [%%expect{|
 Line 4, characters 6-7:
-4 |   for w in [|-3|] and i = -2 to 1 and r in [|1; 3; 2; -2; 2; 1|]|];;
+4 | for w in [|-3|] and i = -2 to 1 and r in [|1; 3; 2; -2; 2; 1|]|];;
           ^
 Warning 26 [unused-var]: unused variable w.
 - : (int * '_weak44 * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(a, c, l, m, p, s, x)
-  for s in [0; p; -2; 1]
-  for p = a to x
-  for a = 1 downto 2 and m in [2]
+  for l in []
   for x = 0 downto 2 and c = -2 downto -1
-  for l in []];;
+  for a = 1 downto 2 and m in [2]
+  for p = a to x
+  for s in [0; p; -2; 1]];;
 [%%expect{|
 - : (int * int * 'a * int * int * int * int) list = []
 |}];;
 
 [|(a, c, l, m, p, s, x)
-  for s in [|0; p; -2; 1|]
-  for p = a to x
-  for a = 1 downto 2 and m in [|2|]
+  for l in [||]
   for x = 0 downto 2 and c = -2 downto -1
-  for l in [||]|];;
+  for a = 1 downto 2 and m in [|2|]
+  for p = a to x
+  for s in [|0; p; -2; 1|]|];;
 [%%expect{|
 - : (int * int * '_weak45 * int * int * int * int) array = [||]
 |}];;
 
 [(c, k, o, r, y)
-  when abs o mod 2 = 0
-  for o in [1; -2; -1; -1] and r in [2; -3; 3; -2]
+  for c = -3 downto 3 and k in [-1; 2; 3; 1; 0; 0; -1]
   for y = 0 to -3
-  for c = -3 downto 3 and k in [-1; 2; 3; 1; 0; 0; -1]];;
+  for o in [1; -2; -1; -1] and r in [2; -3; 3; -2]
+  when abs o mod 2 = 0];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(c, k, o, r, y)
-  when abs o mod 2 = 0
-  for o in [|1; -2; -1; -1|] and r in [|2; -3; 3; -2|]
+  for c = -3 downto 3 and k in [|-1; 2; 3; 1; 0; 0; -1|]
   for y = 0 to -3
-  for c = -3 downto 3 and k in [|-1; 2; 3; 1; 0; 0; -1|]|];;
+  for o in [|1; -2; -1; -1|] and r in [|2; -3; 3; -2|]
+  when abs o mod 2 = 0|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(e, k, m, o, r, s, t)
-  for s in [3; 3; -3; -1; -3] and m in [-1; -3; 2; -3; -1; -1; 2] and k = 2 to o
-  for t = k to 3 and r in [-2]
+  for o = 2 to -1
   for e in [o] and k in []
-  for o = 2 to -1];;
+  for t = k to 3 and r in [-2]
+  for s in [3; 3; -3; -1; -3] and m in [-1; -3; 2; -3; -1; -1; 2] and k = 2 to o];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(e, k, m, o, r, s, t)
+  for o = 2 to -1
+  for e in [|o|] and k in [||]
+  for t = k to 3 and r in [|-2|]
   for s in [|3; 3; -3; -1; -3|]
   and m in [|-1; -3; 2; -3; -1; -1; 2|]
-  and k = 2 to o
-  for t = k to 3 and r in [|-2|]
-  for e in [|o|] and k in [||]
-  for o = 2 to -1|];;
+  and k = 2 to o|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(a, e, r, s, t)
-  for t in [1; 3; -1; -2; 2; -3; 2] and s = -2 downto 2
-  when r <> 0
+  for e in [-3; 3; 1; 3] and a = 3 downto -3 and r in [2]
   when abs e mod 2 = 1
-  for e in [-3; 3; 1; 3] and a = 3 downto -3 and r in [2]];;
+  when r <> 0
+  for t in [1; 3; -1; -2; 2; -3; 2] and s = -2 downto 2];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(a, e, r, s, t)
-  for t in [|1; 3; -1; -2; 2; -3; 2|] and s = -2 downto 2
-  when r <> 0
+  for e in [|-3; 3; 1; 3|] and a = 3 downto -3 and r in [|2|]
   when abs e mod 2 = 1
-  for e in [|-3; 3; 1; 3|] and a = 3 downto -3 and r in [|2|]|];;
+  when r <> 0
+  for t in [|1; 3; -1; -2; 2; -3; 2|] and s = -2 downto 2|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(a, e, g, o, t, w, y)
-  for y = 3 to o
-  for e = g downto -2 and w in [1]
-  for g = 3 to 3 and a in [1]
+  for o in [0; -3; -1; 2; 1; 2; 0]
   for t in []
-  for o in [0; -3; -1; 2; 1; 2; 0]];;
+  for g = 3 to 3 and a in [1]
+  for e = g downto -2 and w in [1]
+  for y = 3 to o];;
 [%%expect{|
 - : (int * int * int * int * 'a * int * int) list = []
 |}];;
 
 [|(a, e, g, o, t, w, y)
-  for y = 3 to o
-  for e = g downto -2 and w in [|1|]
-  for g = 3 to 3 and a in [|1|]
+  for o in [|0; -3; -1; 2; 1; 2; 0|]
   for t in [||]
-  for o in [|0; -3; -1; 2; 1; 2; 0|]|];;
+  for g = 3 to 3 and a in [|1|]
+  for e = g downto -2 and w in [|1|]
+  for y = 3 to o|];;
 [%%expect{|
 - : (int * int * int * int * '_weak46 * int * int) array = [||]
 |}];;
 
 [(m, t, w, x, z)
-  for t in [1; 0] and z = 0 to 2 and _ in [2; -2; 2; -3; -1] and m = 0 downto 0
+  for x in [] and w in [3; 2; 3; -2; -3; 1; 0]
   when x <> 0
-  for x in [] and w in [3; 2; 3; -2; -3; 1; 0]];;
+  for t in [1; 0] and z = 0 to 2 and _ in [2; -2; 2; -3; -1] and m = 0 downto 0];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(m, t, w, x, z)
+  for x in [||] and w in [|3; 2; 3; -2; -3; 1; 0|]
+  when x <> 0
   for t in [|1; 0|]
   and z = 0 to 2
   and _ in [|2; -2; 2; -3; -1|]
-  and m = 0 downto 0
-  when x <> 0
-  for x in [||] and w in [|3; 2; 3; -2; -3; 1; 0|]|];;
+  and m = 0 downto 0|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
@@ -3491,127 +3491,127 @@ Warning 26 [unused-var]: unused variable w.
 |}];;
 
 [(h, k, m, v, w)
-  for m in [3; -1; 3; -3] and w = 1 downto 0
-  for h = -3 downto h and m in [-3; 1; 3; 2]
-  for k in [-3; 1; -3; -1; 0] and h in [-1; 3]
+  for v = -2 downto -3
   for _ = -3 to 2
-  for v = -2 downto -3];;
+  for k in [-3; 1; -3; -1; 0] and h in [-1; 3]
+  for h = -3 downto h and m in [-3; 1; 3; 2]
+  for m in [3; -1; 3; -3] and w = 1 downto 0];;
 [%%expect{|
 Line 3, characters 26-27:
-3 |   for h = -3 downto h and m in [-3; 1; 3; 2]
-                              ^
-Warning 26 [unused-var]: unused variable m.
+3 |
 - : (int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable m.
+                              ^ for h = -3 downto h and m in [-3; 1; 3; 2]
 |}];;
 
 [|(h, k, m, v, w)
-  for m in [|3; -1; 3; -3|] and w = 1 downto 0
-  for h = -3 downto h and m in [|-3; 1; 3; 2|]
-  for k in [|-3; 1; -3; -1; 0|] and h in [|-1; 3|]
+  for v = -2 downto -3
   for _ = -3 to 2
-  for v = -2 downto -3|];;
+  for k in [|-3; 1; -3; -1; 0|] and h in [|-1; 3|]
+  for h = -3 downto h and m in [|-3; 1; 3; 2|]
+  for m in [|3; -1; 3; -3|] and w = 1 downto 0|];;
 [%%expect{|
 Line 3, characters 26-27:
-3 |   for h = -3 downto h and m in [|-3; 1; 3; 2|]
-                              ^
-Warning 26 [unused-var]: unused variable m.
+3 |
 - : (int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable m.
+                              ^ for h = -3 downto h and m in [|-3; 1; 3; 2|]
 |}];;
 
 [(a, h, i, j, n, o, p, u, y)
-  for a = -1 to -3 and j in [0; 1]
-  for u = 0 downto 3 and i in [-2; 0]
-  for o = -2 to -2
+  for n in [] and y in [2; -3; 2]
   for h in [-2; -2] and p in [2; 3; -1]
-  for n in [] and y in [2; -3; 2]];;
+  for o = -2 to -2
+  for u = 0 downto 3 and i in [-2; 0]
+  for a = -1 to -3 and j in [0; 1]];;
 [%%expect{|
 - : (int * int * int * int * 'a * int * int * int * int) list = []
 |}];;
 
 [|(a, h, i, j, n, o, p, u, y)
-  for a = -1 to -3 and j in [|0; 1|]
-  for u = 0 downto 3 and i in [|-2; 0|]
-  for o = -2 to -2
+  for n in [||] and y in [|2; -3; 2|]
   for h in [|-2; -2|] and p in [|2; 3; -1|]
-  for n in [||] and y in [|2; -3; 2|]|];;
+  for o = -2 to -2
+  for u = 0 downto 3 and i in [|-2; 0|]
+  for a = -1 to -3 and j in [|0; 1|]|];;
 [%%expect{|
 - : (int * int * int * int * '_weak47 * int * int * int * int) array = [||]
 |}];;
 
 [(d, p, q, s, v, z)
-  for v = 2 downto -1 and s = -1 to -3
   for p = -2 downto -3
   and z in [-3; -3; 3; -3; -1; -3; 0]
   and q = 2 to 1
-  and d in [-1; 0; 3; 0; -1; 1]];;
+  and d in [-1; 0; 3; 0; -1; 1]
+  for v = 2 downto -1 and s = -1 to -3];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(d, p, q, s, v, z)
-  for v = 2 downto -1 and s = -1 to -3
   for p = -2 downto -3
   and z in [|-3; -3; 3; -3; -1; -3; 0|]
   and q = 2 to 1
-  and d in [|-1; 0; 3; 0; -1; 1|]|];;
+  and d in [|-1; 0; 3; 0; -1; 1|]
+  for v = 2 downto -1 and s = -1 to -3|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(d, e, g, n)
-  for g in [-2; d; -1; -2; 2]
-  for n = 2 downto -3 and e in []
-  for d in [2; n; 2; -3; -1; 0; n]
+  for n = -2 downto 2
   when n <> 0
-  for n = -2 downto 2];;
+  for d in [2; n; 2; -3; -1; 0; n]
+  for n = 2 downto -3 and e in []
+  for g in [-2; d; -1; -2; 2]];;
 [%%expect{|
 - : (int * 'a * int * int) list = []
 |}];;
 
 [|(d, e, g, n)
-  for g in [|-2; d; -1; -2; 2|]
-  for n = 2 downto -3 and e in [||]
-  for d in [|2; n; 2; -3; -1; 0; n|]
+  for n = -2 downto 2
   when n <> 0
-  for n = -2 downto 2|];;
+  for d in [|2; n; 2; -3; -1; 0; n|]
+  for n = 2 downto -3 and e in [||]
+  for g in [|-2; d; -1; -2; 2|]|];;
 [%%expect{|
 - : (int * '_weak48 * int * int) array = [||]
 |}];;
 
 [(a, c, g, p, q, u)
-  for g = -1 to -1 and p = -1 to 0
-  for q = 3 to -3 and u in [3; 0; -3]
-  when abs a mod 2 = 0
+  for c = 2 downto 0
   for a in [1]
-  for c = 2 downto 0];;
+  when abs a mod 2 = 0
+  for q = 3 to -3 and u in [3; 0; -3]
+  for g = -1 to -1 and p = -1 to 0];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, c, g, p, q, u)
-  for g = -1 to -1 and p = -1 to 0
-  for q = 3 to -3 and u in [|3; 0; -3|]
-  when abs a mod 2 = 0
+  for c = 2 downto 0
   for a in [|1|]
-  for c = 2 downto 0|];;
+  when abs a mod 2 = 0
+  for q = 3 to -3 and u in [|3; 0; -3|]
+  for g = -1 to -1 and p = -1 to 0|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(h, k, l, u, w)
-  when abs h mod 2 = 1
+  for u in [3; 1; -2; -3; -3; 1] and h in [0; 3; 2; -1; 3; -2] and k = 2 to 1
   for w in [] and l = -1 to 1
-  for u in [3; 1; -2; -3; -3; 1] and h in [0; 3; 2; -1; 3; -2] and k = 2 to 1];;
+  when abs h mod 2 = 1];;
 [%%expect{|
 - : (int * int * int * int * 'a) list = []
 |}];;
 
 [|(h, k, l, u, w)
-  when abs h mod 2 = 1
-  for w in [||] and l = -1 to 1
   for u in [|3; 1; -2; -3; -3; 1|]
   and h in [|0; 3; 2; -1; 3; -2|]
-  and k = 2 to 1|];;
+  and k = 2 to 1
+  for w in [||] and l = -1 to 1
+  when abs h mod 2 = 1|];;
 [%%expect{|
 - : (int * int * int * int * '_weak49) array = [||]
 |}];;
@@ -3627,8 +3627,8 @@ Warning 26 [unused-var]: unused variable m.
 |}];;
 
 [(l, t, v, x)
-  for v in [-3; -2]
-  for x = 0 downto -1 and t in [1] and l in [0; 2; -1; -3; -2; 0]];;
+  for x = 0 downto -1 and t in [1] and l in [0; 2; -1; -3; -2; 0]
+  for v in [-3; -2]];;
 [%%expect{|
 - : (int * int * int * int) list =
 [(0, 1, -3, 0); (0, 1, -2, 0); (2, 1, -3, 0); (2, 1, -2, 0); (-1, 1, -3, 0);
@@ -3640,8 +3640,8 @@ Warning 26 [unused-var]: unused variable m.
 |}];;
 
 [|(l, t, v, x)
-  for v in [|-3; -2|]
-  for x = 0 downto -1 and t in [|1|] and l in [|0; 2; -1; -3; -2; 0|]|];;
+  for x = 0 downto -1 and t in [|1|] and l in [|0; 2; -1; -3; -2; 0|]
+  for v in [|-3; -2|]|];;
 [%%expect{|
 - : (int * int * int * int) array =
 [|(0, 1, -3, 0); (0, 1, -2, 0); (2, 1, -3, 0); (2, 1, -2, 0); (-1, 1, -3, 0);
@@ -3653,57 +3653,57 @@ Warning 26 [unused-var]: unused variable m.
 |}];;
 
 [(j, q)
-  when q <> 0
-  when abs q mod 2 = 0
+  for j in [-3; 0; 0; 2; 0; 1] and q in [-1; 0; 2]
   when abs j mod 2 = 0
-  for j in [-3; 0; 0; 2; 0; 1] and q in [-1; 0; 2]];;
+  when abs q mod 2 = 0
+  when q <> 0];;
 [%%expect{|
 - : (int * int) list = [(0, 2); (0, 2); (2, 2); (0, 2)]
 |}];;
 
 [|(j, q)
-  when q <> 0
-  when abs q mod 2 = 0
+  for j in [|-3; 0; 0; 2; 0; 1|] and q in [|-1; 0; 2|]
   when abs j mod 2 = 0
-  for j in [|-3; 0; 0; 2; 0; 1|] and q in [|-1; 0; 2|]|];;
+  when abs q mod 2 = 0
+  when q <> 0|];;
 [%%expect{|
 - : (int * int) array = [|(0, 2); (0, 2); (2, 2); (0, 2)|]
 |}];;
 
 [(g, h, p, x)
-  when p < 0
-  for p in []
+  for h in [] and g in [0; -1; 2; -3] and x in [-2; -2; -3; -1; 2; 0]
   when x > 0
-  for h in [] and g in [0; -1; 2; -3] and x in [-2; -2; -3; -1; 2; 0]];;
+  for p in []
+  when p < 0];;
 [%%expect{|
 - : (int * 'a * int * int) list = []
 |}];;
 
 [|(g, h, p, x)
-  when p < 0
-  for p in [||]
+  for h in [||] and g in [|0; -1; 2; -3|] and x in [|-2; -2; -3; -1; 2; 0|]
   when x > 0
-  for h in [||] and g in [|0; -1; 2; -3|] and x in [|-2; -2; -3; -1; 2; 0|]|];;
+  for p in [||]
+  when p < 0|];;
 [%%expect{|
 - : (int * '_weak50 * int * int) array = [||]
 |}];;
 
 [(h, k, v)
-  when abs k mod 2 = 0
-  when v > 0
-  when abs h mod 2 = 1
+  for h = -3 to 0 and v = -1 downto -2
   for _ in [0; 2; 0; -2; -2; -1; -3] and k = 2 downto -3
-  for h = -3 to 0 and v = -1 downto -2];;
+  when abs h mod 2 = 1
+  when v > 0
+  when abs k mod 2 = 0];;
 [%%expect{|
 - : (int * int * int) list = []
 |}];;
 
 [|(h, k, v)
-  when abs k mod 2 = 0
-  when v > 0
-  when abs h mod 2 = 1
+  for h = -3 to 0 and v = -1 downto -2
   for _ in [|0; 2; 0; -2; -2; -1; -3|] and k = 2 downto -3
-  for h = -3 to 0 and v = -1 downto -2|];;
+  when abs h mod 2 = 1
+  when v > 0
+  when abs k mod 2 = 0|];;
 [%%expect{|
 - : (int * int * int) array = [||]
 |}];;
@@ -3731,58 +3731,58 @@ Warning 26 [unused-var]: unused variable m.
 |}];;
 
 [(a, i, j, r, u, v)
-  for j = 0 to 1 and i in [-2]
   for i in [-3; -1; -3; -3; -2]
   and a = 1 to -2
   and u = 0 to -3
   and v in []
-  and r in [-2; -1; -2; 3]];;
+  and r in [-2; -1; -2; 3]
+  for j = 0 to 1 and i in [-2]];;
 [%%expect{|
 Line 3, characters 6-7:
-3 |   for i in [-3; -1; -3; -3; -2]
-          ^
-Warning 26 [unused-var]: unused variable i.
+3 |
 - : (int * int * int * int * int * 'a) list = []
+Warning 26 [unused-var]: unused variable i.
+          ^ for i in [-3; -1; -3; -3; -2]
 |}];;
 
 [|(a, i, j, r, u, v)
-  for j = 0 to 1 and i in [|-2|]
   for i in [|-3; -1; -3; -3; -2|]
   and a = 1 to -2
   and u = 0 to -3
   and v in [||]
-  and r in [|-2; -1; -2; 3|]|];;
+  and r in [|-2; -1; -2; 3|]
+  for j = 0 to 1 and i in [|-2|]|];;
 [%%expect{|
 Line 3, characters 6-7:
-3 |   for i in [|-3; -1; -3; -3; -2|]
-          ^
-Warning 26 [unused-var]: unused variable i.
+3 |
 - : (int * int * int * int * int * '_weak52) array = [||]
+Warning 26 [unused-var]: unused variable i.
+          ^ for i in [|-3; -1; -3; -3; -2|]
 |}];;
 
 [(c, j, t, u)
-  for _ = 2 downto -1 and u = 0 downto c
-  when abs t mod 2 = 0
-  for t = 0 downto 2 and j in [0; 2; -1; 2; -1; 1]
+  for c in [2; -2; -2; 0; 3; -3; -1]
   when c <> 0
-  for c in [2; -2; -2; 0; 3; -3; -1]];;
+  for t = 0 downto 2 and j in [0; 2; -1; 2; -1; 1]
+  when abs t mod 2 = 0
+  for _ = 2 downto -1 and u = 0 downto c];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(c, j, t, u)
-  for _ = 2 downto -1 and u = 0 downto c
-  when abs t mod 2 = 0
-  for t = 0 downto 2 and j in [|0; 2; -1; 2; -1; 1|]
+  for c in [|2; -2; -2; 0; 3; -3; -1|]
   when c <> 0
-  for c in [|2; -2; -2; 0; 3; -3; -1|]|];;
+  for t = 0 downto 2 and j in [|0; 2; -1; 2; -1; 1|]
+  when abs t mod 2 = 0
+  for _ = 2 downto -1 and u = 0 downto c|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(l, w, z)
-  for z = 3 downto l and w in [-3; 1; 0; -3; -2; -2; -2]
-  for l = -3 downto -3];;
+  for l = -3 downto -3
+  for z = 3 downto l and w in [-3; 1; 0; -3; -2; -2; -2]];;
 [%%expect{|
 - : (int * int * int) list =
 [(-3, -3, 3); (-3, 1, 3); (-3, 0, 3); (-3, -3, 3); (-3, -2, 3); (-3, -2, 3);
@@ -3797,8 +3797,8 @@ Warning 26 [unused-var]: unused variable i.
 |}];;
 
 [|(l, w, z)
-  for z = 3 downto l and w in [|-3; 1; 0; -3; -2; -2; -2|]
-  for l = -3 downto -3|];;
+  for l = -3 downto -3
+  for z = 3 downto l and w in [|-3; 1; 0; -3; -2; -2; -2|]|];;
 [%%expect{|
 - : (int * int * int) array =
 [|(-3, -3, 3); (-3, 1, 3); (-3, 0, 3); (-3, -3, 3); (-3, -2, 3); (-3, -2, 3);
@@ -3813,51 +3813,51 @@ Warning 26 [unused-var]: unused variable i.
 |}];;
 
 [(b, d, f, g, o, t, v)
+  for b = -2 downto 2 and f = 2 to 0 and d in [3; -2; 1; 2; 3]
   for g in [-2; -1; 2; 1]
   and o in [-3]
   and v = -3 to 3
   and t in [2; 0; 2; -2; b]
-  and _ = -1 to -2
-  for b = -2 downto 2 and f = 2 to 0 and d in [3; -2; 1; 2; 3]];;
+  and _ = -1 to -2];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(b, d, f, g, o, t, v)
+  for b = -2 downto 2 and f = 2 to 0 and d in [|3; -2; 1; 2; 3|]
   for g in [|-2; -1; 2; 1|]
   and o in [|-3|]
   and v = -3 to 3
   and t in [|2; 0; 2; -2; b|]
-  and _ = -1 to -2
-  for b = -2 downto 2 and f = 2 to 0 and d in [|3; -2; 1; 2; 3|]|];;
+  and _ = -1 to -2|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(a, b, e, h, t, x)
-  for b = 3 to 0 and h = -1 downto 0
-  for x = 3 to -1
-  for e = -1 downto -1 and a in []
+  for t = 0 to -3
   when t < 0
-  for t = 0 to -3];;
+  for e = -1 downto -1 and a in []
+  for x = 3 to -1
+  for b = 3 to 0 and h = -1 downto 0];;
 [%%expect{|
 - : ('a * int * int * int * int * int) list = []
 |}];;
 
 [|(a, b, e, h, t, x)
-  for b = 3 to 0 and h = -1 downto 0
-  for x = 3 to -1
-  for e = -1 downto -1 and a in [||]
+  for t = 0 to -3
   when t < 0
-  for t = 0 to -3|];;
+  for e = -1 downto -1 and a in [||]
+  for x = 3 to -1
+  for b = 3 to 0 and h = -1 downto 0|];;
 [%%expect{|
 - : ('_weak53 * int * int * int * int * int) array = [||]
 |}];;
 
 [(j, k, t, v)
-  for v in [0; -3] and t in [3] and k in [-3; 1; 1; -3]
+  for j in [2; 2; 3; -1; -1; 3; 3]
   when j <> 0
-  for j in [2; 2; 3; -1; -1; 3; 3]];;
+  for v in [0; -3] and t in [3] and k in [-3; 1; 1; -3]];;
 [%%expect{|
 - : (int * int * int * int) list =
 [(2, -3, 3, 0); (2, 1, 3, 0); (2, 1, 3, 0); (2, -3, 3, 0); (2, -3, 3, -3);
@@ -3876,9 +3876,9 @@ Warning 26 [unused-var]: unused variable i.
 |}];;
 
 [|(j, k, t, v)
-  for v in [|0; -3|] and t in [|3|] and k in [|-3; 1; 1; -3|]
+  for j in [|2; 2; 3; -1; -1; 3; 3|]
   when j <> 0
-  for j in [|2; 2; 3; -1; -1; 3; 3|]|];;
+  for v in [|0; -3|] and t in [|3|] and k in [|-3; 1; 1; -3|]|];;
 [%%expect{|
 - : (int * int * int * int) array =
 [|(2, -3, 3, 0); (2, 1, 3, 0); (2, 1, 3, 0); (2, -3, 3, 0); (2, -3, 3, -3);
@@ -3896,186 +3896,186 @@ Warning 26 [unused-var]: unused variable i.
   (3, -3, 3, -3)|]
 |}];;
 
-[z when abs z mod 2 = 1 when abs z mod 2 = 0 when abs z mod 2 = 0 for z in []];;
+[z for z in [] when abs z mod 2 = 0 when abs z mod 2 = 0 when abs z mod 2 = 1];;
 [%%expect{|
 - : int list = []
 |}];;
 
 [|z
-  when abs z mod 2 = 1
+  for z in [||]
   when abs z mod 2 = 0
   when abs z mod 2 = 0
-  for z in [||]|];;
+  when abs z mod 2 = 1|];;
 [%%expect{|
 - : int array = [||]
 |}];;
 
 [(c, p, q, u, w, x)
-  for p = 2 downto 3 and u in [-3; 2]
-  when q < 0
   for q in []
   and x in [2; 2; 3; 0; 0; 3]
   and c in [2; -1; -2; 1; 2; 0; -3]
-  and w = 3 to -2];;
+  and w = 3 to -2
+  when q < 0
+  for p = 2 downto 3 and u in [-3; 2]];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(c, p, q, u, w, x)
-  for p = 2 downto 3 and u in [|-3; 2|]
-  when q < 0
   for q in [||]
   and x in [|2; 2; 3; 0; 0; 3|]
   and c in [|2; -1; -2; 1; 2; 0; -3|]
-  and w = 3 to -2|];;
+  and w = 3 to -2
+  when q < 0
+  for p = 2 downto 3 and u in [|-3; 2|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(c, e, f, g, l, p, t, w)
-  when w < 0
-  for t in [-3; p; 0; 0; 1; -1] and c in [0; 3; 2] and g = -3 downto -1
+  for l = 1 downto -2 and p = 3 to 2 and f = 3 downto 1
   for p in [] and w in [1; -2; -2; -2; -1; -2; 1] and e = 3 downto 1
-  for l = 1 downto -2 and p = 3 to 2 and f = 3 downto 1];;
+  for t in [-3; p; 0; 0; 1; -1] and c in [0; 3; 2] and g = -3 downto -1
+  when w < 0];;
 [%%expect{|
 Lines 1-5, characters 0-56:
 1 | [(c, e, f, g, l, p, t, w)
-2 |   when w < 0
-3 |   for t in [-3; p; 0; 0; 1; -1] and c in [0; 3; 2] and g = -3 downto -1
-4 |   for p in [] and w in [1; -2; -2; -2; -1; -2; 1] and e = 3 downto 1
-5 |   for l = 1 downto -2 and p = 3 to 2 and f = 3 downto 1]..
-Warning 26 [unused-var]: unused variable p.
+2 |
 - : (int * int * int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable p. for l = 1 downto -2 and p = 3 to 2 and f = 3 downto 1]..
+5 | for p in [] and w in [1; -2; -2; -2; -1; -2; 1] and e = 3 downto 1
+4 | for t in [-3; p; 0; 0; 1; -1] and c in [0; 3; 2] and g = -3 downto -1
+3 | when w < 0
 |}];;
 
 [|(c, e, f, g, l, p, t, w)
-  when w < 0
-  for t in [|-3; p; 0; 0; 1; -1|] and c in [|0; 3; 2|] and g = -3 downto -1
+  for l = 1 downto -2 and p = 3 to 2 and f = 3 downto 1
   for p in [||] and w in [|1; -2; -2; -2; -1; -2; 1|] and e = 3 downto 1
-  for l = 1 downto -2 and p = 3 to 2 and f = 3 downto 1|];;
+  for t in [|-3; p; 0; 0; 1; -1|] and c in [|0; 3; 2|] and g = -3 downto -1
+  when w < 0|];;
 [%%expect{|
 Lines 1-5, characters 0-57:
 1 | [|(c, e, f, g, l, p, t, w)
-2 |   when w < 0
-3 |   for t in [|-3; p; 0; 0; 1; -1|] and c in [|0; 3; 2|] and g = -3 downto -1
-4 |   for p in [||] and w in [|1; -2; -2; -2; -1; -2; 1|] and e = 3 downto 1
-5 |   for l = 1 downto -2 and p = 3 to 2 and f = 3 downto 1|]..
-Warning 26 [unused-var]: unused variable p.
+2 |
 - : (int * int * int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable p. for l = 1 downto -2 and p = 3 to 2 and f = 3 downto 1|]..
+5 | for p in [||] and w in [|1; -2; -2; -2; -1; -2; 1|] and e = 3 downto 1
+4 | for t in [|-3; p; 0; 0; 1; -1|] and c in [|0; 3; 2|] and g = -3 downto -1
+3 | when w < 0
 |}];;
 
 [(d, j, k, n, q, u, w, y)
-  for n in [] and d = -2 to 3 and j = 1 to 0 and k = -3 to -2
-  when y <> 0
   for w = 1 downto 0
   and u in [1; -3; 3; 2; -3; -2]
   and y = 2 to -2
-  and q in [-2; 3; -2; -2; 2; -2; -3]];;
+  and q in [-2; 3; -2; -2; 2; -2; -3]
+  when y <> 0
+  for n in [] and d = -2 to 3 and j = 1 to 0 and k = -3 to -2];;
 [%%expect{|
 - : (int * int * int * 'a * int * int * int * int) list = []
 |}];;
 
 [|(d, j, k, n, q, u, w, y)
-  for n in [||] and d = -2 to 3 and j = 1 to 0 and k = -3 to -2
-  when y <> 0
   for w = 1 downto 0
   and u in [|1; -3; 3; 2; -3; -2|]
   and y = 2 to -2
-  and q in [|-2; 3; -2; -2; 2; -2; -3|]|];;
+  and q in [|-2; 3; -2; -2; 2; -2; -3|]
+  when y <> 0
+  for n in [||] and d = -2 to 3 and j = 1 to 0 and k = -3 to -2|];;
 [%%expect{|
 - : (int * int * int * '_weak54 * int * int * int * int) array = [||]
 |}];;
 
 [(f, l, o, u, w, y)
-  for _ in [3; -3; -2; -1; -3]
+  for w = -3 to -1 and l = 2 downto 2 and u in [1; 1; 2]
   for f = l downto -3 and o in [3; -2] and y = l to -2 and w in []
-  for w = -3 to -1 and l = 2 downto 2 and u in [1; 1; 2]];;
+  for _ in [3; -3; -2; -1; -3]];;
 [%%expect{|
 Lines 1-4, characters 0-57:
 1 | [(f, l, o, u, w, y)
-2 |   for _ in [3; -3; -2; -1; -3]
-3 |   for f = l downto -3 and o in [3; -2] and y = l to -2 and w in []
-4 |   for w = -3 to -1 and l = 2 downto 2 and u in [1; 1; 2]]..
-Warning 26 [unused-var]: unused variable w.
+2 |
 - : (int * int * int * int * 'a * int) list = []
+Warning 26 [unused-var]: unused variable w. for w = -3 to -1 and l = 2 downto 2 and u in [1; 1; 2]]..
+4 | for f = l downto -3 and o in [3; -2] and y = l to -2 and w in []
+3 | for _ in [3; -3; -2; -1; -3]
 |}];;
 
 [|(f, l, o, u, w, y)
-  for _ in [|3; -3; -2; -1; -3|]
+  for w = -3 to -1 and l = 2 downto 2 and u in [|1; 1; 2|]
   for f = l downto -3 and o in [|3; -2|] and y = l to -2 and w in [||]
-  for w = -3 to -1 and l = 2 downto 2 and u in [|1; 1; 2|]|];;
+  for _ in [|3; -3; -2; -1; -3|]|];;
 [%%expect{|
 Lines 1-4, characters 0-60:
 1 | [|(f, l, o, u, w, y)
-2 |   for _ in [|3; -3; -2; -1; -3|]
-3 |   for f = l downto -3 and o in [|3; -2|] and y = l to -2 and w in [||]
-4 |   for w = -3 to -1 and l = 2 downto 2 and u in [|1; 1; 2|]|]..
-Warning 26 [unused-var]: unused variable w.
+2 |
 - : (int * int * int * int * '_weak55 * int) array = [||]
+Warning 26 [unused-var]: unused variable w. for w = -3 to -1 and l = 2 downto 2 and u in [|1; 1; 2|]|]..
+4 | for f = l downto -3 and o in [|3; -2|] and y = l to -2 and w in [||]
+3 | for _ in [|3; -3; -2; -1; -3|]
 |}];;
 
 [(a, j, p, u)
-  when j < 0
-  for p = 0 to 2 and j in [1; 1; -3]
-  for j = -1 to 2
+  for a in [3; 2]
   for u in []
-  for a in [3; 2]];;
+  for j = -1 to 2
+  for p = 0 to 2 and j in [1; 1; -3]
+  when j < 0];;
 [%%expect{|
 Lines 1-6, characters 0-18:
 1 | [(a, j, p, u)
-2 |   when j < 0
-3 |   for p = 0 to 2 and j in [1; 1; -3]
-4 |   for j = -1 to 2
-5 |   for u in []
-6 |   for a in [3; 2]]..
-Warning 26 [unused-var]: unused variable j.
+2 |
 - : (int * int * int * 'a) list = []
+Warning 26 [unused-var]: unused variable j. for a in [3; 2]]..
+6 | for u in []
+5 | for j = -1 to 2
+4 | for p = 0 to 2 and j in [1; 1; -3]
+3 | when j < 0
 |}];;
 
 [|(a, j, p, u)
-  when j < 0
-  for p = 0 to 2 and j in [|1; 1; -3|]
-  for j = -1 to 2
+  for a in [|3; 2|]
   for u in [||]
-  for a in [|3; 2|]|];;
+  for j = -1 to 2
+  for p = 0 to 2 and j in [|1; 1; -3|]
+  when j < 0|];;
 [%%expect{|
 Lines 1-6, characters 0-21:
 1 | [|(a, j, p, u)
-2 |   when j < 0
-3 |   for p = 0 to 2 and j in [|1; 1; -3|]
-4 |   for j = -1 to 2
-5 |   for u in [||]
-6 |   for a in [|3; 2|]|]..
-Warning 26 [unused-var]: unused variable j.
+2 |
 - : (int * int * int * '_weak56) array = [||]
+Warning 26 [unused-var]: unused variable j. for a in [|3; 2|]|]..
+6 | for u in [||]
+5 | for j = -1 to 2
+4 | for p = 0 to 2 and j in [|1; 1; -3|]
+3 | when j < 0
 |}];;
 
 [(a, b, n, r)
-  when r <> 0
-  when r < 0
-  for a in [n; 2; -1; -2] and r in [0; -1]
+  for b = -2 downto 3
   for n = b downto 0 and r in [2; -1; -3]
-  for b = -2 downto 3];;
+  for a in [n; 2; -1; -2] and r in [0; -1]
+  when r < 0
+  when r <> 0];;
 [%%expect{|
 Line 5, characters 25-26:
-5 |   for n = b downto 0 and r in [2; -1; -3]
-                             ^
-Warning 26 [unused-var]: unused variable r.
+5 |
 - : (int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable r.
+                             ^ for n = b downto 0 and r in [2; -1; -3]
 |}];;
 
 [|(a, b, n, r)
-  when r <> 0
-  when r < 0
-  for a in [|n; 2; -1; -2|] and r in [|0; -1|]
+  for b = -2 downto 3
   for n = b downto 0 and r in [|2; -1; -3|]
-  for b = -2 downto 3|];;
+  for a in [|n; 2; -1; -2|] and r in [|0; -1|]
+  when r < 0
+  when r <> 0|];;
 [%%expect{|
 Line 5, characters 25-26:
-5 |   for n = b downto 0 and r in [|2; -1; -3|]
-                             ^
-Warning 26 [unused-var]: unused variable r.
+5 |
 - : (int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable r.
+                             ^ for n = b downto 0 and r in [|2; -1; -3|]
 |}];;
 
 [f
@@ -4090,48 +4090,48 @@ Warning 26 [unused-var]: unused variable r.
 |}];;
 
 [(a, b, c, e, j, m, n, p, u)
+  for j = 1 downto 2 and u in [0; 2; -2; 0; 3]
+  for e in [0; 1] and b = -2 downto 1 and c = 3 downto 0 and p = 2 to -3
   for a = 0 downto 2
   and e in [1]
   and n in [u; u; -3; 2; 0; -2; 0]
-  and m in [0; -2; -1]
-  for e in [0; 1] and b = -2 downto 1 and c = 3 downto 0 and p = 2 to -3
-  for j = 1 downto 2 and u in [0; 2; -2; 0; 3]];;
+  and m in [0; -2; -1]];;
 [%%expect{|
 Line 6, characters 6-7:
-6 |   for e in [0; 1] and b = -2 downto 1 and c = 3 downto 0 and p = 2 to -3
-          ^
-Warning 26 [unused-var]: unused variable e.
+6 |
 - : (int * int * int * int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable e.
+          ^ for e in [0; 1] and b = -2 downto 1 and c = 3 downto 0 and p = 2 to -3
 |}];;
 
 [|(a, b, c, e, j, m, n, p, u)
+  for j = 1 downto 2 and u in [|0; 2; -2; 0; 3|]
+  for e in [|0; 1|] and b = -2 downto 1 and c = 3 downto 0 and p = 2 to -3
   for a = 0 downto 2
   and e in [|1|]
   and n in [|u; u; -3; 2; 0; -2; 0|]
-  and m in [|0; -2; -1|]
-  for e in [|0; 1|] and b = -2 downto 1 and c = 3 downto 0 and p = 2 to -3
-  for j = 1 downto 2 and u in [|0; 2; -2; 0; 3|]|];;
+  and m in [|0; -2; -1|]|];;
 [%%expect{|
 Line 6, characters 6-7:
-6 |   for e in [|0; 1|] and b = -2 downto 1 and c = 3 downto 0 and p = 2 to -3
-          ^
-Warning 26 [unused-var]: unused variable e.
+6 |
 - : (int * int * int * int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable e.
+          ^ for e in [|0; 1|] and b = -2 downto 1 and c = 3 downto 0 and p = 2 to -3
 |}];;
 
 [(d, j, m, o, p, q, x)
-  for d in [0; -2; 0] and o = x to 3 and j in [0; 1; 2; 1; m; x; 0]
-  for q = -2 to 3 and p in [] and x in [-3; 3; 2; 0] and m in [0; 1; -1]];;
+  for q = -2 to 3 and p in [] and x in [-3; 3; 2; 0] and m in [0; 1; -1]
+  for d in [0; -2; 0] and o = x to 3 and j in [0; 1; 2; 1; m; x; 0]];;
 [%%expect{|
 - : (int * int * int * int * 'a * int * int) list = []
 |}];;
 
 [|(d, j, m, o, p, q, x)
-  for d in [|0; -2; 0|] and o = x to 3 and j in [|0; 1; 2; 1; m; x; 0|]
   for q = -2 to 3
   and p in [||]
   and x in [|-3; 3; 2; 0|]
-  and m in [|0; 1; -1|]|];;
+  and m in [|0; 1; -1|]
+  for d in [|0; -2; 0|] and o = x to 3 and j in [|0; 1; 2; 1; m; x; 0|]|];;
 [%%expect{|
 - : (int * int * int * int * '_weak57 * int * int) array = [||]
 |}];;
@@ -4155,63 +4155,63 @@ Warning 26 [unused-var]: unused variable e.
 |}];;
 
 [(d, j, n, t, x)
-  for x = -3 downto 3
-  for d = n to 0
-  for n in [] and j = t downto t
+  for t = 0 to 2 and d in [1; 2; 1]
   when d < 0
-  for t = 0 to 2 and d in [1; 2; 1]];;
+  for n in [] and j = t downto t
+  for d = n to 0
+  for x = -3 downto 3];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(d, j, n, t, x)
-  for x = -3 downto 3
-  for d = n to 0
-  for n in [||] and j = t downto t
+  for t = 0 to 2 and d in [|1; 2; 1|]
   when d < 0
-  for t = 0 to 2 and d in [|1; 2; 1|]|];;
+  for n in [||] and j = t downto t
+  for d = n to 0
+  for x = -3 downto 3|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(b, g, j, o, r, y)
-  when abs y mod 2 = 0
-  for y = 0 downto -1 and b = -3 to r and g in [-2; -3; -2]
+  for r in [0; -3; 0; 0; 3] and y = 0 to 0
   for b in [-2] and j = -1 to -1 and o = -3 downto -2
-  for r in [0; -3; 0; 0; 3] and y = 0 to 0];;
+  for y = 0 downto -1 and b = -3 to r and g in [-2; -3; -2]
+  when abs y mod 2 = 0];;
 [%%expect{|
 Lines 1-5, characters 0-43:
 1 | [(b, g, j, o, r, y)
-2 |   when abs y mod 2 = 0
-3 |   for y = 0 downto -1 and b = -3 to r and g in [-2; -3; -2]
-4 |   for b in [-2] and j = -1 to -1 and o = -3 downto -2
-5 |   for r in [0; -3; 0; 0; 3] and y = 0 to 0]..
-Warning 26 [unused-var]: unused variable y.
-Line 4, characters 6-7:
-4 |   for b in [-2] and j = -1 to -1 and o = -3 downto -2
-          ^
-Warning 26 [unused-var]: unused variable b.
+2 |
 - : (int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable b.
+          ^ for b in [-2] and j = -1 to -1 and o = -3 downto -2
+4 |
+Line 4, characters 6-7:
+Warning 26 [unused-var]: unused variable y. for r in [0; -3; 0; 0; 3] and y = 0 to 0]..
+5 | for b in [-2] and j = -1 to -1 and o = -3 downto -2
+4 | for y = 0 downto -1 and b = -3 to r and g in [-2; -3; -2]
+3 | when abs y mod 2 = 0
 |}];;
 
 [|(b, g, j, o, r, y)
-  when abs y mod 2 = 0
-  for y = 0 downto -1 and b = -3 to r and g in [|-2; -3; -2|]
+  for r in [|0; -3; 0; 0; 3|] and y = 0 to 0
   for b in [|-2|] and j = -1 to -1 and o = -3 downto -2
-  for r in [|0; -3; 0; 0; 3|] and y = 0 to 0|];;
+  for y = 0 downto -1 and b = -3 to r and g in [|-2; -3; -2|]
+  when abs y mod 2 = 0|];;
 [%%expect{|
 Lines 1-5, characters 0-46:
 1 | [|(b, g, j, o, r, y)
-2 |   when abs y mod 2 = 0
-3 |   for y = 0 downto -1 and b = -3 to r and g in [|-2; -3; -2|]
-4 |   for b in [|-2|] and j = -1 to -1 and o = -3 downto -2
-5 |   for r in [|0; -3; 0; 0; 3|] and y = 0 to 0|]..
-Warning 26 [unused-var]: unused variable y.
-Line 4, characters 6-7:
-4 |   for b in [|-2|] and j = -1 to -1 and o = -3 downto -2
-          ^
-Warning 26 [unused-var]: unused variable b.
+2 |
 - : (int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable b.
+          ^ for b in [|-2|] and j = -1 to -1 and o = -3 downto -2
+4 |
+Line 4, characters 6-7:
+Warning 26 [unused-var]: unused variable y. for r in [|0; -3; 0; 0; 3|] and y = 0 to 0|]..
+5 | for b in [|-2|] and j = -1 to -1 and o = -3 downto -2
+4 | for y = 0 downto -1 and b = -3 to r and g in [|-2; -3; -2|]
+3 | when abs y mod 2 = 0
 |}];;
 
 [g for g = -1 to -3];;
@@ -4225,93 +4225,93 @@ Warning 26 [unused-var]: unused variable b.
 |}];;
 
 [(a, b, c, m, q, r, y)
-  for q = 1 downto 3 and b in [-3; 2; m]
-  for a in [r; 0; 0; 0; -3; 1; -3] and y = 0 downto 2
+  for r in [1] and m = -1 to 1
   for c in [m; 2]
-  for r in [1] and m = -1 to 1];;
+  for a in [r; 0; 0; 0; -3; 1; -3] and y = 0 downto 2
+  for q = 1 downto 3 and b in [-3; 2; m]];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, b, c, m, q, r, y)
-  for q = 1 downto 3 and b in [|-3; 2; m|]
-  for a in [|r; 0; 0; 0; -3; 1; -3|] and y = 0 downto 2
+  for r in [|1|] and m = -1 to 1
   for c in [|m; 2|]
-  for r in [|1|] and m = -1 to 1|];;
+  for a in [|r; 0; 0; 0; -3; 1; -3|] and y = 0 downto 2
+  for q = 1 downto 3 and b in [|-3; 2; m|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(f, j, o, q, z)
-  for z in [0; -2; -1]
-  for _ = 3 to f
-  for j in [-1; f; 2]
+  for o in [-3; 2; 3; -2]
   for q = 3 downto 3 and f = -3 to -2
-  for o in [-3; 2; 3; -2]];;
+  for j in [-1; f; 2]
+  for _ = 3 to f
+  for z in [0; -2; -1]];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(f, j, o, q, z)
-  for z in [|0; -2; -1|]
-  for _ = 3 to f
-  for j in [|-1; f; 2|]
+  for o in [|-3; 2; 3; -2|]
   for q = 3 downto 3 and f = -3 to -2
-  for o in [|-3; 2; 3; -2|]|];;
+  for j in [|-1; f; 2|]
+  for _ = 3 to f
+  for z in [|0; -2; -1|]|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(d, g, y, z)
-  for d = -1 downto 3 and g = -2 downto 2 and y in [-1; -3; 0; 2; 0]
-  for z in []];;
+  for z in []
+  for d = -1 downto 3 and g = -2 downto 2 and y in [-1; -3; 0; 2; 0]];;
 [%%expect{|
 - : (int * int * int * 'a) list = []
 |}];;
 
 [|(d, g, y, z)
-  for d = -1 downto 3 and g = -2 downto 2 and y in [|-1; -3; 0; 2; 0|]
-  for z in [||]|];;
+  for z in [||]
+  for d = -1 downto 3 and g = -2 downto 2 and y in [|-1; -3; 0; 2; 0|]|];;
 [%%expect{|
 - : (int * int * int * '_weak58) array = [||]
 |}];;
 
 [(c, d, f, j, y)
-  for y = 0 downto f
+  for f = 0 to -2 and j in [-2; 3; 1]
   for c = 3 downto 2 and d in [3; 2; 3; 0; 0]
-  for f = 0 to -2 and j in [-2; 3; 1]];;
+  for y = 0 downto f];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(c, d, f, j, y)
-  for y = 0 downto f
+  for f = 0 to -2 and j in [|-2; 3; 1|]
   for c = 3 downto 2 and d in [|3; 2; 3; 0; 0|]
-  for f = 0 to -2 and j in [|-2; 3; 1|]|];;
+  for y = 0 downto f|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(h, l, n, t, v, w)
-  for h = -1 downto 3 and w in [2; 0]
-  for v = 1 downto 0 and n = l to -3
+  for l = -1 downto -3 and t = 3 downto -3 and v in [1; 0; -1; -2; 3; -2; 1]
   when abs l mod 2 = 1
-  for l = -1 downto -3 and t = 3 downto -3 and v in [1; 0; -1; -2; 3; -2; 1]];;
+  for v = 1 downto 0 and n = l to -3
+  for h = -1 downto 3 and w in [2; 0]];;
 [%%expect{|
 Line 5, characters 47-48:
-5 |   for l = -1 downto -3 and t = 3 downto -3 and v in [1; 0; -1; -2; 3; -2; 1]];;
+5 | for l = -1 downto -3 and t = 3 downto -3 and v in [1; 0; -1; -2; 3; -2; 1]];;
                                                    ^
 Warning 26 [unused-var]: unused variable v.
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(h, l, n, t, v, w)
-  for h = -1 downto 3 and w in [|2; 0|]
-  for v = 1 downto 0 and n = l to -3
-  when abs l mod 2 = 1
   for l = -1 downto -3
   and t = 3 downto -3
-  and v in [|1; 0; -1; -2; 3; -2; 1|]|];;
+  and v in [|1; 0; -1; -2; 3; -2; 1|]
+  when abs l mod 2 = 1
+  for v = 1 downto 0 and n = l to -3
+  for h = -1 downto 3 and w in [|2; 0|]|];;
 [%%expect{|
 Line 7, characters 6-7:
 7 |   and v in [|1; 0; -1; -2; 3; -2; 1|]|];;
@@ -4321,17 +4321,17 @@ Warning 26 [unused-var]: unused variable v.
 |}];;
 
 [(k, l, o, u)
-  when l <> 0
+  for l = -2 to 2
   for u = l to 1 and o = 1 downto 3 and k = -1 downto 3
-  for l = -2 to 2];;
+  when l <> 0];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(k, l, o, u)
-  when l <> 0
+  for l = -2 to 2
   for u = l to 1 and o = 1 downto 3 and k = -1 downto 3
-  for l = -2 to 2|];;
+  when l <> 0|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
@@ -4359,340 +4359,340 @@ Warning 26 [unused-var]: unused variable v.
 |}];;
 
 [(b, n, o, x, z)
-  when o > 0
-  for b in [o; -1; 0; -1; -3; 2; 2] and z = 2 to 1 and x in []
+  for o = -2 downto 1 and n in []
   when abs o mod 2 = 0
-  for o = -2 downto 1 and n in []];;
+  for b in [o; -1; 0; -1; -3; 2; 2] and z = 2 to 1 and x in []
+  when o > 0];;
 [%%expect{|
 - : (int * 'a * int * 'b * int) list = []
 |}];;
 
 [|(b, n, o, x, z)
-  when o > 0
-  for b in [|o; -1; 0; -1; -3; 2; 2|] and z = 2 to 1 and x in [||]
+  for o = -2 downto 1 and n in [||]
   when abs o mod 2 = 0
-  for o = -2 downto 1 and n in [||]|];;
+  for b in [|o; -1; 0; -1; -3; 2; 2|] and z = 2 to 1 and x in [||]
+  when o > 0|];;
 [%%expect{|
 - : (int * '_weak59 * int * '_weak60 * int) array = [||]
 |}];;
 
 [(a, k, n, r, t, u)
-  for u = -1 to 3
-  for a = 2 downto -3 and r in [t]
-  for t in [k; 3; -3; -1; a; -2] and n in [3; 2; 2; -1; 1; 2]
+  for t = 2 to -2 and a in []
   for a = 1 to 3 and k in [2; -2]
-  for t = 2 to -2 and a in []];;
+  for t in [k; 3; -3; -1; a; -2] and n in [3; 2; 2; -1; 1; 2]
+  for a = 2 downto -3 and r in [t]
+  for u = -1 to 3];;
 [%%expect{|
 Line 6, characters 22-23:
-6 |   for t = 2 to -2 and a in []];;
+6 | for t = 2 to -2 and a in []];;
                           ^
 Warning 26 [unused-var]: unused variable a.
 Lines 1-6, characters 0-30:
 1 | [(a, k, n, r, t, u)
-2 |   for u = -1 to 3
-3 |   for a = 2 downto -3 and r in [t]
-4 |   for t in [k; 3; -3; -1; a; -2] and n in [3; 2; 2; -1; 1; 2]
-5 |   for a = 1 to 3 and k in [2; -2]
-6 |   for t = 2 to -2 and a in []]..
-Warning 26 [unused-var]: unused variable t.
+2 |
 - : (int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable t. for t = 2 to -2 and a in []]..
+6 | for a = 1 to 3 and k in [2; -2]
+5 | for t in [k; 3; -3; -1; a; -2] and n in [3; 2; 2; -1; 1; 2]
+4 | for a = 2 downto -3 and r in [t]
+3 | for u = -1 to 3
 |}];;
 
 [|(a, k, n, r, t, u)
-  for u = -1 to 3
-  for a = 2 downto -3 and r in [|t|]
-  for t in [|k; 3; -3; -1; a; -2|] and n in [|3; 2; 2; -1; 1; 2|]
+  for t = 2 to -2 and a in [||]
   for a = 1 to 3 and k in [|2; -2|]
-  for t = 2 to -2 and a in [||]|];;
+  for t in [|k; 3; -3; -1; a; -2|] and n in [|3; 2; 2; -1; 1; 2|]
+  for a = 2 downto -3 and r in [|t|]
+  for u = -1 to 3|];;
 [%%expect{|
 Line 6, characters 22-23:
-6 |   for t = 2 to -2 and a in [||]|];;
+6 | for t = 2 to -2 and a in [||]|];;
                           ^
 Warning 26 [unused-var]: unused variable a.
 Lines 1-6, characters 0-33:
 1 | [|(a, k, n, r, t, u)
-2 |   for u = -1 to 3
-3 |   for a = 2 downto -3 and r in [|t|]
-4 |   for t in [|k; 3; -3; -1; a; -2|] and n in [|3; 2; 2; -1; 1; 2|]
-5 |   for a = 1 to 3 and k in [|2; -2|]
-6 |   for t = 2 to -2 and a in [||]|]..
-Warning 26 [unused-var]: unused variable t.
+2 |
 - : (int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable t. for t = 2 to -2 and a in [||]|]..
+6 | for a = 1 to 3 and k in [|2; -2|]
+5 | for t in [|k; 3; -3; -1; a; -2|] and n in [|3; 2; 2; -1; 1; 2|]
+4 | for a = 2 downto -3 and r in [|t|]
+3 | for u = -1 to 3
 |}];;
 
 [(b, d, g, i, q, r)
-  for g = 3 downto 1
-  for q = -2 downto 0
   for r in [3; -3; 1]
   and d = -2 downto 2
   and b in [-1; 2; 1; 2; 1; -1; -1]
-  and i in [-2; 0]];;
+  and i in [-2; 0]
+  for q = -2 downto 0
+  for g = 3 downto 1];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(b, d, g, i, q, r)
-  for g = 3 downto 1
-  for q = -2 downto 0
   for r in [|3; -3; 1|]
   and d = -2 downto 2
   and b in [|-1; 2; 1; 2; 1; -1; -1|]
-  and i in [|-2; 0|]|];;
+  and i in [|-2; 0|]
+  for q = -2 downto 0
+  for g = 3 downto 1|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(j, l, m, t)
-  for l in [-2; -3; 0; 3; 1; -1; m]
-  for m in [3; -3] and t = -1 downto 3 and j = 0 to 2];;
+  for m in [3; -3] and t = -1 downto 3 and j = 0 to 2
+  for l in [-2; -3; 0; 3; 1; -1; m]];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(j, l, m, t)
-  for l in [|-2; -3; 0; 3; 1; -1; m|]
-  for m in [|3; -3|] and t = -1 downto 3 and j = 0 to 2|];;
+  for m in [|3; -3|] and t = -1 downto 3 and j = 0 to 2
+  for l in [|-2; -3; 0; 3; 1; -1; m|]|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(c, o, u, w)
-  for w = -2 downto -1 and u in [2; 2; 2; -3]
+  for o = 0 to -2
   for c in [-2; -2]
-  for o = 0 to -2];;
+  for w = -2 downto -1 and u in [2; 2; 2; -3]];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(c, o, u, w)
-  for w = -2 downto -1 and u in [|2; 2; 2; -3|]
+  for o = 0 to -2
   for c in [|-2; -2|]
-  for o = 0 to -2|];;
+  for w = -2 downto -1 and u in [|2; 2; 2; -3|]|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(c, d, n, o, p, q, u, w)
-  for _ = p to 3 and q in [-3; -3; -2; 1; 0; o; 3]
-  for p in []
-  for n in [0; -1; 0] and o = d to 1
+  for u in [] and c = -1 downto -2
   for w in [] and d in []
-  for u in [] and c = -1 downto -2];;
+  for n in [0; -1; 0] and o = d to 1
+  for p in []
+  for _ = p to 3 and q in [-3; -3; -2; 1; 0; o; 3]];;
 [%%expect{|
 - : (int * int * int * int * int * int * 'a * 'b) list = []
 |}];;
 
 [|(c, d, n, o, p, q, u, w)
-  for _ = p to 3 and q in [|-3; -3; -2; 1; 0; o; 3|]
-  for p in [||]
-  for n in [|0; -1; 0|] and o = d to 1
+  for u in [||] and c = -1 downto -2
   for w in [||] and d in [||]
-  for u in [||] and c = -1 downto -2|];;
+  for n in [|0; -1; 0|] and o = d to 1
+  for p in [||]
+  for _ = p to 3 and q in [|-3; -3; -2; 1; 0; o; 3|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int * '_weak61 * '_weak62) array = [||]
 |}];;
 
 [(e, f, k, u, v, x, y)
-  for k = -1 downto 3
-  for f = -3 to 2 and e in [-2; -2; 3; 3; 2]
+  for u = 0 to -3
   for x in [0; 3; u] and y = -3 to 0 and v = 2 downto 1
-  for u = 0 to -3];;
+  for f = -3 to 2 and e in [-2; -2; 3; 3; 2]
+  for k = -1 downto 3];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(e, f, k, u, v, x, y)
-  for k = -1 downto 3
-  for f = -3 to 2 and e in [|-2; -2; 3; 3; 2|]
+  for u = 0 to -3
   for x in [|0; 3; u|] and y = -3 to 0 and v = 2 downto 1
-  for u = 0 to -3|];;
+  for f = -3 to 2 and e in [|-2; -2; 3; 3; 2|]
+  for k = -1 downto 3|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(d, i, j, l, s, z)
-  for i in [-2; 1; -3; -3] and z in [-3; -3; -2; -2; l; -3; -1] and d = 2 to 1
   for i = 3 to -1
   and l = 3 downto 1
   and s in [1; -3; -2; 2; -2; 1; -1]
-  and j in [-1; 3; 2]];;
+  and j in [-1; 3; 2]
+  for i in [-2; 1; -3; -3] and z in [-3; -3; -2; -2; l; -3; -1] and d = 2 to 1];;
 [%%expect{|
 Lines 1-6, characters 0-22:
 1 | [(d, i, j, l, s, z)
-2 |   for i in [-2; 1; -3; -3] and z in [-3; -3; -2; -2; l; -3; -1] and d = 2 to 1
-3 |   for i = 3 to -1
-4 |   and l = 3 downto 1
-5 |   and s in [1; -3; -2; 2; -2; 1; -1]
-6 |   and j in [-1; 3; 2]]..
-Warning 26 [unused-var]: unused variable i.
+2 |
 - : (int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable i.
+6 |   and j in [-1; 3; 2]]..
+5 |   and s in [1; -3; -2; 2; -2; 1; -1]
+4 |   and l = 3 downto 1 for i = 3 to -1
+3 | for i in [-2; 1; -3; -3] and z in [-3; -3; -2; -2; l; -3; -1] and d = 2 to 1
 |}];;
 
 [|(d, i, j, l, s, z)
-  for i in [|-2; 1; -3; -3|]
-  and z in [|-3; -3; -2; -2; l; -3; -1|]
-  and d = 2 to 1
   for i = 3 to -1
   and l = 3 downto 1
   and s in [|1; -3; -2; 2; -2; 1; -1|]
-  and j in [|-1; 3; 2|]|];;
+  and j in [|-1; 3; 2|]
+  for i in [|-2; 1; -3; -3|]
+  and z in [|-3; -3; -2; -2; l; -3; -1|]
+  and d = 2 to 1|];;
 [%%expect{|
 Lines 1-8, characters 0-25:
 1 | [|(d, i, j, l, s, z)
-2 |   for i in [|-2; 1; -3; -3|]
-3 |   and z in [|-3; -3; -2; -2; l; -3; -1|]
-4 |   and d = 2 to 1
-5 |   for i = 3 to -1
-6 |   and l = 3 downto 1
-7 |   and s in [|1; -3; -2; 2; -2; 1; -1|]
-8 |   and j in [|-1; 3; 2|]|]..
-Warning 26 [unused-var]: unused variable i.
+2 |
 - : (int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable i.
+8 |   and j in [|-1; 3; 2|]|]..
+7 |   and s in [|1; -3; -2; 2; -2; 1; -1|]
+6 |   and l = 3 downto 1 for i = 3 to -1
+5 |
+4 |   and d = 2 to 1
+3 |   and z in [|-3; -3; -2; -2; l; -3; -1|] for i in [|-2; 1; -3; -3|]
 |}];;
 
 [(f, l, n, r, u, w)
-  for f = 2 to -2 and l = -2 to 1 and n = 1 to w and u in [3; 0]
-  for w in [-1; -2; 1; 3; 1; -2; 1] and r in [-2]];;
+  for w in [-1; -2; 1; 3; 1; -2; 1] and r in [-2]
+  for f = 2 to -2 and l = -2 to 1 and n = 1 to w and u in [3; 0]];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(f, l, n, r, u, w)
-  for f = 2 to -2 and l = -2 to 1 and n = 1 to w and u in [|3; 0|]
-  for w in [|-1; -2; 1; 3; 1; -2; 1|] and r in [|-2|]|];;
+  for w in [|-1; -2; 1; 3; 1; -2; 1|] and r in [|-2|]
+  for f = 2 to -2 and l = -2 to 1 and n = 1 to w and u in [|3; 0|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(g, h, l, r, s)
-  for l in [1; 2; 3; 1] and r = 1 downto 1
-  for g = 3 downto h and s = -1 downto 3 and r in [-3; -3; -3; 3; h]
+  for h in [3; 0]
   for h = 3 to 0
-  for h in [3; 0]];;
+  for g = 3 downto h and s = -1 downto 3 and r in [-3; -3; -3; 3; h]
+  for l in [1; 2; 3; 1] and r = 1 downto 1];;
 [%%expect{|
 Line 5, characters 6-7:
-5 |   for h in [3; 0]];;
+5 | for h in [3; 0]];;
           ^
 Warning 26 [unused-var]: unused variable h.
 Line 3, characters 45-46:
-3 |   for g = 3 downto h and s = -1 downto 3 and r in [-3; -3; -3; 3; h]
-                                                 ^
-Warning 26 [unused-var]: unused variable r.
+3 |
 - : (int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable r.
+                                                 ^ for g = 3 downto h and s = -1 downto 3 and r in [-3; -3; -3; 3; h]
 |}];;
 
 [|(g, h, l, r, s)
-  for l in [|1; 2; 3; 1|] and r = 1 downto 1
-  for g = 3 downto h and s = -1 downto 3 and r in [|-3; -3; -3; 3; h|]
+  for h in [|3; 0|]
   for h = 3 to 0
-  for h in [|3; 0|]|];;
+  for g = 3 downto h and s = -1 downto 3 and r in [|-3; -3; -3; 3; h|]
+  for l in [|1; 2; 3; 1|] and r = 1 downto 1|];;
 [%%expect{|
 Line 5, characters 6-7:
-5 |   for h in [|3; 0|]|];;
+5 | for h in [|3; 0|]|];;
           ^
 Warning 26 [unused-var]: unused variable h.
 Line 3, characters 45-46:
-3 |   for g = 3 downto h and s = -1 downto 3 and r in [|-3; -3; -3; 3; h|]
-                                                 ^
-Warning 26 [unused-var]: unused variable r.
+3 |
 - : (int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable r.
+                                                 ^ for g = 3 downto h and s = -1 downto 3 and r in [|-3; -3; -3; 3; h|]
 |}];;
 
-[(d, i, t) for t in [] and i in [-2] for d = -3 to -3];;
+[(d, i, t) for d = -3 to -3 for t in [] and i in [-2]];;
 [%%expect{|
 - : (int * int * 'a) list = []
 |}];;
 
-[|(d, i, t) for t in [||] and i in [|-2|] for d = -3 to -3|];;
+[|(d, i, t) for d = -3 to -3 for t in [||] and i in [|-2|]|];;
 [%%expect{|
 - : (int * int * '_weak63) array = [||]
 |}];;
 
 [(b, j, n, q, t, u)
-  for n in [-3; 2; 0; b] and u = 3 downto 3 and b = 0 downto -1
-  for b in [-3] and t = 3 to 1 and _ in [-1; -1; 0; 0; 3]
+  for q = 0 downto -3 and j = -2 to -1 and _ = 0 downto 3
   when q < 0
-  for q = 0 downto -3 and j = -2 to -1 and _ = 0 downto 3];;
+  for b in [-3] and t = 3 to 1 and _ in [-1; -1; 0; 0; 3]
+  for n in [-3; 2; 0; b] and u = 3 downto 3 and b = 0 downto -1];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(b, j, n, q, t, u)
-  for n in [|-3; 2; 0; b|] and u = 3 downto 3 and b = 0 downto -1
-  for b in [|-3|] and t = 3 to 1 and _ in [|-1; -1; 0; 0; 3|]
+  for q = 0 downto -3 and j = -2 to -1 and _ = 0 downto 3
   when q < 0
-  for q = 0 downto -3 and j = -2 to -1 and _ = 0 downto 3|];;
+  for b in [|-3|] and t = 3 to 1 and _ in [|-1; -1; 0; 0; 3|]
+  for n in [|-3; 2; 0; b|] and u = 3 downto 3 and b = 0 downto -1|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(a, d, l, m, q, r, s, u, y)
-  for s = 1 to r and y = -1 downto d
-  for l in [0]
+  for m = 3 to -2 and d = 2 to -2 and r in [-3; 3; -2; -2; 3; -3; 2]
   for u in [-2; -2] and q = 2 downto 3 and a in [1]
-  for m = 3 to -2 and d = 2 to -2 and r in [-3; 3; -2; -2; 3; -3; 2]];;
+  for l in [0]
+  for s = 1 to r and y = -1 downto d];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, d, l, m, q, r, s, u, y)
-  for s = 1 to r and y = -1 downto d
-  for l in [|0|]
+  for m = 3 to -2 and d = 2 to -2 and r in [|-3; 3; -2; -2; 3; -3; 2|]
   for u in [|-2; -2|] and q = 2 downto 3 and a in [|1|]
-  for m = 3 to -2 and d = 2 to -2 and r in [|-3; 3; -2; -2; 3; -3; 2|]|];;
+  for l in [|0|]
+  for s = 1 to r and y = -1 downto d|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(a, o, u, w)
-  for _ in []
-  for w in [-3; a; -3; a; 2; 3; 3]
-  when w <> 0
+  for u = 1 downto -1 and w in [0; -2; 3; 0; -3]
   for a = 1 downto 2 and o in [-3; 2; -1; 2; u; -2; -2]
-  for u = 1 downto -1 and w in [0; -2; 3; 0; -3]];;
+  when w <> 0
+  for w in [-3; a; -3; a; 2; 3; 3]
+  for _ in []];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(a, o, u, w)
-  for _ in [||]
-  for w in [|-3; a; -3; a; 2; 3; 3|]
-  when w <> 0
+  for u = 1 downto -1 and w in [|0; -2; 3; 0; -3|]
   for a = 1 downto 2 and o in [|-3; 2; -1; 2; u; -2; -2|]
-  for u = 1 downto -1 and w in [|0; -2; 3; 0; -3|]|];;
+  when w <> 0
+  for w in [|-3; a; -3; a; 2; 3; 3|]
+  for _ in [||]|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(a, b, c, h, i, j, u, x, z)
-  for z in [3; -1; 1; -1; 1; 0; 1]
-  and i in [0; 0; 2]
-  and u = -2 downto -1
-  and j = -1 downto 2
   for x in [-1; -1; -3; 3]
   and a = 3 downto -2
   and c in [1; -2]
   and b = 1 downto 2
-  and h in [-1; -1; 2]];;
+  and h in [-1; -1; 2]
+  for z in [3; -1; 1; -1; 1; 0; 1]
+  and i in [0; 0; 2]
+  and u = -2 downto -1
+  and j = -1 downto 2];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, b, c, h, i, j, u, x, z)
-  for z in [|3; -1; 1; -1; 1; 0; 1|]
-  and i in [|0; 0; 2|]
-  and u = -2 downto -1
-  and j = -1 downto 2
   for x in [|-1; -1; -3; 3|]
   and a = 3 downto -2
   and c in [|1; -2|]
   and b = 1 downto 2
-  and h in [|-1; -1; 2|]|];;
+  and h in [|-1; -1; 2|]
+  for z in [|3; -1; 1; -1; 1; 0; 1|]
+  and i in [|0; 0; 2|]
+  and u = -2 downto -1
+  and j = -1 downto 2|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int * int) array = [||]
 |}];;
 
-[(a, s) for a = -2 to 0 for s in [1; -3; -1; -2; 1; -3; 1]];;
+[(a, s) for s in [1; -3; -1; -2; 1; -3; 1] for a = -2 to 0];;
 [%%expect{|
 - : (int * int) list =
 [(-2, 1); (-1, 1); (0, 1); (-2, -3); (-1, -3); (0, -3); (-2, -1); (-1, -1);
@@ -4700,7 +4700,7 @@ Warning 26 [unused-var]: unused variable r.
  (-1, -3); (0, -3); (-2, 1); (-1, 1); (0, 1)]
 |}];;
 
-[|(a, s) for a = -2 to 0 for s in [|1; -3; -1; -2; 1; -3; 1|]|];;
+[|(a, s) for s in [|1; -3; -1; -2; 1; -3; 1|] for a = -2 to 0|];;
 [%%expect{|
 - : (int * int) array =
 [|(-2, 1); (-1, 1); (0, 1); (-2, -3); (-1, -3); (0, -3); (-2, -1); (-1, -1);
@@ -4709,97 +4709,97 @@ Warning 26 [unused-var]: unused variable r.
 |}];;
 
 [(j, k, m, o, q, t)
-  for k = 0 downto -2 and m in [2; 3; 1; q; 0]
+  for t = -3 to -2 and o = -2 downto 2 and q = -2 downto 3
   for j = -2 to 1
-  for t = -3 to -2 and o = -2 downto 2 and q = -2 downto 3];;
+  for k = 0 downto -2 and m in [2; 3; 1; q; 0]];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(j, k, m, o, q, t)
-  for k = 0 downto -2 and m in [|2; 3; 1; q; 0|]
+  for t = -3 to -2 and o = -2 downto 2 and q = -2 downto 3
   for j = -2 to 1
-  for t = -3 to -2 and o = -2 downto 2 and q = -2 downto 3|];;
+  for k = 0 downto -2 and m in [|2; 3; 1; q; 0|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(a, g, l, o, t, v)
-  for l in [] and a = -3 downto -2
-  for o in [-2; 2; v]
+  for v = 0 to 1 and g in [2; -3; 0] and t = 0 downto 0
   for v in [-2; -3; -2]
-  for v = 0 to 1 and g in [2; -3; 0] and t = 0 downto 0];;
+  for o in [-2; 2; v]
+  for l in [] and a = -3 downto -2];;
 [%%expect{|
 Lines 1-5, characters 0-56:
 1 | [(a, g, l, o, t, v)
-2 |   for l in [] and a = -3 downto -2
-3 |   for o in [-2; 2; v]
-4 |   for v in [-2; -3; -2]
-5 |   for v = 0 to 1 and g in [2; -3; 0] and t = 0 downto 0]..
-Warning 26 [unused-var]: unused variable v.
+2 |
 - : (int * int * 'a * int * int * int) list = []
+Warning 26 [unused-var]: unused variable v. for v = 0 to 1 and g in [2; -3; 0] and t = 0 downto 0]..
+5 | for v in [-2; -3; -2]
+4 | for o in [-2; 2; v]
+3 | for l in [] and a = -3 downto -2
 |}];;
 
 [|(a, g, l, o, t, v)
-  for l in [||] and a = -3 downto -2
-  for o in [|-2; 2; v|]
+  for v = 0 to 1 and g in [|2; -3; 0|] and t = 0 downto 0
   for v in [|-2; -3; -2|]
-  for v = 0 to 1 and g in [|2; -3; 0|] and t = 0 downto 0|];;
+  for o in [|-2; 2; v|]
+  for l in [||] and a = -3 downto -2|];;
 [%%expect{|
 Lines 1-5, characters 0-59:
 1 | [|(a, g, l, o, t, v)
-2 |   for l in [||] and a = -3 downto -2
-3 |   for o in [|-2; 2; v|]
-4 |   for v in [|-2; -3; -2|]
-5 |   for v = 0 to 1 and g in [|2; -3; 0|] and t = 0 downto 0|]..
-Warning 26 [unused-var]: unused variable v.
+2 |
 - : (int * int * '_weak64 * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable v. for v = 0 to 1 and g in [|2; -3; 0|] and t = 0 downto 0|]..
+5 | for v in [|-2; -3; -2|]
+4 | for o in [|-2; 2; v|]
+3 | for l in [||] and a = -3 downto -2
 |}];;
 
 [(b, f, u)
-  when f > 0
-  when u > 0
-  for f in [-1] and u in [-3; -2; 1; -2; f; -3; b]
+  for b = 1 downto -3 and f in [-1; -1; 2; -2]
   when abs f mod 2 = 1
-  for b = 1 downto -3 and f in [-1; -1; 2; -2]];;
+  for f in [-1] and u in [-3; -2; 1; -2; f; -3; b]
+  when u > 0
+  when f > 0];;
 [%%expect{|
 - : (int * int * int) list = []
 |}];;
 
 [|(b, f, u)
-  when f > 0
-  when u > 0
-  for f in [|-1|] and u in [|-3; -2; 1; -2; f; -3; b|]
+  for b = 1 downto -3 and f in [|-1; -1; 2; -2|]
   when abs f mod 2 = 1
-  for b = 1 downto -3 and f in [|-1; -1; 2; -2|]|];;
+  for f in [|-1|] and u in [|-3; -2; 1; -2; f; -3; b|]
+  when u > 0
+  when f > 0|];;
 [%%expect{|
 - : (int * int * int) array = [||]
 |}];;
 
 [(e, g, i, n, u, x)
-  for i in [2; 2; -3; 1] and u = 2 downto e and n = -1 to 3
-  for u in [2; -2]
+  for x = 2 to 0
   for e in [-3; -2; x; x; -2] and g in [-1; 2; 1; 1; 3; x]
-  for x = 2 to 0];;
+  for u in [2; -2]
+  for i in [2; 2; -3; 1] and u = 2 downto e and n = -1 to 3];;
 [%%expect{|
 Line 3, characters 6-7:
-3 |   for u in [2; -2]
-          ^
-Warning 26 [unused-var]: unused variable u.
+3 |
 - : (int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable u.
+          ^ for u in [2; -2]
 |}];;
 
 [|(e, g, i, n, u, x)
-  for i in [|2; 2; -3; 1|] and u = 2 downto e and n = -1 to 3
-  for u in [|2; -2|]
+  for x = 2 to 0
   for e in [|-3; -2; x; x; -2|] and g in [|-1; 2; 1; 1; 3; x|]
-  for x = 2 to 0|];;
+  for u in [|2; -2|]
+  for i in [|2; 2; -3; 1|] and u = 2 downto e and n = -1 to 3|];;
 [%%expect{|
 Line 3, characters 6-7:
-3 |   for u in [|2; -2|]
-          ^
-Warning 26 [unused-var]: unused variable u.
+3 |
 - : (int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable u.
+          ^ for u in [|2; -2|]
 |}];;
 
 [(c, k, z) for c in [1; 3] and z in [-3; 3] and k in [1; -2; 1; -1; -2]];;
@@ -4822,37 +4822,37 @@ Warning 26 [unused-var]: unused variable u.
 |}];;
 
 [(e, g, i, t, w)
+  for w in [2; 3; 2; 2] and t in [-2] and g = 1 to -1
   for i in []
   and _ in [1; -2; -3; 1]
   and e in [2; -2; -1; -1; w]
-  and _ in [3; 2; 0; 0]
-  for w in [2; 3; 2; 2] and t in [-2] and g = 1 to -1];;
+  and _ in [3; 2; 0; 0]];;
 [%%expect{|
 - : (int * int * 'a * int * int) list = []
 |}];;
 
 [|(e, g, i, t, w)
+  for w in [|2; 3; 2; 2|] and t in [|-2|] and g = 1 to -1
   for i in [||]
   and _ in [|1; -2; -3; 1|]
   and e in [|2; -2; -1; -1; w|]
-  and _ in [|3; 2; 0; 0|]
-  for w in [|2; 3; 2; 2|] and t in [|-2|] and g = 1 to -1|];;
+  and _ in [|3; 2; 0; 0|]|];;
 [%%expect{|
 - : (int * int * '_weak65 * int * int) array = [||]
 |}];;
 
 [(a, b, k, l, w, z)
-  for _ = 0 downto l and b in [2] and w = -2 downto 3
+  for k in [-2; 3] and z = 1 to 3 and a in [-3]
   for _ in [] and l = 1 downto -1
-  for k in [-2; 3] and z = 1 to 3 and a in [-3]];;
+  for _ = 0 downto l and b in [2] and w = -2 downto 3];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, b, k, l, w, z)
-  for _ = 0 downto l and b in [|2|] and w = -2 downto 3
+  for k in [|-2; 3|] and z = 1 to 3 and a in [|-3|]
   for _ in [||] and l = 1 downto -1
-  for k in [|-2; 3|] and z = 1 to 3 and a in [|-3|]|];;
+  for _ = 0 downto l and b in [|2|] and w = -2 downto 3|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
@@ -4869,87 +4869,87 @@ Warning 26 [unused-var]: unused variable u.
 |}];;
 
 [(b, c, g, o, p, s, w, x)
-  for c = 0 downto -1 and b = -3 downto -3 and s in [0; 1; 3; 0]
+  for p = -1 to -1 and o in [-3; 0; -3; 3; -2; 2] and x = -2 downto -2
   for c in [-1; -3; 0] and w = 2 to -2 and g = -1 to 2
-  for p = -1 to -1 and o in [-3; 0; -3; 3; -2; 2] and x = -2 downto -2];;
+  for c = 0 downto -1 and b = -3 downto -3 and s in [0; 1; 3; 0]];;
 [%%expect{|
 Line 3, characters 6-7:
-3 |   for c in [-1; -3; 0] and w = 2 to -2 and g = -1 to 2
-          ^
-Warning 26 [unused-var]: unused variable c.
+3 |
 - : (int * int * int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable c.
+          ^ for c in [-1; -3; 0] and w = 2 to -2 and g = -1 to 2
 |}];;
 
 [|(b, c, g, o, p, s, w, x)
-  for c = 0 downto -1 and b = -3 downto -3 and s in [|0; 1; 3; 0|]
+  for p = -1 to -1 and o in [|-3; 0; -3; 3; -2; 2|] and x = -2 downto -2
   for c in [|-1; -3; 0|] and w = 2 to -2 and g = -1 to 2
-  for p = -1 to -1 and o in [|-3; 0; -3; 3; -2; 2|] and x = -2 downto -2|];;
+  for c = 0 downto -1 and b = -3 downto -3 and s in [|0; 1; 3; 0|]|];;
 [%%expect{|
 Line 3, characters 6-7:
-3 |   for c in [|-1; -3; 0|] and w = 2 to -2 and g = -1 to 2
-          ^
-Warning 26 [unused-var]: unused variable c.
+3 |
 - : (int * int * int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable c.
+          ^ for c in [|-1; -3; 0|] and w = 2 to -2 and g = -1 to 2
 |}];;
 
 [(b, d, j, l, o, z)
-  for z = -1 to -3 and l = -1 to 2
-  for l in [b]
-  when b > 0
+  for o in [-1; -2; -2; -1] and d in [1; 1; 2; -2; 3]
   for j = 3 downto 1 and b in [-1; -2; 0]
-  for o in [-1; -2; -2; -1] and d in [1; 1; 2; -2; 3]];;
+  when b > 0
+  for l in [b]
+  for z = -1 to -3 and l = -1 to 2];;
 [%%expect{|
 Line 3, characters 6-7:
-3 |   for l in [b]
-          ^
-Warning 26 [unused-var]: unused variable l.
+3 |
 - : (int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable l.
+          ^ for l in [b]
 |}];;
 
 [|(b, d, j, l, o, z)
-  for z = -1 to -3 and l = -1 to 2
-  for l in [|b|]
-  when b > 0
+  for o in [|-1; -2; -2; -1|] and d in [|1; 1; 2; -2; 3|]
   for j = 3 downto 1 and b in [|-1; -2; 0|]
-  for o in [|-1; -2; -2; -1|] and d in [|1; 1; 2; -2; 3|]|];;
+  when b > 0
+  for l in [|b|]
+  for z = -1 to -3 and l = -1 to 2|];;
 [%%expect{|
 Line 3, characters 6-7:
-3 |   for l in [|b|]
-          ^
-Warning 26 [unused-var]: unused variable l.
+3 |
 - : (int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable l.
+          ^ for l in [|b|]
 |}];;
 
 [(b, i, m, q, r)
+  for b in [] and i in [-1; -2; -2; -3; 2; -2]
   when i <> 0
   for q in [b; 2; 1; 2] and r in [-2] and m = 0 to 2
-  when i <> 0
-  for b in [] and i in [-1; -2; -2; -3; 2; -2]];;
+  when i <> 0];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(b, i, m, q, r)
+  for b in [||] and i in [|-1; -2; -2; -3; 2; -2|]
   when i <> 0
   for q in [|b; 2; 1; 2|] and r in [|-2|] and m = 0 to 2
-  when i <> 0
-  for b in [||] and i in [|-1; -2; -2; -3; 2; -2|]|];;
+  when i <> 0|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(a, b, c, d, i, s, x)
-  when abs b mod 2 = 0
+  for c in [-1; -1; 0; 3; -3; -1] and d = -2 to -3 and a = 1 to -3
   for i = a to c and x in [] and s = 2 to -2 and b = 0 downto -1
-  for c in [-1; -1; 0; 3; -3; -1] and d = -2 to -3 and a = 1 to -3];;
+  when abs b mod 2 = 0];;
 [%%expect{|
 - : (int * int * int * int * int * int * 'a) list = []
 |}];;
 
 [|(a, b, c, d, i, s, x)
-  when abs b mod 2 = 0
+  for c in [|-1; -1; 0; 3; -3; -1|] and d = -2 to -3 and a = 1 to -3
   for i = a to c and x in [||] and s = 2 to -2 and b = 0 downto -1
-  for c in [|-1; -1; 0; 3; -3; -1|] and d = -2 to -3 and a = 1 to -3|];;
+  when abs b mod 2 = 0|];;
 [%%expect{|
 - : (int * int * int * int * int * int * '_weak66) array = [||]
 |}];;
@@ -4977,21 +4977,21 @@ Warning 26 [unused-var]: unused variable l.
 |}];;
 
 [(a, b, d, e, k, u, w)
-  for w in [] and b = -1 downto 0
-  for e in [0; u; -2; -1; 1; -2] and k = 1 downto -2
-  for u in [-1; 2; -1; 1; 2]
+  for a = 0 to -2 and d in []
   when a > 0
-  for a = 0 to -2 and d in []];;
+  for u in [-1; 2; -1; 1; 2]
+  for e in [0; u; -2; -1; 1; -2] and k = 1 downto -2
+  for w in [] and b = -1 downto 0];;
 [%%expect{|
 - : (int * int * 'a * int * int * int * 'b) list = []
 |}];;
 
 [|(a, b, d, e, k, u, w)
-  for w in [||] and b = -1 downto 0
-  for e in [|0; u; -2; -1; 1; -2|] and k = 1 downto -2
-  for u in [|-1; 2; -1; 1; 2|]
+  for a = 0 to -2 and d in [||]
   when a > 0
-  for a = 0 to -2 and d in [||]|];;
+  for u in [|-1; 2; -1; 1; 2|]
+  for e in [|0; u; -2; -1; 1; -2|] and k = 1 downto -2
+  for w in [||] and b = -1 downto 0|];;
 [%%expect{|
 - : (int * int * '_weak67 * int * int * int * '_weak68) array = [||]
 |}];;
@@ -5007,147 +5007,147 @@ Warning 26 [unused-var]: unused variable l.
 |}];;
 
 [(b, k, n, r, s, v, y)
-  for n in [-2; 0; v; 1] and k = r downto 0
-  when s <> 0
-  for r in [1] and s = -1 to -2
+  for b in [] and v in [1]
   for y = 3 to 0 and _ in [2; -3; 2]
-  for b in [] and v in [1]];;
+  for r in [1] and s = -1 to -2
+  when s <> 0
+  for n in [-2; 0; v; 1] and k = r downto 0];;
 [%%expect{|
 - : ('a * int * int * int * int * int * int) list = []
 |}];;
 
 [|(b, k, n, r, s, v, y)
-  for n in [|-2; 0; v; 1|] and k = r downto 0
-  when s <> 0
-  for r in [|1|] and s = -1 to -2
+  for b in [||] and v in [|1|]
   for y = 3 to 0 and _ in [|2; -3; 2|]
-  for b in [||] and v in [|1|]|];;
+  for r in [|1|] and s = -1 to -2
+  when s <> 0
+  for n in [|-2; 0; v; 1|] and k = r downto 0|];;
 [%%expect{|
 - : ('_weak69 * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(j, n, o, s, u)
-  when abs o mod 2 = 0
-  for _ = 0 downto -3
+  for s in [] and o in [-3; -2]
   for u = 1 downto 1 and j in [-3; o; 0; 0; -1] and n in [-1; -3; o; 3; 0; 3]
-  for s in [] and o in [-3; -2]];;
+  for _ = 0 downto -3
+  when abs o mod 2 = 0];;
 [%%expect{|
 - : (int * int * int * 'a * int) list = []
 |}];;
 
 [|(j, n, o, s, u)
-  when abs o mod 2 = 0
-  for _ = 0 downto -3
+  for s in [||] and o in [|-3; -2|]
   for u = 1 downto 1
   and j in [|-3; o; 0; 0; -1|]
   and n in [|-1; -3; o; 3; 0; 3|]
-  for s in [||] and o in [|-3; -2|]|];;
+  for _ = 0 downto -3
+  when abs o mod 2 = 0|];;
 [%%expect{|
 - : (int * int * int * '_weak70 * int) array = [||]
 |}];;
 
-[(e, x) for e = -3 to x for x = -3 downto 3];;
+[(e, x) for x = -3 downto 3 for e = -3 to x];;
 [%%expect{|
 - : (int * int) list = []
 |}];;
 
-[|(e, x) for e = -3 to x for x = -3 downto 3|];;
+[|(e, x) for x = -3 downto 3 for e = -3 to x|];;
 [%%expect{|
 - : (int * int) array = [||]
 |}];;
 
 [(b, c, m, n, q, u)
+  for b in [-1; -1] and q = 2 to 2
   for c = 3 to b
   and u in [-2; 3; 3; 1]
   and m in [-1; 1; -3; 0]
-  and n in [2; -1; q; -3; 2]
-  for b in [-1; -1] and q = 2 to 2];;
+  and n in [2; -1; q; -3; 2]];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(b, c, m, n, q, u)
+  for b in [|-1; -1|] and q = 2 to 2
   for c = 3 to b
   and u in [|-2; 3; 3; 1|]
   and m in [|-1; 1; -3; 0|]
-  and n in [|2; -1; q; -3; 2|]
-  for b in [|-1; -1|] and q = 2 to 2|];;
+  and n in [|2; -1; q; -3; 2|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(e, h, s, u, v, y)
-  for s = -2 downto -1
-  for e = -2 to -1 and v in [1]
-  for y = h downto 2
+  for u = 0 downto 0
   for h = 3 downto -1
-  for u = 0 downto 0];;
+  for y = h downto 2
+  for e = -2 to -1 and v in [1]
+  for s = -2 downto -1];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(e, h, s, u, v, y)
-  for s = -2 downto -1
-  for e = -2 to -1 and v in [|1|]
-  for y = h downto 2
+  for u = 0 downto 0
   for h = 3 downto -1
-  for u = 0 downto 0|];;
+  for y = h downto 2
+  for e = -2 to -1 and v in [|1|]
+  for s = -2 downto -1|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(b, c, h, k, l, o, q, r, w, x)
-  for o in [-3; -1; h; 0; 3; -2] and b in [w; 1; -3; -1; 2] and k in [x]
+  for l in [-2; 1; 2] and c = 0 to 1 and w = -1 to 0 and r = 3 downto 2
   for x = w to 3 and h in [0; -3; -1; 1; 3; 1; -2] and q = -3 downto 3
-  for l in [-2; 1; 2] and c = 0 to 1 and w = -1 to 0 and r = 3 downto 2];;
+  for o in [-3; -1; h; 0; 3; -2] and b in [w; 1; -3; -1; 2] and k in [x]];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(b, c, h, k, l, o, q, r, w, x)
-  for o in [|-3; -1; h; 0; 3; -2|] and b in [|w; 1; -3; -1; 2|] and k in [|x|]
+  for l in [|-2; 1; 2|] and c = 0 to 1 and w = -1 to 0 and r = 3 downto 2
   for x = w to 3 and h in [|0; -3; -1; 1; 3; 1; -2|] and q = -3 downto 3
-  for l in [|-2; 1; 2|] and c = 0 to 1 and w = -1 to 0 and r = 3 downto 2|];;
+  for o in [|-3; -1; h; 0; 3; -2|] and b in [|w; 1; -3; -1; 2|] and k in [|x|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(a, b, c, h, m, n, x, y)
-  for a in [3; 1; 1; -3; 1; 1] and h = x to -3
-  when abs m mod 2 = 1
-  for x = -3 downto 2 and b = 3 to 1
+  for c in [-3; -2; 0; 2] and y in []
   for n = 3 downto 2 and m in [0; c; -1; y; -3; -3; 1]
-  for c in [-3; -2; 0; 2] and y in []];;
+  for x = -3 downto 2 and b = 3 to 1
+  when abs m mod 2 = 1
+  for a in [3; 1; 1; -3; 1; 1] and h = x to -3];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, b, c, h, m, n, x, y)
-  for a in [|3; 1; 1; -3; 1; 1|] and h = x to -3
-  when abs m mod 2 = 1
-  for x = -3 downto 2 and b = 3 to 1
+  for c in [|-3; -2; 0; 2|] and y in [||]
   for n = 3 downto 2 and m in [|0; c; -1; y; -3; -3; 1|]
-  for c in [|-3; -2; 0; 2|] and y in [||]|];;
+  for x = -3 downto 2 and b = 3 to 1
+  when abs m mod 2 = 1
+  for a in [|3; 1; 1; -3; 1; 1|] and h = x to -3|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(g, n, q, r, u)
-  for q in [-3; -2] and n in []
-  when r < 0
-  when abs g mod 2 = 1
+  for r in [-3; -1; -1; 0; 1; -3; -3]
   for g in [1; 1; 3; 1; 2; 1] and u = 2 downto 2
-  for r in [-3; -1; -1; 0; 1; -3; -3]];;
+  when abs g mod 2 = 1
+  when r < 0
+  for q in [-3; -2] and n in []];;
 [%%expect{|
 - : (int * 'a * int * int * int) list = []
 |}];;
 
 [|(g, n, q, r, u)
-  for q in [|-3; -2|] and n in [||]
-  when r < 0
-  when abs g mod 2 = 1
+  for r in [|-3; -1; -1; 0; 1; -3; -3|]
   for g in [|1; 1; 3; 1; 2; 1|] and u = 2 downto 2
-  for r in [|-3; -1; -1; 0; 1; -3; -3|]|];;
+  when abs g mod 2 = 1
+  when r < 0
+  for q in [|-3; -2|] and n in [||]|];;
 [%%expect{|
 - : (int * '_weak71 * int * int * int) array = [||]
 |}];;
@@ -5173,225 +5173,225 @@ Warning 26 [unused-var]: unused variable l.
 |}];;
 
 [(p, q, s)
-  when p <> 0
-  when q <> 0
-  for q in [3; -3]
+  for s = 0 to 0
   for p = 0 downto s
-  for s = 0 to 0];;
+  for q in [3; -3]
+  when q <> 0
+  when p <> 0];;
 [%%expect{|
 - : (int * int * int) list = []
 |}];;
 
 [|(p, q, s)
-  when p <> 0
-  when q <> 0
-  for q in [|3; -3|]
+  for s = 0 to 0
   for p = 0 downto s
-  for s = 0 to 0|];;
+  for q in [|3; -3|]
+  when q <> 0
+  when p <> 0|];;
 [%%expect{|
 - : (int * int * int) array = [||]
 |}];;
 
 [(a, f, m, u, z)
-  when z <> 0
-  for _ in [2; m; -3; -3; 3] and a = -3 downto 2 and z in []
+  for f = -3 downto -1 and m = -1 downto -1 and u = 1 downto 2
   when u < 0
-  for f = -3 downto -1 and m = -1 downto -1 and u = 1 downto 2];;
+  for _ in [2; m; -3; -3; 3] and a = -3 downto 2 and z in []
+  when z <> 0];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(a, f, m, u, z)
-  when z <> 0
-  for _ in [|2; m; -3; -3; 3|] and a = -3 downto 2 and z in [||]
+  for f = -3 downto -1 and m = -1 downto -1 and u = 1 downto 2
   when u < 0
-  for f = -3 downto -1 and m = -1 downto -1 and u = 1 downto 2|];;
+  for _ in [|2; m; -3; -3; 3|] and a = -3 downto 2 and z in [||]
+  when z <> 0|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(a, d, e, g, k, v, y)
-  for a in [0; 1; 3; 2] and y in [-2]
+  for e in [0; -1] and k in [0] and g in [1; -1; 3; 1; -1; 1]
   for _ = 1 to -2 and v in [3; -1; 3; -3] and d in [-2; -1; g; 3; -1]
-  for e in [0; -1] and k in [0] and g in [1; -1; 3; 1; -1; 1]];;
+  for a in [0; 1; 3; 2] and y in [-2]];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, d, e, g, k, v, y)
-  for a in [|0; 1; 3; 2|] and y in [|-2|]
+  for e in [|0; -1|] and k in [|0|] and g in [|1; -1; 3; 1; -1; 1|]
   for _ = 1 to -2 and v in [|3; -1; 3; -3|] and d in [|-2; -1; g; 3; -1|]
-  for e in [|0; -1|] and k in [|0|] and g in [|1; -1; 3; 1; -1; 1|]|];;
+  for a in [|0; 1; 3; 2|] and y in [|-2|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(g, j, k, p, w)
-  for k in [-3; j; 0]
-  for g = -1 downto p
-  for w in []
+  for p = 2 to 1
   for j = 0 to -3
-  for p = 2 to 1];;
+  for w in []
+  for g = -1 downto p
+  for k in [-3; j; 0]];;
 [%%expect{|
 - : (int * int * int * int * 'a) list = []
 |}];;
 
 [|(g, j, k, p, w)
-  for k in [|-3; j; 0|]
-  for g = -1 downto p
-  for w in [||]
+  for p = 2 to 1
   for j = 0 to -3
-  for p = 2 to 1|];;
+  for w in [||]
+  for g = -1 downto p
+  for k in [|-3; j; 0|]|];;
 [%%expect{|
 - : (int * int * int * int * '_weak73) array = [||]
 |}];;
 
 [(l, y)
-  when y <> 0
-  when l <> 0
+  for _ = -2 downto -1 and l in [-3; -3; -3; 1; -3; 1; 2]
   for y = 0 downto 1
-  for _ = -2 downto -1 and l in [-3; -3; -3; 1; -3; 1; 2]];;
+  when l <> 0
+  when y <> 0];;
 [%%expect{|
 - : (int * int) list = []
 |}];;
 
 [|(l, y)
-  when y <> 0
-  when l <> 0
+  for _ = -2 downto -1 and l in [|-3; -3; -3; 1; -3; 1; 2|]
   for y = 0 downto 1
-  for _ = -2 downto -1 and l in [|-3; -3; -3; 1; -3; 1; 2|]|];;
+  when l <> 0
+  when y <> 0|];;
 [%%expect{|
 - : (int * int) array = [||]
 |}];;
 
 [(d, h, i, l, q, r, v)
-  for d in [-2; -2; 3] and h in [2; -1] and q in [-2; 0; 1]
+  for r in [] and l = -3 to -2 and i in [-2; -2; -1; -1]
   for v in [0; -2; -3; 1; 2; 2]
-  for r in [] and l = -3 to -2 and i in [-2; -2; -1; -1]];;
+  for d in [-2; -2; 3] and h in [2; -1] and q in [-2; 0; 1]];;
 [%%expect{|
 - : (int * int * int * int * int * 'a * int) list = []
 |}];;
 
 [|(d, h, i, l, q, r, v)
-  for d in [|-2; -2; 3|] and h in [|2; -1|] and q in [|-2; 0; 1|]
+  for r in [||] and l = -3 to -2 and i in [|-2; -2; -1; -1|]
   for v in [|0; -2; -3; 1; 2; 2|]
-  for r in [||] and l = -3 to -2 and i in [|-2; -2; -1; -1|]|];;
+  for d in [|-2; -2; 3|] and h in [|2; -1|] and q in [|-2; 0; 1|]|];;
 [%%expect{|
 - : (int * int * int * int * int * '_weak74 * int) array = [||]
 |}];;
 
 [(e, g, h, q, s, x, y)
-  for s in [0; 3]
-  for q = 3 to 1 and y = x to -1 and h in []
+  for x = 3 downto 2 and h = -2 to -2 and g in [-3; -3; 1]
   for e = 0 downto 1 and x in [] and g in [1; 3; 2]
-  for x = 3 downto 2 and h = -2 to -2 and g in [-3; -3; 1]];;
+  for q = 3 to 1 and y = x to -1 and h in []
+  for s in [0; 3]];;
 [%%expect{|
 Line 5, characters 42-43:
-5 |   for x = 3 downto 2 and h = -2 to -2 and g in [-3; -3; 1]];;
+5 | for x = 3 downto 2 and h = -2 to -2 and g in [-3; -3; 1]];;
                                               ^
 Warning 26 [unused-var]: unused variable g.
 Lines 1-5, characters 0-59:
 1 | [(e, g, h, q, s, x, y)
-2 |   for s in [0; 3]
-3 |   for q = 3 to 1 and y = x to -1 and h in []
-4 |   for e = 0 downto 1 and x in [] and g in [1; 3; 2]
-5 |   for x = 3 downto 2 and h = -2 to -2 and g in [-3; -3; 1]]..
-Warning 26 [unused-var]: unused variable h.
-Lines 1-5, characters 0-59:
-1 | [(e, g, h, q, s, x, y)
-2 |   for s in [0; 3]
-3 |   for q = 3 to 1 and y = x to -1 and h in []
-4 |   for e = 0 downto 1 and x in [] and g in [1; 3; 2]
-5 |   for x = 3 downto 2 and h = -2 to -2 and g in [-3; -3; 1]]..
-Warning 26 [unused-var]: unused variable x.
+2 |
 - : (int * int * 'a * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable x. for x = 3 downto 2 and h = -2 to -2 and g in [-3; -3; 1]]..
+5 | for e = 0 downto 1 and x in [] and g in [1; 3; 2]
+4 | for q = 3 to 1 and y = x to -1 and h in []
+3 | for s in [0; 3]
+2 |
+1 | [(e, g, h, q, s, x, y)
+Lines 1-5, characters 0-59:
+Warning 26 [unused-var]: unused variable h. for x = 3 downto 2 and h = -2 to -2 and g in [-3; -3; 1]]..
+5 | for e = 0 downto 1 and x in [] and g in [1; 3; 2]
+4 | for q = 3 to 1 and y = x to -1 and h in []
+3 | for s in [0; 3]
 |}];;
 
 [|(e, g, h, q, s, x, y)
-  for s in [|0; 3|]
-  for q = 3 to 1 and y = x to -1 and h in [||]
+  for x = 3 downto 2 and h = -2 to -2 and g in [|-3; -3; 1|]
   for e = 0 downto 1 and x in [||] and g in [|1; 3; 2|]
-  for x = 3 downto 2 and h = -2 to -2 and g in [|-3; -3; 1|]|];;
+  for q = 3 to 1 and y = x to -1 and h in [||]
+  for s in [|0; 3|]|];;
 [%%expect{|
 Line 5, characters 42-43:
-5 |   for x = 3 downto 2 and h = -2 to -2 and g in [|-3; -3; 1|]|];;
+5 | for x = 3 downto 2 and h = -2 to -2 and g in [|-3; -3; 1|]|];;
                                               ^
 Warning 26 [unused-var]: unused variable g.
 Lines 1-5, characters 0-62:
 1 | [|(e, g, h, q, s, x, y)
-2 |   for s in [|0; 3|]
-3 |   for q = 3 to 1 and y = x to -1 and h in [||]
-4 |   for e = 0 downto 1 and x in [||] and g in [|1; 3; 2|]
-5 |   for x = 3 downto 2 and h = -2 to -2 and g in [|-3; -3; 1|]|]..
-Warning 26 [unused-var]: unused variable h.
-Lines 1-5, characters 0-62:
-1 | [|(e, g, h, q, s, x, y)
-2 |   for s in [|0; 3|]
-3 |   for q = 3 to 1 and y = x to -1 and h in [||]
-4 |   for e = 0 downto 1 and x in [||] and g in [|1; 3; 2|]
-5 |   for x = 3 downto 2 and h = -2 to -2 and g in [|-3; -3; 1|]|]..
-Warning 26 [unused-var]: unused variable x.
+2 |
 - : (int * int * '_weak75 * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable x. for x = 3 downto 2 and h = -2 to -2 and g in [|-3; -3; 1|]|]..
+5 | for e = 0 downto 1 and x in [||] and g in [|1; 3; 2|]
+4 | for q = 3 to 1 and y = x to -1 and h in [||]
+3 | for s in [|0; 3|]
+2 |
+1 | [|(e, g, h, q, s, x, y)
+Lines 1-5, characters 0-62:
+Warning 26 [unused-var]: unused variable h. for x = 3 downto 2 and h = -2 to -2 and g in [|-3; -3; 1|]|]..
+5 | for e = 0 downto 1 and x in [||] and g in [|1; 3; 2|]
+4 | for q = 3 to 1 and y = x to -1 and h in [||]
+3 | for s in [|0; 3|]
 |}];;
 
 [(d, g, i, s, t, v)
-  for s in [3]
-  for g in [2; -2; 2]
+  for g in [-3; 2; 3] and t = 0 to -2 and d in [1; -1; -3; -3]
   for s = -3 to 1 and i in [1] and v = 0 to 1
-  for g in [-3; 2; 3] and t = 0 to -2 and d in [1; -1; -3; -3]];;
+  for g in [2; -2; 2]
+  for s in [3]];;
 [%%expect{|
 Line 5, characters 6-7:
-5 |   for g in [-3; 2; 3] and t = 0 to -2 and d in [1; -1; -3; -3]];;
+5 | for g in [-3; 2; 3] and t = 0 to -2 and d in [1; -1; -3; -3]];;
           ^
 Warning 26 [unused-var]: unused variable g.
 Lines 1-5, characters 0-63:
 1 | [(d, g, i, s, t, v)
-2 |   for s in [3]
-3 |   for g in [2; -2; 2]
-4 |   for s = -3 to 1 and i in [1] and v = 0 to 1
-5 |   for g in [-3; 2; 3] and t = 0 to -2 and d in [1; -1; -3; -3]]..
-Warning 26 [unused-var]: unused variable s.
+2 |
 - : (int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable s. for g in [-3; 2; 3] and t = 0 to -2 and d in [1; -1; -3; -3]]..
+5 | for s = -3 to 1 and i in [1] and v = 0 to 1
+4 | for g in [2; -2; 2]
+3 | for s in [3]
 |}];;
 
 [|(d, g, i, s, t, v)
-  for s in [|3|]
-  for g in [|2; -2; 2|]
+  for g in [|-3; 2; 3|] and t = 0 to -2 and d in [|1; -1; -3; -3|]
   for s = -3 to 1 and i in [|1|] and v = 0 to 1
-  for g in [|-3; 2; 3|] and t = 0 to -2 and d in [|1; -1; -3; -3|]|];;
+  for g in [|2; -2; 2|]
+  for s in [|3|]|];;
 [%%expect{|
 Line 5, characters 6-7:
-5 |   for g in [|-3; 2; 3|] and t = 0 to -2 and d in [|1; -1; -3; -3|]|];;
+5 | for g in [|-3; 2; 3|] and t = 0 to -2 and d in [|1; -1; -3; -3|]|];;
           ^
 Warning 26 [unused-var]: unused variable g.
 Lines 1-5, characters 0-68:
 1 | [|(d, g, i, s, t, v)
-2 |   for s in [|3|]
-3 |   for g in [|2; -2; 2|]
-4 |   for s = -3 to 1 and i in [|1|] and v = 0 to 1
-5 |   for g in [|-3; 2; 3|] and t = 0 to -2 and d in [|1; -1; -3; -3|]|]..
-Warning 26 [unused-var]: unused variable s.
+2 |
 - : (int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable s. for g in [|-3; 2; 3|] and t = 0 to -2 and d in [|1; -1; -3; -3|]|]..
+5 | for s = -3 to 1 and i in [|1|] and v = 0 to 1
+4 | for g in [|2; -2; 2|]
+3 | for s in [|3|]
 |}];;
 
-[s when abs s mod 2 = 1 for s in [-3]];;
+[s for s in [-3] when abs s mod 2 = 1];;
 [%%expect{|
 - : int list = [-3]
 |}];;
 
-[|s when abs s mod 2 = 1 for s in [|-3|]|];;
+[|s for s in [|-3|] when abs s mod 2 = 1|];;
 [%%expect{|
 - : int array = [|-3|]
 |}];;
 
-[(h, p, z) when z <> 0 for h in [2; 0] and z = -3 to -1 for p = -1 to -1];;
+[(h, p, z) for p = -1 to -1 for h in [2; 0] and z = -3 to -1 when z <> 0];;
 [%%expect{|
 - : (int * int * int) list =
 [(2, -1, -3); (2, -1, -2); (2, -1, -1); (0, -1, -3); (0, -1, -2);
  (0, -1, -1)]
 |}];;
 
-[|(h, p, z) when z <> 0 for h in [|2; 0|] and z = -3 to -1 for p = -1 to -1|];;
+[|(h, p, z) for p = -1 to -1 for h in [|2; 0|] and z = -3 to -1 when z <> 0|];;
 [%%expect{|
 - : (int * int * int) array =
 [|(2, -1, -3); (2, -1, -2); (2, -1, -1); (0, -1, -3); (0, -1, -2);
@@ -5399,79 +5399,79 @@ Warning 26 [unused-var]: unused variable s.
 |}];;
 
 [(c, e, h, k, l, o, q, u)
-  for u in [2; 3]
-  for q in [3; 2; 1; 3; 2] and k in [2; 1; 3]
+  for c in [-1; 3; 2; 2; 2; 2] and l in [1; 2; -2]
   for e = 1 to -1 and h in [3; -2] and o = 3 downto 2
-  for c in [-1; 3; 2; 2; 2; 2] and l in [1; 2; -2]];;
+  for q in [3; 2; 1; 3; 2] and k in [2; 1; 3]
+  for u in [2; 3]];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(c, e, h, k, l, o, q, u)
-  for u in [|2; 3|]
-  for q in [|3; 2; 1; 3; 2|] and k in [|2; 1; 3|]
+  for c in [|-1; 3; 2; 2; 2; 2|] and l in [|1; 2; -2|]
   for e = 1 to -1 and h in [|3; -2|] and o = 3 downto 2
-  for c in [|-1; 3; 2; 2; 2; 2|] and l in [|1; 2; -2|]|];;
+  for q in [|3; 2; 1; 3; 2|] and k in [|2; 1; 3|]
+  for u in [|2; 3|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(b, e, f, j, k, y)
-  for y = 2 downto -1 and _ = -1 downto 0 and f in [1; 2]
-  for e in [2] and j = 0 to 0 and b in [-2; -1; 3; 0; -3; 2]
+  for j in [0; 1; 0; -2; -1] and k in [1; -2; 1; -1; 3; -2]
   for b = 2 downto 0
-  for j in [0; 1; 0; -2; -1] and k in [1; -2; 1; -1; 3; -2]];;
+  for e in [2] and j = 0 to 0 and b in [-2; -1; 3; 0; -3; 2]
+  for y = 2 downto -1 and _ = -1 downto 0 and f in [1; 2]];;
 [%%expect{|
 Line 5, characters 6-7:
-5 |   for j in [0; 1; 0; -2; -1] and k in [1; -2; 1; -1; 3; -2]];;
+5 | for j in [0; 1; 0; -2; -1] and k in [1; -2; 1; -1; 3; -2]];;
           ^
 Warning 26 [unused-var]: unused variable j.
 Lines 1-5, characters 0-60:
 1 | [(b, e, f, j, k, y)
-2 |   for y = 2 downto -1 and _ = -1 downto 0 and f in [1; 2]
-3 |   for e in [2] and j = 0 to 0 and b in [-2; -1; 3; 0; -3; 2]
-4 |   for b = 2 downto 0
-5 |   for j in [0; 1; 0; -2; -1] and k in [1; -2; 1; -1; 3; -2]]..
-Warning 26 [unused-var]: unused variable b.
+2 |
 - : (int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable b. for j in [0; 1; 0; -2; -1] and k in [1; -2; 1; -1; 3; -2]]..
+5 | for b = 2 downto 0
+4 | for e in [2] and j = 0 to 0 and b in [-2; -1; 3; 0; -3; 2]
+3 | for y = 2 downto -1 and _ = -1 downto 0 and f in [1; 2]
 |}];;
 
 [|(b, e, f, j, k, y)
-  for y = 2 downto -1 and _ = -1 downto 0 and f in [|1; 2|]
-  for e in [|2|] and j = 0 to 0 and b in [|-2; -1; 3; 0; -3; 2|]
+  for j in [|0; 1; 0; -2; -1|] and k in [|1; -2; 1; -1; 3; -2|]
   for b = 2 downto 0
-  for j in [|0; 1; 0; -2; -1|] and k in [|1; -2; 1; -1; 3; -2|]|];;
+  for e in [|2|] and j = 0 to 0 and b in [|-2; -1; 3; 0; -3; 2|]
+  for y = 2 downto -1 and _ = -1 downto 0 and f in [|1; 2|]|];;
 [%%expect{|
 Line 5, characters 6-7:
-5 |   for j in [|0; 1; 0; -2; -1|] and k in [|1; -2; 1; -1; 3; -2|]|];;
+5 | for j in [|0; 1; 0; -2; -1|] and k in [|1; -2; 1; -1; 3; -2|]|];;
           ^
 Warning 26 [unused-var]: unused variable j.
 Lines 1-5, characters 0-65:
 1 | [|(b, e, f, j, k, y)
-2 |   for y = 2 downto -1 and _ = -1 downto 0 and f in [|1; 2|]
-3 |   for e in [|2|] and j = 0 to 0 and b in [|-2; -1; 3; 0; -3; 2|]
-4 |   for b = 2 downto 0
-5 |   for j in [|0; 1; 0; -2; -1|] and k in [|1; -2; 1; -1; 3; -2|]|]..
-Warning 26 [unused-var]: unused variable b.
+2 |
 - : (int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable b. for j in [|0; 1; 0; -2; -1|] and k in [|1; -2; 1; -1; 3; -2|]|]..
+5 | for b = 2 downto 0
+4 | for e in [|2|] and j = 0 to 0 and b in [|-2; -1; 3; 0; -3; 2|]
+3 | for y = 2 downto -1 and _ = -1 downto 0 and f in [|1; 2|]
 |}];;
 
 [(f, h, k, l, n)
-  when abs n mod 2 = 1
-  for k = -3 to 1
-  when l <> 0
+  for h in [] and n = -1 to 0
   for f in [-2; 3; 3; 2; 0; -2; h] and l in [-2; 2; 0]
-  for h in [] and n = -1 to 0];;
+  when l <> 0
+  for k = -3 to 1
+  when abs n mod 2 = 1];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(f, h, k, l, n)
-  when abs n mod 2 = 1
-  for k = -3 to 1
-  when l <> 0
+  for h in [||] and n = -1 to 0
   for f in [|-2; 3; 3; 2; 0; -2; h|] and l in [|-2; 2; 0|]
-  for h in [||] and n = -1 to 0|];;
+  when l <> 0
+  for k = -3 to 1
+  when abs n mod 2 = 1|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
@@ -5499,19 +5499,19 @@ Warning 26 [unused-var]: unused variable b.
 |}];;
 
 [(g, k, q, r, s)
-  for g in [2; 0; g; 1; 1]
-  for s = 1 downto -2
+  for g in [1; 1; -3; 3; -1; -2] and k in [] and q = -3 to -3
   for r = 0 to -2 and _ = 3 to k
-  for g in [1; 1; -3; 3; -1; -2] and k in [] and q = -3 to -3];;
+  for s = 1 downto -2
+  for g in [2; 0; g; 1; 1]];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(g, k, q, r, s)
-  for g in [|2; 0; g; 1; 1|]
-  for s = 1 downto -2
+  for g in [|1; 1; -3; 3; -1; -2|] and k in [||] and q = -3 to -3
   for r = 0 to -2 and _ = 3 to k
-  for g in [|1; 1; -3; 3; -1; -2|] and k in [||] and q = -3 to -3|];;
+  for s = 1 downto -2
+  for g in [|2; 0; g; 1; 1|]|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
@@ -5527,21 +5527,21 @@ Warning 26 [unused-var]: unused variable b.
 |}];;
 
 [(c, f, o, v, w, z)
-  for f = w to -1 and o in [-2; -1; 3; -3; 2; -3]
-  for v = 2 to w and c in [0; -3; 1; 2]
-  when abs z mod 2 = 0
+  for w in [-1; -2] and z in [1; -2; 2; -1; -1; -1]
   when z < 0
-  for w in [-1; -2] and z in [1; -2; 2; -1; -1; -1]];;
+  when abs z mod 2 = 0
+  for v = 2 to w and c in [0; -3; 1; 2]
+  for f = w to -1 and o in [-2; -1; 3; -3; 2; -3]];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(c, f, o, v, w, z)
-  for f = w to -1 and o in [|-2; -1; 3; -3; 2; -3|]
-  for v = 2 to w and c in [|0; -3; 1; 2|]
-  when abs z mod 2 = 0
+  for w in [|-1; -2|] and z in [|1; -2; 2; -1; -1; -1|]
   when z < 0
-  for w in [|-1; -2|] and z in [|1; -2; 2; -1; -1; -1|]|];;
+  when abs z mod 2 = 0
+  for v = 2 to w and c in [|0; -3; 1; 2|]
+  for f = w to -1 and o in [|-2; -1; 3; -3; 2; -3|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
@@ -5569,134 +5569,134 @@ Warning 26 [unused-var]: unused variable b.
 |}];;
 
 [(i, o, q, s, t, u, x, z)
+  for z = -1 downto -3 and s = 3 to -2
+  for i in [-2; -2; 1; 1; -2; 0; 3] and q in [2; 3]
   for x = 2 downto 1
   and t = z downto 0
   and o in [3; 3; 1; 0; 2; -1]
-  and u in [0; s]
-  for i in [-2; -2; 1; 1; -2; 0; 3] and q in [2; 3]
-  for z = -1 downto -3 and s = 3 to -2];;
+  and u in [0; s]];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(i, o, q, s, t, u, x, z)
+  for z = -1 downto -3 and s = 3 to -2
+  for i in [|-2; -2; 1; 1; -2; 0; 3|] and q in [|2; 3|]
   for x = 2 downto 1
   and t = z downto 0
   and o in [|3; 3; 1; 0; 2; -1|]
-  and u in [|0; s|]
-  for i in [|-2; -2; 1; 1; -2; 0; 3|] and q in [|2; 3|]
-  for z = -1 downto -3 and s = 3 to -2|];;
+  and u in [|0; s|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(c, f, g, i, m, t, v, x, z)
-  for t in [-2; -2; -3; -2; -1] and g in [] and m = 2 to 0 and c in []
   for f = 0 to 2
   and x in [-2; 2; 0; 0; 1]
   and i = 3 downto 3
   and z = 0 to 3
-  and v in [-3; 1; 3; -2; 2; 3]];;
+  and v in [-3; 1; 3; -2; 2; 3]
+  for t in [-2; -2; -3; -2; -1] and g in [] and m = 2 to 0 and c in []];;
 [%%expect{|
 - : ('a * int * 'b * int * int * int * int * int * int) list = []
 |}];;
 
 [|(c, f, g, i, m, t, v, x, z)
-  for t in [|-2; -2; -3; -2; -1|] and g in [||] and m = 2 to 0 and c in [||]
   for f = 0 to 2
   and x in [|-2; 2; 0; 0; 1|]
   and i = 3 downto 3
   and z = 0 to 3
-  and v in [|-3; 1; 3; -2; 2; 3|]|];;
+  and v in [|-3; 1; 3; -2; 2; 3|]
+  for t in [|-2; -2; -3; -2; -1|] and g in [||] and m = 2 to 0 and c in [||]|];;
 [%%expect{|
 - : ('_weak77 * int * '_weak78 * int * int * int * int * int * int) array =
 [||]
 |}];;
 
 [(b, d, i, m, n, o, p, s, z)
-  for p in [-2] and z = n downto 3
+  for o = 2 downto -1
+  for d in [-3] and n in [2; 0; 1; -2; 0; 2] and b = o downto 2
   for s in [2; 1; -3; -2; 1; 3; 2]
   and m in [1; n; -2; 2; 1; -3]
   and i in [2; -2; -3]
-  for d in [-3] and n in [2; 0; 1; -2; 0; 2] and b = o downto 2
-  for o = 2 downto -1];;
+  for p in [-2] and z = n downto 3];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(b, d, i, m, n, o, p, s, z)
-  for p in [|-2|] and z = n downto 3
+  for o = 2 downto -1
+  for d in [|-3|] and n in [|2; 0; 1; -2; 0; 2|] and b = o downto 2
   for s in [|2; 1; -3; -2; 1; 3; 2|]
   and m in [|1; n; -2; 2; 1; -3|]
   and i in [|2; -2; -3|]
-  for d in [|-3|] and n in [|2; 0; 1; -2; 0; 2|] and b = o downto 2
-  for o = 2 downto -1|];;
+  for p in [|-2|] and z = n downto 3|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(b, e, j, s, t, y)
-  for s = 1 downto -1 and j = y to -3 and b in [0; 3; 0; 3; -2; 2; -1]
-  for e in [-2; 3; t] and _ = 0 to -1
+  for t = 3 downto -1 and y in [2; 0; -1; -3; 1]
   when t > 0
-  for t = 3 downto -1 and y in [2; 0; -1; -3; 1]];;
+  for e in [-2; 3; t] and _ = 0 to -1
+  for s = 1 downto -1 and j = y to -3 and b in [0; 3; 0; 3; -2; 2; -1]];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(b, e, j, s, t, y)
-  for s = 1 downto -1 and j = y to -3 and b in [|0; 3; 0; 3; -2; 2; -1|]
-  for e in [|-2; 3; t|] and _ = 0 to -1
+  for t = 3 downto -1 and y in [|2; 0; -1; -3; 1|]
   when t > 0
-  for t = 3 downto -1 and y in [|2; 0; -1; -3; 1|]|];;
+  for e in [|-2; 3; t|] and _ = 0 to -1
+  for s = 1 downto -1 and j = y to -3 and b in [|0; 3; 0; 3; -2; 2; -1|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
-[y when y > 0 for y in [-3; -3]];;
+[y for y in [-3; -3] when y > 0];;
 [%%expect{|
 - : int list = []
 |}];;
 
-[|y when y > 0 for y in [|-3; -3|]|];;
+[|y for y in [|-3; -3|] when y > 0|];;
 [%%expect{|
 - : int array = [||]
 |}];;
 
 [(e, j, k, q, u, y)
-  for k = 2 to -1 and q = j downto u
-  for y in [3; j; 3; 1; 3]
+  for j = -2 to 3 and e in [-2; 0; 2; -3; -2; 0]
   for u in [-2; 2; 1]
-  for j = -2 to 3 and e in [-2; 0; 2; -3; -2; 0]];;
+  for y in [3; j; 3; 1; 3]
+  for k = 2 to -1 and q = j downto u];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(e, j, k, q, u, y)
-  for k = 2 to -1 and q = j downto u
-  for y in [|3; j; 3; 1; 3|]
+  for j = -2 to 3 and e in [|-2; 0; 2; -3; -2; 0|]
   for u in [|-2; 2; 1|]
-  for j = -2 to 3 and e in [|-2; 0; 2; -3; -2; 0|]|];;
+  for y in [|3; j; 3; 1; 3|]
+  for k = 2 to -1 and q = j downto u|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(q, r, t)
-  for t = r downto 3
-  for r = q downto 3
-  when q < 0
+  for q = 1 to -1
   for _ = 2 to 1
-  for q = 1 to -1];;
+  when q < 0
+  for r = q downto 3
+  for t = r downto 3];;
 [%%expect{|
 - : (int * int * int) list = []
 |}];;
 
 [|(q, r, t)
-  for t = r downto 3
-  for r = q downto 3
-  when q < 0
+  for q = 1 to -1
   for _ = 2 to 1
-  for q = 1 to -1|];;
+  when q < 0
+  for r = q downto 3
+  for t = r downto 3|];;
 [%%expect{|
 - : (int * int * int) array = [||]
 |}];;
@@ -5712,37 +5712,37 @@ Warning 26 [unused-var]: unused variable b.
 |}];;
 
 [(c, e, i, y, z)
-  for c in [-2; -2; 2; y; -2; 2]
+  for e = 0 downto 1
   for y in [-2; 1; 1; 3; 2; e] and i in [] and z in [e; e; 3; -3]
-  for e = 0 downto 1];;
+  for c in [-2; -2; 2; y; -2; 2]];;
 [%%expect{|
 - : (int * int * 'a * int * int) list = []
 |}];;
 
 [|(c, e, i, y, z)
-  for c in [|-2; -2; 2; y; -2; 2|]
+  for e = 0 downto 1
   for y in [|-2; 1; 1; 3; 2; e|] and i in [||] and z in [|e; e; 3; -3|]
-  for e = 0 downto 1|];;
+  for c in [|-2; -2; 2; y; -2; 2|]|];;
 [%%expect{|
 - : (int * int * '_weak80 * int * int) array = [||]
 |}];;
 
 [(h, k, o, q, t, u, w)
-  when abs h mod 2 = 1
-  for w in [1; 1; 0; -3]
-  for u in [3; -2; -3; 2; -2; -1] and o = 2 to -1
+  for t = -2 downto 0 and q = -1 downto 1
   for h in [2; 3; -1] and k = 2 to -2
-  for t = -2 downto 0 and q = -1 downto 1];;
+  for u in [3; -2; -3; 2; -2; -1] and o = 2 to -1
+  for w in [1; 1; 0; -3]
+  when abs h mod 2 = 1];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(h, k, o, q, t, u, w)
-  when abs h mod 2 = 1
-  for w in [|1; 1; 0; -3|]
-  for u in [|3; -2; -3; 2; -2; -1|] and o = 2 to -1
+  for t = -2 downto 0 and q = -1 downto 1
   for h in [|2; 3; -1|] and k = 2 to -2
-  for t = -2 downto 0 and q = -1 downto 1|];;
+  for u in [|3; -2; -3; 2; -2; -1|] and o = 2 to -1
+  for w in [|1; 1; 0; -3|]
+  when abs h mod 2 = 1|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
@@ -5770,29 +5770,29 @@ Warning 26 [unused-var]: unused variable b.
 |}];;
 
 [(c, d, j, p, r, t, v)
-  for j = t downto c
-  and t = 3 downto 2
-  and p in [-3; -2; 3; -3; 2]
-  and c in [-1; 1; -2; 2; -1]
   for t = -1 downto 1
   and r in []
   and c in [0; -2; 0; -1]
   and v = 1 to -3
-  and d = 0 downto 3];;
+  and d = 0 downto 3
+  for j = t downto c
+  and t = 3 downto 2
+  and p in [-3; -2; 3; -3; 2]
+  and c in [-1; 1; -2; 2; -1]];;
 [%%expect{|
 - : (int * int * int * int * 'a * int * int) list = []
 |}];;
 
 [|(c, d, j, p, r, t, v)
-  for j = t downto c
-  and t = 3 downto 2
-  and p in [|-3; -2; 3; -3; 2|]
-  and c in [|-1; 1; -2; 2; -1|]
   for t = -1 downto 1
   and r in [||]
   and c in [|0; -2; 0; -1|]
   and v = 1 to -3
-  and d = 0 downto 3|];;
+  and d = 0 downto 3
+  for j = t downto c
+  and t = 3 downto 2
+  and p in [|-3; -2; 3; -3; 2|]
+  and c in [|-1; 1; -2; 2; -1|]|];;
 [%%expect{|
 - : (int * int * int * int * '_weak81 * int * int) array = [||]
 |}];;
@@ -5815,12 +5815,12 @@ Warning 26 [unused-var]: unused variable b.
 - : (int * int * int * int) array = [||]
 |}];;
 
-[(c, n, y) for y = 3 downto -3 and c in [3; n; 0; 0] for n in []];;
+[(c, n, y) for n in [] for y = 3 downto -3 and c in [3; n; 0; 0]];;
 [%%expect{|
 - : (int * int * int) list = []
 |}];;
 
-[|(c, n, y) for y = 3 downto -3 and c in [|3; n; 0; 0|] for n in [||]|];;
+[|(c, n, y) for n in [||] for y = 3 downto -3 and c in [|3; n; 0; 0|]|];;
 [%%expect{|
 - : (int * int * int) array = [||]
 |}];;
@@ -5880,104 +5880,104 @@ Warning 26 [unused-var]: unused variable b.
 |}];;
 
 [(g, h, i, j, p, t, w, y)
-  for t = 3 downto 3 and j = 2 downto g
-  for h = -1 to -2 and y = 3 downto 1
-  for w = -2 downto 2
+  for g in [0; 2; 0; 1; 3; 0] and i = -2 downto -1
   for g in [0; 2; -1; 0; 1] and p = i downto -1
-  for g in [0; 2; 0; 1; 3; 0] and i = -2 downto -1];;
+  for w = -2 downto 2
+  for h = -1 to -2 and y = 3 downto 1
+  for t = 3 downto 3 and j = 2 downto g];;
 [%%expect{|
 Line 6, characters 6-7:
-6 |   for g in [0; 2; 0; 1; 3; 0] and i = -2 downto -1];;
+6 | for g in [0; 2; 0; 1; 3; 0] and i = -2 downto -1];;
           ^
 Warning 26 [unused-var]: unused variable g.
 - : (int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(g, h, i, j, p, t, w, y)
-  for t = 3 downto 3 and j = 2 downto g
-  for h = -1 to -2 and y = 3 downto 1
-  for w = -2 downto 2
+  for g in [|0; 2; 0; 1; 3; 0|] and i = -2 downto -1
   for g in [|0; 2; -1; 0; 1|] and p = i downto -1
-  for g in [|0; 2; 0; 1; 3; 0|] and i = -2 downto -1|];;
+  for w = -2 downto 2
+  for h = -1 to -2 and y = 3 downto 1
+  for t = 3 downto 3 and j = 2 downto g|];;
 [%%expect{|
 Line 6, characters 6-7:
-6 |   for g in [|0; 2; 0; 1; 3; 0|] and i = -2 downto -1|];;
+6 | for g in [|0; 2; 0; 1; 3; 0|] and i = -2 downto -1|];;
           ^
 Warning 26 [unused-var]: unused variable g.
 - : (int * int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(c, d, e, m, p, q, x)
-  for e = -2 downto -2 and x = -1 to 2 and p = 0 to -1 and m = q to 0
-  for q = 3 downto 2 and d in [-1; -1; 2; -3; -1; 3; -1] and c = 3 downto 3];;
+  for q = 3 downto 2 and d in [-1; -1; 2; -3; -1; 3; -1] and c = 3 downto 3
+  for e = -2 downto -2 and x = -1 to 2 and p = 0 to -1 and m = q to 0];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(c, d, e, m, p, q, x)
-  for e = -2 downto -2 and x = -1 to 2 and p = 0 to -1 and m = q to 0
   for q = 3 downto 2
   and d in [|-1; -1; 2; -3; -1; 3; -1|]
-  and c = 3 downto 3|];;
+  and c = 3 downto 3
+  for e = -2 downto -2 and x = -1 to 2 and p = 0 to -1 and m = q to 0|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(d, e, i, k, o, p, q, z)
-  for i = i to -2
-  for e = 1 downto 3 and i = k to 0 and d = -1 downto -3
+  for q in [1; 2; -3; -1; 1; -1; 2] and p = -3 to -2 and o in [2; -1; -1]
   for k = 0 downto 3 and z in [-3; -2; -3; o; -1] and e = -2 to -3
-  for q in [1; 2; -3; -1; 1; -1; 2] and p = -3 to -2 and o in [2; -1; -1]];;
+  for e = 1 downto 3 and i = k to 0 and d = -1 downto -3
+  for i = i to -2];;
 [%%expect{|
 Lines 1-5, characters 0-74:
 1 | [(d, e, i, k, o, p, q, z)
-2 |   for i = i to -2
-3 |   for e = 1 downto 3 and i = k to 0 and d = -1 downto -3
-4 |   for k = 0 downto 3 and z in [-3; -2; -3; o; -1] and e = -2 to -3
-5 |   for q in [1; 2; -3; -1; 1; -1; 2] and p = -3 to -2 and o in [2; -1; -1]]..
-Warning 26 [unused-var]: unused variable e.
+2 |
 - : (int * int * int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable e. for q in [1; 2; -3; -1; 1; -1; 2] and p = -3 to -2 and o in [2; -1; -1]]..
+5 | for k = 0 downto 3 and z in [-3; -2; -3; o; -1] and e = -2 to -3
+4 | for e = 1 downto 3 and i = k to 0 and d = -1 downto -3
+3 | for i = i to -2
 |}];;
 
 [|(d, e, i, k, o, p, q, z)
-  for i = i to -2
-  for e = 1 downto 3 and i = k to 0 and d = -1 downto -3
-  for k = 0 downto 3 and z in [|-3; -2; -3; o; -1|] and e = -2 to -3
   for q in [|1; 2; -3; -1; 1; -1; 2|]
   and p = -3 to -2
-  and o in [|2; -1; -1|]|];;
+  and o in [|2; -1; -1|]
+  for k = 0 downto 3 and z in [|-3; -2; -3; o; -1|] and e = -2 to -3
+  for e = 1 downto 3 and i = k to 0 and d = -1 downto -3
+  for i = i to -2|];;
 [%%expect{|
 Lines 1-7, characters 0-26:
 1 | [|(d, e, i, k, o, p, q, z)
-2 |   for i = i to -2
-3 |   for e = 1 downto 3 and i = k to 0 and d = -1 downto -3
-4 |   for k = 0 downto 3 and z in [|-3; -2; -3; o; -1|] and e = -2 to -3
-5 |   for q in [|1; 2; -3; -1; 1; -1; 2|]
-6 |   and p = -3 to -2
-7 |   and o in [|2; -1; -1|]|]..
-Warning 26 [unused-var]: unused variable e.
+2 |
 - : (int * int * int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable e.
+7 |   and o in [|2; -1; -1|]|]..
+6 |   and p = -3 to -2 for q in [|1; 2; -3; -1; 1; -1; 2|]
+5 | for k = 0 downto 3 and z in [|-3; -2; -3; o; -1|] and e = -2 to -3
+4 | for e = 1 downto 3 and i = k to 0 and d = -1 downto -3
+3 | for i = i to -2
 |}];;
 
 [(b, c, e, f, n, q, r, u)
-  for n = 0 downto f and c in [-3; 2; 2; 2] and b in [2; 2; -2] and q = 0 to -2
-  for f in []
   for u in [1; -1]
   and e in [-2; 0; 3; -1; 0; 3; 3]
-  and r in [-1; 3; 3; 3; 0; 2; 2]];;
+  and r in [-1; 3; 3; 3; 0; 2; 2]
+  for f in []
+  for n = 0 downto f and c in [-3; 2; 2; 2] and b in [2; 2; -2] and q = 0 to -2];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(b, c, e, f, n, q, r, u)
+  for u in [|1; -1|]
+  and e in [|-2; 0; 3; -1; 0; 3; 3|]
+  and r in [|-1; 3; 3; 3; 0; 2; 2|]
+  for f in [||]
   for n = 0 downto f
   and c in [|-3; 2; 2; 2|]
   and b in [|2; 2; -2|]
-  and q = 0 to -2
-  for f in [||]
-  for u in [|1; -1|]
-  and e in [|-2; 0; 3; -1; 0; 3; 3|]
-  and r in [|-1; 3; 3; 3; 0; 2; 2|]|];;
+  and q = 0 to -2|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) array = [||]
 |}];;
@@ -5993,205 +5993,205 @@ Warning 26 [unused-var]: unused variable e.
 |}];;
 
 [(g, h, m, n, r, u, v)
-  for v = -1 downto 3 and g in [1] and u = -2 to -2 and m = 2 downto 0
-  for n = -2 downto 3 and r = -1 to -3 and h in [2; 2; 2; -3; -1; 0; 2]];;
+  for n = -2 downto 3 and r = -1 to -3 and h in [2; 2; 2; -3; -1; 0; 2]
+  for v = -1 downto 3 and g in [1] and u = -2 to -2 and m = 2 downto 0];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(g, h, m, n, r, u, v)
-  for v = -1 downto 3 and g in [|1|] and u = -2 to -2 and m = 2 downto 0
-  for n = -2 downto 3 and r = -1 to -3 and h in [|2; 2; 2; -3; -1; 0; 2|]|];;
+  for n = -2 downto 3 and r = -1 to -3 and h in [|2; 2; 2; -3; -1; 0; 2|]
+  for v = -1 downto 3 and g in [|1|] and u = -2 to -2 and m = 2 downto 0|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(h, i, k, l, q, z)
-  for z in [-3; 0; -1; -2; 0; 0]
+  for h in [2; -2; -3; 2; 2; 0] and _ in [-3; -2; -1] and l in [] and k in []
   for q in [h; 0; 0; 0; 1; 3] and i in [2; 2; -3; 0; h]
-  for h in [2; -2; -3; 2; 2; 0] and _ in [-3; -2; -1] and l in [] and k in []];;
+  for z in [-3; 0; -1; -2; 0; 0]];;
 [%%expect{|
 - : (int * int * 'a * 'b * int * int) list = []
 |}];;
 
 [|(h, i, k, l, q, z)
-  for z in [|-3; 0; -1; -2; 0; 0|]
-  for q in [|h; 0; 0; 0; 1; 3|] and i in [|2; 2; -3; 0; h|]
   for h in [|2; -2; -3; 2; 2; 0|]
   and _ in [|-3; -2; -1|]
   and l in [||]
-  and k in [||]|];;
+  and k in [||]
+  for q in [|h; 0; 0; 0; 1; 3|] and i in [|2; 2; -3; 0; h|]
+  for z in [|-3; 0; -1; -2; 0; 0|]|];;
 [%%expect{|
 - : (int * int * '_weak82 * '_weak83 * int * int) array = [||]
 |}];;
 
 [(a, b, e, n, r, t, v, w, z)
+  for w = 2 to 1 and r = 3 downto 2 and b = 3 downto 1 and a = -3 downto 3
   for t in [a; 0]
   and n in [3; -1; 2; 2]
   and v in [-1; 2; 2; -2]
   and e = 3 to 3
-  and z = a to 1
-  for w = 2 to 1 and r = 3 downto 2 and b = 3 downto 1 and a = -3 downto 3];;
+  and z = a to 1];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, b, e, n, r, t, v, w, z)
+  for w = 2 to 1 and r = 3 downto 2 and b = 3 downto 1 and a = -3 downto 3
   for t in [|a; 0|]
   and n in [|3; -1; 2; 2|]
   and v in [|-1; 2; 2; -2|]
   and e = 3 to 3
-  and z = a to 1
-  for w = 2 to 1 and r = 3 downto 2 and b = 3 downto 1 and a = -3 downto 3|];;
+  and z = a to 1|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(b, l, r, w, x)
-  when l > 0
-  for r in [1; 3; 3; -1; r; 0]
-  for w = 2 to -1 and x in [3]
+  for r = 3 to 3 and l in [1; -1; 3; -2]
   for b = 1 downto l
-  for r = 3 to 3 and l in [1; -1; 3; -2]];;
+  for w = 2 to -1 and x in [3]
+  for r in [1; 3; 3; -1; r; 0]
+  when l > 0];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(b, l, r, w, x)
-  when l > 0
-  for r in [|1; 3; 3; -1; r; 0|]
-  for w = 2 to -1 and x in [|3|]
+  for r = 3 to 3 and l in [|1; -1; 3; -2|]
   for b = 1 downto l
-  for r = 3 to 3 and l in [|1; -1; 3; -2|]|];;
+  for w = 2 to -1 and x in [|3|]
+  for r in [|1; 3; 3; -1; r; 0|]
+  when l > 0|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(b, h, i, j, n, o, q, r)
-  for i = j to 1 and b = 0 to -1 and q in [2; 3; 3; 3; -3; -1; 3]
-  for o in [0; -2; 0] and n in [-2] and r in [-3]
+  for _ in [-3; 3; -3; -3; 2; 3]
   for j = -1 to -2 and h in [3; -3; 2; 2; -1]
-  for _ in [-3; 3; -3; -3; 2; 3]];;
+  for o in [0; -2; 0] and n in [-2] and r in [-3]
+  for i = j to 1 and b = 0 to -1 and q in [2; 3; 3; 3; -3; -1; 3]];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(b, h, i, j, n, o, q, r)
-  for i = j to 1 and b = 0 to -1 and q in [|2; 3; 3; 3; -3; -1; 3|]
-  for o in [|0; -2; 0|] and n in [|-2|] and r in [|-3|]
+  for _ in [|-3; 3; -3; -3; 2; 3|]
   for j = -1 to -2 and h in [|3; -3; 2; 2; -1|]
-  for _ in [|-3; 3; -3; -3; 2; 3|]|];;
+  for o in [|0; -2; 0|] and n in [|-2|] and r in [|-3|]
+  for i = j to 1 and b = 0 to -1 and q in [|2; 3; 3; 3; -3; -1; 3|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(b, g, k, u, v, x)
-  when g > 0
-  for g in [0; 3] and b in [2; 0; -1; 3; 1] and v = -3 downto k
+  for x in [2; -1; 3; 2; 1] and k in []
   for u in [-1; 2; -3; 0; 2; k]
-  for x in [2; -1; 3; 2; 1] and k in []];;
+  for g in [0; 3] and b in [2; 0; -1; 3; 1] and v = -3 downto k
+  when g > 0];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(b, g, k, u, v, x)
-  when g > 0
-  for g in [|0; 3|] and b in [|2; 0; -1; 3; 1|] and v = -3 downto k
+  for x in [|2; -1; 3; 2; 1|] and k in [||]
   for u in [|-1; 2; -3; 0; 2; k|]
-  for x in [|2; -1; 3; 2; 1|] and k in [||]|];;
+  for g in [|0; 3|] and b in [|2; 0; -1; 3; 1|] and v = -3 downto k
+  when g > 0|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
-[(j, q) for j = 0 to q for q = -3 downto 3];;
+[(j, q) for q = -3 downto 3 for j = 0 to q];;
 [%%expect{|
 - : (int * int) list = []
 |}];;
 
-[|(j, q) for j = 0 to q for q = -3 downto 3|];;
+[|(j, q) for q = -3 downto 3 for j = 0 to q|];;
 [%%expect{|
 - : (int * int) array = [||]
 |}];;
 
 [(g, j, l, m, n, q)
-  for g in [-3; 3]
-  for n = -2 downto 2
+  for j in [-2; 2; -2; -3; 0] and l in [-3; -2; -2; -1; 0]
   for m = -3 downto -3 and q in [-3; -1; -2; 1; 1; 3]
-  for j in [-2; 2; -2; -3; 0] and l in [-3; -2; -2; -1; 0]];;
+  for n = -2 downto 2
+  for g in [-3; 3]];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(g, j, l, m, n, q)
-  for g in [|-3; 3|]
-  for n = -2 downto 2
+  for j in [|-2; 2; -2; -3; 0|] and l in [|-3; -2; -2; -1; 0|]
   for m = -3 downto -3 and q in [|-3; -1; -2; 1; 1; 3|]
-  for j in [|-2; 2; -2; -3; 0|] and l in [|-3; -2; -2; -1; 0|]|];;
+  for n = -2 downto 2
+  for g in [|-3; 3|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(e, k, s)
-  when k < 0
-  when s > 0
-  for e in []
+  for k = 3 downto 2 and s = -3 downto -3
   when abs k mod 2 = 1
-  for k = 3 downto 2 and s = -3 downto -3];;
+  for e in []
+  when s > 0
+  when k < 0];;
 [%%expect{|
 - : ('a * int * int) list = []
 |}];;
 
 [|(e, k, s)
-  when k < 0
-  when s > 0
-  for e in [||]
+  for k = 3 downto 2 and s = -3 downto -3
   when abs k mod 2 = 1
-  for k = 3 downto 2 and s = -3 downto -3|];;
+  for e in [||]
+  when s > 0
+  when k < 0|];;
 [%%expect{|
 - : ('_weak84 * int * int) array = [||]
 |}];;
 
 [(a, e, l, o, q, r, v)
-  for a in [3; 0; 0; -3; 1; -2; -2] and l = 2 to 1
-  when e <> 0
-  for v = 1 downto o and e = -2 to -2
+  for r = 0 downto -2 and o in [1; -2; 3; -1]
   for q = 3 downto 1
-  for r = 0 downto -2 and o in [1; -2; 3; -1]];;
+  for v = 1 downto o and e = -2 to -2
+  when e <> 0
+  for a in [3; 0; 0; -3; 1; -2; -2] and l = 2 to 1];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, e, l, o, q, r, v)
-  for a in [|3; 0; 0; -3; 1; -2; -2|] and l = 2 to 1
-  when e <> 0
-  for v = 1 downto o and e = -2 to -2
+  for r = 0 downto -2 and o in [|1; -2; 3; -1|]
   for q = 3 downto 1
-  for r = 0 downto -2 and o in [|1; -2; 3; -1|]|];;
+  for v = 1 downto o and e = -2 to -2
+  when e <> 0
+  for a in [|3; 0; 0; -3; 1; -2; -2|] and l = 2 to 1|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(a, b, e, f, g, n)
-  for b in [-2; 3; 1; -1; -1] and f = 1 to 1
-  when a > 0
+  for e = -3 to -3 and n = 0 downto -1
   for a in [] and g = 2 to 2
-  for e = -3 to -3 and n = 0 downto -1];;
+  when a > 0
+  for b in [-2; 3; 1; -1; -1] and f = 1 to 1];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, b, e, f, g, n)
-  for b in [|-2; 3; 1; -1; -1|] and f = 1 to 1
-  when a > 0
+  for e = -3 to -3 and n = 0 downto -1
   for a in [||] and g = 2 to 2
-  for e = -3 to -3 and n = 0 downto -1|];;
+  when a > 0
+  for b in [|-2; 3; 1; -1; -1|] and f = 1 to 1|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(e, m, q, x)
-  for e = 3 downto 0 and q = 1 downto 0 and x in [3; 3; 0; q; q] and m = 2 to 2
-  for q = 3 downto 3];;
+  for q = 3 downto 3
+  for e = 3 downto 0 and q = 1 downto 0 and x in [3; 3; 0; q; q] and m = 2 to 2];;
 [%%expect{|
 - : (int * int * int * int) list =
 [(3, 2, 1, 3); (3, 2, 1, 3); (3, 2, 1, 0); (3, 2, 1, 3); (3, 2, 1, 3);
@@ -6205,11 +6205,11 @@ Warning 26 [unused-var]: unused variable e.
 |}];;
 
 [|(e, m, q, x)
+  for q = 3 downto 3
   for e = 3 downto 0
   and q = 1 downto 0
   and x in [|3; 3; 0; q; q|]
-  and m = 2 to 2
-  for q = 3 downto 3|];;
+  and m = 2 to 2|];;
 [%%expect{|
 - : (int * int * int * int) array =
 [|(3, 2, 1, 3); (3, 2, 1, 3); (3, 2, 1, 0); (3, 2, 1, 3); (3, 2, 1, 3);
@@ -6245,181 +6245,181 @@ Warning 26 [unused-var]: unused variable e.
 |}];;
 
 [(c, e, j, s, t, w, z)
-  for e = -1 to -1 and s in [0; -2; 1; -1; 3] and t in [] and j = -1 downto -1
-  for e = 2 to -1 and z = 1 to -1 and _ in [0; 2; -3; 3; -2; 3]
   for s in [-1; -3; -2; 3; 1; 2]
   and w in [3; 0; 1; 3; -2; 2]
-  and c = -3 downto -2];;
+  and c = -3 downto -2
+  for e = 2 to -1 and z = 1 to -1 and _ in [0; 2; -3; 3; -2; 3]
+  for e = -1 to -1 and s in [0; -2; 1; -1; 3] and t in [] and j = -1 downto -1];;
 [%%expect{|
 Line 4, characters 6-7:
-4 |   for s in [-1; -3; -2; 3; 1; 2]
-          ^
-Warning 26 [unused-var]: unused variable s.
-Lines 1-6, characters 0-23:
-1 | [(c, e, j, s, t, w, z)
-2 |   for e = -1 to -1 and s in [0; -2; 1; -1; 3] and t in [] and j = -1 downto -1
-3 |   for e = 2 to -1 and z = 1 to -1 and _ in [0; 2; -3; 3; -2; 3]
-4 |   for s in [-1; -3; -2; 3; 1; 2]
-5 |   and w in [3; 0; 1; 3; -2; 2]
-6 |   and c = -3 downto -2]..
-Warning 26 [unused-var]: unused variable e.
+4 |
 - : (int * int * int * int * 'a * int * int) list = []
+Warning 26 [unused-var]: unused variable e.
+6 |   and c = -3 downto -2]..
+5 |   and w in [3; 0; 1; 3; -2; 2] for s in [-1; -3; -2; 3; 1; 2]
+4 | for e = 2 to -1 and z = 1 to -1 and _ in [0; 2; -3; 3; -2; 3]
+3 | for e = -1 to -1 and s in [0; -2; 1; -1; 3] and t in [] and j = -1 downto -1
+2 |
+1 | [(c, e, j, s, t, w, z)
+Lines 1-6, characters 0-23:
+Warning 26 [unused-var]: unused variable s.
+          ^ for s in [-1; -3; -2; 3; 1; 2]
 |}];;
 
 [|(c, e, j, s, t, w, z)
+  for s in [|-1; -3; -2; 3; 1; 2|]
+  and w in [|3; 0; 1; 3; -2; 2|]
+  and c = -3 downto -2
+  for e = 2 to -1 and z = 1 to -1 and _ in [|0; 2; -3; 3; -2; 3|]
   for e = -1 to -1
   and s in [|0; -2; 1; -1; 3|]
   and t in [||]
-  and j = -1 downto -1
-  for e = 2 to -1 and z = 1 to -1 and _ in [|0; 2; -3; 3; -2; 3|]
-  for s in [|-1; -3; -2; 3; 1; 2|]
-  and w in [|3; 0; 1; 3; -2; 2|]
-  and c = -3 downto -2|];;
+  and j = -1 downto -1|];;
 [%%expect{|
 Line 7, characters 6-7:
-7 |   for s in [|-1; -3; -2; 3; 1; 2|]
-          ^
-Warning 26 [unused-var]: unused variable s.
-Lines 1-9, characters 0-24:
-1 | [|(c, e, j, s, t, w, z)
-2 |   for e = -1 to -1
-3 |   and s in [|0; -2; 1; -1; 3|]
-4 |   and t in [||]
-5 |   and j = -1 downto -1
-6 |   for e = 2 to -1 and z = 1 to -1 and _ in [|0; 2; -3; 3; -2; 3|]
-7 |   for s in [|-1; -3; -2; 3; 1; 2|]
-8 |   and w in [|3; 0; 1; 3; -2; 2|]
-9 |   and c = -3 downto -2|]..
-Warning 26 [unused-var]: unused variable e.
+7 |
 - : (int * int * int * int * '_weak85 * int * int) array = [||]
+Warning 26 [unused-var]: unused variable e.
+9 |   and c = -3 downto -2|]..
+8 |   and w in [|3; 0; 1; 3; -2; 2|] for s in [|-1; -3; -2; 3; 1; 2|]
+7 | for e = 2 to -1 and z = 1 to -1 and _ in [|0; 2; -3; 3; -2; 3|]
+6 |
+5 |   and j = -1 downto -1
+4 |   and t in [||]
+3 |   and s in [|0; -2; 1; -1; 3|] for e = -1 to -1
+2 |
+1 | [|(c, e, j, s, t, w, z)
+Lines 1-9, characters 0-24:
+Warning 26 [unused-var]: unused variable s.
+          ^ for s in [|-1; -3; -2; 3; 1; 2|]
 |}];;
 
 [(k, m, s, t, y)
-  when y > 0
+  for k = -1 to 2
   for t in [2; 2; 2; -1; 1] and s = k to k and y = 1 to 2 and m in []
-  for k = -1 to 2];;
+  when y > 0];;
 [%%expect{|
 - : (int * 'a * int * int * int) list = []
 |}];;
 
 [|(k, m, s, t, y)
-  when y > 0
+  for k = -1 to 2
   for t in [|2; 2; 2; -1; 1|] and s = k to k and y = 1 to 2 and m in [||]
-  for k = -1 to 2|];;
+  when y > 0|];;
 [%%expect{|
 - : (int * '_weak86 * int * int * int) array = [||]
 |}];;
 
 [(a, c, h, k, m, s, x)
-  for k = -3 downto 3 and s in [-1; 3; 0; 0; -2; -2] and m = 2 to 0
-  for x = -1 downto 2 and c = -3 to 1 and a = 0 to -1
+  for h = -1 downto 1
   when h > 0
-  for h = -1 downto 1];;
+  for x = -1 downto 2 and c = -3 to 1 and a = 0 to -1
+  for k = -3 downto 3 and s in [-1; 3; 0; 0; -2; -2] and m = 2 to 0];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, c, h, k, m, s, x)
-  for k = -3 downto 3 and s in [|-1; 3; 0; 0; -2; -2|] and m = 2 to 0
-  for x = -1 downto 2 and c = -3 to 1 and a = 0 to -1
+  for h = -1 downto 1
   when h > 0
-  for h = -1 downto 1|];;
+  for x = -1 downto 2 and c = -3 to 1 and a = 0 to -1
+  for k = -3 downto 3 and s in [|-1; 3; 0; 0; -2; -2|] and m = 2 to 0|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(i, k, l, o, z)
-  when i > 0
   for o in [0; 3; 1; 1]
   and l = 2 to -2
   and z = 0 downto 3
   and k = -1 downto -2
-  and i = -3 downto 0];;
+  and i = -3 downto 0
+  when i > 0];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(i, k, l, o, z)
-  when i > 0
   for o in [|0; 3; 1; 1|]
   and l = 2 to -2
   and z = 0 downto 3
   and k = -1 downto -2
-  and i = -3 downto 0|];;
+  and i = -3 downto 0
+  when i > 0|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(h, j, n, o, p, s)
-  for p = 1 downto -1 and h = -2 downto -2 and j = -3 to 3
+  for o = -2 downto 0
   for s = 1 to 3 and n in [3; 1; o]
-  for o = -2 downto 0];;
+  for p = 1 downto -1 and h = -2 downto -2 and j = -3 to 3];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(h, j, n, o, p, s)
-  for p = 1 downto -1 and h = -2 downto -2 and j = -3 to 3
+  for o = -2 downto 0
   for s = 1 to 3 and n in [|3; 1; o|]
-  for o = -2 downto 0|];;
+  for p = 1 downto -1 and h = -2 downto -2 and j = -3 to 3|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(c, d, i, n, o, r)
-  when o > 0
-  for r = 0 downto 1
-  for o = 0 downto 2
+  for c = 1 downto 2 and d = 1 downto 2
   for i = 1 downto -1 and n = c downto 1
-  for c = 1 downto 2 and d = 1 downto 2];;
+  for o = 0 downto 2
+  for r = 0 downto 1
+  when o > 0];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(c, d, i, n, o, r)
-  when o > 0
-  for r = 0 downto 1
-  for o = 0 downto 2
+  for c = 1 downto 2 and d = 1 downto 2
   for i = 1 downto -1 and n = c downto 1
-  for c = 1 downto 2 and d = 1 downto 2|];;
+  for o = 0 downto 2
+  for r = 0 downto 1
+  when o > 0|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(d, f, h, i, k, l, x)
-  for l = 2 to 0 and f = -3 downto -1 and i = 0 to 1
   for x = -2 downto -2
   and d = 3 downto 2
   and k in [-3; -2; 1; 2]
-  and h = -2 to 0];;
+  and h = -2 to 0
+  for l = 2 to 0 and f = -3 downto -1 and i = 0 to 1];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(d, f, h, i, k, l, x)
-  for l = 2 to 0 and f = -3 downto -1 and i = 0 to 1
   for x = -2 downto -2
   and d = 3 downto 2
   and k in [|-3; -2; 1; 2|]
-  and h = -2 to 0|];;
+  and h = -2 to 0
+  for l = 2 to 0 and f = -3 downto -1 and i = 0 to 1|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(f, m, q, s, v, z)
-  for s in [0; -3; q; -1; 3; -2; -3]
-  for q in []
+  for v in [] and m = -1 downto -1
   for z in [-2; 2; 1; 1; 3] and f = -2 downto 1 and m = 1 downto m
-  for v in [] and m = -1 downto -1];;
+  for q in []
+  for s in [0; -3; q; -1; 3; -2; -3]];;
 [%%expect{|
 - : (int * int * int * int * 'a * int) list = []
 |}];;
 
 [|(f, m, q, s, v, z)
-  for s in [|0; -3; q; -1; 3; -2; -3|]
-  for q in [||]
+  for v in [||] and m = -1 downto -1
   for z in [|-2; 2; 1; 1; 3|] and f = -2 downto 1 and m = 1 downto m
-  for v in [||] and m = -1 downto -1|];;
+  for q in [||]
+  for s in [|0; -3; q; -1; 3; -2; -3|]|];;
 [%%expect{|
 - : (int * int * int * int * '_weak87 * int) array = [||]
 |}];;
@@ -6465,19 +6465,19 @@ Warning 26 [unused-var]: unused variable e.
 |}];;
 
 [(b, e, g, k, n, o, s, x)
-  for s = 1 to -3 and g = -3 downto 0 and e in [3; -1; -2; -1; 0; 3; -3]
-  for b = 1 to -2 and x in [-1; 1; 3; -3; 2]
+  for o in [1; 1; 1; -3; 3]
   for n in [-1; 3; 0; 2] and k in [-1; 0; 3; 1; 1; 3]
-  for o in [1; 1; 1; -3; 3]];;
+  for b = 1 to -2 and x in [-1; 1; 3; -3; 2]
+  for s = 1 to -3 and g = -3 downto 0 and e in [3; -1; -2; -1; 0; 3; -3]];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(b, e, g, k, n, o, s, x)
-  for s = 1 to -3 and g = -3 downto 0 and e in [|3; -1; -2; -1; 0; 3; -3|]
-  for b = 1 to -2 and x in [|-1; 1; 3; -3; 2|]
+  for o in [|1; 1; 1; -3; 3|]
   for n in [|-1; 3; 0; 2|] and k in [|-1; 0; 3; 1; 1; 3|]
-  for o in [|1; 1; 1; -3; 3|]|];;
+  for b = 1 to -2 and x in [|-1; 1; 3; -3; 2|]
+  for s = 1 to -3 and g = -3 downto 0 and e in [|3; -1; -2; -1; 0; 3; -3|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) array = [||]
 |}];;
@@ -6525,62 +6525,62 @@ Warning 26 [unused-var]: unused variable e.
 |}];;
 
 [(b, c, j, p, q, w)
-  for b = 3 downto -3 and w in [-2]
+  for q in [-3; -2; 2] and c in [0; -1; 0; 3] and p = 3 to 1 and j = 0 to 3
   when p > 0
-  for q in [-3; -2; 2] and c in [0; -1; 0; 3] and p = 3 to 1 and j = 0 to 3];;
+  for b = 3 downto -3 and w in [-2]];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(b, c, j, p, q, w)
-  for b = 3 downto -3 and w in [|-2|]
-  when p > 0
   for q in [|-3; -2; 2|]
   and c in [|0; -1; 0; 3|]
   and p = 3 to 1
-  and j = 0 to 3|];;
+  and j = 0 to 3
+  when p > 0
+  for b = 3 downto -3 and w in [|-2|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(e, h, r, w)
-  when w > 0
   for w = 0 to -3
   and h = 0 downto -1
   and r = -2 to 1
-  and e in [0; 0; 0; 0; -1; -3]];;
+  and e in [0; 0; 0; 0; -1; -3]
+  when w > 0];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(e, h, r, w)
-  when w > 0
   for w = 0 to -3
   and h = 0 downto -1
   and r = -2 to 1
-  and e in [|0; 0; 0; 0; -1; -3|]|];;
+  and e in [|0; 0; 0; 0; -1; -3|]
+  when w > 0|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(e, j, k, o, r, w)
+  for r = -2 to 2 and w = -2 downto 2 and k = -2 to 0
   for j in [w; -3; w]
   and o in [2; 1; -3; 0; 2; 2; -3]
   and r = r to 1
   and e = w downto -3
-  and _ in [2; 3; 3; 2]
-  for r = -2 to 2 and w = -2 downto 2 and k = -2 to 0];;
+  and _ in [2; 3; 3; 2]];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(e, j, k, o, r, w)
+  for r = -2 to 2 and w = -2 downto 2 and k = -2 to 0
   for j in [|w; -3; w|]
   and o in [|2; 1; -3; 0; 2; 2; -3|]
   and r = r to 1
   and e = w downto -3
-  and _ in [|2; 3; 3; 2|]
-  for r = -2 to 2 and w = -2 downto 2 and k = -2 to 0|];;
+  and _ in [|2; 3; 3; 2|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
@@ -6622,78 +6622,78 @@ Warning 26 [unused-var]: unused variable e.
 |}];;
 
 [(i, t, v, w)
-  when w > 0
+  for i in [3; 2; -2; -1; -1] and v in [] and w = -1 to 1 and t = 0 downto -1
   when v <> 0
-  for i in [3; 2; -2; -1; -1] and v in [] and w = -1 to 1 and t = 0 downto -1];;
+  when w > 0];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(i, t, v, w)
-  when w > 0
-  when v <> 0
   for i in [|3; 2; -2; -1; -1|]
   and v in [||]
   and w = -1 to 1
-  and t = 0 downto -1|];;
+  and t = 0 downto -1
+  when v <> 0
+  when w > 0|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
-[y when y < 0 when abs y mod 2 = 1 for y = 0 to 1];;
+[y for y = 0 to 1 when abs y mod 2 = 1 when y < 0];;
 [%%expect{|
 - : int list = []
 |}];;
 
-[|y when y < 0 when abs y mod 2 = 1 for y = 0 to 1|];;
+[|y for y = 0 to 1 when abs y mod 2 = 1 when y < 0|];;
 [%%expect{|
 - : int array = [||]
 |}];;
 
-[w when abs w mod 2 = 0 for w = -3 to -1];;
+[w for w = -3 to -1 when abs w mod 2 = 0];;
 [%%expect{|
 - : int list = [-2]
 |}];;
 
-[|w when abs w mod 2 = 0 for w = -3 to -1|];;
+[|w for w = -3 to -1 when abs w mod 2 = 0|];;
 [%%expect{|
 - : int array = [|-2|]
 |}];;
 
 [(h, j, k, m, n, u, v)
-  for _ in [-3; 2; -1; 0; m] and n = -3 downto 0
-  for u = 0 to 0 and h = -3 downto -3
-  for j = 0 downto -1
+  for k = 3 to -3
   for v in [-1] and m = 2 to -1
-  for k = 3 to -3];;
+  for j = 0 downto -1
+  for u = 0 to 0 and h = -3 downto -3
+  for _ in [-3; 2; -1; 0; m] and n = -3 downto 0];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(h, j, k, m, n, u, v)
-  for _ in [|-3; 2; -1; 0; m|] and n = -3 downto 0
-  for u = 0 to 0 and h = -3 downto -3
-  for j = 0 downto -1
+  for k = 3 to -3
   for v in [|-1|] and m = 2 to -1
-  for k = 3 to -3|];;
+  for j = 0 downto -1
+  for u = 0 to 0 and h = -3 downto -3
+  for _ in [|-3; 2; -1; 0; m|] and n = -3 downto 0|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(c, g, l, n, r, t, u, y)
-  for u in [3; -2] and c = 0 downto 1 and y = 2 downto -2
-  when abs t mod 2 = 1
+  for l = 3 downto 1 and t in [3; 1; 2; -3; -3; -1; -3] and r = 2 downto 3
   for g = -1 to -2 and n in [l; 2; 2; -2; -1]
-  for l = 3 downto 1 and t in [3; 1; 2; -3; -3; -1; -3] and r = 2 downto 3];;
+  when abs t mod 2 = 1
+  for u in [3; -2] and c = 0 downto 1 and y = 2 downto -2];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(c, g, l, n, r, t, u, y)
-  for u in [|3; -2|] and c = 0 downto 1 and y = 2 downto -2
-  when abs t mod 2 = 1
+  for l = 3 downto 1 and t in [|3; 1; 2; -3; -3; -1; -3|] and r = 2 downto 3
   for g = -1 to -2 and n in [|l; 2; 2; -2; -1|]
-  for l = 3 downto 1 and t in [|3; 1; 2; -3; -3; -1; -3|] and r = 2 downto 3|];;
+  when abs t mod 2 = 1
+  for u in [|3; -2|] and c = 0 downto 1 and y = 2 downto -2|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) array = [||]
 |}];;
@@ -6737,79 +6737,79 @@ Warning 26 [unused-var]: unused variable e.
 |}];;
 
 [(c, i, q)
-  for c in [3; 0; 0; -2] and i = -1 to -3
+  for q = -2 downto -3
   when q < 0
-  for q = -2 downto -3];;
+  for c in [3; 0; 0; -2] and i = -1 to -3];;
 [%%expect{|
 - : (int * int * int) list = []
 |}];;
 
 [|(c, i, q)
-  for c in [|3; 0; 0; -2|] and i = -1 to -3
+  for q = -2 downto -3
   when q < 0
-  for q = -2 downto -3|];;
+  for c in [|3; 0; 0; -2|] and i = -1 to -3|];;
 [%%expect{|
 - : (int * int * int) array = [||]
 |}];;
 
 [(a, j, n, r, t, u, z)
+  for u in [1; -2; 0; -2; 1; 1] and j = 2 to -1 and n = -2 to -3
+  when abs u mod 2 = 0
   for t in [2; -1; -2; 2; 0]
   and z = -1 to 0
   and a = -3 downto 2
-  and r = -1 to -3
-  when abs u mod 2 = 0
-  for u in [1; -2; 0; -2; 1; 1] and j = 2 to -1 and n = -2 to -3];;
+  and r = -1 to -3];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, j, n, r, t, u, z)
+  for u in [|1; -2; 0; -2; 1; 1|] and j = 2 to -1 and n = -2 to -3
+  when abs u mod 2 = 0
   for t in [|2; -1; -2; 2; 0|]
   and z = -1 to 0
   and a = -3 downto 2
-  and r = -1 to -3
-  when abs u mod 2 = 0
-  for u in [|1; -2; 0; -2; 1; 1|] and j = 2 to -1 and n = -2 to -3|];;
+  and r = -1 to -3|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(i, k, o, u, v, y)
-  for _ = 2 downto o and y in []
-  for v in [1] and u = -1 downto 1
-  for k in [-1; -3] and o = -2 downto -1
+  for i = 1 to 3 and y in [2]
   for k in [1; 2; -2; -1; y]
-  for i = 1 to 3 and y in [2]];;
+  for k in [-1; -3] and o = -2 downto -1
+  for v in [1] and u = -1 downto 1
+  for _ = 2 downto o and y in []];;
 [%%expect{|
 Line 5, characters 6-7:
-5 |   for k in [1; 2; -2; -1; y]
-          ^
-Warning 26 [unused-var]: unused variable k.
+5 |
 - : (int * int * int * int * int * 'a) list = []
+Warning 26 [unused-var]: unused variable k.
+          ^ for k in [1; 2; -2; -1; y]
 |}];;
 
 [|(i, k, o, u, v, y)
-  for _ = 2 downto o and y in [||]
-  for v in [|1|] and u = -1 downto 1
-  for k in [|-1; -3|] and o = -2 downto -1
+  for i = 1 to 3 and y in [|2|]
   for k in [|1; 2; -2; -1; y|]
-  for i = 1 to 3 and y in [|2|]|];;
+  for k in [|-1; -3|] and o = -2 downto -1
+  for v in [|1|] and u = -1 downto 1
+  for _ = 2 downto o and y in [||]|];;
 [%%expect{|
 Line 5, characters 6-7:
-5 |   for k in [|1; 2; -2; -1; y|]
-          ^
-Warning 26 [unused-var]: unused variable k.
+5 |
 - : (int * int * int * int * int * '_weak89) array = [||]
+Warning 26 [unused-var]: unused variable k.
+          ^ for k in [|1; 2; -2; -1; y|]
 |}];;
 
-[(s, v) for s = 3 downto 1 for v in [3; -1; 1; 3; -3]];;
+[(s, v) for v in [3; -1; 1; 3; -3] for s = 3 downto 1];;
 [%%expect{|
 - : (int * int) list =
 [(3, 3); (2, 3); (1, 3); (3, -1); (2, -1); (1, -1); (3, 1); (2, 1); (1, 1);
  (3, 3); (2, 3); (1, 3); (3, -3); (2, -3); (1, -3)]
 |}];;
 
-[|(s, v) for s = 3 downto 1 for v in [|3; -1; 1; 3; -3|]|];;
+[|(s, v) for v in [|3; -1; 1; 3; -3|] for s = 3 downto 1|];;
 [%%expect{|
 - : (int * int) array =
 [|(3, 3); (2, 3); (1, 3); (3, -1); (2, -1); (1, -1); (3, 1); (2, 1);
@@ -6817,61 +6817,61 @@ Warning 26 [unused-var]: unused variable k.
 |}];;
 
 [(e, g, j, m)
-  for j = 2 to 1
-  for e = -2 to -3
-  for m = 2 downto 3
+  for g = 1 to 3
   when g > 0
-  for g = 1 to 3];;
+  for m = 2 downto 3
+  for e = -2 to -3
+  for j = 2 to 1];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(e, g, j, m)
-  for j = 2 to 1
-  for e = -2 to -3
-  for m = 2 downto 3
+  for g = 1 to 3
   when g > 0
-  for g = 1 to 3|];;
+  for m = 2 downto 3
+  for e = -2 to -3
+  for j = 2 to 1|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(b, c, f, i, m, x)
-  for x = -3 downto 2
-  when b > 0
-  for f = -1 to 0 and i = -2 downto 1
+  for m = 0 to 2 and b = -2 downto 1
   for c = -3 to 3
-  for m = 0 to 2 and b = -2 downto 1];;
+  for f = -1 to 0 and i = -2 downto 1
+  when b > 0
+  for x = -3 downto 2];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(b, c, f, i, m, x)
-  for x = -3 downto 2
-  when b > 0
-  for f = -1 to 0 and i = -2 downto 1
+  for m = 0 to 2 and b = -2 downto 1
   for c = -3 to 3
-  for m = 0 to 2 and b = -2 downto 1|];;
+  for f = -1 to 0 and i = -2 downto 1
+  when b > 0
+  for x = -3 downto 2|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
-[(t, w, y) when t < 0 for y = -2 to -2 and t = 3 to 0 and w in [0]];;
+[(t, w, y) for y = -2 to -2 and t = 3 to 0 and w in [0] when t < 0];;
 [%%expect{|
 - : (int * int * int) list = []
 |}];;
 
-[|(t, w, y) when t < 0 for y = -2 to -2 and t = 3 to 0 and w in [|0|]|];;
+[|(t, w, y) for y = -2 to -2 and t = 3 to 0 and w in [|0|] when t < 0|];;
 [%%expect{|
 - : (int * int * int) array = [||]
 |}];;
 
 [(a, z)
-  for a in [-3; 0; -2; -1; 2; 0]
+  for z in [0; 3; -2; 0]
   when abs z mod 2 = 0
   when abs z mod 2 = 0
   when abs z mod 2 = 0
-  for z in [0; 3; -2; 0]];;
+  for a in [-3; 0; -2; -1; 2; 0]];;
 [%%expect{|
 - : (int * int) list =
 [(-3, 0); (0, 0); (-2, 0); (-1, 0); (2, 0); (0, 0); (-3, -2); (0, -2);
@@ -6880,11 +6880,11 @@ Warning 26 [unused-var]: unused variable k.
 |}];;
 
 [|(a, z)
-  for a in [|-3; 0; -2; -1; 2; 0|]
+  for z in [|0; 3; -2; 0|]
   when abs z mod 2 = 0
   when abs z mod 2 = 0
   when abs z mod 2 = 0
-  for z in [|0; 3; -2; 0|]|];;
+  for a in [|-3; 0; -2; -1; 2; 0|]|];;
 [%%expect{|
 - : (int * int) array =
 [|(-3, 0); (0, 0); (-2, 0); (-1, 0); (2, 0); (0, 0); (-3, -2); (0, -2);
@@ -6893,169 +6893,169 @@ Warning 26 [unused-var]: unused variable k.
 |}];;
 
 [(a, b, h, v, z)
-  for b = 1 to -3 and a in [h; 1; 0; 2; z]
-  when abs v mod 2 = 1
-  for z in [-1; -3; 0]
+  for h = 0 to -3 and v = 3 downto -1
   for a in [-3; v; 3; 1; -1; -1; -1]
-  for h = 0 to -3 and v = 3 downto -1];;
+  for z in [-1; -3; 0]
+  when abs v mod 2 = 1
+  for b = 1 to -3 and a in [h; 1; 0; 2; z]];;
 [%%expect{|
 Line 5, characters 6-7:
-5 |   for a in [-3; v; 3; 1; -1; -1; -1]
-          ^
-Warning 26 [unused-var]: unused variable a.
+5 |
 - : (int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable a.
+          ^ for a in [-3; v; 3; 1; -1; -1; -1]
 |}];;
 
 [|(a, b, h, v, z)
-  for b = 1 to -3 and a in [|h; 1; 0; 2; z|]
-  when abs v mod 2 = 1
-  for z in [|-1; -3; 0|]
+  for h = 0 to -3 and v = 3 downto -1
   for a in [|-3; v; 3; 1; -1; -1; -1|]
-  for h = 0 to -3 and v = 3 downto -1|];;
+  for z in [|-1; -3; 0|]
+  when abs v mod 2 = 1
+  for b = 1 to -3 and a in [|h; 1; 0; 2; z|]|];;
 [%%expect{|
 Line 5, characters 6-7:
-5 |   for a in [|-3; v; 3; 1; -1; -1; -1|]
-          ^
-Warning 26 [unused-var]: unused variable a.
+5 |
 - : (int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable a.
+          ^ for a in [|-3; v; 3; 1; -1; -1; -1|]
 |}];;
 
 [(c, n, p, q, x)
+  for p = -3 downto -1
   for c = 2 downto -1
   and x = -2 to 2
   and q = 2 downto 3
   and n in [0; -2; -1; -3]
-  and p = 2 downto 0
-  for p = -3 downto -1];;
+  and p = 2 downto 0];;
 [%%expect{|
 Lines 1-7, characters 0-23:
 1 | [(c, n, p, q, x)
-2 |   for c = 2 downto -1
-3 |   and x = -2 to 2
-4 |   and q = 2 downto 3
-5 |   and n in [0; -2; -1; -3]
-6 |   and p = 2 downto 0
-7 |   for p = -3 downto -1]..
-Warning 26 [unused-var]: unused variable p.
+2 |
 - : (int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable p. for p = -3 downto -1]..
+7 |
+6 |   and p = 2 downto 0
+5 |   and n in [0; -2; -1; -3]
+4 |   and q = 2 downto 3
+3 |   and x = -2 to 2 for c = 2 downto -1
 |}];;
 
 [|(c, n, p, q, x)
+  for p = -3 downto -1
   for c = 2 downto -1
   and x = -2 to 2
   and q = 2 downto 3
   and n in [|0; -2; -1; -3|]
-  and p = 2 downto 0
-  for p = -3 downto -1|];;
+  and p = 2 downto 0|];;
 [%%expect{|
 Lines 1-7, characters 0-24:
 1 | [|(c, n, p, q, x)
-2 |   for c = 2 downto -1
-3 |   and x = -2 to 2
-4 |   and q = 2 downto 3
-5 |   and n in [|0; -2; -1; -3|]
-6 |   and p = 2 downto 0
-7 |   for p = -3 downto -1|]..
-Warning 26 [unused-var]: unused variable p.
+2 |
 - : (int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable p. for p = -3 downto -1|]..
+7 |
+6 |   and p = 2 downto 0
+5 |   and n in [|0; -2; -1; -3|]
+4 |   and q = 2 downto 3
+3 |   and x = -2 to 2 for c = 2 downto -1
 |}];;
 
 [(b, d, f, k, l, m, s, w)
-  for f in [1]
+  for _ in [0; -3; -3; 1; 1; 1]
+  and k in [3; 3; 3; 3; 2; 3]
+  and b in [-1; -3; 1; 3; -1; 3; 2]
+  and l in []
   for s in [-3; 0; k]
   and m = 0 to 3
   and w = -1 downto 3
   and d in [3; -3; -2; -3; -1; -3]
-  for _ in [0; -3; -3; 1; 1; 1]
-  and k in [3; 3; 3; 3; 2; 3]
-  and b in [-1; -3; 1; 3; -1; 3; 2]
-  and l in []];;
+  for f in [1]];;
 [%%expect{|
 - : (int * int * int * int * 'a * int * int * int) list = []
 |}];;
 
 [|(b, d, f, k, l, m, s, w)
-  for f in [|1|]
+  for _ in [|0; -3; -3; 1; 1; 1|]
+  and k in [|3; 3; 3; 3; 2; 3|]
+  and b in [|-1; -3; 1; 3; -1; 3; 2|]
+  and l in [||]
   for s in [|-3; 0; k|]
   and m = 0 to 3
   and w = -1 downto 3
   and d in [|3; -3; -2; -3; -1; -3|]
-  for _ in [|0; -3; -3; 1; 1; 1|]
-  and k in [|3; 3; 3; 3; 2; 3|]
-  and b in [|-1; -3; 1; 3; -1; 3; 2|]
-  and l in [||]|];;
+  for f in [|1|]|];;
 [%%expect{|
 - : (int * int * int * int * '_weak90 * int * int * int) array = [||]
 |}];;
 
 [(c, d, f, j, l, r, v, x)
-  for d = -3 downto j and l = -2 downto 0
-  for r in [-1; -1; -2; -1]
+  for v = 0 to 0 and x in [3; 1]
   for j in [-3; x; -2; 1] and f = 3 to 0 and c = -2 to v
-  for v = 0 to 0 and x in [3; 1]];;
+  for r in [-1; -1; -2; -1]
+  for d = -3 downto j and l = -2 downto 0];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(c, d, f, j, l, r, v, x)
-  for d = -3 downto j and l = -2 downto 0
-  for r in [|-1; -1; -2; -1|]
+  for v = 0 to 0 and x in [|3; 1|]
   for j in [|-3; x; -2; 1|] and f = 3 to 0 and c = -2 to v
-  for v = 0 to 0 and x in [|3; 1|]|];;
+  for r in [|-1; -1; -2; -1|]
+  for d = -3 downto j and l = -2 downto 0|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(a, k, n, s, t, z)
-  for k in [0; -3; 2; s; 3; -1; 1] and z = -3 downto n
+  for a in [] and t in [-1; 0; -3; 1; 2; 3; 0]
   for n = 3 downto -1 and s in [-1; 2; 0; -1; 0; 0; -2] and a = -1 downto -1
-  for a in [] and t in [-1; 0; -3; 1; 2; 3; 0]];;
+  for k in [0; -3; 2; s; 3; -1; 1] and z = -3 downto n];;
 [%%expect{|
 Line 4, characters 6-7:
-4 |   for a in [] and t in [-1; 0; -3; 1; 2; 3; 0]];;
+4 | for a in [] and t in [-1; 0; -3; 1; 2; 3; 0]];;
           ^
 Warning 26 [unused-var]: unused variable a.
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, k, n, s, t, z)
-  for k in [|0; -3; 2; s; 3; -1; 1|] and z = -3 downto n
+  for a in [||] and t in [|-1; 0; -3; 1; 2; 3; 0|]
   for n = 3 downto -1 and s in [|-1; 2; 0; -1; 0; 0; -2|] and a = -1 downto -1
-  for a in [||] and t in [|-1; 0; -3; 1; 2; 3; 0|]|];;
+  for k in [|0; -3; 2; s; 3; -1; 1|] and z = -3 downto n|];;
 [%%expect{|
 Line 4, characters 6-7:
-4 |   for a in [||] and t in [|-1; 0; -3; 1; 2; 3; 0|]|];;
+4 | for a in [||] and t in [|-1; 0; -3; 1; 2; 3; 0|]|];;
           ^
 Warning 26 [unused-var]: unused variable a.
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
-[g when g < 0 for g = -1 downto 1];;
+[g for g = -1 downto 1 when g < 0];;
 [%%expect{|
 - : int list = []
 |}];;
 
-[|g when g < 0 for g = -1 downto 1|];;
+[|g for g = -1 downto 1 when g < 0|];;
 [%%expect{|
 - : int array = [||]
 |}];;
 
 [(d, i, q, v)
-  for q in []
-  when v <> 0
-  when abs i mod 2 = 0
+  for v in [0; 3] and i = 3 downto 1
   for d = -3 to -2
-  for v in [0; 3] and i = 3 downto 1];;
+  when abs i mod 2 = 0
+  when v <> 0
+  for q in []];;
 [%%expect{|
 - : (int * int * 'a * int) list = []
 |}];;
 
 [|(d, i, q, v)
-  for q in [||]
-  when v <> 0
-  when abs i mod 2 = 0
+  for v in [|0; 3|] and i = 3 downto 1
   for d = -3 to -2
-  for v in [|0; 3|] and i = 3 downto 1|];;
+  when abs i mod 2 = 0
+  when v <> 0
+  for q in [||]|];;
 [%%expect{|
 - : (int * int * '_weak91 * int) array = [||]
 |}];;
@@ -7113,30 +7113,30 @@ Warning 26 [unused-var]: unused variable a.
 |}];;
 
 [(c, e, g, i, j, k, r, s, v)
-  for r = 2 to 1 and i in [1; k; -3; -2; 1] and v = k to 1 and j = -3 to 1
+  for s in [-2; 1; -1] and v = 3 to -2 and e = -3 to -3 and c in [-2; -2; 2]
   for k = -2 to -3 and c in [2; -2; -3; -3; 3; 1] and g = 0 to 3
-  for s in [-2; 1; -1] and v = 3 to -2 and e = -3 to -3 and c in [-2; -2; 2]];;
+  for r = 2 to 1 and i in [1; k; -3; -2; 1] and v = k to 1 and j = -3 to 1];;
 [%%expect{|
 Line 4, characters 60-61:
-4 |   for s in [-2; 1; -1] and v = 3 to -2 and e = -3 to -3 and c in [-2; -2; 2]];;
+4 | for s in [-2; 1; -1] and v = 3 to -2 and e = -3 to -3 and c in [-2; -2; 2]];;
                                                                 ^
 Warning 26 [unused-var]: unused variable c.
 Lines 1-4, characters 0-77:
 1 | [(c, e, g, i, j, k, r, s, v)
-2 |   for r = 2 to 1 and i in [1; k; -3; -2; 1] and v = k to 1 and j = -3 to 1
-3 |   for k = -2 to -3 and c in [2; -2; -3; -3; 3; 1] and g = 0 to 3
-4 |   for s in [-2; 1; -1] and v = 3 to -2 and e = -3 to -3 and c in [-2; -2; 2]]..
-Warning 26 [unused-var]: unused variable v.
+2 |
 - : (int * int * int * int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable v. for s in [-2; 1; -1] and v = 3 to -2 and e = -3 to -3 and c in [-2; -2; 2]]..
+4 | for k = -2 to -3 and c in [2; -2; -3; -3; 3; 1] and g = 0 to 3
+3 | for r = 2 to 1 and i in [1; k; -3; -2; 1] and v = k to 1 and j = -3 to 1
 |}];;
 
 [|(c, e, g, i, j, k, r, s, v)
-  for r = 2 to 1 and i in [|1; k; -3; -2; 1|] and v = k to 1 and j = -3 to 1
-  for k = -2 to -3 and c in [|2; -2; -3; -3; 3; 1|] and g = 0 to 3
   for s in [|-2; 1; -1|]
   and v = 3 to -2
   and e = -3 to -3
-  and c in [|-2; -2; 2|]|];;
+  and c in [|-2; -2; 2|]
+  for k = -2 to -3 and c in [|2; -2; -3; -3; 3; 1|] and g = 0 to 3
+  for r = 2 to 1 and i in [|1; k; -3; -2; 1|] and v = k to 1 and j = -3 to 1|];;
 [%%expect{|
 Line 7, characters 6-7:
 7 |   and c in [|-2; -2; 2|]|];;
@@ -7144,23 +7144,23 @@ Line 7, characters 6-7:
 Warning 26 [unused-var]: unused variable c.
 Lines 1-7, characters 0-26:
 1 | [|(c, e, g, i, j, k, r, s, v)
-2 |   for r = 2 to 1 and i in [|1; k; -3; -2; 1|] and v = k to 1 and j = -3 to 1
-3 |   for k = -2 to -3 and c in [|2; -2; -3; -3; 3; 1|] and g = 0 to 3
-4 |   for s in [|-2; 1; -1|]
-5 |   and v = 3 to -2
-6 |   and e = -3 to -3
-7 |   and c in [|-2; -2; 2|]|]..
-Warning 26 [unused-var]: unused variable v.
+2 |
 - : (int * int * int * int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable v.
+7 |   and c in [|-2; -2; 2|]|]..
+6 |   and e = -3 to -3
+5 |   and v = 3 to -2 for s in [|-2; 1; -1|]
+4 | for k = -2 to -3 and c in [|2; -2; -3; -3; 3; 1|] and g = 0 to 3
+3 | for r = 2 to 1 and i in [|1; k; -3; -2; 1|] and v = k to 1 and j = -3 to 1
 |}];;
 
 [(j, k, m, y, z)
-  for j in []
   for k in [1]
   and m in [0; 2; -3; -2; -2]
   and y = 0 downto 0
   and z in [3; -1; 3]
-  and j in []];;
+  and j in []
+  for j in []];;
 [%%expect{|
 Line 7, characters 6-7:
 7 |   and j in []];;
@@ -7170,12 +7170,12 @@ Warning 26 [unused-var]: unused variable j.
 |}];;
 
 [|(j, k, m, y, z)
-  for j in [||]
   for k in [|1|]
   and m in [|0; 2; -3; -2; -2|]
   and y = 0 downto 0
   and z in [|3; -1; 3|]
-  and j in [||]|];;
+  and j in [||]
+  for j in [||]|];;
 [%%expect{|
 Line 7, characters 6-7:
 7 |   and j in [||]|];;
@@ -7185,77 +7185,77 @@ Warning 26 [unused-var]: unused variable j.
 |}];;
 
 [(c, g, h, j, q, t, v)
-  for t in [] and c in [c; -3] and h = 0 to -3 and v in [2; c; -1; -1; 2]
-  for g in [] and j = -2 downto 3 and c = -1 to 3 and q = 2 downto 0];;
+  for g in [] and j = -2 downto 3 and c = -1 to 3 and q = 2 downto 0
+  for t in [] and c in [c; -3] and h = 0 to -3 and v in [2; c; -1; -1; 2]];;
 [%%expect{|
 - : (int * 'a * int * int * int * 'b * int) list = []
 |}];;
 
 [|(c, g, h, j, q, t, v)
-  for t in [||] and c in [|c; -3|] and h = 0 to -3 and v in [|2; c; -1; -1; 2|]
-  for g in [||] and j = -2 downto 3 and c = -1 to 3 and q = 2 downto 0|];;
+  for g in [||] and j = -2 downto 3 and c = -1 to 3 and q = 2 downto 0
+  for t in [||] and c in [|c; -3|] and h = 0 to -3 and v in [|2; c; -1; -1; 2|]|];;
 [%%expect{|
 - : (int * '_weak93 * int * int * int * '_weak94 * int) array = [||]
 |}];;
 
 [(c, p, s, u, z)
-  for c = -1 downto 3 and s = u to -2
+  for z in [0; 2; 3; 1]
   for u in [] and p = -2 downto 3
-  for z in [0; 2; 3; 1]];;
+  for c = -1 downto 3 and s = u to -2];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(c, p, s, u, z)
-  for c = -1 downto 3 and s = u to -2
+  for z in [|0; 2; 3; 1|]
   for u in [||] and p = -2 downto 3
-  for z in [|0; 2; 3; 1|]|];;
+  for c = -1 downto 3 and s = u to -2|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(b, f, j, n, p, v)
-  for b = -2 downto -1 and n = 3 to 2
-  for j = 3 downto 3
-  for v = -3 to 2
+  for j in [-1] and p in [3; -2; -3; -2; 1; 1; -2]
   for f in [p; -1]
-  for j in [-1] and p in [3; -2; -3; -2; 1; 1; -2]];;
+  for v = -3 to 2
+  for j = 3 downto 3
+  for b = -2 downto -1 and n = 3 to 2];;
 [%%expect{|
 Line 6, characters 6-7:
-6 |   for j in [-1] and p in [3; -2; -3; -2; 1; 1; -2]];;
+6 | for j in [-1] and p in [3; -2; -3; -2; 1; 1; -2]];;
           ^
 Warning 26 [unused-var]: unused variable j.
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(b, f, j, n, p, v)
-  for b = -2 downto -1 and n = 3 to 2
-  for j = 3 downto 3
-  for v = -3 to 2
+  for j in [|-1|] and p in [|3; -2; -3; -2; 1; 1; -2|]
   for f in [|p; -1|]
-  for j in [|-1|] and p in [|3; -2; -3; -2; 1; 1; -2|]|];;
+  for v = -3 to 2
+  for j = 3 downto 3
+  for b = -2 downto -1 and n = 3 to 2|];;
 [%%expect{|
 Line 6, characters 6-7:
-6 |   for j in [|-1|] and p in [|3; -2; -3; -2; 1; 1; -2|]|];;
+6 | for j in [|-1|] and p in [|3; -2; -3; -2; 1; 1; -2|]|];;
           ^
 Warning 26 [unused-var]: unused variable j.
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(b, e, f, n, r, w, y)
-  when abs r mod 2 = 0
-  for n in [-2; 3; 0; -3; 0; -2]
+  for r = -3 downto 2 and b in [3; -3; -1; -2; 2; 1; 1] and y = 0 downto 0
   for w = -2 downto r and e = 0 downto -1 and f in [b]
-  for r = -3 downto 2 and b in [3; -3; -1; -2; 2; 1; 1] and y = 0 downto 0];;
+  for n in [-2; 3; 0; -3; 0; -2]
+  when abs r mod 2 = 0];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(b, e, f, n, r, w, y)
-  when abs r mod 2 = 0
-  for n in [|-2; 3; 0; -3; 0; -2|]
+  for r = -3 downto 2 and b in [|3; -3; -1; -2; 2; 1; 1|] and y = 0 downto 0
   for w = -2 downto r and e = 0 downto -1 and f in [|b|]
-  for r = -3 downto 2 and b in [|3; -3; -1; -2; 2; 1; 1|] and y = 0 downto 0|];;
+  for n in [|-2; 3; 0; -3; 0; -2|]
+  when abs r mod 2 = 0|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
@@ -7276,54 +7276,54 @@ Warning 26 [unused-var]: unused variable j.
 |}];;
 
 [(e, k, q, t, u, v, y)
+  for u in [2; -1; 1; 3; 2]
+  and y in [3; -1; 2; 2; -1]
+  and k in [0; 1; -2; 3; 3]
   for k in [u; y; -1; 0; 2; 0; k]
   and q = 0 to 0
   and e = -1 downto 0
   and t in [-2; 0]
-  and v in [2; 1; 1; -1; 0]
-  for u in [2; -1; 1; 3; 2]
-  and y in [3; -1; 2; 2; -1]
-  and k in [0; 1; -2; 3; 3]];;
+  and v in [2; 1; 1; -1; 0]];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(e, k, q, t, u, v, y)
+  for u in [|2; -1; 1; 3; 2|]
+  and y in [|3; -1; 2; 2; -1|]
+  and k in [|0; 1; -2; 3; 3|]
   for k in [|u; y; -1; 0; 2; 0; k|]
   and q = 0 to 0
   and e = -1 downto 0
   and t in [|-2; 0|]
-  and v in [|2; 1; 1; -1; 0|]
-  for u in [|2; -1; 1; 3; 2|]
-  and y in [|3; -1; 2; 2; -1|]
-  and k in [|0; 1; -2; 3; 3|]|];;
+  and v in [|2; 1; 1; -1; 0|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(f, i, l, x)
-  when f > 0
-  for f in [2; 0; -2; 3; 1; 1]
-  when abs l mod 2 = 1
+  for f in [0; 3; 0; -1] and l = -3 to -3
   for i = 2 downto 1 and x = 3 to -1
-  for f in [0; 3; 0; -1] and l = -3 to -3];;
+  when abs l mod 2 = 1
+  for f in [2; 0; -2; 3; 1; 1]
+  when f > 0];;
 [%%expect{|
 Line 6, characters 6-7:
-6 |   for f in [0; 3; 0; -1] and l = -3 to -3];;
+6 | for f in [0; 3; 0; -1] and l = -3 to -3];;
           ^
 Warning 26 [unused-var]: unused variable f.
 - : (int * int * int * int) list = []
 |}];;
 
 [|(f, i, l, x)
-  when f > 0
-  for f in [|2; 0; -2; 3; 1; 1|]
-  when abs l mod 2 = 1
+  for f in [|0; 3; 0; -1|] and l = -3 to -3
   for i = 2 downto 1 and x = 3 to -1
-  for f in [|0; 3; 0; -1|] and l = -3 to -3|];;
+  when abs l mod 2 = 1
+  for f in [|2; 0; -2; 3; 1; 1|]
+  when f > 0|];;
 [%%expect{|
 Line 6, characters 6-7:
-6 |   for f in [|0; 3; 0; -1|] and l = -3 to -3|];;
+6 | for f in [|0; 3; 0; -1|] and l = -3 to -3|];;
           ^
 Warning 26 [unused-var]: unused variable f.
 - : (int * int * int * int) array = [||]
@@ -7341,155 +7341,155 @@ Warning 26 [unused-var]: unused variable f.
 |}];;
 
 [(i, y)
-  when y > 0
+  for y = 1 downto 3
+  when abs y mod 2 = 0
+  when abs y mod 2 = 0
   for i = -3 to 3
-  when abs y mod 2 = 0
-  when abs y mod 2 = 0
-  for y = 1 downto 3];;
+  when y > 0];;
 [%%expect{|
 - : (int * int) list = []
 |}];;
 
 [|(i, y)
-  when y > 0
+  for y = 1 downto 3
+  when abs y mod 2 = 0
+  when abs y mod 2 = 0
   for i = -3 to 3
-  when abs y mod 2 = 0
-  when abs y mod 2 = 0
-  for y = 1 downto 3|];;
+  when y > 0|];;
 [%%expect{|
 - : (int * int) array = [||]
 |}];;
 
 [(a, e, n, s, v, x)
-  for s = 0 to 3
-  for v in [-1; 1; 3; 2; 3; 1; -3]
-  for a = 1 downto 3 and x in [2; 0; 1; -3; -3; -3]
+  for n in [1; -1; 2]
   for e = -2 downto 3 and v = -2 to 1
-  for n in [1; -1; 2]];;
+  for a = 1 downto 3 and x in [2; 0; 1; -3; -3; -3]
+  for v in [-1; 1; 3; 2; 3; 1; -3]
+  for s = 0 to 3];;
 [%%expect{|
 Lines 1-6, characters 0-22:
 1 | [(a, e, n, s, v, x)
-2 |   for s = 0 to 3
-3 |   for v in [-1; 1; 3; 2; 3; 1; -3]
-4 |   for a = 1 downto 3 and x in [2; 0; 1; -3; -3; -3]
-5 |   for e = -2 downto 3 and v = -2 to 1
-6 |   for n in [1; -1; 2]]..
-Warning 26 [unused-var]: unused variable v.
+2 |
 - : (int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable v. for n in [1; -1; 2]]..
+6 | for e = -2 downto 3 and v = -2 to 1
+5 | for a = 1 downto 3 and x in [2; 0; 1; -3; -3; -3]
+4 | for v in [-1; 1; 3; 2; 3; 1; -3]
+3 | for s = 0 to 3
 |}];;
 
 [|(a, e, n, s, v, x)
-  for s = 0 to 3
-  for v in [|-1; 1; 3; 2; 3; 1; -3|]
-  for a = 1 downto 3 and x in [|2; 0; 1; -3; -3; -3|]
+  for n in [|1; -1; 2|]
   for e = -2 downto 3 and v = -2 to 1
-  for n in [|1; -1; 2|]|];;
+  for a = 1 downto 3 and x in [|2; 0; 1; -3; -3; -3|]
+  for v in [|-1; 1; 3; 2; 3; 1; -3|]
+  for s = 0 to 3|];;
 [%%expect{|
 Lines 1-6, characters 0-25:
 1 | [|(a, e, n, s, v, x)
-2 |   for s = 0 to 3
-3 |   for v in [|-1; 1; 3; 2; 3; 1; -3|]
-4 |   for a = 1 downto 3 and x in [|2; 0; 1; -3; -3; -3|]
-5 |   for e = -2 downto 3 and v = -2 to 1
-6 |   for n in [|1; -1; 2|]|]..
-Warning 26 [unused-var]: unused variable v.
+2 |
 - : (int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable v. for n in [|1; -1; 2|]|]..
+6 | for e = -2 downto 3 and v = -2 to 1
+5 | for a = 1 downto 3 and x in [|2; 0; 1; -3; -3; -3|]
+4 | for v in [|-1; 1; 3; 2; 3; 1; -3|]
+3 | for s = 0 to 3
 |}];;
 
 [(e, j, k, o, t, w)
-  for _ in [] and k in [2; -3; 2; -3; -3] and j = -1 downto -3
   for t = -3 to 1
   and o = -2 downto 3
   and w = -2 downto -1
-  and e in [2; 3; 0; 3; -1; -3]];;
+  and e in [2; 3; 0; 3; -1; -3]
+  for _ in [] and k in [2; -3; 2; -3; -3] and j = -1 downto -3];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(e, j, k, o, t, w)
-  for _ in [||] and k in [|2; -3; 2; -3; -3|] and j = -1 downto -3
   for t = -3 to 1
   and o = -2 downto 3
   and w = -2 downto -1
-  and e in [|2; 3; 0; 3; -1; -3|]|];;
+  and e in [|2; 3; 0; 3; -1; -3|]
+  for _ in [||] and k in [|2; -3; 2; -3; -3|] and j = -1 downto -3|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(b, e, i, k, p, r)
-  when p > 0
+  for i = 1 downto 3 and r = 0 downto -2 and e = 2 to -3
   for p = -2 downto -1 and k in [1; 3; 2] and r = 0 downto -3 and b = 2 to 2
-  for i = 1 downto 3 and r = 0 downto -2 and e = 2 to -3];;
+  when p > 0];;
 [%%expect{|
 Lines 1-4, characters 0-57:
 1 | [(b, e, i, k, p, r)
-2 |   when p > 0
-3 |   for p = -2 downto -1 and k in [1; 3; 2] and r = 0 downto -3 and b = 2 to 2
-4 |   for i = 1 downto 3 and r = 0 downto -2 and e = 2 to -3]..
-Warning 26 [unused-var]: unused variable r.
+2 |
 - : (int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable r. for i = 1 downto 3 and r = 0 downto -2 and e = 2 to -3]..
+4 | for p = -2 downto -1 and k in [1; 3; 2] and r = 0 downto -3 and b = 2 to 2
+3 | when p > 0
 |}];;
 
 [|(b, e, i, k, p, r)
-  when p > 0
+  for i = 1 downto 3 and r = 0 downto -2 and e = 2 to -3
   for p = -2 downto -1 and k in [|1; 3; 2|] and r = 0 downto -3 and b = 2 to 2
-  for i = 1 downto 3 and r = 0 downto -2 and e = 2 to -3|];;
+  when p > 0|];;
 [%%expect{|
 Lines 1-4, characters 0-58:
 1 | [|(b, e, i, k, p, r)
-2 |   when p > 0
-3 |   for p = -2 downto -1 and k in [|1; 3; 2|] and r = 0 downto -3 and b = 2 to 2
-4 |   for i = 1 downto 3 and r = 0 downto -2 and e = 2 to -3|]..
-Warning 26 [unused-var]: unused variable r.
+2 |
 - : (int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable r. for i = 1 downto 3 and r = 0 downto -2 and e = 2 to -3|]..
+4 | for p = -2 downto -1 and k in [|1; 3; 2|] and r = 0 downto -3 and b = 2 to 2
+3 | when p > 0
 |}];;
 
 [(f, g, q, v, w, x)
-  for f in []
-  for g = x downto -3
-  for x in [3]
+  for _ in [3; 2] and q in [1; 0; -3; -2; 0; 2; -3]
   for w = -2 to q and v = q to 3
-  for _ in [3; 2] and q in [1; 0; -3; -2; 0; 2; -3]];;
+  for x in [3]
+  for g = x downto -3
+  for f in []];;
 [%%expect{|
 - : ('a * int * int * int * int * int) list = []
 |}];;
 
 [|(f, g, q, v, w, x)
-  for f in [||]
-  for g = x downto -3
-  for x in [|3|]
+  for _ in [|3; 2|] and q in [|1; 0; -3; -2; 0; 2; -3|]
   for w = -2 to q and v = q to 3
-  for _ in [|3; 2|] and q in [|1; 0; -3; -2; 0; 2; -3|]|];;
+  for x in [|3|]
+  for g = x downto -3
+  for f in [||]|];;
 [%%expect{|
 - : ('_weak95 * int * int * int * int * int) array = [||]
 |}];;
 
 [(a, c, e, m)
-  for m = -3 downto 1 and e in [-3; -1; -3]
+  for e = -1 to 2 and c = 1 downto -1
   for a in [0]
-  for e = -1 to 2 and c = 1 downto -1];;
+  for m = -3 downto 1 and e in [-3; -1; -3]];;
 [%%expect{|
 Lines 1-4, characters 0-38:
 1 | [(a, c, e, m)
-2 |   for m = -3 downto 1 and e in [-3; -1; -3]
-3 |   for a in [0]
-4 |   for e = -1 to 2 and c = 1 downto -1]..
-Warning 26 [unused-var]: unused variable e.
+2 |
 - : (int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable e. for e = -1 to 2 and c = 1 downto -1]..
+4 | for a in [0]
+3 | for m = -3 downto 1 and e in [-3; -1; -3]
 |}];;
 
 [|(a, c, e, m)
-  for m = -3 downto 1 and e in [|-3; -1; -3|]
+  for e = -1 to 2 and c = 1 downto -1
   for a in [|0|]
-  for e = -1 to 2 and c = 1 downto -1|];;
+  for m = -3 downto 1 and e in [|-3; -1; -3|]|];;
 [%%expect{|
 Lines 1-4, characters 0-39:
 1 | [|(a, c, e, m)
-2 |   for m = -3 downto 1 and e in [|-3; -1; -3|]
-3 |   for a in [|0|]
-4 |   for e = -1 to 2 and c = 1 downto -1|]..
-Warning 26 [unused-var]: unused variable e.
+2 |
 - : (int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable e. for e = -1 to 2 and c = 1 downto -1|]..
+4 | for a in [|0|]
+3 | for m = -3 downto 1 and e in [|-3; -1; -3|]
 |}];;
 
 [(h, i, j, l, v, y)
@@ -7515,103 +7515,103 @@ Warning 26 [unused-var]: unused variable e.
 |}];;
 
 [(l, o, q)
-  when o <> 0
-  for l = 1 downto 3
+  for _ = 2 to 2 and l = -3 to -3
   for o in [l; -1] and q in [1; -3] and l in [l; -1; 1; 3]
-  for _ = 2 to 2 and l = -3 to -3];;
+  for l = 1 downto 3
+  when o <> 0];;
 [%%expect{|
 Line 4, characters 40-41:
-4 |   for o in [l; -1] and q in [1; -3] and l in [l; -1; 1; 3]
-                                            ^
-Warning 26 [unused-var]: unused variable l.
+4 |
 - : (int * int * int) list = []
+Warning 26 [unused-var]: unused variable l.
+                                            ^ for o in [l; -1] and q in [1; -3] and l in [l; -1; 1; 3]
 |}];;
 
 [|(l, o, q)
-  when o <> 0
-  for l = 1 downto 3
+  for _ = 2 to 2 and l = -3 to -3
   for o in [|l; -1|] and q in [|1; -3|] and l in [|l; -1; 1; 3|]
-  for _ = 2 to 2 and l = -3 to -3|];;
+  for l = 1 downto 3
+  when o <> 0|];;
 [%%expect{|
 Line 4, characters 44-45:
-4 |   for o in [|l; -1|] and q in [|1; -3|] and l in [|l; -1; 1; 3|]
-                                                ^
-Warning 26 [unused-var]: unused variable l.
+4 |
 - : (int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable l.
+                                                ^ for o in [|l; -1|] and q in [|1; -3|] and l in [|l; -1; 1; 3|]
 |}];;
 
 [(b, f, h, q, s, u)
-  for _ in [-1] and h = 0 downto -3 and s = 0 to 1 and u in [-1; 3]
-  for f in [1; 0; -3; -1] and b = 0 downto 2 and q in [3]];;
+  for f in [1; 0; -3; -1] and b = 0 downto 2 and q in [3]
+  for _ in [-1] and h = 0 downto -3 and s = 0 to 1 and u in [-1; 3]];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(b, f, h, q, s, u)
-  for _ in [|-1|] and h = 0 downto -3 and s = 0 to 1 and u in [|-1; 3|]
-  for f in [|1; 0; -3; -1|] and b = 0 downto 2 and q in [|3|]|];;
+  for f in [|1; 0; -3; -1|] and b = 0 downto 2 and q in [|3|]
+  for _ in [|-1|] and h = 0 downto -3 and s = 0 to 1 and u in [|-1; 3|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(i, n, r, s, t, v, w)
-  for s = -1 downto 1 and t = 1 to -3
-  for r = 3 to 1 and v in [0]
-  for i in [2] and n in []
+  for w in [] and t = -2 to 0
   when w <> 0
-  for w in [] and t = -2 to 0];;
+  for i in [2] and n in []
+  for r = 3 to 1 and v in [0]
+  for s = -1 downto 1 and t = 1 to -3];;
 [%%expect{|
 Lines 1-6, characters 0-30:
 1 | [(i, n, r, s, t, v, w)
-2 |   for s = -1 downto 1 and t = 1 to -3
-3 |   for r = 3 to 1 and v in [0]
-4 |   for i in [2] and n in []
-5 |   when w <> 0
-6 |   for w in [] and t = -2 to 0]..
-Warning 26 [unused-var]: unused variable t.
+2 |
 - : (int * 'a * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable t. for w in [] and t = -2 to 0]..
+6 | when w <> 0
+5 | for i in [2] and n in []
+4 | for r = 3 to 1 and v in [0]
+3 | for s = -1 downto 1 and t = 1 to -3
 |}];;
 
 [|(i, n, r, s, t, v, w)
-  for s = -1 downto 1 and t = 1 to -3
-  for r = 3 to 1 and v in [|0|]
-  for i in [|2|] and n in [||]
+  for w in [||] and t = -2 to 0
   when w <> 0
-  for w in [||] and t = -2 to 0|];;
+  for i in [|2|] and n in [||]
+  for r = 3 to 1 and v in [|0|]
+  for s = -1 downto 1 and t = 1 to -3|];;
 [%%expect{|
 Lines 1-6, characters 0-33:
 1 | [|(i, n, r, s, t, v, w)
-2 |   for s = -1 downto 1 and t = 1 to -3
-3 |   for r = 3 to 1 and v in [|0|]
-4 |   for i in [|2|] and n in [||]
-5 |   when w <> 0
-6 |   for w in [||] and t = -2 to 0|]..
-Warning 26 [unused-var]: unused variable t.
+2 |
 - : (int * '_weak96 * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable t. for w in [||] and t = -2 to 0|]..
+6 | when w <> 0
+5 | for i in [|2|] and n in [||]
+4 | for r = 3 to 1 and v in [|0|]
+3 | for s = -1 downto 1 and t = 1 to -3
 |}];;
 
 [(c, o, t, w, y)
-  for o in [-2; 0; 2; 3; -2; 3; 0] and c in [3; 3] and t in []
+  for y = -3 to 0
   for w in [-2; y; -1; 1] and c in [3; 0; 3; -2; -1; -2; -3]
-  for y = -3 to 0];;
+  for o in [-2; 0; 2; 3; -2; 3; 0] and c in [3; 3] and t in []];;
 [%%expect{|
 Line 3, characters 30-31:
-3 |   for w in [-2; y; -1; 1] and c in [3; 0; 3; -2; -1; -2; -3]
-                                  ^
-Warning 26 [unused-var]: unused variable c.
+3 |
 - : (int * int * 'a * int * int) list = []
+Warning 26 [unused-var]: unused variable c.
+                                  ^ for w in [-2; y; -1; 1] and c in [3; 0; 3; -2; -1; -2; -3]
 |}];;
 
 [|(c, o, t, w, y)
-  for o in [|-2; 0; 2; 3; -2; 3; 0|] and c in [|3; 3|] and t in [||]
+  for y = -3 to 0
   for w in [|-2; y; -1; 1|] and c in [|3; 0; 3; -2; -1; -2; -3|]
-  for y = -3 to 0|];;
+  for o in [|-2; 0; 2; 3; -2; 3; 0|] and c in [|3; 3|] and t in [||]|];;
 [%%expect{|
 Line 3, characters 32-33:
-3 |   for w in [|-2; y; -1; 1|] and c in [|3; 0; 3; -2; -1; -2; -3|]
-                                    ^
-Warning 26 [unused-var]: unused variable c.
+3 |
 - : (int * int * '_weak97 * int * int) array = [||]
+Warning 26 [unused-var]: unused variable c.
+                                    ^ for w in [|-2; y; -1; 1|] and c in [|3; 0; 3; -2; -1; -2; -3|]
 |}];;
 
 [f for _ in [-2; 1; -1; 0; 3; 2; 0] and f in []];;
@@ -7625,47 +7625,47 @@ Warning 26 [unused-var]: unused variable c.
 |}];;
 
 [(a, d, j, q, r, z)
-  for d = -1 to 3 and j = -2 to 2
-  for z in [-2; -1; 3; 1]
-  for r = 0 downto 2
+  for q in [-3; -3] and z = 3 downto -1
   for a = -3 to 1 and z in [3]
-  for q in [-3; -3] and z = 3 downto -1];;
+  for r = 0 downto 2
+  for z in [-2; -1; 3; 1]
+  for d = -1 to 3 and j = -2 to 2];;
 [%%expect{|
 Lines 1-6, characters 0-40:
 1 | [(a, d, j, q, r, z)
-2 |   for d = -1 to 3 and j = -2 to 2
-3 |   for z in [-2; -1; 3; 1]
-4 |   for r = 0 downto 2
-5 |   for a = -3 to 1 and z in [3]
-6 |   for q in [-3; -3] and z = 3 downto -1]..
-Warning 26 [unused-var]: unused variable z.
-Line 5, characters 22-23:
-5 |   for a = -3 to 1 and z in [3]
-                          ^
-Warning 26 [unused-var]: unused variable z.
+2 |
 - : (int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable z.
+                          ^ for a = -3 to 1 and z in [3]
+5 |
+Line 5, characters 22-23:
+Warning 26 [unused-var]: unused variable z. for q in [-3; -3] and z = 3 downto -1]..
+6 | for a = -3 to 1 and z in [3]
+5 | for r = 0 downto 2
+4 | for z in [-2; -1; 3; 1]
+3 | for d = -1 to 3 and j = -2 to 2
 |}];;
 
 [|(a, d, j, q, r, z)
-  for d = -1 to 3 and j = -2 to 2
-  for z in [|-2; -1; 3; 1|]
-  for r = 0 downto 2
+  for q in [|-3; -3|] and z = 3 downto -1
   for a = -3 to 1 and z in [|3|]
-  for q in [|-3; -3|] and z = 3 downto -1|];;
+  for r = 0 downto 2
+  for z in [|-2; -1; 3; 1|]
+  for d = -1 to 3 and j = -2 to 2|];;
 [%%expect{|
 Lines 1-6, characters 0-43:
 1 | [|(a, d, j, q, r, z)
-2 |   for d = -1 to 3 and j = -2 to 2
-3 |   for z in [|-2; -1; 3; 1|]
-4 |   for r = 0 downto 2
-5 |   for a = -3 to 1 and z in [|3|]
-6 |   for q in [|-3; -3|] and z = 3 downto -1|]..
-Warning 26 [unused-var]: unused variable z.
-Line 5, characters 22-23:
-5 |   for a = -3 to 1 and z in [|3|]
-                          ^
-Warning 26 [unused-var]: unused variable z.
+2 |
 - : (int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable z.
+                          ^ for a = -3 to 1 and z in [|3|]
+5 |
+Line 5, characters 22-23:
+Warning 26 [unused-var]: unused variable z. for q in [|-3; -3|] and z = 3 downto -1|]..
+6 | for a = -3 to 1 and z in [|3|]
+5 | for r = 0 downto 2
+4 | for z in [|-2; -1; 3; 1|]
+3 | for d = -1 to 3 and j = -2 to 2
 |}];;
 
 [(e, n, r, v)
@@ -7687,61 +7687,61 @@ Warning 26 [unused-var]: unused variable z.
 |}];;
 
 [(c, e, f, g, l, r)
-  for l = 1 to 3
+  for r = 0 to -3 and e in []
   for g = e to -3 and f in [0] and c in [3; 0; e; 0; 2]
-  for r = 0 to -3 and e in []];;
+  for l = 1 to 3];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(c, e, f, g, l, r)
-  for l = 1 to 3
+  for r = 0 to -3 and e in [||]
   for g = e to -3 and f in [|0|] and c in [|3; 0; e; 0; 2|]
-  for r = 0 to -3 and e in [||]|];;
+  for l = 1 to 3|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(a, c, o, s)
-  for c in [3; -1; -1; 3; 0; -1; -1]
-  when a > 0
-  when s < 0
+  for s = 2 downto 2 and a in []
   for o in [-2; 2; a; 0; 0]
-  for s = 2 downto 2 and a in []];;
+  when s < 0
+  when a > 0
+  for c in [3; -1; -1; 3; 0; -1; -1]];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(a, c, o, s)
-  for c in [|3; -1; -1; 3; 0; -1; -1|]
-  when a > 0
-  when s < 0
+  for s = 2 downto 2 and a in [||]
   for o in [|-2; 2; a; 0; 0|]
-  for s = 2 downto 2 and a in [||]|];;
+  when s < 0
+  when a > 0
+  for c in [|3; -1; -1; 3; 0; -1; -1|]|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(b, e, i, n, o, q, t, u, x, y)
-  for o = -1 to 3 and y in [2; -2; -3; -2; -2]
-  for x = 2 downto 0 and q in [u; 0; 1; 0; 2] and b in []
+  for u in [3; 1; 1; 3; 3; 2] and t in [0; 3; 3; -3; 3] and e = 2 downto 3
   for n = u downto 2 and t = 0 to -2 and i in [-3; 2; -3; 3; u; 3; 2]
-  for u in [3; 1; 1; 3; 3; 2] and t in [0; 3; 3; -3; 3] and e = 2 downto 3];;
+  for x = 2 downto 0 and q in [u; 0; 1; 0; 2] and b in []
+  for o = -1 to 3 and y in [2; -2; -3; -2; -2]];;
 [%%expect{|
 Line 5, characters 34-35:
-5 |   for u in [3; 1; 1; 3; 3; 2] and t in [0; 3; 3; -3; 3] and e = 2 downto 3];;
+5 | for u in [3; 1; 1; 3; 3; 2] and t in [0; 3; 3; -3; 3] and e = 2 downto 3];;
                                       ^
 Warning 26 [unused-var]: unused variable t.
 - : ('a * int * int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(b, e, i, n, o, q, t, u, x, y)
-  for o = -1 to 3 and y in [|2; -2; -3; -2; -2|]
-  for x = 2 downto 0 and q in [|u; 0; 1; 0; 2|] and b in [||]
-  for n = u downto 2 and t = 0 to -2 and i in [|-3; 2; -3; 3; u; 3; 2|]
   for u in [|3; 1; 1; 3; 3; 2|]
   and t in [|0; 3; 3; -3; 3|]
-  and e = 2 downto 3|];;
+  and e = 2 downto 3
+  for n = u downto 2 and t = 0 to -2 and i in [|-3; 2; -3; 3; u; 3; 2|]
+  for x = 2 downto 0 and q in [|u; 0; 1; 0; 2|] and b in [||]
+  for o = -1 to 3 and y in [|2; -2; -3; -2; -2|]|];;
 [%%expect{|
 Line 6, characters 6-7:
 6 |   and t in [|0; 3; 3; -3; 3|]
@@ -7752,69 +7752,69 @@ Warning 26 [unused-var]: unused variable t.
 |}];;
 
 [(b, p, u, x)
-  for u in [1; 2; 1; b; 1] and p in [3; p; 0; 2; -1; -2] and x in [1; 2]
-  for b = -1 to 1
+  for p = -1 downto 1
   when p <> 0
-  for p = -1 downto 1];;
+  for b = -1 to 1
+  for u in [1; 2; 1; b; 1] and p in [3; p; 0; 2; -1; -2] and x in [1; 2]];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(b, p, u, x)
-  for u in [|1; 2; 1; b; 1|] and p in [|3; p; 0; 2; -1; -2|] and x in [|1; 2|]
-  for b = -1 to 1
+  for p = -1 downto 1
   when p <> 0
-  for p = -1 downto 1|];;
+  for b = -1 to 1
+  for u in [|1; 2; 1; b; 1|] and p in [|3; p; 0; 2; -1; -2|] and x in [|1; 2|]|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(c, f, h, i, n, r)
-  when abs c mod 2 = 0
-  for c in [3; -2; 0]
-  for n = -1 to -2 and r = 1 to 1
+  for f = -2 to 1
   for h = 2 to 0 and i in [-1; 3; 3; 3; -3]
-  for f = -2 to 1];;
+  for n = -1 to -2 and r = 1 to 1
+  for c in [3; -2; 0]
+  when abs c mod 2 = 0];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(c, f, h, i, n, r)
-  when abs c mod 2 = 0
-  for c in [|3; -2; 0|]
-  for n = -1 to -2 and r = 1 to 1
+  for f = -2 to 1
   for h = 2 to 0 and i in [|-1; 3; 3; 3; -3|]
-  for f = -2 to 1|];;
+  for n = -1 to -2 and r = 1 to 1
+  for c in [|3; -2; 0|]
+  when abs c mod 2 = 0|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(c, d, i, p, u, x, y)
-  for u in [3; 3; 3; 3; p; 3] and d = -3 downto i and x in [1; 2; 3; 3]
+  for i = -1 downto 0 and y in [1; 2; -2; -1; -1; -2] and p = 3 to 0
   for c in [0; 3; 2; -3; 0; 0] and i in [-3; -3; 2; -3; 0; 1; 0]
-  for i = -1 downto 0 and y in [1; 2; -2; -1; -1; -2] and p = 3 to 0];;
+  for u in [3; 3; 3; 3; p; 3] and d = -3 downto i and x in [1; 2; 3; 3]];;
 [%%expect{|
 Lines 1-4, characters 0-69:
 1 | [(c, d, i, p, u, x, y)
-2 |   for u in [3; 3; 3; 3; p; 3] and d = -3 downto i and x in [1; 2; 3; 3]
-3 |   for c in [0; 3; 2; -3; 0; 0] and i in [-3; -3; 2; -3; 0; 1; 0]
-4 |   for i = -1 downto 0 and y in [1; 2; -2; -1; -1; -2] and p = 3 to 0]..
-Warning 26 [unused-var]: unused variable i.
+2 |
 - : (int * int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable i. for i = -1 downto 0 and y in [1; 2; -2; -1; -1; -2] and p = 3 to 0]..
+4 | for c in [0; 3; 2; -3; 0; 0] and i in [-3; -3; 2; -3; 0; 1; 0]
+3 | for u in [3; 3; 3; 3; p; 3] and d = -3 downto i and x in [1; 2; 3; 3]
 |}];;
 
 [|(c, d, i, p, u, x, y)
-  for u in [|3; 3; 3; 3; p; 3|] and d = -3 downto i and x in [|1; 2; 3; 3|]
+  for i = -1 downto 0 and y in [|1; 2; -2; -1; -1; -2|] and p = 3 to 0
   for c in [|0; 3; 2; -3; 0; 0|] and i in [|-3; -3; 2; -3; 0; 1; 0|]
-  for i = -1 downto 0 and y in [|1; 2; -2; -1; -1; -2|] and p = 3 to 0|];;
+  for u in [|3; 3; 3; 3; p; 3|] and d = -3 downto i and x in [|1; 2; 3; 3|]|];;
 [%%expect{|
 Lines 1-4, characters 0-72:
 1 | [|(c, d, i, p, u, x, y)
-2 |   for u in [|3; 3; 3; 3; p; 3|] and d = -3 downto i and x in [|1; 2; 3; 3|]
-3 |   for c in [|0; 3; 2; -3; 0; 0|] and i in [|-3; -3; 2; -3; 0; 1; 0|]
-4 |   for i = -1 downto 0 and y in [|1; 2; -2; -1; -1; -2|] and p = 3 to 0|]..
-Warning 26 [unused-var]: unused variable i.
+2 |
 - : (int * int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable i. for i = -1 downto 0 and y in [|1; 2; -2; -1; -1; -2|] and p = 3 to 0|]..
+4 | for c in [|0; 3; 2; -3; 0; 0|] and i in [|-3; -3; 2; -3; 0; 1; 0|]
+3 | for u in [|3; 3; 3; 3; p; 3|] and d = -3 downto i and x in [|1; 2; 3; 3|]
 |}];;
 
 [(q, t) for q = -1 to 1 and t in [-1; -2; -1; -1]];;
@@ -7832,204 +7832,204 @@ Warning 26 [unused-var]: unused variable i.
 |}];;
 
 [(b, f, i, o, p, s)
+  for _ in [3; -2] and o in [1; -2; 3; 1; 0; -2; 1] and f in [0; 3]
   for s in [2; o; -1]
   and p = -3 downto 3
   and b = 1 downto 2
-  and i in [-1; 3; o; 2; 3; 1; 2]
-  for _ in [3; -2] and o in [1; -2; 3; 1; 0; -2; 1] and f in [0; 3]];;
+  and i in [-1; 3; o; 2; 3; 1; 2]];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(b, f, i, o, p, s)
+  for _ in [|3; -2|] and o in [|1; -2; 3; 1; 0; -2; 1|] and f in [|0; 3|]
   for s in [|2; o; -1|]
   and p = -3 downto 3
   and b = 1 downto 2
-  and i in [|-1; 3; o; 2; 3; 1; 2|]
-  for _ in [|3; -2|] and o in [|1; -2; 3; 1; 0; -2; 1|] and f in [|0; 3|]|];;
+  and i in [|-1; 3; o; 2; 3; 1; 2|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
-[(c, p) for c = 1 downto 3 for p in [3; -2; -3; 0]];;
+[(c, p) for p in [3; -2; -3; 0] for c = 1 downto 3];;
 [%%expect{|
 - : (int * int) list = []
 |}];;
 
-[|(c, p) for c = 1 downto 3 for p in [|3; -2; -3; 0|]|];;
+[|(c, p) for p in [|3; -2; -3; 0|] for c = 1 downto 3|];;
 [%%expect{|
 - : (int * int) array = [||]
 |}];;
 
 [(a, d, i, j, t)
-  for d = 2 to -3 and t in [2; 1] and j in [-3; -1; -1]
-  when a <> 0
+  for a in [2; -1; 2; -2]
   for i = 2 downto -3
-  for a in [2; -1; 2; -2]];;
+  when a <> 0
+  for d = 2 to -3 and t in [2; 1] and j in [-3; -1; -1]];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(a, d, i, j, t)
-  for d = 2 to -3 and t in [|2; 1|] and j in [|-3; -1; -1|]
-  when a <> 0
+  for a in [|2; -1; 2; -2|]
   for i = 2 downto -3
-  for a in [|2; -1; 2; -2|]|];;
+  when a <> 0
+  for d = 2 to -3 and t in [|2; 1|] and j in [|-3; -1; -1|]|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(b, c, g, h, s, w, x, y)
-  for y in [1; 2] and s in [-2; 0] and g in []
-  for x = -3 downto 3 and s = 3 to -3
+  for w = -3 downto 2 and h = 1 to -2 and c = 0 downto -2
   for c in [] and b in []
-  for w = -3 downto 2 and h = 1 to -2 and c = 0 downto -2];;
+  for x = -3 downto 3 and s = 3 to -3
+  for y in [1; 2] and s in [-2; 0] and g in []];;
 [%%expect{|
 Lines 1-5, characters 0-58:
 1 | [(b, c, g, h, s, w, x, y)
-2 |   for y in [1; 2] and s in [-2; 0] and g in []
-3 |   for x = -3 downto 3 and s = 3 to -3
-4 |   for c in [] and b in []
-5 |   for w = -3 downto 2 and h = 1 to -2 and c = 0 downto -2]..
-Warning 26 [unused-var]: unused variable c.
-Lines 1-5, characters 0-58:
-1 | [(b, c, g, h, s, w, x, y)
-2 |   for y in [1; 2] and s in [-2; 0] and g in []
-3 |   for x = -3 downto 3 and s = 3 to -3
-4 |   for c in [] and b in []
-5 |   for w = -3 downto 2 and h = 1 to -2 and c = 0 downto -2]..
-Warning 26 [unused-var]: unused variable s.
+2 |
 - : ('a * 'b * 'c * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable s. for w = -3 downto 2 and h = 1 to -2 and c = 0 downto -2]..
+5 | for c in [] and b in []
+4 | for x = -3 downto 3 and s = 3 to -3
+3 | for y in [1; 2] and s in [-2; 0] and g in []
+2 |
+1 | [(b, c, g, h, s, w, x, y)
+Lines 1-5, characters 0-58:
+Warning 26 [unused-var]: unused variable c. for w = -3 downto 2 and h = 1 to -2 and c = 0 downto -2]..
+5 | for c in [] and b in []
+4 | for x = -3 downto 3 and s = 3 to -3
+3 | for y in [1; 2] and s in [-2; 0] and g in []
 |}];;
 
 [|(b, c, g, h, s, w, x, y)
-  for y in [|1; 2|] and s in [|-2; 0|] and g in [||]
-  for x = -3 downto 3 and s = 3 to -3
+  for w = -3 downto 2 and h = 1 to -2 and c = 0 downto -2
   for c in [||] and b in [||]
-  for w = -3 downto 2 and h = 1 to -2 and c = 0 downto -2|];;
+  for x = -3 downto 3 and s = 3 to -3
+  for y in [|1; 2|] and s in [|-2; 0|] and g in [||]|];;
 [%%expect{|
 Lines 1-5, characters 0-59:
 1 | [|(b, c, g, h, s, w, x, y)
-2 |   for y in [|1; 2|] and s in [|-2; 0|] and g in [||]
-3 |   for x = -3 downto 3 and s = 3 to -3
-4 |   for c in [||] and b in [||]
-5 |   for w = -3 downto 2 and h = 1 to -2 and c = 0 downto -2|]..
-Warning 26 [unused-var]: unused variable c.
-Lines 1-5, characters 0-59:
-1 | [|(b, c, g, h, s, w, x, y)
-2 |   for y in [|1; 2|] and s in [|-2; 0|] and g in [||]
-3 |   for x = -3 downto 3 and s = 3 to -3
-4 |   for c in [||] and b in [||]
-5 |   for w = -3 downto 2 and h = 1 to -2 and c = 0 downto -2|]..
-Warning 26 [unused-var]: unused variable s.
-- : ('_weak100 * '_weak101 * '_weak102 * int * int * int * int * int) array =
+2 |
 [||]
+- : ('_weak100 * '_weak101 * '_weak102 * int * int * int * int * int) array =
+Warning 26 [unused-var]: unused variable s. for w = -3 downto 2 and h = 1 to -2 and c = 0 downto -2|]..
+5 | for c in [||] and b in [||]
+4 | for x = -3 downto 3 and s = 3 to -3
+3 | for y in [|1; 2|] and s in [|-2; 0|] and g in [||]
+2 |
+1 | [|(b, c, g, h, s, w, x, y)
+Lines 1-5, characters 0-59:
+Warning 26 [unused-var]: unused variable c. for w = -3 downto 2 and h = 1 to -2 and c = 0 downto -2|]..
+5 | for c in [||] and b in [||]
+4 | for x = -3 downto 3 and s = 3 to -3
+3 | for y in [|1; 2|] and s in [|-2; 0|] and g in [||]
 |}];;
 
 [(c, i, q, t, x, y)
-  for y in [x; 1; 2; -2; 2; -1; 0]
   for t in [1; 3; 2; -3; -3; 1; -3]
   and c = 2 to 2
   and i = 2 to 0
   and q = 2 to -3
-  and x in [2; 0; 3; -1; -2; 1]];;
+  and x in [2; 0; 3; -1; -2; 1]
+  for y in [x; 1; 2; -2; 2; -1; 0]];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(c, i, q, t, x, y)
-  for y in [|x; 1; 2; -2; 2; -1; 0|]
   for t in [|1; 3; 2; -3; -3; 1; -3|]
   and c = 2 to 2
   and i = 2 to 0
   and q = 2 to -3
-  and x in [|2; 0; 3; -1; -2; 1|]|];;
+  and x in [|2; 0; 3; -1; -2; 1|]
+  for y in [|x; 1; 2; -2; 2; -1; 0|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(c, d, f, p, q)
+  for d = 0 downto 0 and q = -1 to 2
+  when abs q mod 2 = 1
   for _ = -2 to 1
   and c = 1 to 1
   and p = d downto 2
-  and f in [2; 3; q; 3; 3; -1; -3]
-  when abs q mod 2 = 1
-  for d = 0 downto 0 and q = -1 to 2];;
+  and f in [2; 3; q; 3; 3; -1; -3]];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(c, d, f, p, q)
+  for d = 0 downto 0 and q = -1 to 2
+  when abs q mod 2 = 1
   for _ = -2 to 1
   and c = 1 to 1
   and p = d downto 2
-  and f in [|2; 3; q; 3; 3; -1; -3|]
-  when abs q mod 2 = 1
-  for d = 0 downto 0 and q = -1 to 2|];;
+  and f in [|2; 3; q; 3; 3; -1; -3|]|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(a, m, o, t, z)
-  when abs t mod 2 = 0
-  for z = -2 downto 2
-  when a > 0
+  for a in [0; -1; 2; -1; -1; 0] and m in [0]
   for o = -3 downto -2 and t in [1; 1; 1; 2]
-  for a in [0; -1; 2; -1; -1; 0] and m in [0]];;
+  when a > 0
+  for z = -2 downto 2
+  when abs t mod 2 = 0];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(a, m, o, t, z)
-  when abs t mod 2 = 0
-  for z = -2 downto 2
-  when a > 0
+  for a in [|0; -1; 2; -1; -1; 0|] and m in [|0|]
   for o = -3 downto -2 and t in [|1; 1; 1; 2|]
-  for a in [|0; -1; 2; -1; -1; 0|] and m in [|0|]|];;
+  when a > 0
+  for z = -2 downto 2
+  when abs t mod 2 = 0|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(h, l, n, t, u, z)
-  for _ in [1; -2; -1; 1; h; 2]
+  for h = 3 downto -2 and u in [3; 0; -2; 0; -1] and z = 2 downto -2
   for l in [1; 0]
   and n = 3 downto h
   and h in [1; 0; 2; -3; 0]
   and t = -3 downto z
-  for h = 3 downto -2 and u in [3; 0; -2; 0; -1] and z = 2 downto -2];;
+  for _ in [1; -2; -1; 1; h; 2]];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(h, l, n, t, u, z)
-  for _ in [|1; -2; -1; 1; h; 2|]
+  for h = 3 downto -2 and u in [|3; 0; -2; 0; -1|] and z = 2 downto -2
   for l in [|1; 0|]
   and n = 3 downto h
   and h in [|1; 0; 2; -3; 0|]
   and t = -3 downto z
-  for h = 3 downto -2 and u in [|3; 0; -2; 0; -1|] and z = 2 downto -2|];;
+  for _ in [|1; -2; -1; 1; h; 2|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(b, d, l, m, t, v)
-  when v < 0
+  for l = -2 downto -2 and t in [1; -2; 3; -3] and m = -2 downto 1
   for d in [2; -1; -1; 3]
   and v in [-2; -3]
   and l in [1; 3; -2; m; 0; l]
   and b in [l; -3; 1; m; 1; 2; -2]
-  for l = -2 downto -2 and t in [1; -2; 3; -3] and m = -2 downto 1];;
+  when v < 0];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(b, d, l, m, t, v)
-  when v < 0
+  for l = -2 downto -2 and t in [|1; -2; 3; -3|] and m = -2 downto 1
   for d in [|2; -1; -1; 3|]
   and v in [|-2; -3|]
   and l in [|1; 3; -2; m; 0; l|]
   and b in [|l; -3; 1; m; 1; 2; -2|]
-  for l = -2 downto -2 and t in [|1; -2; 3; -3|] and m = -2 downto 1|];;
+  when v < 0|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
@@ -8045,69 +8045,69 @@ Warning 26 [unused-var]: unused variable s.
 |}];;
 
 [(b, e, k, m, r)
-  when abs k mod 2 = 1
-  for e = 3 downto -3 and b in [1; m; 3]
-  for m in [-3; -3; r; -2] and k in [r; 1; 2; 0]
+  for _ = -1 downto -3
   for r in []
-  for _ = -1 downto -3];;
+  for m in [-3; -3; r; -2] and k in [r; 1; 2; 0]
+  for e = 3 downto -3 and b in [1; m; 3]
+  when abs k mod 2 = 1];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(b, e, k, m, r)
-  when abs k mod 2 = 1
-  for e = 3 downto -3 and b in [|1; m; 3|]
-  for m in [|-3; -3; r; -2|] and k in [|r; 1; 2; 0|]
+  for _ = -1 downto -3
   for r in [||]
-  for _ = -1 downto -3|];;
+  for m in [|-3; -3; r; -2|] and k in [|r; 1; 2; 0|]
+  for e = 3 downto -3 and b in [|1; m; 3|]
+  when abs k mod 2 = 1|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(c, d, h, o, s)
-  for o = -3 downto 2 and c = -2 downto 2 and h in [3; -3; s; 1; 0; 1]
-  for d in [-3] and s = 2 to -1];;
+  for d in [-3] and s = 2 to -1
+  for o = -3 downto 2 and c = -2 downto 2 and h in [3; -3; s; 1; 0; 1]];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(c, d, h, o, s)
-  for o = -3 downto 2 and c = -2 downto 2 and h in [|3; -3; s; 1; 0; 1|]
-  for d in [|-3|] and s = 2 to -1|];;
+  for d in [|-3|] and s = 2 to -1
+  for o = -3 downto 2 and c = -2 downto 2 and h in [|3; -3; s; 1; 0; 1|]|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(i, j, l, s)
-  for _ = 3 downto l and j in [-3; 3] and s = -2 downto 1 and i = -3 to 1
+  for l = -3 to 1
   when abs l mod 2 = 0
-  for l = -3 to 1];;
+  for _ = 3 downto l and j in [-3; 3] and s = -2 downto 1 and i = -3 to 1];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(i, j, l, s)
-  for _ = 3 downto l and j in [|-3; 3|] and s = -2 downto 1 and i = -3 to 1
+  for l = -3 to 1
   when abs l mod 2 = 0
-  for l = -3 to 1|];;
+  for _ = 3 downto l and j in [|-3; 3|] and s = -2 downto 1 and i = -3 to 1|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(d, r, v, x)
-  when abs d mod 2 = 1
-  when x < 0
+  for d = -1 downto -1 and x in [2; -1; -2; 3; -1; -2; 0]
   for r = 2 to 0 and x = x downto x and v = 3 to 3
-  for d = -1 downto -1 and x in [2; -1; -2; 3; -1; -2; 0]];;
+  when x < 0
+  when abs d mod 2 = 1];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(d, r, v, x)
-  when abs d mod 2 = 1
-  when x < 0
+  for d = -1 downto -1 and x in [|2; -1; -2; 3; -1; -2; 0|]
   for r = 2 to 0 and x = x downto x and v = 3 to 3
-  for d = -1 downto -1 and x in [|2; -1; -2; 3; -1; -2; 0|]|];;
+  when x < 0
+  when abs d mod 2 = 1|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
@@ -8126,12 +8126,12 @@ Warning 26 [unused-var]: unused variable s.
   (2, -2); (2, 2)|]
 |}];;
 
-[o when o > 0 when o > 0 for o = 0 to -3];;
+[o for o = 0 to -3 when o > 0 when o > 0];;
 [%%expect{|
 - : int list = []
 |}];;
 
-[|o when o > 0 when o > 0 for o = 0 to -3|];;
+[|o for o = 0 to -3 when o > 0 when o > 0|];;
 [%%expect{|
 - : int array = [||]
 |}];;
@@ -8147,10 +8147,10 @@ Warning 26 [unused-var]: unused variable s.
 |}];;
 
 [(c, d, p)
-  when c > 0
-  for d in [1; 1]
+  for c in [-1; 1; 0; -3; 0; 1; -1] and p in [1; -1; 3]
   when abs p mod 2 = 1
-  for c in [-1; 1; 0; -3; 0; 1; -1] and p in [1; -1; 3]];;
+  for d in [1; 1]
+  when c > 0];;
 [%%expect{|
 - : (int * int * int) list =
 [(1, 1, 1); (1, 1, 1); (1, 1, -1); (1, 1, -1); (1, 1, 3); (1, 1, 3);
@@ -8158,10 +8158,10 @@ Warning 26 [unused-var]: unused variable s.
 |}];;
 
 [|(c, d, p)
-  when c > 0
-  for d in [|1; 1|]
+  for c in [|-1; 1; 0; -3; 0; 1; -1|] and p in [|1; -1; 3|]
   when abs p mod 2 = 1
-  for c in [|-1; 1; 0; -3; 0; 1; -1|] and p in [|1; -1; 3|]|];;
+  for d in [|1; 1|]
+  when c > 0|];;
 [%%expect{|
 - : (int * int * int) array =
 [|(1, 1, 1); (1, 1, 1); (1, 1, -1); (1, 1, -1); (1, 1, 3); (1, 1, 3);
@@ -8169,28 +8169,28 @@ Warning 26 [unused-var]: unused variable s.
 |}];;
 
 [(i, k, l, m, o)
-  when abs m mod 2 = 0
+  for i = -1 to -1 and m in [1]
   for o in [0; -3] and k = 3 to 3 and l in [m; 3; 1; 3]
-  for i = -1 to -1 and m in [1]];;
+  when abs m mod 2 = 0];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(i, k, l, m, o)
-  when abs m mod 2 = 0
+  for i = -1 to -1 and m in [|1|]
   for o in [|0; -3|] and k = 3 to 3 and l in [|m; 3; 1; 3|]
-  for i = -1 to -1 and m in [|1|]|];;
+  when abs m mod 2 = 0|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(a, e, k, u)
-  for e in [1; a; -3; -1; 2; 2; 3]
   for a = 2 to 3
   and u = -1 to -1
   and _ in [-2; 1; 2; 1]
   and k = -3 downto 0
-  and e in [0; 2; 2; -2]];;
+  and e in [0; 2; 2; -2]
+  for e in [1; a; -3; -1; 2; 2; 3]];;
 [%%expect{|
 Line 7, characters 6-7:
 7 |   and e in [0; 2; 2; -2]];;
@@ -8200,12 +8200,12 @@ Warning 26 [unused-var]: unused variable e.
 |}];;
 
 [|(a, e, k, u)
-  for e in [|1; a; -3; -1; 2; 2; 3|]
   for a = 2 to 3
   and u = -1 to -1
   and _ in [|-2; 1; 2; 1|]
   and k = -3 downto 0
-  and e in [|0; 2; 2; -2|]|];;
+  and e in [|0; 2; 2; -2|]
+  for e in [|1; a; -3; -1; 2; 2; 3|]|];;
 [%%expect{|
 Line 7, characters 6-7:
 7 |   and e in [|0; 2; 2; -2|]|];;
@@ -8215,61 +8215,61 @@ Warning 26 [unused-var]: unused variable e.
 |}];;
 
 [(d, e, g, l, p, r)
-  for g in [3; -2] and d in [2]
+  for e = -3 to -3 and l = -2 downto -3
   for r in [-2] and _ in [] and p in [0] and e in [-3]
-  for e = -3 to -3 and l = -2 downto -3];;
+  for g in [3; -2] and d in [2]];;
 [%%expect{|
 Lines 1-4, characters 0-40:
 1 | [(d, e, g, l, p, r)
-2 |   for g in [3; -2] and d in [2]
-3 |   for r in [-2] and _ in [] and p in [0] and e in [-3]
-4 |   for e = -3 to -3 and l = -2 downto -3]..
-Warning 26 [unused-var]: unused variable e.
+2 |
 - : (int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable e. for e = -3 to -3 and l = -2 downto -3]..
+4 | for r in [-2] and _ in [] and p in [0] and e in [-3]
+3 | for g in [3; -2] and d in [2]
 |}];;
 
 [|(d, e, g, l, p, r)
-  for g in [|3; -2|] and d in [|2|]
+  for e = -3 to -3 and l = -2 downto -3
   for r in [|-2|] and _ in [||] and p in [|0|] and e in [|-3|]
-  for e = -3 to -3 and l = -2 downto -3|];;
+  for g in [|3; -2|] and d in [|2|]|];;
 [%%expect{|
 Lines 1-4, characters 0-41:
 1 | [|(d, e, g, l, p, r)
-2 |   for g in [|3; -2|] and d in [|2|]
-3 |   for r in [|-2|] and _ in [||] and p in [|0|] and e in [|-3|]
-4 |   for e = -3 to -3 and l = -2 downto -3|]..
-Warning 26 [unused-var]: unused variable e.
+2 |
 - : (int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable e. for e = -3 to -3 and l = -2 downto -3|]..
+4 | for r in [|-2|] and _ in [||] and p in [|0|] and e in [|-3|]
+3 | for g in [|3; -2|] and d in [|2|]
 |}];;
 
 [(d, i, j, o, p, s, t)
+  for s in [-3; -3; -1; 1; 0]
+  for p in []
+  for d = 3 to -2 and t = 0 to -1
   for o in [2; 1; 2; 0; -1; 2]
   and i in [-2; -1; 3; d; 2; 1]
-  and j in [2; -3; -3; 1; 2; 1]
-  for d = 3 to -2 and t = 0 to -1
-  for p in []
-  for s in [-3; -3; -1; 1; 0]];;
+  and j in [2; -3; -3; 1; 2; 1]];;
 [%%expect{|
 - : (int * int * int * int * 'a * int * int) list = []
 |}];;
 
 [|(d, i, j, o, p, s, t)
+  for s in [|-3; -3; -1; 1; 0|]
+  for p in [||]
+  for d = 3 to -2 and t = 0 to -1
   for o in [|2; 1; 2; 0; -1; 2|]
   and i in [|-2; -1; 3; d; 2; 1|]
-  and j in [|2; -3; -3; 1; 2; 1|]
-  for d = 3 to -2 and t = 0 to -1
-  for p in [||]
-  for s in [|-3; -3; -1; 1; 0|]|];;
+  and j in [|2; -3; -3; 1; 2; 1|]|];;
 [%%expect{|
 - : (int * int * int * int * '_weak103 * int * int) array = [||]
 |}];;
 
 [(g, l, w, y)
-  when w < 0
   for g = 0 to 1
   and y = 0 downto -1
   and w in [-2; -1; 2; -1; -3; 0; 0]
-  and l in [3; 0]];;
+  and l in [3; 0]
+  when w < 0];;
 [%%expect{|
 - : (int * int * int * int) list =
 [(0, 3, -2, 0); (0, 0, -2, 0); (0, 3, -1, 0); (0, 0, -1, 0); (0, 3, -1, 0);
@@ -8282,11 +8282,11 @@ Warning 26 [unused-var]: unused variable e.
 |}];;
 
 [|(g, l, w, y)
-  when w < 0
   for g = 0 to 1
   and y = 0 downto -1
   and w in [|-2; -1; 2; -1; -3; 0; 0|]
-  and l in [|3; 0|]|];;
+  and l in [|3; 0|]
+  when w < 0|];;
 [%%expect{|
 - : (int * int * int * int) array =
 [|(0, 3, -2, 0); (0, 0, -2, 0); (0, 3, -1, 0); (0, 0, -1, 0); (0, 3, -1, 0);
@@ -8300,159 +8300,159 @@ Warning 26 [unused-var]: unused variable e.
 |}];;
 
 [(j, n, q, t, w, x)
-  for q = 1 to 2 and w in [-1; 2; 2; 0; 3] and _ = -2 downto -1
-  for x in [] and t in [-3; 2]
+  for n in [2; 3; 2; -2; 1] and j = 3 to 1
   when n < 0
-  for n in [2; 3; 2; -2; 1] and j = 3 to 1];;
+  for x in [] and t in [-3; 2]
+  for q = 1 to 2 and w in [-1; 2; 2; 0; 3] and _ = -2 downto -1];;
 [%%expect{|
 - : (int * int * int * int * int * 'a) list = []
 |}];;
 
 [|(j, n, q, t, w, x)
-  for q = 1 to 2 and w in [|-1; 2; 2; 0; 3|] and _ = -2 downto -1
-  for x in [||] and t in [|-3; 2|]
+  for n in [|2; 3; 2; -2; 1|] and j = 3 to 1
   when n < 0
-  for n in [|2; 3; 2; -2; 1|] and j = 3 to 1|];;
+  for x in [||] and t in [|-3; 2|]
+  for q = 1 to 2 and w in [|-1; 2; 2; 0; 3|] and _ = -2 downto -1|];;
 [%%expect{|
 - : (int * int * int * int * int * '_weak104) array = [||]
 |}];;
 
-[(j, v, x) for v = 1 downto 3 for x = -1 to 3 and j in [0; 1; 1]];;
+[(j, v, x) for x = -1 to 3 and j in [0; 1; 1] for v = 1 downto 3];;
 [%%expect{|
 - : (int * int * int) list = []
 |}];;
 
-[|(j, v, x) for v = 1 downto 3 for x = -1 to 3 and j in [|0; 1; 1|]|];;
+[|(j, v, x) for x = -1 to 3 and j in [|0; 1; 1|] for v = 1 downto 3|];;
 [%%expect{|
 - : (int * int * int) array = [||]
 |}];;
 
 [(b, l, n, r, s, u, y)
+  for b in [-3; 0; 3; 2; -3]
+  for s = b to 3 and n = b downto -1 and r in [2; -2; -3; 2; -2; 2; -3]
   for y in [2; -2; -1; -1; 0; 3]
   and n = 3 to -2
   and u in [2; -2]
-  and l = -2 to 2
-  for s = b to 3 and n = b downto -1 and r in [2; -2; -3; 2; -2; 2; -3]
-  for b in [-3; 0; 3; 2; -3]];;
+  and l = -2 to 2];;
 [%%expect{|
 Lines 1-7, characters 0-29:
 1 | [(b, l, n, r, s, u, y)
-2 |   for y in [2; -2; -1; -1; 0; 3]
-3 |   and n = 3 to -2
-4 |   and u in [2; -2]
-5 |   and l = -2 to 2
-6 |   for s = b to 3 and n = b downto -1 and r in [2; -2; -3; 2; -2; 2; -3]
-7 |   for b in [-3; 0; 3; 2; -3]]..
-Warning 26 [unused-var]: unused variable n.
+2 |
 - : (int * int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable n. for b in [-3; 0; 3; 2; -3]]..
+7 | for s = b to 3 and n = b downto -1 and r in [2; -2; -3; 2; -2; 2; -3]
+6 |
+5 |   and l = -2 to 2
+4 |   and u in [2; -2]
+3 |   and n = 3 to -2 for y in [2; -2; -1; -1; 0; 3]
 |}];;
 
 [|(b, l, n, r, s, u, y)
+  for b in [|-3; 0; 3; 2; -3|]
+  for s = b to 3 and n = b downto -1 and r in [|2; -2; -3; 2; -2; 2; -3|]
   for y in [|2; -2; -1; -1; 0; 3|]
   and n = 3 to -2
   and u in [|2; -2|]
-  and l = -2 to 2
-  for s = b to 3 and n = b downto -1 and r in [|2; -2; -3; 2; -2; 2; -3|]
-  for b in [|-3; 0; 3; 2; -3|]|];;
+  and l = -2 to 2|];;
 [%%expect{|
 Lines 1-7, characters 0-32:
 1 | [|(b, l, n, r, s, u, y)
-2 |   for y in [|2; -2; -1; -1; 0; 3|]
-3 |   and n = 3 to -2
-4 |   and u in [|2; -2|]
-5 |   and l = -2 to 2
-6 |   for s = b to 3 and n = b downto -1 and r in [|2; -2; -3; 2; -2; 2; -3|]
-7 |   for b in [|-3; 0; 3; 2; -3|]|]..
-Warning 26 [unused-var]: unused variable n.
+2 |
 - : (int * int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable n. for b in [|-3; 0; 3; 2; -3|]|]..
+7 | for s = b to 3 and n = b downto -1 and r in [|2; -2; -3; 2; -2; 2; -3|]
+6 |
+5 |   and l = -2 to 2
+4 |   and u in [|2; -2|]
+3 |   and n = 3 to -2 for y in [|2; -2; -1; -1; 0; 3|]
 |}];;
 
-[n when n < 0 when n > 0 for n = 1 to 2];;
+[n for n = 1 to 2 when n > 0 when n < 0];;
 [%%expect{|
 - : int list = []
 |}];;
 
-[|n when n < 0 when n > 0 for n = 1 to 2|];;
+[|n for n = 1 to 2 when n > 0 when n < 0|];;
 [%%expect{|
 - : int array = [||]
 |}];;
 
 [(i, j, q, x)
-  when i <> 0
-  when i <> 0
-  for j in [3; j; j] and x in []
+  for q = -3 downto -2 and i = 3 downto 0
   for j in [-1; 1]
-  for q = -3 downto -2 and i = 3 downto 0];;
+  for j in [3; j; j] and x in []
+  when i <> 0
+  when i <> 0];;
 [%%expect{|
 - : (int * int * int * 'a) list = []
 |}];;
 
 [|(i, j, q, x)
-  when i <> 0
-  when i <> 0
-  for j in [|3; j; j|] and x in [||]
+  for q = -3 downto -2 and i = 3 downto 0
   for j in [|-1; 1|]
-  for q = -3 downto -2 and i = 3 downto 0|];;
+  for j in [|3; j; j|] and x in [||]
+  when i <> 0
+  when i <> 0|];;
 [%%expect{|
 - : (int * int * int * '_weak105) array = [||]
 |}];;
 
 [(f, p, s, u, y)
-  when y <> 0
-  for f in [3; 0; 0; p]
+  for _ = 1 downto -1 and y in [2] and s in [-3; 1; -2; -1; -1]
   for u in [1; 0; 2; 1; 3] and y = -3 downto s and p = y to -1
-  for _ = 1 downto -1 and y in [2] and s in [-3; 1; -2; -1; -1]];;
+  for f in [3; 0; 0; p]
+  when y <> 0];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(f, p, s, u, y)
-  when y <> 0
-  for f in [|3; 0; 0; p|]
+  for _ = 1 downto -1 and y in [|2|] and s in [|-3; 1; -2; -1; -1|]
   for u in [|1; 0; 2; 1; 3|] and y = -3 downto s and p = y to -1
-  for _ = 1 downto -1 and y in [|2|] and s in [|-3; 1; -2; -1; -1|]|];;
+  for f in [|3; 0; 0; p|]
+  when y <> 0|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(b, d, j, y, z)
-  for j in [-3; 3; -1; 2; -3]
-  for y in [1; 1] and b = 3 to -1 and z = 1 to 1
+  for _ = -1 downto 1 and d = 2 to 3
   for y = 0 downto 0 and b in []
-  for _ = -1 downto 1 and d = 2 to 3];;
+  for y in [1; 1] and b = 3 to -1 and z = 1 to 1
+  for j in [-3; 3; -1; 2; -3]];;
 [%%expect{|
 Line 4, characters 25-26:
-4 |   for y = 0 downto 0 and b in []
-                             ^
-Warning 26 [unused-var]: unused variable b.
-Lines 1-5, characters 0-37:
-1 | [(b, d, j, y, z)
-2 |   for j in [-3; 3; -1; 2; -3]
-3 |   for y in [1; 1] and b = 3 to -1 and z = 1 to 1
-4 |   for y = 0 downto 0 and b in []
-5 |   for _ = -1 downto 1 and d = 2 to 3]..
-Warning 26 [unused-var]: unused variable y.
+4 |
 - : (int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable y. for _ = -1 downto 1 and d = 2 to 3]..
+5 | for y = 0 downto 0 and b in []
+4 | for y in [1; 1] and b = 3 to -1 and z = 1 to 1
+3 | for j in [-3; 3; -1; 2; -3]
+2 |
+1 | [(b, d, j, y, z)
+Lines 1-5, characters 0-37:
+Warning 26 [unused-var]: unused variable b.
+                             ^ for y = 0 downto 0 and b in []
 |}];;
 
 [|(b, d, j, y, z)
-  for j in [|-3; 3; -1; 2; -3|]
-  for y in [|1; 1|] and b = 3 to -1 and z = 1 to 1
+  for _ = -1 downto 1 and d = 2 to 3
   for y = 0 downto 0 and b in [||]
-  for _ = -1 downto 1 and d = 2 to 3|];;
+  for y in [|1; 1|] and b = 3 to -1 and z = 1 to 1
+  for j in [|-3; 3; -1; 2; -3|]|];;
 [%%expect{|
 Line 4, characters 25-26:
-4 |   for y = 0 downto 0 and b in [||]
-                             ^
-Warning 26 [unused-var]: unused variable b.
-Lines 1-5, characters 0-38:
-1 | [|(b, d, j, y, z)
-2 |   for j in [|-3; 3; -1; 2; -3|]
-3 |   for y in [|1; 1|] and b = 3 to -1 and z = 1 to 1
-4 |   for y = 0 downto 0 and b in [||]
-5 |   for _ = -1 downto 1 and d = 2 to 3|]..
-Warning 26 [unused-var]: unused variable y.
+4 |
 - : (int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable y. for _ = -1 downto 1 and d = 2 to 3|]..
+5 | for y = 0 downto 0 and b in [||]
+4 | for y in [|1; 1|] and b = 3 to -1 and z = 1 to 1
+3 | for j in [|-3; 3; -1; 2; -3|]
+2 |
+1 | [|(b, d, j, y, z)
+Lines 1-5, characters 0-38:
+Warning 26 [unused-var]: unused variable b.
+                             ^ for y = 0 downto 0 and b in [||]
 |}];;
 
 [(b, d, e, s)
@@ -8474,17 +8474,17 @@ Warning 26 [unused-var]: unused variable y.
 |}];;
 
 [(a, f, i, s)
-  when s > 0
+  for s = -2 downto -3 and a in [] and f in [-3; 3; 0]
   for i = -3 downto 2
-  for s = -2 downto -3 and a in [] and f in [-3; 3; 0]];;
+  when s > 0];;
 [%%expect{|
 - : ('a * int * int * int) list = []
 |}];;
 
 [|(a, f, i, s)
-  when s > 0
+  for s = -2 downto -3 and a in [||] and f in [|-3; 3; 0|]
   for i = -3 downto 2
-  for s = -2 downto -3 and a in [||] and f in [|-3; 3; 0|]|];;
+  when s > 0|];;
 [%%expect{|
 - : ('_weak106 * int * int * int) array = [||]
 |}];;
@@ -8502,147 +8502,147 @@ Warning 26 [unused-var]: unused variable y.
 |}];;
 
 [(a, c, m, o, z)
-  for o in [3; 1; 2; 0]
-  when abs m mod 2 = 0
+  for o = -3 downto 2 and z = 2 to 3
   for c = z to 3 and a = z to 2 and m = 2 downto -2
-  for o = -3 downto 2 and z = 2 to 3];;
+  when abs m mod 2 = 0
+  for o in [3; 1; 2; 0]];;
 [%%expect{|
 Lines 1-5, characters 0-37:
 1 | [(a, c, m, o, z)
-2 |   for o in [3; 1; 2; 0]
-3 |   when abs m mod 2 = 0
-4 |   for c = z to 3 and a = z to 2 and m = 2 downto -2
-5 |   for o = -3 downto 2 and z = 2 to 3]..
-Warning 26 [unused-var]: unused variable o.
+2 |
 - : (int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable o. for o = -3 downto 2 and z = 2 to 3]..
+5 | for c = z to 3 and a = z to 2 and m = 2 downto -2
+4 | when abs m mod 2 = 0
+3 | for o in [3; 1; 2; 0]
 |}];;
 
 [|(a, c, m, o, z)
-  for o in [|3; 1; 2; 0|]
-  when abs m mod 2 = 0
+  for o = -3 downto 2 and z = 2 to 3
   for c = z to 3 and a = z to 2 and m = 2 downto -2
-  for o = -3 downto 2 and z = 2 to 3|];;
+  when abs m mod 2 = 0
+  for o in [|3; 1; 2; 0|]|];;
 [%%expect{|
 Lines 1-5, characters 0-38:
 1 | [|(a, c, m, o, z)
-2 |   for o in [|3; 1; 2; 0|]
-3 |   when abs m mod 2 = 0
-4 |   for c = z to 3 and a = z to 2 and m = 2 downto -2
-5 |   for o = -3 downto 2 and z = 2 to 3|]..
-Warning 26 [unused-var]: unused variable o.
+2 |
 - : (int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable o. for o = -3 downto 2 and z = 2 to 3|]..
+5 | for c = z to 3 and a = z to 2 and m = 2 downto -2
+4 | when abs m mod 2 = 0
+3 | for o in [|3; 1; 2; 0|]
 |}];;
 
 [(e, h, m, q, x, z)
-  for x = 0 downto -3 and h in [] and q = 1 downto 2
-  for m in [] and z in [-1]
+  for e = -3 to 0
   for x = 2 to -1
-  for e = -3 to 0];;
+  for m in [] and z in [-1]
+  for x = 0 downto -3 and h in [] and q = 1 downto 2];;
 [%%expect{|
 Lines 1-5, characters 0-18:
 1 | [(e, h, m, q, x, z)
-2 |   for x = 0 downto -3 and h in [] and q = 1 downto 2
-3 |   for m in [] and z in [-1]
-4 |   for x = 2 to -1
-5 |   for e = -3 to 0]..
-Warning 26 [unused-var]: unused variable x.
+2 |
 - : (int * 'a * 'b * int * int * int) list = []
+Warning 26 [unused-var]: unused variable x. for e = -3 to 0]..
+5 | for x = 2 to -1
+4 | for m in [] and z in [-1]
+3 | for x = 0 downto -3 and h in [] and q = 1 downto 2
 |}];;
 
 [|(e, h, m, q, x, z)
-  for x = 0 downto -3 and h in [||] and q = 1 downto 2
-  for m in [||] and z in [|-1|]
+  for e = -3 to 0
   for x = 2 to -1
-  for e = -3 to 0|];;
+  for m in [||] and z in [|-1|]
+  for x = 0 downto -3 and h in [||] and q = 1 downto 2|];;
 [%%expect{|
 Lines 1-5, characters 0-19:
 1 | [|(e, h, m, q, x, z)
-2 |   for x = 0 downto -3 and h in [||] and q = 1 downto 2
-3 |   for m in [||] and z in [|-1|]
-4 |   for x = 2 to -1
-5 |   for e = -3 to 0|]..
-Warning 26 [unused-var]: unused variable x.
+2 |
 - : (int * '_weak107 * '_weak108 * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable x. for e = -3 to 0|]..
+5 | for x = 2 to -1
+4 | for m in [||] and z in [|-1|]
+3 | for x = 0 downto -3 and h in [||] and q = 1 downto 2
 |}];;
 
 [(a, b, d, e, g, l, m, o, s, w)
-  for o = -2 to -2 and d in [-1; 3; -3; 3] and s = -2 to -1
+  for a in [-1]
+  and g in [2; -2; -2; -3; -1]
+  and l = -2 downto 3
+  and m in [0; -3; 3; -3; 2; -1; 0]
   for b = -2 to 3
   and w = -3 downto l
   and a in [-1; 1; 1]
   and e in [-1; -3; 0; 2]
-  for a in [-1]
-  and g in [2; -2; -2; -3; -1]
-  and l = -2 downto 3
-  and m in [0; -3; 3; -3; 2; -1; 0]];;
+  for o = -2 to -2 and d in [-1; 3; -3; 3] and s = -2 to -1];;
 [%%expect{|
 Line 7, characters 6-7:
-7 |   for a in [-1]
-          ^
-Warning 26 [unused-var]: unused variable a.
+7 |
 - : (int * int * int * int * int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable a.
+          ^ for a in [-1]
 |}];;
 
 [|(a, b, d, e, g, l, m, o, s, w)
-  for o = -2 to -2 and d in [|-1; 3; -3; 3|] and s = -2 to -1
+  for a in [|-1|]
+  and g in [|2; -2; -2; -3; -1|]
+  and l = -2 downto 3
+  and m in [|0; -3; 3; -3; 2; -1; 0|]
   for b = -2 to 3
   and w = -3 downto l
   and a in [|-1; 1; 1|]
   and e in [|-1; -3; 0; 2|]
-  for a in [|-1|]
-  and g in [|2; -2; -2; -3; -1|]
-  and l = -2 downto 3
-  and m in [|0; -3; 3; -3; 2; -1; 0|]|];;
+  for o = -2 to -2 and d in [|-1; 3; -3; 3|] and s = -2 to -1|];;
 [%%expect{|
 Line 7, characters 6-7:
-7 |   for a in [|-1|]
-          ^
-Warning 26 [unused-var]: unused variable a.
+7 |
 - : (int * int * int * int * int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable a.
+          ^ for a in [|-1|]
 |}];;
 
 [(c, e, m, r, u)
+  for e = 3 downto -1 and u in [0; -1; 1; -3; 3; 3]
   for m in [-1; 3; -3; -1; e]
   and r in [-3; 1; -1; e; -3; u; u]
   and _ in [-3; 3; -1; u; 0]
-  and c = -1 downto 2
-  for e = 3 downto -1 and u in [0; -1; 1; -3; 3; 3]];;
+  and c = -1 downto 2];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(c, e, m, r, u)
+  for e = 3 downto -1 and u in [|0; -1; 1; -3; 3; 3|]
   for m in [|-1; 3; -3; -1; e|]
   and r in [|-3; 1; -1; e; -3; u; u|]
   and _ in [|-3; 3; -1; u; 0|]
-  and c = -1 downto 2
-  for e = 3 downto -1 and u in [|0; -1; 1; -3; 3; 3|]|];;
+  and c = -1 downto 2|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(d, i, w)
-  when d < 0
+  for w = 2 downto 0 and i in [-2; 3; 0; -2; 3; -2] and d in [2]
   when d > 0
-  for w = 2 downto 0 and i in [-2; 3; 0; -2; 3; -2] and d in [2]];;
+  when d < 0];;
 [%%expect{|
 - : (int * int * int) list = []
 |}];;
 
 [|(d, i, w)
-  when d < 0
+  for w = 2 downto 0 and i in [|-2; 3; 0; -2; 3; -2|] and d in [|2|]
   when d > 0
-  for w = 2 downto 0 and i in [|-2; 3; 0; -2; 3; -2|] and d in [|2|]|];;
+  when d < 0|];;
 [%%expect{|
 - : (int * int * int) array = [||]
 |}];;
 
 [(a, f, i)
-  for f = -2 to 2
-  when abs i mod 2 = 1
-  for i in [3]
+  for a in [3]
   for a in [a; -3; 3; 3; 0]
-  for a in [3]];;
+  for i in [3]
+  when abs i mod 2 = 1
+  for f = -2 to 2];;
 [%%expect{|
 - : (int * int * int) list =
 [(3, -2, 3); (3, -1, 3); (3, 0, 3); (3, 1, 3); (3, 2, 3); (-3, -2, 3);
@@ -8653,11 +8653,11 @@ Warning 26 [unused-var]: unused variable a.
 |}];;
 
 [|(a, f, i)
-  for f = -2 to 2
-  when abs i mod 2 = 1
-  for i in [|3|]
+  for a in [|3|]
   for a in [|a; -3; 3; 3; 0|]
-  for a in [|3|]|];;
+  for i in [|3|]
+  when abs i mod 2 = 1
+  for f = -2 to 2|];;
 [%%expect{|
 - : (int * int * int) array =
 [|(3, -2, 3); (3, -1, 3); (3, 0, 3); (3, 1, 3); (3, 2, 3); (-3, -2, 3);
@@ -8668,97 +8668,97 @@ Warning 26 [unused-var]: unused variable a.
 |}];;
 
 [(a, k, o, q, x, y)
-  for o in []
-  for x in [k] and a in [0; 2; -1; -3; -1; 1; 3] and y in [-1; 0; 3; 3; q]
+  for q = 1 to 2
   for k in [1; -1; q; -1; -2; -1]
-  for q = 1 to 2];;
+  for x in [k] and a in [0; 2; -1; -3; -1; 1; 3] and y in [-1; 0; 3; 3; q]
+  for o in []];;
 [%%expect{|
 - : (int * int * 'a * int * int * int) list = []
 |}];;
 
 [|(a, k, o, q, x, y)
-  for o in [||]
-  for x in [|k|] and a in [|0; 2; -1; -3; -1; 1; 3|] and y in [|-1; 0; 3; 3; q|]
+  for q = 1 to 2
   for k in [|1; -1; q; -1; -2; -1|]
-  for q = 1 to 2|];;
+  for x in [|k|] and a in [|0; 2; -1; -3; -1; 1; 3|] and y in [|-1; 0; 3; 3; q|]
+  for o in [||]|];;
 [%%expect{|
 - : (int * int * '_weak109 * int * int * int) array = [||]
 |}];;
 
 [(h, k, s, w)
-  for h = 2 to 0
-  for _ = -1 downto k and w = -3 to -1
-  for s in [2; 3; -1; -2; 1; -1]
+  for k = 0 to 2
   when k < 0
-  for k = 0 to 2];;
+  for s in [2; 3; -1; -2; 1; -1]
+  for _ = -1 downto k and w = -3 to -1
+  for h = 2 to 0];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(h, k, s, w)
-  for h = 2 to 0
-  for _ = -1 downto k and w = -3 to -1
-  for s in [|2; 3; -1; -2; 1; -1|]
+  for k = 0 to 2
   when k < 0
-  for k = 0 to 2|];;
+  for s in [|2; 3; -1; -2; 1; -1|]
+  for _ = -1 downto k and w = -3 to -1
+  for h = 2 to 0|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(h, t)
-  when abs h mod 2 = 0
+  for h = -3 downto 0 and t = -2 downto -1
   when t <> 0
-  for h = -3 downto 0 and t = -2 downto -1];;
+  when abs h mod 2 = 0];;
 [%%expect{|
 - : (int * int) list = []
 |}];;
 
 [|(h, t)
-  when abs h mod 2 = 0
+  for h = -3 downto 0 and t = -2 downto -1
   when t <> 0
-  for h = -3 downto 0 and t = -2 downto -1|];;
+  when abs h mod 2 = 0|];;
 [%%expect{|
 - : (int * int) array = [||]
 |}];;
 
 [(a, d, j, k, t, u)
-  for d = -3 to -2 and u in [2; 3; -3; -1; 1; -1]
   for j = 2 downto 0
   and u = 1 downto -3
   and a in []
   and t = 3 downto 2
-  and k in [-1; -3]];;
+  and k in [-1; -3]
+  for d = -3 to -2 and u in [2; 3; -3; -1; 1; -1]];;
 [%%expect{|
 Lines 1-7, characters 0-20:
 1 | [(a, d, j, k, t, u)
-2 |   for d = -3 to -2 and u in [2; 3; -3; -1; 1; -1]
-3 |   for j = 2 downto 0
-4 |   and u = 1 downto -3
-5 |   and a in []
-6 |   and t = 3 downto 2
-7 |   and k in [-1; -3]]..
-Warning 26 [unused-var]: unused variable u.
+2 |
 - : ('a * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable u.
+7 |   and k in [-1; -3]]..
+6 |   and t = 3 downto 2
+5 |   and a in []
+4 |   and u = 1 downto -3 for j = 2 downto 0
+3 | for d = -3 to -2 and u in [2; 3; -3; -1; 1; -1]
 |}];;
 
 [|(a, d, j, k, t, u)
-  for d = -3 to -2 and u in [|2; 3; -3; -1; 1; -1|]
   for j = 2 downto 0
   and u = 1 downto -3
   and a in [||]
   and t = 3 downto 2
-  and k in [|-1; -3|]|];;
+  and k in [|-1; -3|]
+  for d = -3 to -2 and u in [|2; 3; -3; -1; 1; -1|]|];;
 [%%expect{|
 Lines 1-7, characters 0-23:
 1 | [|(a, d, j, k, t, u)
-2 |   for d = -3 to -2 and u in [|2; 3; -3; -1; 1; -1|]
-3 |   for j = 2 downto 0
-4 |   and u = 1 downto -3
-5 |   and a in [||]
-6 |   and t = 3 downto 2
-7 |   and k in [|-1; -3|]|]..
-Warning 26 [unused-var]: unused variable u.
+2 |
 - : ('_weak110 * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable u.
+7 |   and k in [|-1; -3|]|]..
+6 |   and t = 3 downto 2
+5 |   and a in [||]
+4 |   and u = 1 downto -3 for j = 2 downto 0
+3 | for d = -3 to -2 and u in [|2; 3; -3; -1; 1; -1|]
 |}];;
 
 [(f, h, p, q, u)
@@ -8782,58 +8782,58 @@ Warning 26 [unused-var]: unused variable u.
 |}];;
 
 [(a, b, d, h, l, r)
-  for a = -1 to 1 and h = -2 to -3 and r in [b; 2; d; -3; 3; 2]
-  for b = 2 downto -2 and l = 0 to 1
+  for d = -2 downto -1
   when d > 0
-  for d = -2 downto -1];;
+  for b = 2 downto -2 and l = 0 to 1
+  for a = -1 to 1 and h = -2 to -3 and r in [b; 2; d; -3; 3; 2]];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, b, d, h, l, r)
-  for a = -1 to 1 and h = -2 to -3 and r in [|b; 2; d; -3; 3; 2|]
-  for b = 2 downto -2 and l = 0 to 1
+  for d = -2 downto -1
   when d > 0
-  for d = -2 downto -1|];;
+  for b = 2 downto -2 and l = 0 to 1
+  for a = -1 to 1 and h = -2 to -3 and r in [|b; 2; d; -3; 3; 2|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(b, c, p, r, w, x, y)
-  for b in [3] and y in [] and c = -2 downto 2
   for x in [-3]
   and r = -3 downto -3
   and w = -2 downto -2
   and p in [-3; 1; 1]
-  and _ = 3 to -2];;
+  and _ = 3 to -2
+  for b in [3] and y in [] and c = -2 downto 2];;
 [%%expect{|
 - : (int * int * int * int * int * int * 'a) list = []
 |}];;
 
 [|(b, c, p, r, w, x, y)
-  for b in [|3|] and y in [||] and c = -2 downto 2
   for x in [|-3|]
   and r = -3 downto -3
   and w = -2 downto -2
   and p in [|-3; 1; 1|]
-  and _ = 3 to -2|];;
+  and _ = 3 to -2
+  for b in [|3|] and y in [||] and c = -2 downto 2|];;
 [%%expect{|
 - : (int * int * int * int * int * int * '_weak112) array = [||]
 |}];;
 
 [(j, p, q, t, u, w, x)
-  for w = 3 to -2 and p in [] and j in [-3; 3]
-  for x = 1 to -2 and t = 2 to 1 and u = -3 downto 2 and q in [0; 3; 2; -2]];;
+  for x = 1 to -2 and t = 2 to 1 and u = -3 downto 2 and q in [0; 3; 2; -2]
+  for w = 3 to -2 and p in [] and j in [-3; 3]];;
 [%%expect{|
 - : (int * 'a * int * int * int * int * int) list = []
 |}];;
 
 [|(j, p, q, t, u, w, x)
-  for w = 3 to -2 and p in [||] and j in [|-3; 3|]
   for x = 1 to -2
   and t = 2 to 1
   and u = -3 downto 2
-  and q in [|0; 3; 2; -2|]|];;
+  and q in [|0; 3; 2; -2|]
+  for w = 3 to -2 and p in [||] and j in [|-3; 3|]|];;
 [%%expect{|
 - : (int * '_weak113 * int * int * int * int * int) array = [||]
 |}];;
@@ -8859,18 +8859,18 @@ Warning 26 [unused-var]: unused variable u.
 |}];;
 
 [(d, m, p, q, z)
-  for z = -3 to -2 and q in [1] and d = -3 downto -3
+  for p = 0 to 0
   for m in [2; 1]
-  for p = 0 to 0];;
+  for z = -3 to -2 and q in [1] and d = -3 downto -3];;
 [%%expect{|
 - : (int * int * int * int * int) list =
 [(-3, 2, 0, 1, -3); (-3, 2, 0, 1, -2); (-3, 1, 0, 1, -3); (-3, 1, 0, 1, -2)]
 |}];;
 
 [|(d, m, p, q, z)
-  for z = -3 to -2 and q in [|1|] and d = -3 downto -3
+  for p = 0 to 0
   for m in [|2; 1|]
-  for p = 0 to 0|];;
+  for z = -3 to -2 and q in [|1|] and d = -3 downto -3|];;
 [%%expect{|
 - : (int * int * int * int * int) array =
 [|(-3, 2, 0, 1, -3); (-3, 2, 0, 1, -2); (-3, 1, 0, 1, -3);
@@ -8878,69 +8878,69 @@ Warning 26 [unused-var]: unused variable u.
 |}];;
 
 [(a, g, o, q, w, y)
-  for y = 2 downto 3
-  for w = -1 to -2 and o in [] and a in []
+  for q in [0; 1; -3; 1; -3; 2; -3] and g in [2; 1; -2; 1]
   when g > 0
-  for q in [0; 1; -3; 1; -3; 2; -3] and g in [2; 1; -2; 1]];;
+  for w = -1 to -2 and o in [] and a in []
+  for y = 2 downto 3];;
 [%%expect{|
 - : ('a * int * 'b * int * int * int) list = []
 |}];;
 
 [|(a, g, o, q, w, y)
-  for y = 2 downto 3
-  for w = -1 to -2 and o in [||] and a in [||]
+  for q in [|0; 1; -3; 1; -3; 2; -3|] and g in [|2; 1; -2; 1|]
   when g > 0
-  for q in [|0; 1; -3; 1; -3; 2; -3|] and g in [|2; 1; -2; 1|]|];;
+  for w = -1 to -2 and o in [||] and a in [||]
+  for y = 2 downto 3|];;
 [%%expect{|
 - : ('_weak114 * int * '_weak115 * int * int * int) array = [||]
 |}];;
 
 [(m, z)
-  when abs m mod 2 = 1
-  for m in [z]
-  when abs z mod 2 = 0
+  for _ = -2 to -2
   for z = -1 to 2
-  for _ = -2 to -2];;
+  when abs z mod 2 = 0
+  for m in [z]
+  when abs m mod 2 = 1];;
 [%%expect{|
 - : (int * int) list = []
 |}];;
 
 [|(m, z)
-  when abs m mod 2 = 1
-  for m in [|z|]
-  when abs z mod 2 = 0
+  for _ = -2 to -2
   for z = -1 to 2
-  for _ = -2 to -2|];;
+  when abs z mod 2 = 0
+  for m in [|z|]
+  when abs m mod 2 = 1|];;
 [%%expect{|
 - : (int * int) array = [||]
 |}];;
 
 [(d, l, p, t)
-  for p in []
-  for p in [] and l in [0; 2; -2; 1; -3]
-  when abs d mod 2 = 1
+  for t = -3 downto 1
   for d in [-3; 0; -1; 3; 3]
-  for t = -3 downto 1];;
+  when abs d mod 2 = 1
+  for p in [] and l in [0; 2; -2; 1; -3]
+  for p in []];;
 [%%expect{|
 Line 3, characters 6-7:
-3 |   for p in [] and l in [0; 2; -2; 1; -3]
-          ^
-Warning 26 [unused-var]: unused variable p.
+3 |
 - : (int * int * 'a * int) list = []
+Warning 26 [unused-var]: unused variable p.
+          ^ for p in [] and l in [0; 2; -2; 1; -3]
 |}];;
 
 [|(d, l, p, t)
-  for p in [||]
-  for p in [||] and l in [|0; 2; -2; 1; -3|]
-  when abs d mod 2 = 1
+  for t = -3 downto 1
   for d in [|-3; 0; -1; 3; 3|]
-  for t = -3 downto 1|];;
+  when abs d mod 2 = 1
+  for p in [||] and l in [|0; 2; -2; 1; -3|]
+  for p in [||]|];;
 [%%expect{|
 Line 3, characters 6-7:
-3 |   for p in [||] and l in [|0; 2; -2; 1; -3|]
-          ^
-Warning 26 [unused-var]: unused variable p.
+3 |
 - : (int * int * '_weak116 * int) array = [||]
+Warning 26 [unused-var]: unused variable p.
+          ^ for p in [||] and l in [|0; 2; -2; 1; -3|]
 |}];;
 
 [s for s in [0; 2; 2; -1; 2; -3; -3]];;
@@ -8954,187 +8954,187 @@ Warning 26 [unused-var]: unused variable p.
 |}];;
 
 [(b, g, h, s, y)
-  for g = 2 downto b and s = -3 downto 3
-  for y in [3; 1] and _ in [-1; 2] and b = 3 to 2
+  for h in [-1; -2; -3; 2; 1; -2; 0]
   when abs h mod 2 = 0
-  for h in [-1; -2; -3; 2; 1; -2; 0]];;
+  for y in [3; 1] and _ in [-1; 2] and b = 3 to 2
+  for g = 2 downto b and s = -3 downto 3];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(b, g, h, s, y)
-  for g = 2 downto b and s = -3 downto 3
-  for y in [|3; 1|] and _ in [|-1; 2|] and b = 3 to 2
+  for h in [|-1; -2; -3; 2; 1; -2; 0|]
   when abs h mod 2 = 0
-  for h in [|-1; -2; -3; 2; 1; -2; 0|]|];;
+  for y in [|3; 1|] and _ in [|-1; 2|] and b = 3 to 2
+  for g = 2 downto b and s = -3 downto 3|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(c, d, g, j, m, u, y)
-  for c in [-3; 2; -3; -1; 0; -3; -3] and d in []
+  for y in [] and u = 2 to 0
   for j in [] and m in [3; -2; -1; 0] and g in [-1; 3; y; -3]
-  for y in [] and u = 2 to 0];;
+  for c in [-3; 2; -3; -1; 0; -3; -3] and d in []];;
 [%%expect{|
 - : (int * 'a * int * 'b * int * int * int) list = []
 |}];;
 
 [|(c, d, g, j, m, u, y)
-  for c in [|-3; 2; -3; -1; 0; -3; -3|] and d in [||]
+  for y in [||] and u = 2 to 0
   for j in [||] and m in [|3; -2; -1; 0|] and g in [|-1; 3; y; -3|]
-  for y in [||] and u = 2 to 0|];;
+  for c in [|-3; 2; -3; -1; 0; -3; -3|] and d in [||]|];;
 [%%expect{|
 - : (int * '_weak117 * int * '_weak118 * int * int * int) array = [||]
 |}];;
 
 [(u, w)
-  when u <> 0
-  for u = -1 downto -3 and w = 3 to -2
+  for u = 3 to 2
   when u < 0
-  for u = 3 to 2];;
+  for u = -1 downto -3 and w = 3 to -2
+  when u <> 0];;
 [%%expect{|
 - : (int * int) list = []
 |}];;
 
 [|(u, w)
-  when u <> 0
-  for u = -1 downto -3 and w = 3 to -2
+  for u = 3 to 2
   when u < 0
-  for u = 3 to 2|];;
+  for u = -1 downto -3 and w = 3 to -2
+  when u <> 0|];;
 [%%expect{|
 - : (int * int) array = [||]
 |}];;
 
 [(d, f, g, i, l, o, p, t, w)
-  for d = f downto 0
-  and l = o downto -3
-  and g = -3 to 2
-  and i in [2; 0; 3; -2; p; -1]
   for w = 0 downto 2
   and t = 0 to -3
   and o = -3 downto -1
   and f in []
-  and p = -2 to 2];;
+  and p = -2 to 2
+  for d = f downto 0
+  and l = o downto -3
+  and g = -3 to 2
+  and i in [2; 0; 3; -2; p; -1]];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(d, f, g, i, l, o, p, t, w)
-  for d = f downto 0
-  and l = o downto -3
-  and g = -3 to 2
-  and i in [|2; 0; 3; -2; p; -1|]
   for w = 0 downto 2
   and t = 0 to -3
   and o = -3 downto -1
   and f in [||]
-  and p = -2 to 2|];;
+  and p = -2 to 2
+  for d = f downto 0
+  and l = o downto -3
+  and g = -3 to 2
+  and i in [|2; 0; 3; -2; p; -1|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int * int) array = [||]
 |}];;
 
-[(o, s) when abs o mod 2 = 1 for s = -3 to -2 and o = -2 to -2];;
+[(o, s) for s = -3 to -2 and o = -2 to -2 when abs o mod 2 = 1];;
 [%%expect{|
 - : (int * int) list = []
 |}];;
 
-[|(o, s) when abs o mod 2 = 1 for s = -3 to -2 and o = -2 to -2|];;
+[|(o, s) for s = -3 to -2 and o = -2 to -2 when abs o mod 2 = 1|];;
 [%%expect{|
 - : (int * int) array = [||]
 |}];;
 
 [(c, f, h, m, q)
-  when f > 0
+  for q = -2 to -3 and m = -2 to -2 and c = -1 to 1 and h = 3 downto -2
   for h in [2; -2] and _ = 2 downto -2 and f = -2 to -2
-  for q = -2 to -3 and m = -2 to -2 and c = -1 to 1 and h = 3 downto -2];;
+  when f > 0];;
 [%%expect{|
 Lines 1-4, characters 0-72:
 1 | [(c, f, h, m, q)
-2 |   when f > 0
-3 |   for h in [2; -2] and _ = 2 downto -2 and f = -2 to -2
-4 |   for q = -2 to -3 and m = -2 to -2 and c = -1 to 1 and h = 3 downto -2]..
-Warning 26 [unused-var]: unused variable h.
+2 |
 - : (int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable h. for q = -2 to -3 and m = -2 to -2 and c = -1 to 1 and h = 3 downto -2]..
+4 | for h in [2; -2] and _ = 2 downto -2 and f = -2 to -2
+3 | when f > 0
 |}];;
 
 [|(c, f, h, m, q)
-  when f > 0
+  for q = -2 to -3 and m = -2 to -2 and c = -1 to 1 and h = 3 downto -2
   for h in [|2; -2|] and _ = 2 downto -2 and f = -2 to -2
-  for q = -2 to -3 and m = -2 to -2 and c = -1 to 1 and h = 3 downto -2|];;
+  when f > 0|];;
 [%%expect{|
 Lines 1-4, characters 0-73:
 1 | [|(c, f, h, m, q)
-2 |   when f > 0
-3 |   for h in [|2; -2|] and _ = 2 downto -2 and f = -2 to -2
-4 |   for q = -2 to -3 and m = -2 to -2 and c = -1 to 1 and h = 3 downto -2|]..
-Warning 26 [unused-var]: unused variable h.
+2 |
 - : (int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable h. for q = -2 to -3 and m = -2 to -2 and c = -1 to 1 and h = 3 downto -2|]..
+4 | for h in [|2; -2|] and _ = 2 downto -2 and f = -2 to -2
+3 | when f > 0
 |}];;
 
 [(g, j, q, x, y)
-  for x = -1 downto 3 and q in [-3; q; 2; -1]
   for y = -3 to -3
   and j = -2 downto -1
   and q in [1; 3; -3; 2]
-  and g = -3 downto 2];;
+  and g = -3 downto 2
+  for x = -1 downto 3 and q in [-3; q; 2; -1]];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(g, j, q, x, y)
-  for x = -1 downto 3 and q in [|-3; q; 2; -1|]
   for y = -3 to -3
   and j = -2 downto -1
   and q in [|1; 3; -3; 2|]
-  and g = -3 downto 2|];;
+  and g = -3 downto 2
+  for x = -1 downto 3 and q in [|-3; q; 2; -1|]|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(b, c, g, h, m, o, q, y)
-  for b in [-2; -2; 1; 1; -2; -1; 3]
+  for h = -2 to 2 and y = 3 to 3 and o in [] and m in [3; 1; -3; -2; -2]
   for g = 1 to 3 and h = 3 to 2 and c in [3; 1; -2; 1] and q = 1 downto 0
-  for h = -2 to 2 and y = 3 to 3 and o in [] and m in [3; 1; -3; -2; -2]];;
+  for b in [-2; -2; 1; 1; -2; -1; 3]];;
 [%%expect{|
 Lines 1-4, characters 0-73:
 1 | [(b, c, g, h, m, o, q, y)
-2 |   for b in [-2; -2; 1; 1; -2; -1; 3]
-3 |   for g = 1 to 3 and h = 3 to 2 and c in [3; 1; -2; 1] and q = 1 downto 0
-4 |   for h = -2 to 2 and y = 3 to 3 and o in [] and m in [3; 1; -3; -2; -2]]..
-Warning 26 [unused-var]: unused variable h.
+2 |
 - : (int * int * int * int * int * 'a * int * int) list = []
+Warning 26 [unused-var]: unused variable h. for h = -2 to 2 and y = 3 to 3 and o in [] and m in [3; 1; -3; -2; -2]]..
+4 | for g = 1 to 3 and h = 3 to 2 and c in [3; 1; -2; 1] and q = 1 downto 0
+3 | for b in [-2; -2; 1; 1; -2; -1; 3]
 |}];;
 
 [|(b, c, g, h, m, o, q, y)
-  for b in [|-2; -2; 1; 1; -2; -1; 3|]
+  for h = -2 to 2 and y = 3 to 3 and o in [||] and m in [|3; 1; -3; -2; -2|]
   for g = 1 to 3 and h = 3 to 2 and c in [|3; 1; -2; 1|] and q = 1 downto 0
-  for h = -2 to 2 and y = 3 to 3 and o in [||] and m in [|3; 1; -3; -2; -2|]|];;
+  for b in [|-2; -2; 1; 1; -2; -1; 3|]|];;
 [%%expect{|
 Lines 1-4, characters 0-78:
 1 | [|(b, c, g, h, m, o, q, y)
-2 |   for b in [|-2; -2; 1; 1; -2; -1; 3|]
-3 |   for g = 1 to 3 and h = 3 to 2 and c in [|3; 1; -2; 1|] and q = 1 downto 0
-4 |   for h = -2 to 2 and y = 3 to 3 and o in [||] and m in [|3; 1; -3; -2; -2|]|]..
-Warning 26 [unused-var]: unused variable h.
+2 |
 - : (int * int * int * int * int * '_weak119 * int * int) array = [||]
+Warning 26 [unused-var]: unused variable h. for h = -2 to 2 and y = 3 to 3 and o in [||] and m in [|3; 1; -3; -2; -2|]|]..
+4 | for g = 1 to 3 and h = 3 to 2 and c in [|3; 1; -2; 1|] and q = 1 downto 0
+3 | for b in [|-2; -2; 1; 1; -2; -1; 3|]
 |}];;
 
 [(k, o, t, v, z)
-  when abs k mod 2 = 0
-  when z <> 0
-  for z in [] and o in [-3; -3; -2; -1; -1; 3]
+  for t = 0 downto 0 and k in []
   for v in [1; -1; t]
-  for t = 0 downto 0 and k in []];;
+  for z in [] and o in [-3; -3; -2; -1; -1; 3]
+  when z <> 0
+  when abs k mod 2 = 0];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(k, o, t, v, z)
-  when abs k mod 2 = 0
-  when z <> 0
-  for z in [||] and o in [|-3; -3; -2; -1; -1; 3|]
+  for t = 0 downto 0 and k in [||]
   for v in [|1; -1; t|]
-  for t = 0 downto 0 and k in [||]|];;
+  for z in [||] and o in [|-3; -3; -2; -1; -1; 3|]
+  when z <> 0
+  when abs k mod 2 = 0|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
@@ -9150,49 +9150,49 @@ Warning 26 [unused-var]: unused variable h.
 |}];;
 
 [(c, g, l, o, t, x)
-  for l in [c; 2; 0; 1; -3] and o = 0 to 3
-  for c in [-2; 0; x] and g = -2 downto t
+  for t in [-2; -3; 2; 0] and _ = 3 downto 0
   for x = 2 to 0
-  for t in [-2; -3; 2; 0] and _ = 3 downto 0];;
+  for c in [-2; 0; x] and g = -2 downto t
+  for l in [c; 2; 0; 1; -3] and o = 0 to 3];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(c, g, l, o, t, x)
-  for l in [|c; 2; 0; 1; -3|] and o = 0 to 3
-  for c in [|-2; 0; x|] and g = -2 downto t
+  for t in [|-2; -3; 2; 0|] and _ = 3 downto 0
   for x = 2 to 0
-  for t in [|-2; -3; 2; 0|] and _ = 3 downto 0|];;
+  for c in [|-2; 0; x|] and g = -2 downto t
+  for l in [|c; 2; 0; 1; -3|] and o = 0 to 3|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(h, m, q, y)
-  when h < 0
+  for m = -3 to 2
   for q in [0; m] and y in [2; -1; -3] and h = -1 downto 3
-  for m = -3 to 2];;
+  when h < 0];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(h, m, q, y)
-  when h < 0
+  for m = -3 to 2
   for q in [|0; m|] and y in [|2; -1; -3|] and h = -1 downto 3
-  for m = -3 to 2|];;
+  when h < 0|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(a, i, y)
-  when y < 0
-  for i = -3 to 0 and y = 0 downto 0 and a in [-3; -3; -2; 2; 1; -3]];;
+  for i = -3 to 0 and y = 0 downto 0 and a in [-3; -3; -2; 2; 1; -3]
+  when y < 0];;
 [%%expect{|
 - : (int * int * int) list = []
 |}];;
 
 [|(a, i, y)
-  when y < 0
-  for i = -3 to 0 and y = 0 downto 0 and a in [|-3; -3; -2; 2; 1; -3|]|];;
+  for i = -3 to 0 and y = 0 downto 0 and a in [|-3; -3; -2; 2; 1; -3|]
+  when y < 0|];;
 [%%expect{|
 - : (int * int * int) array = [||]
 |}];;
@@ -9209,10 +9209,10 @@ Warning 26 [unused-var]: unused variable h.
 |}];;
 
 [(e, k, l, z)
-  for e in [3; 2; 0] and k = -3 to -1
-  for z in [-2]
+  for l in [-2; -1; 0; 1; 2; 3; -1]
   when l <> 0
-  for l in [-2; -1; 0; 1; 2; 3; -1]];;
+  for z in [-2]
+  for e in [3; 2; 0] and k = -3 to -1];;
 [%%expect{|
 - : (int * int * int * int) list =
 [(3, -3, -2, -2); (3, -2, -2, -2); (3, -1, -2, -2); (2, -3, -2, -2);
@@ -9232,10 +9232,10 @@ Warning 26 [unused-var]: unused variable h.
 |}];;
 
 [|(e, k, l, z)
-  for e in [|3; 2; 0|] and k = -3 to -1
-  for z in [|-2|]
+  for l in [|-2; -1; 0; 1; 2; 3; -1|]
   when l <> 0
-  for l in [|-2; -1; 0; 1; 2; 3; -1|]|];;
+  for z in [|-2|]
+  for e in [|3; 2; 0|] and k = -3 to -1|];;
 [%%expect{|
 - : (int * int * int * int) array =
 [|(3, -3, -2, -2); (3, -2, -2, -2); (3, -1, -2, -2); (2, -3, -2, -2);
@@ -9255,21 +9255,21 @@ Warning 26 [unused-var]: unused variable h.
 |}];;
 
 [(g, i, r, u)
-  when g < 0
-  for r = -2 downto g and i in [0; 1; 3; 0; -1; 0; -3]
-  for u in []
+  for g in [-3; -3]
   when abs g mod 2 = 0
-  for g in [-3; -3]];;
+  for u in []
+  for r = -2 downto g and i in [0; 1; 3; 0; -1; 0; -3]
+  when g < 0];;
 [%%expect{|
 - : (int * int * int * 'a) list = []
 |}];;
 
 [|(g, i, r, u)
-  when g < 0
-  for r = -2 downto g and i in [|0; 1; 3; 0; -1; 0; -3|]
-  for u in [||]
+  for g in [|-3; -3|]
   when abs g mod 2 = 0
-  for g in [|-3; -3|]|];;
+  for u in [||]
+  for r = -2 downto g and i in [|0; 1; 3; 0; -1; 0; -3|]
+  when g < 0|];;
 [%%expect{|
 - : (int * int * int * '_weak121) array = [||]
 |}];;
@@ -9293,75 +9293,75 @@ Warning 26 [unused-var]: unused variable h.
 |}];;
 
 [(l, o)
-  for l = -3 to -2
-  for o = 3 downto 2];;
+  for o = 3 downto 2
+  for l = -3 to -2];;
 [%%expect{|
 - : (int * int) list = [(-3, 3); (-2, 3); (-3, 2); (-2, 2)]
 |}];;
 
-[|(l, o) for l = -3 to -2 for o = 3 downto 2|];;
+[|(l, o) for o = 3 downto 2 for l = -3 to -2|];;
 [%%expect{|
 - : (int * int) array = [|(-3, 3); (-2, 3); (-3, 2); (-2, 2)|]
 |}];;
 
 [(c, i, p, v, z)
-  for v in [-1; -2]
-  for c in [0; 3] and i in [1; 1; 1; -2; -2; 0; p] and z = 1 downto -3
+  for p = 3 to 1
   when p < 0
-  for p = 3 to 1];;
+  for c in [0; 3] and i in [1; 1; 1; -2; -2; 0; p] and z = 1 downto -3
+  for v in [-1; -2]];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(c, i, p, v, z)
-  for v in [|-1; -2|]
-  for c in [|0; 3|] and i in [|1; 1; 1; -2; -2; 0; p|] and z = 1 downto -3
+  for p = 3 to 1
   when p < 0
-  for p = 3 to 1|];;
+  for c in [|0; 3|] and i in [|1; 1; 1; -2; -2; 0; p|] and z = 1 downto -3
+  for v in [|-1; -2|]|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
-[l when abs l mod 2 = 1 for l = 1 to 3];;
+[l for l = 1 to 3 when abs l mod 2 = 1];;
 [%%expect{|
 - : int list = [1; 3]
 |}];;
 
-[|l when abs l mod 2 = 1 for l = 1 to 3|];;
+[|l for l = 1 to 3 when abs l mod 2 = 1|];;
 [%%expect{|
 - : int array = [|1; 3|]
 |}];;
 
 [(c, j, k, q, v)
-  for j in [3; -1; 3; 2; q; k; 2] and c in [-3]
-  for v = 2 to 0 and k = 2 to -3
+  for q in [-3; -3; 2; -1; 3]
   when abs q mod 2 = 0
-  for q in [-3; -3; 2; -1; 3]];;
+  for v = 2 to 0 and k = 2 to -3
+  for j in [3; -1; 3; 2; q; k; 2] and c in [-3]];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(c, j, k, q, v)
-  for j in [|3; -1; 3; 2; q; k; 2|] and c in [|-3|]
-  for v = 2 to 0 and k = 2 to -3
+  for q in [|-3; -3; 2; -1; 3|]
   when abs q mod 2 = 0
-  for q in [|-3; -3; 2; -1; 3|]|];;
+  for v = 2 to 0 and k = 2 to -3
+  for j in [|3; -1; 3; 2; q; k; 2|] and c in [|-3|]|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(b, k, t, w, z)
-  for w = 2 downto 0
+  for z = 3 to 2 and _ = 0 downto 0 and t = 1 downto -1 and k in [2]
   for b in [0; -2; z; z]
-  for z = 3 to 2 and _ = 0 downto 0 and t = 1 downto -1 and k in [2]];;
+  for w = 2 downto 0];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(b, k, t, w, z)
-  for w = 2 downto 0
+  for z = 3 to 2 and _ = 0 downto 0 and t = 1 downto -1 and k in [|2|]
   for b in [|0; -2; z; z|]
-  for z = 3 to 2 and _ = 0 downto 0 and t = 1 downto -1 and k in [|2|]|];;
+  for w = 2 downto 0|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
@@ -9377,37 +9377,37 @@ Warning 26 [unused-var]: unused variable h.
 |}];;
 
 [(n, o, y, z)
-  for o = -1 to 1 and n = 1 to 3
-  for z = y downto 3
-  when y <> 0
+  for _ in [-2; 1; 0]
   for y in [2; -2; -2; 2]
-  for _ in [-2; 1; 0]];;
+  when y <> 0
+  for z = y downto 3
+  for o = -1 to 1 and n = 1 to 3];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(n, o, y, z)
-  for o = -1 to 1 and n = 1 to 3
-  for z = y downto 3
-  when y <> 0
+  for _ in [|-2; 1; 0|]
   for y in [|2; -2; -2; 2|]
-  for _ in [|-2; 1; 0|]|];;
+  when y <> 0
+  for z = y downto 3
+  for o = -1 to 1 and n = 1 to 3|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(a, b, e, g)
-  for e = 2 downto 1 and g = 0 downto 2
+  for b = 3 downto 3 and a in [1; 3; 1]
   when abs b mod 2 = 0
-  for b = 3 downto 3 and a in [1; 3; 1]];;
+  for e = 2 downto 1 and g = 0 downto 2];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(a, b, e, g)
-  for e = 2 downto 1 and g = 0 downto 2
+  for b = 3 downto 3 and a in [|1; 3; 1|]
   when abs b mod 2 = 0
-  for b = 3 downto 3 and a in [|1; 3; 1|]|];;
+  for e = 2 downto 1 and g = 0 downto 2|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
@@ -9423,53 +9423,53 @@ Warning 26 [unused-var]: unused variable h.
 |}];;
 
 [(f, i, k, u)
-  when abs i mod 2 = 0
-  when f <> 0
   for i = 0 to 2
   and k = 3 to -2
   and f in [3; 3; 0; -1; -3; -1; 0]
-  and u = -3 to 1];;
+  and u = -3 to 1
+  when f <> 0
+  when abs i mod 2 = 0];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(f, i, k, u)
-  when abs i mod 2 = 0
-  when f <> 0
   for i = 0 to 2
   and k = 3 to -2
   and f in [|3; 3; 0; -1; -3; -1; 0|]
-  and u = -3 to 1|];;
+  and u = -3 to 1
+  when f <> 0
+  when abs i mod 2 = 0|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
-[(k, t) when k < 0 for _ = 2 to 1 and t in [1] and k = -1 to -1];;
+[(k, t) for _ = 2 to 1 and t in [1] and k = -1 to -1 when k < 0];;
 [%%expect{|
 - : (int * int) list = []
 |}];;
 
-[|(k, t) when k < 0 for _ = 2 to 1 and t in [|1|] and k = -1 to -1|];;
+[|(k, t) for _ = 2 to 1 and t in [|1|] and k = -1 to -1 when k < 0|];;
 [%%expect{|
 - : (int * int) array = [||]
 |}];;
 
 [(g, h, l, m, p, x, y, z)
-  for g = 3 to 1 and y = 3 downto 2
-  for z = -1 to 1 and h in [-1; -3; 1]
-  for p = 2 downto 2
+  for l = -3 downto 2 and m in [-3; 2; 0; -2; -3; 2]
   for x = l downto -2
-  for l = -3 downto 2 and m in [-3; 2; 0; -2; -3; 2]];;
+  for p = 2 downto 2
+  for z = -1 to 1 and h in [-1; -3; 1]
+  for g = 3 to 1 and y = 3 downto 2];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(g, h, l, m, p, x, y, z)
-  for g = 3 to 1 and y = 3 downto 2
-  for z = -1 to 1 and h in [|-1; -3; 1|]
-  for p = 2 downto 2
+  for l = -3 downto 2 and m in [|-3; 2; 0; -2; -3; 2|]
   for x = l downto -2
-  for l = -3 downto 2 and m in [|-3; 2; 0; -2; -3; 2|]|];;
+  for p = 2 downto 2
+  for z = -1 to 1 and h in [|-1; -3; 1|]
+  for g = 3 to 1 and y = 3 downto 2|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) array = [||]
 |}];;
@@ -9485,93 +9485,93 @@ Warning 26 [unused-var]: unused variable h.
 |}];;
 
 [(g, m, p, t, w)
-  for t = 2 downto -1 and p in [m]
-  for g = 2 downto 1 and w = 2 downto -3 and m = 3 to -1];;
+  for g = 2 downto 1 and w = 2 downto -3 and m = 3 to -1
+  for t = 2 downto -1 and p in [m]];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(g, m, p, t, w)
-  for t = 2 downto -1 and p in [|m|]
-  for g = 2 downto 1 and w = 2 downto -3 and m = 3 to -1|];;
+  for g = 2 downto 1 and w = 2 downto -3 and m = 3 to -1
+  for t = 2 downto -1 and p in [|m|]|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(d, e, g, k, m, q, r, t)
-  for q = 0 to 2 and e in [3; 1] and t = -1 to 2
+  for d = -2 to 2 and e in [0; 1] and r in [-1; -3]
   for k = 1 downto -3 and _ = 2 downto 3 and g = 2 to e and m = e downto -2
-  for d = -2 to 2 and e in [0; 1] and r in [-1; -3]];;
+  for q = 0 to 2 and e in [3; 1] and t = -1 to 2];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(d, e, g, k, m, q, r, t)
-  for q = 0 to 2 and e in [|3; 1|] and t = -1 to 2
+  for d = -2 to 2 and e in [|0; 1|] and r in [|-1; -3|]
   for k = 1 downto -3 and _ = 2 downto 3 and g = 2 to e and m = e downto -2
-  for d = -2 to 2 and e in [|0; 1|] and r in [|-1; -3|]|];;
+  for q = 0 to 2 and e in [|3; 1|] and t = -1 to 2|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(c, j, k, n, t, x, z)
-  for c = -1 downto -1 and k in [-3; 0; 2] and x = -2 to -3 and n = 2 downto -2
+  for t in [] and k in [0; -2; -2; 0; 3; 2; -1]
   for j = -2 downto 2 and _ = 3 to t and z in [3; 1; -3] and x = -2 downto 3
-  for t in [] and k in [0; -2; -2; 0; 3; 2; -1]];;
+  for c = -1 downto -1 and k in [-3; 0; 2] and x = -2 to -3 and n = 2 downto -2];;
 [%%expect{|
 Line 4, characters 18-19:
-4 |   for t in [] and k in [0; -2; -2; 0; 3; 2; -1]];;
+4 | for t in [] and k in [0; -2; -2; 0; 3; 2; -1]];;
                       ^
 Warning 26 [unused-var]: unused variable k.
 Lines 1-4, characters 0-48:
 1 | [(c, j, k, n, t, x, z)
-2 |   for c = -1 downto -1 and k in [-3; 0; 2] and x = -2 to -3 and n = 2 downto -2
-3 |   for j = -2 downto 2 and _ = 3 to t and z in [3; 1; -3] and x = -2 downto 3
-4 |   for t in [] and k in [0; -2; -2; 0; 3; 2; -1]]..
-Warning 26 [unused-var]: unused variable x.
+2 |
 - : (int * int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable x. for t in [] and k in [0; -2; -2; 0; 3; 2; -1]]..
+4 | for j = -2 downto 2 and _ = 3 to t and z in [3; 1; -3] and x = -2 downto 3
+3 | for c = -1 downto -1 and k in [-3; 0; 2] and x = -2 to -3 and n = 2 downto -2
 |}];;
 
 [|(c, j, k, n, t, x, z)
+  for t in [||] and k in [|0; -2; -2; 0; 3; 2; -1|]
+  for j = -2 downto 2 and _ = 3 to t and z in [|3; 1; -3|] and x = -2 downto 3
   for c = -1 downto -1
   and k in [|-3; 0; 2|]
   and x = -2 to -3
-  and n = 2 downto -2
-  for j = -2 downto 2 and _ = 3 to t and z in [|3; 1; -3|] and x = -2 downto 3
-  for t in [||] and k in [|0; -2; -2; 0; 3; 2; -1|]|];;
+  and n = 2 downto -2|];;
 [%%expect{|
 Line 7, characters 20-21:
-7 |   for t in [||] and k in [|0; -2; -2; 0; 3; 2; -1|]|];;
+7 | for t in [||] and k in [|0; -2; -2; 0; 3; 2; -1|]|];;
                         ^
 Warning 26 [unused-var]: unused variable k.
 Lines 1-7, characters 0-53:
 1 | [|(c, j, k, n, t, x, z)
-2 |   for c = -1 downto -1
-3 |   and k in [|-3; 0; 2|]
-4 |   and x = -2 to -3
-5 |   and n = 2 downto -2
-6 |   for j = -2 downto 2 and _ = 3 to t and z in [|3; 1; -3|] and x = -2 downto 3
-7 |   for t in [||] and k in [|0; -2; -2; 0; 3; 2; -1|]|]..
-Warning 26 [unused-var]: unused variable x.
+2 |
 - : (int * int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable x. for t in [||] and k in [|0; -2; -2; 0; 3; 2; -1|]|]..
+7 | for j = -2 downto 2 and _ = 3 to t and z in [|3; 1; -3|] and x = -2 downto 3
+6 |
+5 |   and n = 2 downto -2
+4 |   and x = -2 to -3
+3 |   and k in [|-3; 0; 2|] for c = -1 downto -1
 |}];;
 
 [(e, m, p, r, t, v, y)
-  for e = 3 to 1
-  when t > 0
-  for p in [0; y; 1; 2; 1] and m in [-1; -1; -3; 3; 1; -2]
+  for r in [-3; -3; 3; -3; -3; -2; -2] and v = -3 downto -3
   for y in [1; 2; 2; v; -1; -3; 3] and t in [-2; 3; -3; v; -1]
-  for r in [-3; -3; 3; -3; -3; -2; -2] and v = -3 downto -3];;
+  for p in [0; y; 1; 2; 1] and m in [-1; -1; -3; 3; 1; -2]
+  when t > 0
+  for e = 3 to 1];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(e, m, p, r, t, v, y)
-  for e = 3 to 1
-  when t > 0
-  for p in [|0; y; 1; 2; 1|] and m in [|-1; -1; -3; 3; 1; -2|]
+  for r in [|-3; -3; 3; -3; -3; -2; -2|] and v = -3 downto -3
   for y in [|1; 2; 2; v; -1; -3; 3|] and t in [|-2; 3; -3; v; -1|]
-  for r in [|-3; -3; 3; -3; -3; -2; -2|] and v = -3 downto -3|];;
+  for p in [|0; y; 1; 2; 1|] and m in [|-1; -1; -3; 3; 1; -2|]
+  when t > 0
+  for e = 3 to 1|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
@@ -9599,141 +9599,141 @@ Warning 26 [unused-var]: unused variable x.
 |}];;
 
 [(c, h, s, t)
-  when c > 0
-  for h in [2]
-  when t < 0
+  for t in [-2; 0; 1; 1; 2]
   for s in [] and c in [-1; 3; -1]
-  for t in [-2; 0; 1; 1; 2]];;
+  when t < 0
+  for h in [2]
+  when c > 0];;
 [%%expect{|
 - : (int * int * 'a * int) list = []
 |}];;
 
 [|(c, h, s, t)
-  when c > 0
-  for h in [|2|]
-  when t < 0
+  for t in [|-2; 0; 1; 1; 2|]
   for s in [||] and c in [|-1; 3; -1|]
-  for t in [|-2; 0; 1; 1; 2|]|];;
+  when t < 0
+  for h in [|2|]
+  when c > 0|];;
 [%%expect{|
 - : (int * int * '_weak124 * int) array = [||]
 |}];;
 
 [(b, d, g, m, o, q, u, w)
-  for g = 3 downto 1 and q = -3 to -1 and b in [-1; 2; 3; 3; 3; 0; m]
-  for d in [-1] and u = b to o and m in [-2; -1; 1; 1; -1; -3]
+  for o = 1 to -1
   for b = 3 to 0 and w = 2 downto -2
-  for o = 1 to -1];;
+  for d in [-1] and u = b to o and m in [-2; -1; 1; 1; -1; -3]
+  for g = 3 downto 1 and q = -3 to -1 and b in [-1; 2; 3; 3; 3; 0; m]];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(b, d, g, m, o, q, u, w)
-  for g = 3 downto 1 and q = -3 to -1 and b in [|-1; 2; 3; 3; 3; 0; m|]
-  for d in [|-1|] and u = b to o and m in [|-2; -1; 1; 1; -1; -3|]
+  for o = 1 to -1
   for b = 3 to 0 and w = 2 downto -2
-  for o = 1 to -1|];;
+  for d in [|-1|] and u = b to o and m in [|-2; -1; 1; 1; -1; -3|]
+  for g = 3 downto 1 and q = -3 to -1 and b in [|-1; 2; 3; 3; 3; 0; m|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(a, e, g, j, n, q, r, z)
-  for n in [0; -2] and a in [0] and z = 2 to -2
-  for e in [n] and g in [-2; -1; 3; j; -1]
+  for j = 0 downto -1 and q in [1; -1; 1; 0; 1; -1; -1]
   for n in [-3; -2; 2; 3; 3] and r = 1 to 1
-  for j = 0 downto -1 and q in [1; -1; 1; 0; 1; -1; -1]];;
+  for e in [n] and g in [-2; -1; 3; j; -1]
+  for n in [0; -2] and a in [0] and z = 2 to -2];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, e, g, j, n, q, r, z)
-  for n in [|0; -2|] and a in [|0|] and z = 2 to -2
-  for e in [|n|] and g in [|-2; -1; 3; j; -1|]
+  for j = 0 downto -1 and q in [|1; -1; 1; 0; 1; -1; -1|]
   for n in [|-3; -2; 2; 3; 3|] and r = 1 to 1
-  for j = 0 downto -1 and q in [|1; -1; 1; 0; 1; -1; -1|]|];;
+  for e in [|n|] and g in [|-2; -1; 3; j; -1|]
+  for n in [|0; -2|] and a in [|0|] and z = 2 to -2|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(c, f, h, r, u, v, w, z)
-  for w = -3 downto -2 and v in [-2; -3; 2; 0; -2; 0]
-  for z in [2] and f in [v; 1; 0; 3; -3; 2]
+  for u in [] and r = -2 downto -3
   for c = 2 to -1 and v in [3; 3; 2; -2] and h in [1; -2; 2; -2]
-  for u in [] and r = -2 downto -3];;
+  for z in [2] and f in [v; 1; 0; 3; -3; 2]
+  for w = -3 downto -2 and v in [-2; -3; 2; 0; -2; 0]];;
 [%%expect{|
 - : (int * int * int * int * 'a * int * int * int) list = []
 |}];;
 
 [|(c, f, h, r, u, v, w, z)
-  for w = -3 downto -2 and v in [|-2; -3; 2; 0; -2; 0|]
-  for z in [|2|] and f in [|v; 1; 0; 3; -3; 2|]
+  for u in [||] and r = -2 downto -3
   for c = 2 to -1 and v in [|3; 3; 2; -2|] and h in [|1; -2; 2; -2|]
-  for u in [||] and r = -2 downto -3|];;
+  for z in [|2|] and f in [|v; 1; 0; 3; -3; 2|]
+  for w = -3 downto -2 and v in [|-2; -3; 2; 0; -2; 0|]|];;
 [%%expect{|
 - : (int * int * int * int * '_weak125 * int * int * int) array = [||]
 |}];;
 
 [(b, e, g, h)
-  for g in [-1; -1; 2; -3; 2] and _ in [-3; 0]
+  for h = -2 downto 3 and b = 2 downto 2 and g = -2 downto 0
   for e in [g; 2; -2; -1; -2; -2]
-  for h = -2 downto 3 and b = 2 downto 2 and g = -2 downto 0];;
+  for g in [-1; -1; 2; -3; 2] and _ in [-3; 0]];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(b, e, g, h)
-  for g in [|-1; -1; 2; -3; 2|] and _ in [|-3; 0|]
+  for h = -2 downto 3 and b = 2 downto 2 and g = -2 downto 0
   for e in [|g; 2; -2; -1; -2; -2|]
-  for h = -2 downto 3 and b = 2 downto 2 and g = -2 downto 0|];;
+  for g in [|-1; -1; 2; -3; 2|] and _ in [|-3; 0|]|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(c, j, l, t, w)
-  when abs c mod 2 = 1
-  for c in [-2; 0; 3; 0; 3]
-  for w = -3 downto 3
+  for t in [3; 3; -3] and j in [1; 2; 3; 1; -3]
   for l in [-3; 0; t; j; -2; 2]
-  for t in [3; 3; -3] and j in [1; 2; 3; 1; -3]];;
+  for w = -3 downto 3
+  for c in [-2; 0; 3; 0; 3]
+  when abs c mod 2 = 1];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(c, j, l, t, w)
-  when abs c mod 2 = 1
-  for c in [|-2; 0; 3; 0; 3|]
-  for w = -3 downto 3
+  for t in [|3; 3; -3|] and j in [|1; 2; 3; 1; -3|]
   for l in [|-3; 0; t; j; -2; 2|]
-  for t in [|3; 3; -3|] and j in [|1; 2; 3; 1; -3|]|];;
+  for w = -3 downto 3
+  for c in [|-2; 0; 3; 0; 3|]
+  when abs c mod 2 = 1|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(a, h, m, p, r, s)
-  for p = h downto a and s = 0 to -2
-  for m in [1; 2; h] and r in [-1; -2; -3]
-  for m in [] and a in [-3; -2; 1; 3; a; 1; 3]
+  for a in [-3; -3; -1; 0; -1] and h in [-1; 3]
   when a <> 0
-  for a in [-3; -3; -1; 0; -1] and h in [-1; 3]];;
+  for m in [] and a in [-3; -2; 1; 3; a; 1; 3]
+  for m in [1; 2; h] and r in [-1; -2; -3]
+  for p = h downto a and s = 0 to -2];;
 [%%expect{|
 Line 4, characters 6-7:
-4 |   for m in [] and a in [-3; -2; 1; 3; a; 1; 3]
-          ^
-Warning 26 [unused-var]: unused variable m.
+4 |
 - : (int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable m.
+          ^ for m in [] and a in [-3; -2; 1; 3; a; 1; 3]
 |}];;
 
 [|(a, h, m, p, r, s)
-  for p = h downto a and s = 0 to -2
-  for m in [|1; 2; h|] and r in [|-1; -2; -3|]
-  for m in [||] and a in [|-3; -2; 1; 3; a; 1; 3|]
+  for a in [|-3; -3; -1; 0; -1|] and h in [|-1; 3|]
   when a <> 0
-  for a in [|-3; -3; -1; 0; -1|] and h in [|-1; 3|]|];;
+  for m in [||] and a in [|-3; -2; 1; 3; a; 1; 3|]
+  for m in [|1; 2; h|] and r in [|-1; -2; -3|]
+  for p = h downto a and s = 0 to -2|];;
 [%%expect{|
 Line 4, characters 6-7:
-4 |   for m in [||] and a in [|-3; -2; 1; 3; a; 1; 3|]
-          ^
-Warning 26 [unused-var]: unused variable m.
+4 |
 - : (int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable m.
+          ^ for m in [||] and a in [|-3; -2; 1; 3; a; 1; 3|]
 |}];;
 
 [(b, h, i, l, y)
@@ -9757,86 +9757,86 @@ Warning 26 [unused-var]: unused variable m.
 |}];;
 
 [(d, g, h, m, o)
-  for g in [] and d in [m; -2; 3] and h in [-1; 1; 3; m; m; -1] and o = 1 to -3
-  for m in [-1; -2; -3]];;
+  for m in [-1; -2; -3]
+  for g in [] and d in [m; -2; 3] and h in [-1; 1; 3; m; m; -1] and o = 1 to -3];;
 [%%expect{|
 - : (int * 'a * int * int * int) list = []
 |}];;
 
 [|(d, g, h, m, o)
+  for m in [|-1; -2; -3|]
   for g in [||]
   and d in [|m; -2; 3|]
   and h in [|-1; 1; 3; m; m; -1|]
-  and o = 1 to -3
-  for m in [|-1; -2; -3|]|];;
+  and o = 1 to -3|];;
 [%%expect{|
 - : (int * '_weak126 * int * int * int) array = [||]
 |}];;
 
 [(a, b, g, i, o, q, u, x)
-  for g in [0; 3; -3; 3]
-  for i in [-3; -1; -2] and u = 0 downto 2 and o = b downto x
+  for q in [3; 1; 3] and a in [] and x in [1; 3; -1; 0; 1; -2]
   for b = 1 to 0 and u in [0; 3; 0; 3; -1; 3; -1] and x = -3 to -3
-  for q in [3; 1; 3] and a in [] and x in [1; 3; -1; 0; 1; -2]];;
+  for i in [-3; -1; -2] and u = 0 downto 2 and o = b downto x
+  for g in [0; 3; -3; 3]];;
 [%%expect{|
 Line 5, characters 37-38:
-5 |   for q in [3; 1; 3] and a in [] and x in [1; 3; -1; 0; 1; -2]];;
+5 | for q in [3; 1; 3] and a in [] and x in [1; 3; -1; 0; 1; -2]];;
                                          ^
 Warning 26 [unused-var]: unused variable x.
 Line 4, characters 21-22:
-4 |   for b = 1 to 0 and u in [0; 3; 0; 3; -1; 3; -1] and x = -3 to -3
-                         ^
-Warning 26 [unused-var]: unused variable u.
+4 |
 - : ('a * int * int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable u.
+                         ^ for b = 1 to 0 and u in [0; 3; 0; 3; -1; 3; -1] and x = -3 to -3
 |}];;
 
 [|(a, b, g, i, o, q, u, x)
-  for g in [|0; 3; -3; 3|]
-  for i in [|-3; -1; -2|] and u = 0 downto 2 and o = b downto x
+  for q in [|3; 1; 3|] and a in [||] and x in [|1; 3; -1; 0; 1; -2|]
   for b = 1 to 0 and u in [|0; 3; 0; 3; -1; 3; -1|] and x = -3 to -3
-  for q in [|3; 1; 3|] and a in [||] and x in [|1; 3; -1; 0; 1; -2|]|];;
+  for i in [|-3; -1; -2|] and u = 0 downto 2 and o = b downto x
+  for g in [|0; 3; -3; 3|]|];;
 [%%expect{|
 Line 5, characters 41-42:
-5 |   for q in [|3; 1; 3|] and a in [||] and x in [|1; 3; -1; 0; 1; -2|]|];;
+5 | for q in [|3; 1; 3|] and a in [||] and x in [|1; 3; -1; 0; 1; -2|]|];;
                                              ^
 Warning 26 [unused-var]: unused variable x.
 Line 4, characters 21-22:
-4 |   for b = 1 to 0 and u in [|0; 3; 0; 3; -1; 3; -1|] and x = -3 to -3
-                         ^
-Warning 26 [unused-var]: unused variable u.
+4 |
 - : ('_weak127 * int * int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable u.
+                         ^ for b = 1 to 0 and u in [|0; 3; 0; 3; -1; 3; -1|] and x = -3 to -3
 |}];;
 
 [(d, f, m, n, o, r, s, t, v)
-  for m = 3 downto -3 and n = -1 to 3 and t in [-3; -1; 3; -3]
-  for s in [0; -2; -3; 3] and v = 3 to -1
+  for o = -3 downto 0 and d in [2] and m in [3; 2; -2; -1; 0; 1; -2]
   for r in [-3; -1] and f in [0; m; 1; -2; d; 2] and s = -1 to 2
-  for o = -3 downto 0 and d in [2] and m in [3; 2; -2; -1; 0; 1; -2]];;
+  for s in [0; -2; -3; 3] and v = 3 to -1
+  for m = 3 downto -3 and n = -1 to 3 and t in [-3; -1; 3; -3]];;
 [%%expect{|
 Lines 1-5, characters 0-69:
 1 | [(d, f, m, n, o, r, s, t, v)
-2 |   for m = 3 downto -3 and n = -1 to 3 and t in [-3; -1; 3; -3]
-3 |   for s in [0; -2; -3; 3] and v = 3 to -1
-4 |   for r in [-3; -1] and f in [0; m; 1; -2; d; 2] and s = -1 to 2
-5 |   for o = -3 downto 0 and d in [2] and m in [3; 2; -2; -1; 0; 1; -2]]..
-Warning 26 [unused-var]: unused variable s.
+2 |
 - : (int * int * int * int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable s. for o = -3 downto 0 and d in [2] and m in [3; 2; -2; -1; 0; 1; -2]]..
+5 | for r in [-3; -1] and f in [0; m; 1; -2; d; 2] and s = -1 to 2
+4 | for s in [0; -2; -3; 3] and v = 3 to -1
+3 | for m = 3 downto -3 and n = -1 to 3 and t in [-3; -1; 3; -3]
 |}];;
 
 [|(d, f, m, n, o, r, s, t, v)
-  for m = 3 downto -3 and n = -1 to 3 and t in [|-3; -1; 3; -3|]
-  for s in [|0; -2; -3; 3|] and v = 3 to -1
+  for o = -3 downto 0 and d in [|2|] and m in [|3; 2; -2; -1; 0; 1; -2|]
   for r in [|-3; -1|] and f in [|0; m; 1; -2; d; 2|] and s = -1 to 2
-  for o = -3 downto 0 and d in [|2|] and m in [|3; 2; -2; -1; 0; 1; -2|]|];;
+  for s in [|0; -2; -3; 3|] and v = 3 to -1
+  for m = 3 downto -3 and n = -1 to 3 and t in [|-3; -1; 3; -3|]|];;
 [%%expect{|
 Lines 1-5, characters 0-74:
 1 | [|(d, f, m, n, o, r, s, t, v)
-2 |   for m = 3 downto -3 and n = -1 to 3 and t in [|-3; -1; 3; -3|]
-3 |   for s in [|0; -2; -3; 3|] and v = 3 to -1
-4 |   for r in [|-3; -1|] and f in [|0; m; 1; -2; d; 2|] and s = -1 to 2
-5 |   for o = -3 downto 0 and d in [|2|] and m in [|3; 2; -2; -1; 0; 1; -2|]|]..
-Warning 26 [unused-var]: unused variable s.
+2 |
 - : (int * int * int * int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable s. for o = -3 downto 0 and d in [|2|] and m in [|3; 2; -2; -1; 0; 1; -2|]|]..
+5 | for r in [|-3; -1|] and f in [|0; m; 1; -2; d; 2|] and s = -1 to 2
+4 | for s in [|0; -2; -3; 3|] and v = 3 to -1
+3 | for m = 3 downto -3 and n = -1 to 3 and t in [|-3; -1; 3; -3|]
 |}];;
 
 [(g, i, u) for i in [] and g in [-3] and u = 0 downto -1];;
@@ -9850,37 +9850,37 @@ Warning 26 [unused-var]: unused variable s.
 |}];;
 
 [(c, d, g, i, n)
-  for n in [] and i in [-2; -2; -3] and d = -3 to -2 and g = 1 to -1
+  for c = 0 to 2
   when abs c mod 2 = 0
-  for c = 0 to 2];;
+  for n in [] and i in [-2; -2; -3] and d = -3 to -2 and g = 1 to -1];;
 [%%expect{|
 - : (int * int * int * int * 'a) list = []
 |}];;
 
 [|(c, d, g, i, n)
-  for n in [||] and i in [|-2; -2; -3|] and d = -3 to -2 and g = 1 to -1
+  for c = 0 to 2
   when abs c mod 2 = 0
-  for c = 0 to 2|];;
+  for n in [||] and i in [|-2; -2; -3|] and d = -3 to -2 and g = 1 to -1|];;
 [%%expect{|
 - : (int * int * int * int * '_weak129) array = [||]
 |}];;
 
 [(f, j, w, y)
-  when abs y mod 2 = 0
   for j in [3]
   and y = -2 to -3
   and f in [3; -1; -3; -1; -2]
-  and w in [-3; 0; 3]];;
+  and w in [-3; 0; 3]
+  when abs y mod 2 = 0];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(f, j, w, y)
-  when abs y mod 2 = 0
   for j in [|3|]
   and y = -2 to -3
   and f in [|3; -1; -3; -1; -2|]
-  and w in [|-3; 0; 3|]|];;
+  and w in [|-3; 0; 3|]
+  when abs y mod 2 = 0|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
@@ -9938,159 +9938,160 @@ Warning 26 [unused-var]: unused variable s.
 |}];;
 
 [|(e, g, h, o, s)
+- : (int * int * int * int * int) array = [||]
+[%%expect{|
+|];;g
   for g in [|3; 1; -3; -3; -2|]
   and h = 3 downto -3
   and e = -3 to 3
   and s = -3 downto -1
-  and o in [|1; -1; -1|]|];;
-[%%expect{|
-- : (int * int * int * int * int) array = [||]
+  and o in [|1; -1; -1|]
 |}];;
 
 [(a, c, g, j, l)
-  when a <> 0
   for l = 3 downto -2
   and a in []
   and g = -1 to -1
   and c = -3 to 0
-  and j in [-2; 2; 1; -1; -2]];;
+  and j in [-2; 2; 1; -1; -2]
+  when a <> 0];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(a, c, g, j, l)
-  when a <> 0
   for l = 3 downto -2
   and a in [||]
   and g = -1 to -1
   and c = -3 to 0
-  and j in [|-2; 2; 1; -1; -2|]|];;
+  and j in [|-2; 2; 1; -1; -2|]
+  when a <> 0|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(a, g, n, q, s, w)
-  for s in []
   for q = 2 to -2
   and a in [-2; 3; -1; -3]
   and n in [2; 3; -3; -3; 3; 1]
   and w = -2 to 0
-  and g in []];;
+  and g in []
+  for s in []];;
 [%%expect{|
 - : (int * 'a * int * int * 'b * int) list = []
 |}];;
 
 [|(a, g, n, q, s, w)
-  for s in [||]
   for q = 2 to -2
   and a in [|-2; 3; -1; -3|]
   and n in [|2; 3; -3; -3; 3; 1|]
   and w = -2 to 0
-  and g in [||]|];;
+  and g in [||]
+  for s in [||]|];;
 [%%expect{|
 - : (int * '_weak130 * int * int * '_weak131 * int) array = [||]
 |}];;
 
 [(c, g, n, w)
-  for g in [c; -3; 0; c; 3]
-  when abs w mod 2 = 0
+  for n in [3; 0; 0; -1; 1] and c in [2; -2; 0; 3]
   for w in [1; 1] and g in []
-  for n in [3; 0; 0; -1; 1] and c in [2; -2; 0; 3]];;
+  when abs w mod 2 = 0
+  for g in [c; -3; 0; c; 3]];;
 [%%expect{|
 Line 4, characters 22-23:
-4 |   for w in [1; 1] and g in []
-                          ^
-Warning 26 [unused-var]: unused variable g.
+4 |
 - : (int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable g.
+                          ^ for w in [1; 1] and g in []
 |}];;
 
 [|(c, g, n, w)
-  for g in [|c; -3; 0; c; 3|]
-  when abs w mod 2 = 0
+  for n in [|3; 0; 0; -1; 1|] and c in [|2; -2; 0; 3|]
   for w in [|1; 1|] and g in [||]
-  for n in [|3; 0; 0; -1; 1|] and c in [|2; -2; 0; 3|]|];;
+  when abs w mod 2 = 0
+  for g in [|c; -3; 0; c; 3|]|];;
 [%%expect{|
 Line 4, characters 24-25:
-4 |   for w in [|1; 1|] and g in [||]
-                            ^
-Warning 26 [unused-var]: unused variable g.
+4 |
 - : (int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable g.
+                            ^ for w in [|1; 1|] and g in [||]
 |}];;
 
 [(d, g, j, l, m, o, t, u, x)
-  for g = 1 downto 0 and l in [-3; 0; u; u; 2; -2] and j = -3 to 3
-  for u in [-2; -3; 2; -1; -1; 1]
+  for t = 1 to -3 and l = -2 downto 0 and o in [-2]
   for d in [2; -1] and m = 2 downto 2 and x in [1; 2]
-  for t = 1 to -3 and l = -2 downto 0 and o in [-2]];;
+  for u in [-2; -3; 2; -1; -1; 1]
+  for g = 1 downto 0 and l in [-3; 0; u; u; 2; -2] and j = -3 to 3];;
 [%%expect{|
 Lines 1-5, characters 0-52:
 1 | [(d, g, j, l, m, o, t, u, x)
-2 |   for g = 1 downto 0 and l in [-3; 0; u; u; 2; -2] and j = -3 to 3
-3 |   for u in [-2; -3; 2; -1; -1; 1]
-4 |   for d in [2; -1] and m = 2 downto 2 and x in [1; 2]
-5 |   for t = 1 to -3 and l = -2 downto 0 and o in [-2]]..
-Warning 26 [unused-var]: unused variable l.
+2 |
 - : (int * int * int * int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable l. for t = 1 to -3 and l = -2 downto 0 and o in [-2]]..
+5 | for d in [2; -1] and m = 2 downto 2 and x in [1; 2]
+4 | for u in [-2; -3; 2; -1; -1; 1]
+3 | for g = 1 downto 0 and l in [-3; 0; u; u; 2; -2] and j = -3 to 3
 |}];;
 
 [|(d, g, j, l, m, o, t, u, x)
-  for g = 1 downto 0 and l in [|-3; 0; u; u; 2; -2|] and j = -3 to 3
-  for u in [|-2; -3; 2; -1; -1; 1|]
+  for t = 1 to -3 and l = -2 downto 0 and o in [|-2|]
   for d in [|2; -1|] and m = 2 downto 2 and x in [|1; 2|]
-  for t = 1 to -3 and l = -2 downto 0 and o in [|-2|]|];;
+  for u in [|-2; -3; 2; -1; -1; 1|]
+  for g = 1 downto 0 and l in [|-3; 0; u; u; 2; -2|] and j = -3 to 3|];;
 [%%expect{|
 Lines 1-5, characters 0-55:
 1 | [|(d, g, j, l, m, o, t, u, x)
-2 |   for g = 1 downto 0 and l in [|-3; 0; u; u; 2; -2|] and j = -3 to 3
-3 |   for u in [|-2; -3; 2; -1; -1; 1|]
-4 |   for d in [|2; -1|] and m = 2 downto 2 and x in [|1; 2|]
-5 |   for t = 1 to -3 and l = -2 downto 0 and o in [|-2|]|]..
-Warning 26 [unused-var]: unused variable l.
+2 |
 - : (int * int * int * int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable l. for t = 1 to -3 and l = -2 downto 0 and o in [|-2|]|]..
+5 | for d in [|2; -1|] and m = 2 downto 2 and x in [|1; 2|]
+4 | for u in [|-2; -3; 2; -1; -1; 1|]
+3 | for g = 1 downto 0 and l in [|-3; 0; u; u; 2; -2|] and j = -3 to 3
 |}];;
 
-[(s, v) when abs v mod 2 = 0 for s in [-3; 3; 1; -3; 3; -2] and v = 0 to -3];;
+[(s, v) for s in [-3; 3; 1; -3; 3; -2] and v = 0 to -3 when abs v mod 2 = 0];;
 [%%expect{|
 - : (int * int) list = []
 |}];;
 
 [|(s, v)
-  when abs v mod 2 = 0
-  for s in [|-3; 3; 1; -3; 3; -2|] and v = 0 to -3|];;
+  for s in [|-3; 3; 1; -3; 3; -2|] and v = 0 to -3
+  when abs v mod 2 = 0|];;
 [%%expect{|
 - : (int * int) array = [||]
 |}];;
 
 [(e, g, h, k, n, p, s)
-  for e in [-1; -3; 3] and s in [3; -3; h; 1; -1; n] and p = -2 downto h
-  when abs k mod 2 = 0
   for g in [2; 2; -1; -1; 1]
   and n = 1 downto 2
   and h in [-1; 3; 3; -3; 1]
-  and k = 0 downto -2];;
+  and k = 0 downto -2
+  when abs k mod 2 = 0
+  for e in [-1; -3; 3] and s in [3; -3; h; 1; -1; n] and p = -2 downto h];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(e, g, h, k, n, p, s)
-  for e in [|-1; -3; 3|] and s in [|3; -3; h; 1; -1; n|] and p = -2 downto h
-  when abs k mod 2 = 0
   for g in [|2; 2; -1; -1; 1|]
   and n = 1 downto 2
   and h in [|-1; 3; 3; -3; 1|]
-  and k = 0 downto -2|];;
+  and k = 0 downto -2
+  when abs k mod 2 = 0
+  for e in [|-1; -3; 3|] and s in [|3; -3; h; 1; -1; n|] and p = -2 downto h|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(f, v)
-  when f > 0
-  for f in [] and v = -2 to 1];;
+  for f in [] and v = -2 to 1
+  when f > 0];;
 [%%expect{|
 - : (int * int) list = []
 |}];;
 
-[|(f, v) when f > 0 for f in [||] and v = -2 to 1|];;
+[|(f, v) for f in [||] and v = -2 to 1 when f > 0|];;
 [%%expect{|
 - : (int * int) array = [||]
 |}];;
@@ -10116,173 +10117,173 @@ Warning 26 [unused-var]: unused variable l.
 |}];;
 
 [(g, h, i, j, o, x)
-  for i in [] and h = 0 downto -3 and o = -1 to 1 and j = 1 to -1
   for i in [-1; 2; -1; 3; -1; 0]
   and _ in [3; 1; 3; 3; 2]
   and x in [3]
-  and g in [1; -3]];;
+  and g in [1; -3]
+  for i in [] and h = 0 downto -3 and o = -1 to 1 and j = 1 to -1];;
 [%%expect{|
 Line 3, characters 6-7:
-3 |   for i in [-1; 2; -1; 3; -1; 0]
-          ^
-Warning 26 [unused-var]: unused variable i.
+3 |
 - : (int * int * 'a * int * int * int) list = []
+Warning 26 [unused-var]: unused variable i.
+          ^ for i in [-1; 2; -1; 3; -1; 0]
 |}];;
 
 [|(g, h, i, j, o, x)
-  for i in [||] and h = 0 downto -3 and o = -1 to 1 and j = 1 to -1
   for i in [|-1; 2; -1; 3; -1; 0|]
   and _ in [|3; 1; 3; 3; 2|]
   and x in [|3|]
-  and g in [|1; -3|]|];;
+  and g in [|1; -3|]
+  for i in [||] and h = 0 downto -3 and o = -1 to 1 and j = 1 to -1|];;
 [%%expect{|
 Line 3, characters 6-7:
-3 |   for i in [|-1; 2; -1; 3; -1; 0|]
-          ^
-Warning 26 [unused-var]: unused variable i.
+3 |
 - : (int * int * '_weak133 * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable i.
+          ^ for i in [|-1; 2; -1; 3; -1; 0|]
 |}];;
 
 [(a, b, e, g, i, p, u, v, z)
+  for e in [-2; 0; -3; -2; 0; -1] and a in [-3; -3; 1; -2] and v in [-1; 1]
+  for a in [1; a] and z in [3; 3; 1; -1; 2]
+  for i = -1 to -1 and p in [-1; -2; 0; z; 1; -3; 2] and u = -1 downto 2
   for g in [a; -1; -2; 3; -1; -3; p]
   and _ in [0; 1; 2; 2; 0; 1]
-  and b = u downto -3
-  for i = -1 to -1 and p in [-1; -2; 0; z; 1; -3; 2] and u = -1 downto 2
-  for a in [1; a] and z in [3; 3; 1; -1; 2]
-  for e in [-2; 0; -3; -2; 0; -1] and a in [-3; -3; 1; -2] and v in [-1; 1]];;
+  and b = u downto -3];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, b, e, g, i, p, u, v, z)
-  for g in [|a; -1; -2; 3; -1; -3; p|]
-  and _ in [|0; 1; 2; 2; 0; 1|]
-  and b = u downto -3
-  for i = -1 to -1 and p in [|-1; -2; 0; z; 1; -3; 2|] and u = -1 downto 2
-  for a in [|1; a|] and z in [|3; 3; 1; -1; 2|]
   for e in [|-2; 0; -3; -2; 0; -1|]
   and a in [|-3; -3; 1; -2|]
-  and v in [|-1; 1|]|];;
+  and v in [|-1; 1|]
+  for a in [|1; a|] and z in [|3; 3; 1; -1; 2|]
+  for i = -1 to -1 and p in [|-1; -2; 0; z; 1; -3; 2|] and u = -1 downto 2
+  for g in [|a; -1; -2; 3; -1; -3; p|]
+  and _ in [|0; 1; 2; 2; 0; 1|]
+  and b = u downto -3|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(c, f, n, r, u)
-  for c = 3 downto -1 and u in [2; 3; r]
-  for f = 2 downto 0 and r in [1]
-  when abs n mod 2 = 0
+  for n = 3 downto 0
   when abs n mod 2 = 1
-  for n = 3 downto 0];;
+  when abs n mod 2 = 0
+  for f = 2 downto 0 and r in [1]
+  for c = 3 downto -1 and u in [2; 3; r]];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(c, f, n, r, u)
-  for c = 3 downto -1 and u in [|2; 3; r|]
-  for f = 2 downto 0 and r in [|1|]
-  when abs n mod 2 = 0
+  for n = 3 downto 0
   when abs n mod 2 = 1
-  for n = 3 downto 0|];;
+  when abs n mod 2 = 0
+  for f = 2 downto 0 and r in [|1|]
+  for c = 3 downto -1 and u in [|2; 3; r|]|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(f, j, p, s, u)
+  for p in [-3; 0; 1; 3]
   for j in []
   and u in [-2; 2; 1; -3; 3; 3; 1]
   and s in [3; 3; 2; 3; p; 3]
-  and f in [-2; 2; 1]
-  for p in [-3; 0; 1; 3]];;
+  and f in [-2; 2; 1]];;
 [%%expect{|
 - : (int * 'a * int * int * int) list = []
 |}];;
 
 [|(f, j, p, s, u)
+  for p in [|-3; 0; 1; 3|]
   for j in [||]
   and u in [|-2; 2; 1; -3; 3; 3; 1|]
   and s in [|3; 3; 2; 3; p; 3|]
-  and f in [|-2; 2; 1|]
-  for p in [|-3; 0; 1; 3|]|];;
+  and f in [|-2; 2; 1|]|];;
 [%%expect{|
 - : (int * '_weak134 * int * int * int) array = [||]
 |}];;
 
 [(a, c, h, i, m, o, t)
-  for a = 3 to 2 and i in [-1; -1; 0; o] and m in [-2; -1; -3; -2; -3; -2]
+  for a in [-3; 3; -1; 3; -2; -3] and c in [-2; 3; 0; -2; 0; -2] and o in []
   for t = -3 to -2 and h in [0; 0]
-  for a in [-3; 3; -1; 3; -2; -3] and c in [-2; 3; 0; -2; 0; -2] and o in []];;
+  for a = 3 to 2 and i in [-1; -1; 0; o] and m in [-2; -1; -3; -2; -3; -2]];;
 [%%expect{|
 Line 4, characters 6-7:
-4 |   for a in [-3; 3; -1; 3; -2; -3] and c in [-2; 3; 0; -2; 0; -2] and o in []];;
+4 | for a in [-3; 3; -1; 3; -2; -3] and c in [-2; 3; 0; -2; 0; -2] and o in []];;
           ^
 Warning 26 [unused-var]: unused variable a.
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, c, h, i, m, o, t)
-  for a = 3 to 2 and i in [|-1; -1; 0; o|] and m in [|-2; -1; -3; -2; -3; -2|]
-  for t = -3 to -2 and h in [|0; 0|]
   for a in [|-3; 3; -1; 3; -2; -3|]
   and c in [|-2; 3; 0; -2; 0; -2|]
-  and o in [||]|];;
+  and o in [||]
+  for t = -3 to -2 and h in [|0; 0|]
+  for a = 3 to 2 and i in [|-1; -1; 0; o|] and m in [|-2; -1; -3; -2; -3; -2|]|];;
 [%%expect{|
 Line 4, characters 6-7:
-4 |   for a in [|-3; 3; -1; 3; -2; -3|]
-          ^
-Warning 26 [unused-var]: unused variable a.
+4 |
 - : (int * int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable a.
+          ^ for a in [|-3; 3; -1; 3; -2; -3|]
 |}];;
 
 [(a, h, j, n, o, p, x, y, z)
-  for h = -1 downto 3 and z = 0 to n and y = -3 downto 3 and p = j to -2
-  for a in [] and n in [o]
   for o = -3 downto -2
   and x in [3; 2; 2; -2]
   and _ = -3 downto -3
-  and j = -3 to 0];;
+  and j = -3 to 0
+  for a in [] and n in [o]
+  for h = -1 downto 3 and z = 0 to n and y = -3 downto 3 and p = j to -2];;
 [%%expect{|
 - : ('a * int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, h, j, n, o, p, x, y, z)
-  for h = -1 downto 3 and z = 0 to n and y = -3 downto 3 and p = j to -2
-  for a in [||] and n in [|o|]
   for o = -3 downto -2
   and x in [|3; 2; 2; -2|]
   and _ = -3 downto -3
-  and j = -3 to 0|];;
+  and j = -3 to 0
+  for a in [||] and n in [|o|]
+  for h = -1 downto 3 and z = 0 to n and y = -3 downto 3 and p = j to -2|];;
 [%%expect{|
 - : ('_weak135 * int * int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(b, c, g, j, l, m, o, w)
+  for m in [] and g = 0 downto 1 and b in [3; 1]
+  for l in [-1; 1; -3]
   for j = -2 to 1
   and w = -1 to 0
   and o = -1 downto -3
-  and c in [1; 0; 1; -3; 0; -1]
-  for l in [-1; 1; -3]
-  for m in [] and g = 0 downto 1 and b in [3; 1]];;
+  and c in [1; 0; 1; -3; 0; -1]];;
 [%%expect{|
 - : (int * int * int * int * int * 'a * int * int) list = []
 |}];;
 
 [|(b, c, g, j, l, m, o, w)
+  for m in [||] and g = 0 downto 1 and b in [|3; 1|]
+  for l in [|-1; 1; -3|]
   for j = -2 to 1
   and w = -1 to 0
   and o = -1 downto -3
-  and c in [|1; 0; 1; -3; 0; -1|]
-  for l in [|-1; 1; -3|]
-  for m in [||] and g = 0 downto 1 and b in [|3; 1|]|];;
+  and c in [|1; 0; 1; -3; 0; -1|]|];;
 [%%expect{|
 - : (int * int * int * int * int * '_weak136 * int * int) array = [||]
 |}];;
 
-[(g, s) when g <> 0 for s in [2] and g = 3 to 0];;
+[(g, s) for s in [2] and g = 3 to 0 when g <> 0];;
 [%%expect{|
 - : (int * int) list = []
 |}];;
 
-[|(g, s) when g <> 0 for s in [|2|] and g = 3 to 0|];;
+[|(g, s) for s in [|2|] and g = 3 to 0 when g <> 0|];;
 [%%expect{|
 - : (int * int) array = [||]
 |}];;
@@ -10330,49 +10331,49 @@ Warning 26 [unused-var]: unused variable a.
 |}];;
 
 [(a, e, j, k, l, p, q, s)
-  for p in [-1; -3] and l in [l] and s in [-3]
+  for j in [] and a = 3 to 1 and l = 3 downto -1 and q = -1 to -3
   for k in [3; -3] and e = -1 downto -3
-  for j in [] and a = 3 to 1 and l = 3 downto -1 and q = -1 to -3];;
+  for p in [-1; -3] and l in [l] and s in [-3]];;
 [%%expect{|
 - : (int * int * 'a * int * int * int * int * int) list = []
 |}];;
 
 [|(a, e, j, k, l, p, q, s)
-  for p in [|-1; -3|] and l in [|l|] and s in [|-3|]
+  for j in [||] and a = 3 to 1 and l = 3 downto -1 and q = -1 to -3
   for k in [|3; -3|] and e = -1 downto -3
-  for j in [||] and a = 3 to 1 and l = 3 downto -1 and q = -1 to -3|];;
+  for p in [|-1; -3|] and l in [|l|] and s in [|-3|]|];;
 [%%expect{|
 - : (int * int * '_weak138 * int * int * int * int * int) array = [||]
 |}];;
 
 [(a, n, p, v, y)
-  for v = 1 to a
   for p = 3 to -1
   and y = 3 downto 2
   and n in [0; 1; -1; -3; 3; -1; 3]
-  and a = 3 to -3];;
+  and a = 3 to -3
+  for v = 1 to a];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(a, n, p, v, y)
-  for v = 1 to a
   for p = 3 to -1
   and y = 3 downto 2
   and n in [|0; 1; -1; -3; 3; -1; 3|]
-  and a = 3 to -3|];;
+  and a = 3 to -3
+  for v = 1 to a|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
-[(b, i, t) when i < 0 for t = -1 to 1 and b = 2 downto -1 and i = -1 to 0];;
+[(b, i, t) for t = -1 to 1 and b = 2 downto -1 and i = -1 to 0 when i < 0];;
 [%%expect{|
 - : (int * int * int) list =
 [(2, -1, -1); (1, -1, -1); (0, -1, -1); (-1, -1, -1); (2, -1, 0); (1, -1, 0);
  (0, -1, 0); (-1, -1, 0); (2, -1, 1); (1, -1, 1); (0, -1, 1); (-1, -1, 1)]
 |}];;
 
-[|(b, i, t) when i < 0 for t = -1 to 1 and b = 2 downto -1 and i = -1 to 0|];;
+[|(b, i, t) for t = -1 to 1 and b = 2 downto -1 and i = -1 to 0 when i < 0|];;
 [%%expect{|
 - : (int * int * int) array =
 [|(2, -1, -1); (1, -1, -1); (0, -1, -1); (-1, -1, -1); (2, -1, 0);
@@ -10381,455 +10382,455 @@ Warning 26 [unused-var]: unused variable a.
 |}];;
 
 [(g, n, s, u, z)
+  for n in [-2]
   for s = 2 to -2
   and g in [-1; 0; 2]
   and u = 0 to 0
   and n in []
-  and z = n downto 1
-  for n in [-2]];;
+  and z = n downto 1];;
 [%%expect{|
 - : (int * 'a * int * int * int) list = []
 |}];;
 
 [|(g, n, s, u, z)
+  for n in [|-2|]
   for s = 2 to -2
   and g in [|-1; 0; 2|]
   and u = 0 to 0
   and n in [||]
-  and z = n downto 1
-  for n in [|-2|]|];;
+  and z = n downto 1|];;
 [%%expect{|
 - : (int * '_weak139 * int * int * int) array = [||]
 |}];;
 
 [(b, c, j, n, s, w)
-  for j in [1; 2; 0; 1; 1] and n = n downto 1
-  for c in [1; 1; -3; -3; -1; 2; 0] and w in [0; 0; -2]
-  for s in [-1; -3; -3; 2; -3]
+  for n in [-3; -3]
   for b in [0; 0; -2; -1; -3; -2]
-  for n in [-3; -3]];;
+  for s in [-1; -3; -3; 2; -3]
+  for c in [1; 1; -3; -3; -1; 2; 0] and w in [0; 0; -2]
+  for j in [1; 2; 0; 1; 1] and n = n downto 1];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(b, c, j, n, s, w)
-  for j in [|1; 2; 0; 1; 1|] and n = n downto 1
-  for c in [|1; 1; -3; -3; -1; 2; 0|] and w in [|0; 0; -2|]
-  for s in [|-1; -3; -3; 2; -3|]
+  for n in [|-3; -3|]
   for b in [|0; 0; -2; -1; -3; -2|]
-  for n in [|-3; -3|]|];;
+  for s in [|-1; -3; -3; 2; -3|]
+  for c in [|1; 1; -3; -3; -1; 2; 0|] and w in [|0; 0; -2|]
+  for j in [|1; 2; 0; 1; 1|] and n = n downto 1|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(b, d, i, t, u)
-  when abs d mod 2 = 0
   for t = 1 downto -3
   and i = 3 downto 1
   and u in [2; 0; 2; 2; -3]
   and d = 3 to 2
-  and b = -2 to 2];;
+  and b = -2 to 2
+  when abs d mod 2 = 0];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(b, d, i, t, u)
-  when abs d mod 2 = 0
   for t = 1 downto -3
   and i = 3 downto 1
   and u in [|2; 0; 2; 2; -3|]
   and d = 3 to 2
-  and b = -2 to 2|];;
+  and b = -2 to 2
+  when abs d mod 2 = 0|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(d, g, t, w, y, z)
-  for w in [3; -2; y] and g in [-2; -3; -2; 2]
-  for y in [] and d = 2 to -3 and t = 2 to -2
+  for z = -1 downto 0
   when z > 0
-  for z = -1 downto 0];;
+  for y in [] and d = 2 to -3 and t = 2 to -2
+  for w in [3; -2; y] and g in [-2; -3; -2; 2]];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(d, g, t, w, y, z)
-  for w in [|3; -2; y|] and g in [|-2; -3; -2; 2|]
-  for y in [||] and d = 2 to -3 and t = 2 to -2
+  for z = -1 downto 0
   when z > 0
-  for z = -1 downto 0|];;
+  for y in [||] and d = 2 to -3 and t = 2 to -2
+  for w in [|3; -2; y|] and g in [|-2; -3; -2; 2|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(b, r, v, z)
-  for v in [1; -2; 3; -1]
-  when abs z mod 2 = 1
+  for z = 0 to 2 and b in [0; 3] and r = 3 to 2
   when b > 0
-  for z = 0 to 2 and b in [0; 3] and r = 3 to 2];;
+  when abs z mod 2 = 1
+  for v in [1; -2; 3; -1]];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(b, r, v, z)
-  for v in [|1; -2; 3; -1|]
-  when abs z mod 2 = 1
+  for z = 0 to 2 and b in [|0; 3|] and r = 3 to 2
   when b > 0
-  for z = 0 to 2 and b in [|0; 3|] and r = 3 to 2|];;
+  when abs z mod 2 = 1
+  for v in [|1; -2; 3; -1|]|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(g, l, n, v)
-  for v = l to -3
-  for l = 1 to -1
-  when abs n mod 2 = 1
+  for n in [2] and g = 2 downto 1
   when abs g mod 2 = 1
-  for n in [2] and g = 2 downto 1];;
+  when abs n mod 2 = 1
+  for l = 1 to -1
+  for v = l to -3];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(g, l, n, v)
-  for v = l to -3
-  for l = 1 to -1
-  when abs n mod 2 = 1
+  for n in [|2|] and g = 2 downto 1
   when abs g mod 2 = 1
-  for n in [|2|] and g = 2 downto 1|];;
+  when abs n mod 2 = 1
+  for l = 1 to -1
+  for v = l to -3|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
-[(p, q) for p = 1 downto 2 for q = -2 to 2];;
+[(p, q) for q = -2 to 2 for p = 1 downto 2];;
 [%%expect{|
 - : (int * int) list = []
 |}];;
 
-[|(p, q) for p = 1 downto 2 for q = -2 to 2|];;
+[|(p, q) for q = -2 to 2 for p = 1 downto 2|];;
 [%%expect{|
 - : (int * int) array = [||]
 |}];;
 
 [(g, h, i, o, t, u, v)
-  for t = 2 downto 0
-  for h in []
-  for u in [1; 1; 1; 1; o] and g = 1 downto 0
+  for v in [0; -1]
   for i = -1 downto v and o in [-2]
-  for v in [0; -1]];;
+  for u in [1; 1; 1; 1; o] and g = 1 downto 0
+  for h in []
+  for t = 2 downto 0];;
 [%%expect{|
 - : (int * 'a * int * int * int * int * int) list = []
 |}];;
 
 [|(g, h, i, o, t, u, v)
-  for t = 2 downto 0
-  for h in [||]
-  for u in [|1; 1; 1; 1; o|] and g = 1 downto 0
+  for v in [|0; -1|]
   for i = -1 downto v and o in [|-2|]
-  for v in [|0; -1|]|];;
+  for u in [|1; 1; 1; 1; o|] and g = 1 downto 0
+  for h in [||]
+  for t = 2 downto 0|];;
 [%%expect{|
 - : (int * '_weak140 * int * int * int * int * int) array = [||]
 |}];;
 
 [(g, i, j, p, u, v, x, y)
-  for i in [3; -3; 3; i; 1; -1; 1] and u = 1 downto -3 and j = 1 to -1
-  for i in [-1; 3; -3]
+  for v in [0; 0; -3; -1] and g in [] and _ = 3 to -1
   for x in [-2] and p = 2 downto 1 and y in [-2; -3]
-  for v in [0; 0; -3; -1] and g in [] and _ = 3 to -1];;
+  for i in [-1; 3; -3]
+  for i in [3; -3; 3; i; 1; -1; 1] and u = 1 downto -3 and j = 1 to -1];;
 [%%expect{|
 - : ('a * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(g, i, j, p, u, v, x, y)
-  for i in [|3; -3; 3; i; 1; -1; 1|] and u = 1 downto -3 and j = 1 to -1
-  for i in [|-1; 3; -3|]
+  for v in [|0; 0; -3; -1|] and g in [||] and _ = 3 to -1
   for x in [|-2|] and p = 2 downto 1 and y in [|-2; -3|]
-  for v in [|0; 0; -3; -1|] and g in [||] and _ = 3 to -1|];;
+  for i in [|-1; 3; -3|]
+  for i in [|3; -3; 3; i; 1; -1; 1|] and u = 1 downto -3 and j = 1 to -1|];;
 [%%expect{|
 - : ('_weak141 * int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(e, h, i, k, l, t, w)
+  for h = 1 to -2
+  and _ = 1 downto 3
+  and t = 0 downto 1
+  and w in [3; 2; 0; -2; 0; 2]
   for e = w downto 2
   and k = 2 downto -3
   and l in [-1; -1; -2; 3; 1; 2; -3]
   and i = -1 to -1
-  and t = 3 to 1
-  for h = 1 to -2
-  and _ = 1 downto 3
-  and t = 0 downto 1
-  and w in [3; 2; 0; -2; 0; 2]];;
+  and t = 3 to 1];;
 [%%expect{|
 Lines 1-10, characters 0-31:
  1 | [(e, h, i, k, l, t, w)
- 2 |   for e = w downto 2
- 3 |   and k = 2 downto -3
- 4 |   and l in [-1; -1; -2; 3; 1; 2; -3]
- 5 |   and i = -1 to -1
- 6 |   and t = 3 to 1
- 7 |   for h = 1 to -2
- 8 |   and _ = 1 downto 3
- 9 |   and t = 0 downto 1
-10 |   and w in [3; 2; 0; -2; 0; 2]]..
-Warning 26 [unused-var]: unused variable t.
+ 2 |
 - : (int * int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable t.
+10 |   and w in [3; 2; 0; -2; 0; 2]]..
+ 9 |   and t = 0 downto 1
+ 8 |   and _ = 1 downto 3 for h = 1 to -2
+ 7 |
+ 6 |   and t = 3 to 1
+ 5 |   and i = -1 to -1
+ 4 |   and l in [-1; -1; -2; 3; 1; 2; -3]
+ 3 |   and k = 2 downto -3 for e = w downto 2
 |}];;
 
 [|(e, h, i, k, l, t, w)
+  for h = 1 to -2
+  and _ = 1 downto 3
+  and t = 0 downto 1
+  and w in [|3; 2; 0; -2; 0; 2|]
   for e = w downto 2
   and k = 2 downto -3
   and l in [|-1; -1; -2; 3; 1; 2; -3|]
   and i = -1 to -1
-  and t = 3 to 1
-  for h = 1 to -2
-  and _ = 1 downto 3
-  and t = 0 downto 1
-  and w in [|3; 2; 0; -2; 0; 2|]|];;
+  and t = 3 to 1|];;
 [%%expect{|
 Lines 1-10, characters 0-34:
  1 | [|(e, h, i, k, l, t, w)
- 2 |   for e = w downto 2
- 3 |   and k = 2 downto -3
- 4 |   and l in [|-1; -1; -2; 3; 1; 2; -3|]
- 5 |   and i = -1 to -1
- 6 |   and t = 3 to 1
- 7 |   for h = 1 to -2
- 8 |   and _ = 1 downto 3
- 9 |   and t = 0 downto 1
-10 |   and w in [|3; 2; 0; -2; 0; 2|]|]..
-Warning 26 [unused-var]: unused variable t.
+ 2 |
 - : (int * int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable t.
+10 |   and w in [|3; 2; 0; -2; 0; 2|]|]..
+ 9 |   and t = 0 downto 1
+ 8 |   and _ = 1 downto 3 for h = 1 to -2
+ 7 |
+ 6 |   and t = 3 to 1
+ 5 |   and i = -1 to -1
+ 4 |   and l in [|-1; -1; -2; 3; 1; 2; -3|]
+ 3 |   and k = 2 downto -3 for e = w downto 2
 |}];;
 
 [(d, j, l, r, s, t)
-  when l < 0
+  for r in [-2; 2] and t in [-2; 2; -1]
+  for d = 2 downto 1 and t in [] and j in [1; 1; -2; 3; -2; -3; 3]
   for s in [-2; 3; 2; -2; r; -1; -2]
   and l = -2 downto -2
   and t in [3; -2; 1; -2; -1]
-  for d = 2 downto 1 and t in [] and j in [1; 1; -2; 3; -2; -3; 3]
-  for r in [-2; 2] and t in [-2; 2; -1]];;
+  when l < 0];;
 [%%expect{|
 Line 7, characters 23-24:
-7 |   for r in [-2; 2] and t in [-2; 2; -1]];;
+7 | for r in [-2; 2] and t in [-2; 2; -1]];;
                            ^
 Warning 26 [unused-var]: unused variable t.
 Line 6, characters 25-26:
-6 |   for d = 2 downto 1 and t in [] and j in [1; 1; -2; 3; -2; -3; 3]
-                             ^
-Warning 26 [unused-var]: unused variable t.
+6 |
 - : (int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable t.
+                             ^ for d = 2 downto 1 and t in [] and j in [1; 1; -2; 3; -2; -3; 3]
 |}];;
 
 [|(d, j, l, r, s, t)
-  when l < 0
+  for r in [|-2; 2|] and t in [|-2; 2; -1|]
+  for d = 2 downto 1 and t in [||] and j in [|1; 1; -2; 3; -2; -3; 3|]
   for s in [|-2; 3; 2; -2; r; -1; -2|]
   and l = -2 downto -2
   and t in [|3; -2; 1; -2; -1|]
-  for d = 2 downto 1 and t in [||] and j in [|1; 1; -2; 3; -2; -3; 3|]
-  for r in [|-2; 2|] and t in [|-2; 2; -1|]|];;
+  when l < 0|];;
 [%%expect{|
 Line 7, characters 25-26:
-7 |   for r in [|-2; 2|] and t in [|-2; 2; -1|]|];;
+7 | for r in [|-2; 2|] and t in [|-2; 2; -1|]|];;
                              ^
 Warning 26 [unused-var]: unused variable t.
 Line 6, characters 25-26:
-6 |   for d = 2 downto 1 and t in [||] and j in [|1; 1; -2; 3; -2; -3; 3|]
-                             ^
-Warning 26 [unused-var]: unused variable t.
+6 |
 - : (int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable t.
+                             ^ for d = 2 downto 1 and t in [||] and j in [|1; 1; -2; 3; -2; -3; 3|]
 |}];;
 
 [(g, n, q, y, z)
-  for g in [-3; 0; n; -2; 2; 3]
-  when abs y mod 2 = 0
-  for n = 2 downto 2
+  for q in [-1; 0; -1; 3; 0]
   for y = -3 downto -2 and z in [3; q; -3; 0; 2; 2; q]
-  for q in [-1; 0; -1; 3; 0]];;
+  for n = 2 downto 2
+  when abs y mod 2 = 0
+  for g in [-3; 0; n; -2; 2; 3]];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(g, n, q, y, z)
-  for g in [|-3; 0; n; -2; 2; 3|]
-  when abs y mod 2 = 0
-  for n = 2 downto 2
+  for q in [|-1; 0; -1; 3; 0|]
   for y = -3 downto -2 and z in [|3; q; -3; 0; 2; 2; q|]
-  for q in [|-1; 0; -1; 3; 0|]|];;
+  for n = 2 downto 2
+  when abs y mod 2 = 0
+  for g in [|-3; 0; n; -2; 2; 3|]|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(d, g, l, n, r, s, t, x, y)
-  for s = d downto -2 and r in [] and t = 1 to -2 and y = -1 to -3
+  for g = 2 to 3 and d in [2; 3; -1; -1] and l in [1; 1]
   for x = -2 to 2 and n in [0; -3]
-  for g = 2 to 3 and d in [2; 3; -1; -1] and l in [1; 1]];;
+  for s = d downto -2 and r in [] and t = 1 to -2 and y = -1 to -3];;
 [%%expect{|
 - : (int * int * int * int * 'a * int * int * int * int) list = []
 |}];;
 
 [|(d, g, l, n, r, s, t, x, y)
-  for s = d downto -2 and r in [||] and t = 1 to -2 and y = -1 to -3
+  for g = 2 to 3 and d in [|2; 3; -1; -1|] and l in [|1; 1|]
   for x = -2 to 2 and n in [|0; -3|]
-  for g = 2 to 3 and d in [|2; 3; -1; -1|] and l in [|1; 1|]|];;
+  for s = d downto -2 and r in [||] and t = 1 to -2 and y = -1 to -3|];;
 [%%expect{|
 - : (int * int * int * int * '_weak142 * int * int * int * int) array = [||]
 |}];;
 
-[(m, z) when z > 0 for m = -1 to 2 when z < 0 for z = -2 to -2];;
+[(m, z) for z = -2 to -2 when z < 0 for m = -1 to 2 when z > 0];;
 [%%expect{|
 - : (int * int) list = []
 |}];;
 
-[|(m, z) when z > 0 for m = -1 to 2 when z < 0 for z = -2 to -2|];;
+[|(m, z) for z = -2 to -2 when z < 0 for m = -1 to 2 when z > 0|];;
 [%%expect{|
 - : (int * int) array = [||]
 |}];;
 
 [(g, m, p, s)
-  for s = 2 to -1 and g in [2; 0; 3; m] and p = 0 downto 1
-  for m in [-3; 1; -3; 2; 3; 0]];;
+  for m in [-3; 1; -3; 2; 3; 0]
+  for s = 2 to -1 and g in [2; 0; 3; m] and p = 0 downto 1];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(g, m, p, s)
-  for s = 2 to -1 and g in [|2; 0; 3; m|] and p = 0 downto 1
-  for m in [|-3; 1; -3; 2; 3; 0|]|];;
+  for m in [|-3; 1; -3; 2; 3; 0|]
+  for s = 2 to -1 and g in [|2; 0; 3; m|] and p = 0 downto 1|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(e, k, o, x)
-  for x = 1 downto -3
-  when e > 0
+  for k = 3 to 0
   for e in [-1; -3; -1; 0; 3; 0] and o = 3 to 3
-  for k = 3 to 0];;
+  when e > 0
+  for x = 1 downto -3];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(e, k, o, x)
-  for x = 1 downto -3
-  when e > 0
+  for k = 3 to 0
   for e in [|-1; -3; -1; 0; 3; 0|] and o = 3 to 3
-  for k = 3 to 0|];;
+  when e > 0
+  for x = 1 downto -3|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(e, m, n, o, t, u)
-  for t in [3; -2; -3]
-  for n = e to -2 and t in [2; 2; 0; 0; 2; -2; 1]
+  for u = -2 downto -2 and o in [3; -2; -3]
   for u in [-2; 3; 2] and m = -1 downto o and e = 0 to -3
-  for u = -2 downto -2 and o in [3; -2; -3]];;
+  for n = e to -2 and t in [2; 2; 0; 0; 2; -2; 1]
+  for t in [3; -2; -3]];;
 [%%expect{|
 Lines 1-5, characters 0-44:
 1 | [(e, m, n, o, t, u)
-2 |   for t in [3; -2; -3]
-3 |   for n = e to -2 and t in [2; 2; 0; 0; 2; -2; 1]
-4 |   for u in [-2; 3; 2] and m = -1 downto o and e = 0 to -3
-5 |   for u = -2 downto -2 and o in [3; -2; -3]]..
-Warning 26 [unused-var]: unused variable u.
-Line 3, characters 22-23:
-3 |   for n = e to -2 and t in [2; 2; 0; 0; 2; -2; 1]
-                          ^
-Warning 26 [unused-var]: unused variable t.
+2 |
 - : (int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable t.
+                          ^ for n = e to -2 and t in [2; 2; 0; 0; 2; -2; 1]
+3 |
+Line 3, characters 22-23:
+Warning 26 [unused-var]: unused variable u. for u = -2 downto -2 and o in [3; -2; -3]]..
+5 | for u in [-2; 3; 2] and m = -1 downto o and e = 0 to -3
+4 | for n = e to -2 and t in [2; 2; 0; 0; 2; -2; 1]
+3 | for t in [3; -2; -3]
 |}];;
 
 [|(e, m, n, o, t, u)
-  for t in [|3; -2; -3|]
-  for n = e to -2 and t in [|2; 2; 0; 0; 2; -2; 1|]
+  for u = -2 downto -2 and o in [|3; -2; -3|]
   for u in [|-2; 3; 2|] and m = -1 downto o and e = 0 to -3
-  for u = -2 downto -2 and o in [|3; -2; -3|]|];;
+  for n = e to -2 and t in [|2; 2; 0; 0; 2; -2; 1|]
+  for t in [|3; -2; -3|]|];;
 [%%expect{|
 Lines 1-5, characters 0-47:
 1 | [|(e, m, n, o, t, u)
-2 |   for t in [|3; -2; -3|]
-3 |   for n = e to -2 and t in [|2; 2; 0; 0; 2; -2; 1|]
-4 |   for u in [|-2; 3; 2|] and m = -1 downto o and e = 0 to -3
-5 |   for u = -2 downto -2 and o in [|3; -2; -3|]|]..
-Warning 26 [unused-var]: unused variable u.
-Line 3, characters 22-23:
-3 |   for n = e to -2 and t in [|2; 2; 0; 0; 2; -2; 1|]
-                          ^
-Warning 26 [unused-var]: unused variable t.
+2 |
 - : (int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable t.
+                          ^ for n = e to -2 and t in [|2; 2; 0; 0; 2; -2; 1|]
+3 |
+Line 3, characters 22-23:
+Warning 26 [unused-var]: unused variable u. for u = -2 downto -2 and o in [|3; -2; -3|]|]..
+5 | for u in [|-2; 3; 2|] and m = -1 downto o and e = 0 to -3
+4 | for n = e to -2 and t in [|2; 2; 0; 0; 2; -2; 1|]
+3 | for t in [|3; -2; -3|]
 |}];;
 
 [(b, g, h, l, n, t, v, z)
-  for l in []
-  for z in [3; -3; -3; -1; 1; -1]
-  for n in [-3; g; 3] and h in [-3; 1; 2; 1]
+  for b = -2 to 2 and t = -3 to 0
   for g = t downto 1 and v = -1 downto 1
-  for b = -2 to 2 and t = -3 to 0];;
+  for n in [-3; g; 3] and h in [-3; 1; 2; 1]
+  for z in [3; -3; -3; -1; 1; -1]
+  for l in []];;
 [%%expect{|
 - : (int * int * int * 'a * int * int * int * int) list = []
 |}];;
 
 [|(b, g, h, l, n, t, v, z)
-  for l in [||]
-  for z in [|3; -3; -3; -1; 1; -1|]
-  for n in [|-3; g; 3|] and h in [|-3; 1; 2; 1|]
+  for b = -2 to 2 and t = -3 to 0
   for g = t downto 1 and v = -1 downto 1
-  for b = -2 to 2 and t = -3 to 0|];;
+  for n in [|-3; g; 3|] and h in [|-3; 1; 2; 1|]
+  for z in [|3; -3; -3; -1; 1; -1|]
+  for l in [||]|];;
 [%%expect{|
 - : (int * int * int * '_weak143 * int * int * int * int) array = [||]
 |}];;
 
 [(l, n, r, z)
-  for z = 3 to 2 and r = 0 downto 0
-  when l <> 0
-  for r in [r; 3; -2; n; 1; -1; -2]
+  for n = 1 to 3
   for r = 2 downto 0 and l = n to n
-  for n = 1 to 3];;
+  for r in [r; 3; -2; n; 1; -1; -2]
+  when l <> 0
+  for z = 3 to 2 and r = 0 downto 0];;
 [%%expect{|
 Line 4, characters 6-7:
-4 |   for r in [r; 3; -2; n; 1; -1; -2]
-          ^
-Warning 26 [unused-var]: unused variable r.
+4 |
 - : (int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable r.
+          ^ for r in [r; 3; -2; n; 1; -1; -2]
 |}];;
 
 [|(l, n, r, z)
-  for z = 3 to 2 and r = 0 downto 0
-  when l <> 0
-  for r in [|r; 3; -2; n; 1; -1; -2|]
+  for n = 1 to 3
   for r = 2 downto 0 and l = n to n
-  for n = 1 to 3|];;
+  for r in [|r; 3; -2; n; 1; -1; -2|]
+  when l <> 0
+  for z = 3 to 2 and r = 0 downto 0|];;
 [%%expect{|
 Line 4, characters 6-7:
-4 |   for r in [|r; 3; -2; n; 1; -1; -2|]
-          ^
-Warning 26 [unused-var]: unused variable r.
+4 |
 - : (int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable r.
+          ^ for r in [|r; 3; -2; n; 1; -1; -2|]
 |}];;
 
 [(d, p, r, u)
-  for r in [-3; 0; 2; 3; -2] and d in [-2]
+  for u = -3 downto 0 and _ = -1 to -2 and p = 3 downto 1
   for p in [2; -3; 2; 1; 2; 1; 2]
-  for u = -3 downto 0 and _ = -1 to -2 and p = 3 downto 1];;
+  for r in [-3; 0; 2; 3; -2] and d in [-2]];;
 [%%expect{|
 Lines 1-4, characters 0-58:
 1 | [(d, p, r, u)
-2 |   for r in [-3; 0; 2; 3; -2] and d in [-2]
-3 |   for p in [2; -3; 2; 1; 2; 1; 2]
-4 |   for u = -3 downto 0 and _ = -1 to -2 and p = 3 downto 1]..
-Warning 26 [unused-var]: unused variable p.
+2 |
 - : (int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable p. for u = -3 downto 0 and _ = -1 to -2 and p = 3 downto 1]..
+4 | for p in [2; -3; 2; 1; 2; 1; 2]
+3 | for r in [-3; 0; 2; 3; -2] and d in [-2]
 |}];;
 
 [|(d, p, r, u)
-  for r in [|-3; 0; 2; 3; -2|] and d in [|-2|]
+  for u = -3 downto 0 and _ = -1 to -2 and p = 3 downto 1
   for p in [|2; -3; 2; 1; 2; 1; 2|]
-  for u = -3 downto 0 and _ = -1 to -2 and p = 3 downto 1|];;
+  for r in [|-3; 0; 2; 3; -2|] and d in [|-2|]|];;
 [%%expect{|
 Lines 1-4, characters 0-59:
 1 | [|(d, p, r, u)
-2 |   for r in [|-3; 0; 2; 3; -2|] and d in [|-2|]
-3 |   for p in [|2; -3; 2; 1; 2; 1; 2|]
-4 |   for u = -3 downto 0 and _ = -1 to -2 and p = 3 downto 1|]..
-Warning 26 [unused-var]: unused variable p.
+2 |
 - : (int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable p. for u = -3 downto 0 and _ = -1 to -2 and p = 3 downto 1|]..
+4 | for p in [|2; -3; 2; 1; 2; 1; 2|]
+3 | for r in [|-3; 0; 2; 3; -2|] and d in [|-2|]
 |}];;
 
 [n for n = 0 to 2];;
@@ -10843,173 +10844,173 @@ Warning 26 [unused-var]: unused variable p.
 |}];;
 
 [(i, q, r)
-  for r = 2 to 0
-  for i in [1; 1; -1; 0; 2; 0; 1]
+  for _ = -2 downto 2
   for q = 2 downto -2
-  for _ = -2 downto 2];;
+  for i in [1; 1; -1; 0; 2; 0; 1]
+  for r = 2 to 0];;
 [%%expect{|
 - : (int * int * int) list = []
 |}];;
 
 [|(i, q, r)
-  for r = 2 to 0
-  for i in [|1; 1; -1; 0; 2; 0; 1|]
+  for _ = -2 downto 2
   for q = 2 downto -2
-  for _ = -2 downto 2|];;
+  for i in [|1; 1; -1; 0; 2; 0; 1|]
+  for r = 2 to 0|];;
 [%%expect{|
 - : (int * int * int) array = [||]
 |}];;
 
 [(a, c, f, k, n, q, y, z)
-  for a in [-1; -3; -2; 0] and q = -2 downto 2 and z = -2 downto 2
-  for k = 0 to 0 and n in [3]
+  for k in []
   for c in [1] and f = 2 downto 1 and y = 0 downto 3
-  for k in []];;
+  for k = 0 to 0 and n in [3]
+  for a in [-1; -3; -2; 0] and q = -2 downto 2 and z = -2 downto 2];;
 [%%expect{|
 Line 5, characters 6-7:
-5 |   for k in []];;
+5 | for k in []];;
           ^
 Warning 26 [unused-var]: unused variable k.
 - : (int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, c, f, k, n, q, y, z)
-  for a in [|-1; -3; -2; 0|] and q = -2 downto 2 and z = -2 downto 2
-  for k = 0 to 0 and n in [|3|]
+  for k in [||]
   for c in [|1|] and f = 2 downto 1 and y = 0 downto 3
-  for k in [||]|];;
+  for k = 0 to 0 and n in [|3|]
+  for a in [|-1; -3; -2; 0|] and q = -2 downto 2 and z = -2 downto 2|];;
 [%%expect{|
 Line 5, characters 6-7:
-5 |   for k in [||]|];;
+5 | for k in [||]|];;
           ^
 Warning 26 [unused-var]: unused variable k.
 - : (int * int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(g, n, r, v, x, y)
+  for x in [3; -2; -2; 3; 1; 2; 2]
   for r in [-1; -1; -1]
   and n = 2 downto 1
   and y = -1 downto 2
   and v = -2 downto -1
-  and g in [-3; 0; -3; 3; x]
-  for x in [3; -2; -2; 3; 1; 2; 2]];;
+  and g in [-3; 0; -3; 3; x]];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(g, n, r, v, x, y)
+  for x in [|3; -2; -2; 3; 1; 2; 2|]
   for r in [|-1; -1; -1|]
   and n = 2 downto 1
   and y = -1 downto 2
   and v = -2 downto -1
-  and g in [|-3; 0; -3; 3; x|]
-  for x in [|3; -2; -2; 3; 1; 2; 2|]|];;
+  and g in [|-3; 0; -3; 3; x|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(l, n, w, y)
-  when abs n mod 2 = 0
-  for n in [l; -2; 3]
+  for w in [] and l = -3 to -2
   for y in [0; 1; -2; 3; -3; -1] and l in [-3; 0]
-  for w in [] and l = -3 to -2];;
+  for n in [l; -2; 3]
+  when abs n mod 2 = 0];;
 [%%expect{|
 Lines 1-5, characters 0-31:
 1 | [(l, n, w, y)
-2 |   when abs n mod 2 = 0
-3 |   for n in [l; -2; 3]
-4 |   for y in [0; 1; -2; 3; -3; -1] and l in [-3; 0]
-5 |   for w in [] and l = -3 to -2]..
-Warning 26 [unused-var]: unused variable l.
+2 |
 - : (int * int * 'a * int) list = []
+Warning 26 [unused-var]: unused variable l. for w in [] and l = -3 to -2]..
+5 | for y in [0; 1; -2; 3; -3; -1] and l in [-3; 0]
+4 | for n in [l; -2; 3]
+3 | when abs n mod 2 = 0
 |}];;
 
 [|(l, n, w, y)
-  when abs n mod 2 = 0
-  for n in [|l; -2; 3|]
+  for w in [||] and l = -3 to -2
   for y in [|0; 1; -2; 3; -3; -1|] and l in [|-3; 0|]
-  for w in [||] and l = -3 to -2|];;
+  for n in [|l; -2; 3|]
+  when abs n mod 2 = 0|];;
 [%%expect{|
 Lines 1-5, characters 0-34:
 1 | [|(l, n, w, y)
-2 |   when abs n mod 2 = 0
-3 |   for n in [|l; -2; 3|]
-4 |   for y in [|0; 1; -2; 3; -3; -1|] and l in [|-3; 0|]
-5 |   for w in [||] and l = -3 to -2|]..
-Warning 26 [unused-var]: unused variable l.
+2 |
 - : (int * int * '_weak144 * int) array = [||]
+Warning 26 [unused-var]: unused variable l. for w in [||] and l = -3 to -2|]..
+5 | for y in [|0; 1; -2; 3; -3; -1|] and l in [|-3; 0|]
+4 | for n in [|l; -2; 3|]
+3 | when abs n mod 2 = 0
 |}];;
 
 [(c, d, h, p, s)
-  for h in [-3; -3; 0; 1]
-  when abs p mod 2 = 1
-  for p = 3 downto -1
+  for c in [-2; 3; 0; -2; 2] and s = -2 to 0
   for c = -3 downto 2 and d = 1 to s
-  for c in [-2; 3; 0; -2; 2] and s = -2 to 0];;
+  for p = 3 downto -1
+  when abs p mod 2 = 1
+  for h in [-3; -3; 0; 1]];;
 [%%expect{|
 Line 6, characters 6-7:
-6 |   for c in [-2; 3; 0; -2; 2] and s = -2 to 0];;
+6 | for c in [-2; 3; 0; -2; 2] and s = -2 to 0];;
           ^
 Warning 26 [unused-var]: unused variable c.
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(c, d, h, p, s)
-  for h in [|-3; -3; 0; 1|]
-  when abs p mod 2 = 1
-  for p = 3 downto -1
+  for c in [|-2; 3; 0; -2; 2|] and s = -2 to 0
   for c = -3 downto 2 and d = 1 to s
-  for c in [|-2; 3; 0; -2; 2|] and s = -2 to 0|];;
+  for p = 3 downto -1
+  when abs p mod 2 = 1
+  for h in [|-3; -3; 0; 1|]|];;
 [%%expect{|
 Line 6, characters 6-7:
-6 |   for c in [|-2; 3; 0; -2; 2|] and s = -2 to 0|];;
+6 | for c in [|-2; 3; 0; -2; 2|] and s = -2 to 0|];;
           ^
 Warning 26 [unused-var]: unused variable c.
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(b, e, h, p, w, y)
-  for w in [3; -3; -1; 1; 2] and b in [2]
-  for y = -3 to -3
+  for p = 3 to 1
   for h = -1 downto 2 and e in [0] and b in []
-  for p = 3 to 1];;
+  for y = -3 to -3
+  for w in [3; -3; -1; 1; 2] and b in [2]];;
 [%%expect{|
 Line 4, characters 39-40:
-4 |   for h = -1 downto 2 and e in [0] and b in []
-                                           ^
-Warning 26 [unused-var]: unused variable b.
+4 |
 - : (int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable b.
+                                           ^ for h = -1 downto 2 and e in [0] and b in []
 |}];;
 
 [|(b, e, h, p, w, y)
-  for w in [|3; -3; -1; 1; 2|] and b in [|2|]
-  for y = -3 to -3
+  for p = 3 to 1
   for h = -1 downto 2 and e in [|0|] and b in [||]
-  for p = 3 to 1|];;
+  for y = -3 to -3
+  for w in [|3; -3; -1; 1; 2|] and b in [|2|]|];;
 [%%expect{|
 Line 4, characters 41-42:
-4 |   for h = -1 downto 2 and e in [|0|] and b in [||]
-                                             ^
-Warning 26 [unused-var]: unused variable b.
+4 |
 - : (int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable b.
+                                             ^ for h = -1 downto 2 and e in [|0|] and b in [||]
 |}];;
 
-[n when n <> 0 for n = 3 to -1];;
+[n for n = 3 to -1 when n <> 0];;
 [%%expect{|
 - : int list = []
 |}];;
 
-[|n when n <> 0 for n = 3 to -1|];;
+[|n for n = 3 to -1 when n <> 0|];;
 [%%expect{|
 - : int array = [||]
 |}];;
 
 [(c, h, i, z)
-  for z = 1 downto -3
-  when abs h mod 2 = 1
-  when i < 0
+  for i = -2 downto -2 and h in [-1; 0]
   for c in [-1; 3; 3; 3; 2]
-  for i = -2 downto -2 and h in [-1; 0]];;
+  when i < 0
+  when abs h mod 2 = 1
+  for z = 1 downto -3];;
 [%%expect{|
 - : (int * int * int * int) list =
 [(-1, -1, -2, 1); (-1, -1, -2, 0); (-1, -1, -2, -1); (-1, -1, -2, -2);
@@ -11022,11 +11023,11 @@ Warning 26 [unused-var]: unused variable b.
 |}];;
 
 [|(c, h, i, z)
-  for z = 1 downto -3
-  when abs h mod 2 = 1
-  when i < 0
+  for i = -2 downto -2 and h in [|-1; 0|]
   for c in [|-1; 3; 3; 3; 2|]
-  for i = -2 downto -2 and h in [|-1; 0|]|];;
+  when i < 0
+  when abs h mod 2 = 1
+  for z = 1 downto -3|];;
 [%%expect{|
 - : (int * int * int * int) array =
 [|(-1, -1, -2, 1); (-1, -1, -2, 0); (-1, -1, -2, -1); (-1, -1, -2, -2);
@@ -11039,23 +11040,23 @@ Warning 26 [unused-var]: unused variable b.
 |}];;
 
 [(e, g, i, n, r, t)
-  for n = -3 to -3 and i = r to -2 and e in [] and t in [-3; -2; -3; -2]
+  for g = 1 downto 0
   for r in [g; 2; 0; 0; 2; g; 2] and t in [2; 3; -1; 2; 1; -2; -1] and g in [1]
-  for g = 1 downto 0];;
+  for n = -3 to -3 and i = r to -2 and e in [] and t in [-3; -2; -3; -2]];;
 [%%expect{|
 Line 3, characters 37-38:
-3 |   for r in [g; 2; 0; 0; 2; g; 2] and t in [2; 3; -1; 2; 1; -2; -1] and g in [1]
-                                         ^
-Warning 26 [unused-var]: unused variable t.
+3 |
 - : ('a * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable t.
+                                         ^ for r in [g; 2; 0; 0; 2; g; 2] and t in [2; 3; -1; 2; 1; -2; -1] and g in [1]
 |}];;
 
 [|(e, g, i, n, r, t)
-  for n = -3 to -3 and i = r to -2 and e in [||] and t in [|-3; -2; -3; -2|]
+  for g = 1 downto 0
   for r in [|g; 2; 0; 0; 2; g; 2|]
   and t in [|2; 3; -1; 2; 1; -2; -1|]
   and g in [|1|]
-  for g = 1 downto 0|];;
+  for n = -3 to -3 and i = r to -2 and e in [||] and t in [|-3; -2; -3; -2|]|];;
 [%%expect{|
 Line 4, characters 6-7:
 4 |   and t in [|2; 3; -1; 2; 1; -2; -1|]
@@ -11065,58 +11066,58 @@ Warning 26 [unused-var]: unused variable t.
 |}];;
 
 [(c, m, z)
-  for m = -3 downto 0
-  for c in [2; 3; 1; 1]
-  for _ in [0; 0] and m in [0; 1; 2; 1]
+  for z in []
   when abs z mod 2 = 0
-  for z in []];;
+  for _ in [0; 0] and m in [0; 1; 2; 1]
+  for c in [2; 3; 1; 1]
+  for m = -3 downto 0];;
 [%%expect{|
 Line 4, characters 22-23:
-4 |   for _ in [0; 0] and m in [0; 1; 2; 1]
-                          ^
-Warning 26 [unused-var]: unused variable m.
+4 |
 - : (int * int * int) list = []
+Warning 26 [unused-var]: unused variable m.
+                          ^ for _ in [0; 0] and m in [0; 1; 2; 1]
 |}];;
 
 [|(c, m, z)
-  for m = -3 downto 0
-  for c in [|2; 3; 1; 1|]
-  for _ in [|0; 0|] and m in [|0; 1; 2; 1|]
+  for z in [||]
   when abs z mod 2 = 0
-  for z in [||]|];;
+  for _ in [|0; 0|] and m in [|0; 1; 2; 1|]
+  for c in [|2; 3; 1; 1|]
+  for m = -3 downto 0|];;
 [%%expect{|
 Line 4, characters 24-25:
-4 |   for _ in [|0; 0|] and m in [|0; 1; 2; 1|]
-                            ^
-Warning 26 [unused-var]: unused variable m.
+4 |
 - : (int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable m.
+                            ^ for _ in [|0; 0|] and m in [|0; 1; 2; 1|]
 |}];;
 
 [(a, g, i, l, m, s, v, w)
+  for m = -3 downto 2 and a = 3 to -3 and w in [2; 2; -3]
+  for g = a downto -3
   for i in [0; 0; 0; 2; 3; 0; 0]
   and l in [-2; 2]
   and s in [-1; 0; 3; -3; -1]
-  and v = 1 to -3
-  for g = a downto -3
-  for m = -3 downto 2 and a = 3 to -3 and w in [2; 2; -3]];;
+  and v = 1 to -3];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, g, i, l, m, s, v, w)
+  for m = -3 downto 2 and a = 3 to -3 and w in [|2; 2; -3|]
+  for g = a downto -3
   for i in [|0; 0; 0; 2; 3; 0; 0|]
   and l in [|-2; 2|]
   and s in [|-1; 0; 3; -3; -1|]
-  and v = 1 to -3
-  for g = a downto -3
-  for m = -3 downto 2 and a = 3 to -3 and w in [|2; 2; -3|]|];;
+  and v = 1 to -3|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(b, j, m)
-  when b > 0
-  for j = -3 to 1 and b in [3; -1] and m in [2; -1; -2; 1; -1]];;
+  for j = -3 to 1 and b in [3; -1] and m in [2; -1; -2; 1; -1]
+  when b > 0];;
 [%%expect{|
 - : (int * int * int) list =
 [(3, -3, 2); (3, -3, -1); (3, -3, -2); (3, -3, 1); (3, -3, -1); (3, -2, 2);
@@ -11127,8 +11128,8 @@ Warning 26 [unused-var]: unused variable m.
 |}];;
 
 [|(b, j, m)
-  when b > 0
-  for j = -3 to 1 and b in [|3; -1|] and m in [|2; -1; -2; 1; -1|]|];;
+  for j = -3 to 1 and b in [|3; -1|] and m in [|2; -1; -2; 1; -1|]
+  when b > 0|];;
 [%%expect{|
 - : (int * int * int) array =
 [|(3, -3, 2); (3, -3, -1); (3, -3, -2); (3, -3, 1); (3, -3, -1); (3, -2, 2);
@@ -11139,149 +11140,149 @@ Warning 26 [unused-var]: unused variable m.
 |}];;
 
 [(a, b, i, j, r, s)
-  for j in []
-  for i = 1 to 2 and s in []
+  for s = 3 downto 2
   for a = -3 to 0 and r = 3 to 2 and b in []
-  for s = 3 downto 2];;
+  for i = 1 to 2 and s in []
+  for j in []];;
 [%%expect{|
 Lines 1-5, characters 0-21:
 1 | [(a, b, i, j, r, s)
-2 |   for j in []
-3 |   for i = 1 to 2 and s in []
-4 |   for a = -3 to 0 and r = 3 to 2 and b in []
-5 |   for s = 3 downto 2]..
-Warning 26 [unused-var]: unused variable s.
+2 |
 - : (int * 'a * int * 'b * int * 'c) list = []
+Warning 26 [unused-var]: unused variable s. for s = 3 downto 2]..
+5 | for a = -3 to 0 and r = 3 to 2 and b in []
+4 | for i = 1 to 2 and s in []
+3 | for j in []
 |}];;
 
 [|(a, b, i, j, r, s)
-  for j in [||]
-  for i = 1 to 2 and s in [||]
+  for s = 3 downto 2
   for a = -3 to 0 and r = 3 to 2 and b in [||]
-  for s = 3 downto 2|];;
+  for i = 1 to 2 and s in [||]
+  for j in [||]|];;
 [%%expect{|
 Lines 1-5, characters 0-22:
 1 | [|(a, b, i, j, r, s)
-2 |   for j in [||]
-3 |   for i = 1 to 2 and s in [||]
-4 |   for a = -3 to 0 and r = 3 to 2 and b in [||]
-5 |   for s = 3 downto 2|]..
-Warning 26 [unused-var]: unused variable s.
+2 |
 - : (int * '_weak146 * int * '_weak147 * int * '_weak148) array = [||]
+Warning 26 [unused-var]: unused variable s. for s = 3 downto 2|]..
+5 | for a = -3 to 0 and r = 3 to 2 and b in [||]
+4 | for i = 1 to 2 and s in [||]
+3 | for j in [||]
 |}];;
 
 [(b, e, l, o, q)
-  for b in [e; 3; -2] and q in [2; 0; -3; 1; -3] and o in [3]
+  for e = 1 to -2 and l = -1 to -3
   when abs e mod 2 = 0
-  for e = 1 to -2 and l = -1 to -3];;
+  for b in [e; 3; -2] and q in [2; 0; -3; 1; -3] and o in [3]];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(b, e, l, o, q)
-  for b in [|e; 3; -2|] and q in [|2; 0; -3; 1; -3|] and o in [|3|]
+  for e = 1 to -2 and l = -1 to -3
   when abs e mod 2 = 0
-  for e = 1 to -2 and l = -1 to -3|];;
+  for b in [|e; 3; -2|] and q in [|2; 0; -3; 1; -3|] and o in [|3|]|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(e, i, p, y)
-  for y = 0 to 0
+  for i = 1 downto 0
   for e in [0; 3; -3; -1; -2; -1; 3] and p = 3 to i and i in [-3; 3; 3]
-  for i = 1 downto 0];;
+  for y = 0 to 0];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(e, i, p, y)
-  for y = 0 to 0
+  for i = 1 downto 0
   for e in [|0; 3; -3; -1; -2; -1; 3|] and p = 3 to i and i in [|-3; 3; 3|]
-  for i = 1 downto 0|];;
+  for y = 0 to 0|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(c, g, n, s, v, x, z)
-  when x > 0
+  for z in [1; 2; -2; -2; -1] and x = -2 to -2 and v = -3 downto -1
   for s in [3; 2; 3; -3; 0; 3; -3]
   and g = -2 downto 1
   and c in []
   and n = 0 to 2
-  for z in [1; 2; -2; -2; -1] and x = -2 to -2 and v = -3 downto -1];;
+  when x > 0];;
 [%%expect{|
 - : ('a * int * int * int * int * int * int) list = []
 |}];;
 
 [|(c, g, n, s, v, x, z)
-  when x > 0
+  for z in [|1; 2; -2; -2; -1|] and x = -2 to -2 and v = -3 downto -1
   for s in [|3; 2; 3; -3; 0; 3; -3|]
   and g = -2 downto 1
   and c in [||]
   and n = 0 to 2
-  for z in [|1; 2; -2; -2; -1|] and x = -2 to -2 and v = -3 downto -1|];;
+  when x > 0|];;
 [%%expect{|
 - : ('_weak149 * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(h, m, n, p, z)
+  for h = 3 to 2
   for z in [-2; -3; 1; 1; h; -2; 0]
   and p = 3 downto 3
   and m = -2 to 3
-  and n = -1 to -1
-  for h = 3 to 2];;
+  and n = -1 to -1];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(h, m, n, p, z)
+  for h = 3 to 2
   for z in [|-2; -3; 1; 1; h; -2; 0|]
   and p = 3 downto 3
   and m = -2 to 3
-  and n = -1 to -1
-  for h = 3 to 2|];;
+  and n = -1 to -1|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(f, i, o, r, v, x, z)
-  for o = -3 to -2 and x in [-2; -3; 0; 1; -3; 2; -1] and f = 2 to -3
+  for i = -2 to 3 and x = 1 downto -1
   for v = -3 to 3
   and r in [-3; -3; -1; 3]
   and i in []
   and z in [-2; 2; -2; x; 1]
-  for i = -2 to 3 and x = 1 downto -1];;
+  for o = -3 to -2 and x in [-2; -3; 0; 1; -3; 2; -1] and f = 2 to -3];;
 [%%expect{|
 Lines 1-7, characters 0-38:
 1 | [(f, i, o, r, v, x, z)
-2 |   for o = -3 to -2 and x in [-2; -3; 0; 1; -3; 2; -1] and f = 2 to -3
-3 |   for v = -3 to 3
-4 |   and r in [-3; -3; -1; 3]
-5 |   and i in []
-6 |   and z in [-2; 2; -2; x; 1]
-7 |   for i = -2 to 3 and x = 1 downto -1]..
-Warning 26 [unused-var]: unused variable i.
+2 |
 - : (int * 'a * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable i. for i = -2 to 3 and x = 1 downto -1]..
+7 |
+6 |   and z in [-2; 2; -2; x; 1]
+5 |   and i in []
+4 |   and r in [-3; -3; -1; 3] for v = -3 to 3
+3 | for o = -3 to -2 and x in [-2; -3; 0; 1; -3; 2; -1] and f = 2 to -3
 |}];;
 
 [|(f, i, o, r, v, x, z)
-  for o = -3 to -2 and x in [|-2; -3; 0; 1; -3; 2; -1|] and f = 2 to -3
+  for i = -2 to 3 and x = 1 downto -1
   for v = -3 to 3
   and r in [|-3; -3; -1; 3|]
   and i in [||]
   and z in [|-2; 2; -2; x; 1|]
-  for i = -2 to 3 and x = 1 downto -1|];;
+  for o = -3 to -2 and x in [|-2; -3; 0; 1; -3; 2; -1|] and f = 2 to -3|];;
 [%%expect{|
 Lines 1-7, characters 0-39:
 1 | [|(f, i, o, r, v, x, z)
-2 |   for o = -3 to -2 and x in [|-2; -3; 0; 1; -3; 2; -1|] and f = 2 to -3
-3 |   for v = -3 to 3
-4 |   and r in [|-3; -3; -1; 3|]
-5 |   and i in [||]
-6 |   and z in [|-2; 2; -2; x; 1|]
-7 |   for i = -2 to 3 and x = 1 downto -1|]..
-Warning 26 [unused-var]: unused variable i.
+2 |
 - : (int * '_weak150 * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable i. for i = -2 to 3 and x = 1 downto -1|]..
+7 |
+6 |   and z in [|-2; 2; -2; x; 1|]
+5 |   and i in [||]
+4 |   and r in [|-3; -3; -1; 3|] for v = -3 to 3
+3 | for o = -3 to -2 and x in [|-2; -3; 0; 1; -3; 2; -1|] and f = 2 to -3
 |}];;
 
 [(k, u, v) for k in [-3; 1] and u = -2 to 3 and v in [-2; 0; 2; 2]];;
@@ -11313,22 +11314,22 @@ Warning 26 [unused-var]: unused variable i.
 |}];;
 
 [(i, w, z)
-  for z in [-2; -2; -2; 3; -2]
-  for i in [0; 1; -3; 3; 1] and w = 0 downto 1 and z in []];;
+  for i in [0; 1; -3; 3; 1] and w = 0 downto 1 and z in []
+  for z in [-2; -2; -2; 3; -2]];;
 [%%expect{|
 Line 3, characters 51-52:
-3 |   for i in [0; 1; -3; 3; 1] and w = 0 downto 1 and z in []];;
+3 | for i in [0; 1; -3; 3; 1] and w = 0 downto 1 and z in []];;
                                                        ^
 Warning 26 [unused-var]: unused variable z.
 - : (int * int * int) list = []
 |}];;
 
 [|(i, w, z)
-  for z in [|-2; -2; -2; 3; -2|]
-  for i in [|0; 1; -3; 3; 1|] and w = 0 downto 1 and z in [||]|];;
+  for i in [|0; 1; -3; 3; 1|] and w = 0 downto 1 and z in [||]
+  for z in [|-2; -2; -2; 3; -2|]|];;
 [%%expect{|
 Line 3, characters 53-54:
-3 |   for i in [|0; 1; -3; 3; 1|] and w = 0 downto 1 and z in [||]|];;
+3 | for i in [|0; 1; -3; 3; 1|] and w = 0 downto 1 and z in [||]|];;
                                                          ^
 Warning 26 [unused-var]: unused variable z.
 - : (int * int * int) array = [||]
@@ -11345,40 +11346,40 @@ Warning 26 [unused-var]: unused variable z.
 |}];;
 
 [(f, h, k, m, n, q, z)
-  for h in [1; -2; 0; -3]
+  for _ in [] and k in [0] and h = 0 to 2 and f in [-2; 2; 0; -3; -3; 0; 3]
   for n = 2 downto k and q in [-1] and m = 2 downto h and z = -1 to -1
-  for _ in [] and k in [0] and h = 0 to 2 and f in [-2; 2; 0; -3; -3; 0; 3]];;
+  for h in [1; -2; 0; -3]];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(f, h, k, m, n, q, z)
-  for h in [|1; -2; 0; -3|]
-  for n = 2 downto k and q in [|-1|] and m = 2 downto h and z = -1 to -1
   for _ in [||]
   and k in [|0|]
   and h = 0 to 2
-  and f in [|-2; 2; 0; -3; -3; 0; 3|]|];;
+  and f in [|-2; 2; 0; -3; -3; 0; 3|]
+  for n = 2 downto k and q in [|-1|] and m = 2 downto h and z = -1 to -1
+  for h in [|1; -2; 0; -3|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(p, r, w)
-  for r = 3 downto -1
-  when w < 0
-  when w < 0
+  for w = 2 to -1 and _ in [0; 3; 1; 1; -1; 3; 2]
   for p = -2 downto -1
-  for w = 2 to -1 and _ in [0; 3; 1; 1; -1; 3; 2]];;
+  when w < 0
+  when w < 0
+  for r = 3 downto -1];;
 [%%expect{|
 - : (int * int * int) list = []
 |}];;
 
 [|(p, r, w)
-  for r = 3 downto -1
-  when w < 0
-  when w < 0
+  for w = 2 to -1 and _ in [|0; 3; 1; 1; -1; 3; 2|]
   for p = -2 downto -1
-  for w = 2 to -1 and _ in [|0; 3; 1; 1; -1; 3; 2|]|];;
+  when w < 0
+  when w < 0
+  for r = 3 downto -1|];;
 [%%expect{|
 - : (int * int * int) array = [||]
 |}];;
@@ -11406,55 +11407,55 @@ Warning 26 [unused-var]: unused variable z.
 |}];;
 
 [(h, m, n, r, v, z)
-  for n = -3 to 2 and m = n to -1 and r in [] and h in [-2; n; -1; 2; 1; -2; n]
-  for v in [-1; -1; 2] and n in [3; 0] and z = 1 downto 2];;
+  for v in [-1; -1; 2] and n in [3; 0] and z = 1 downto 2
+  for n = -3 to 2 and m = n to -1 and r in [] and h in [-2; n; -1; 2; 1; -2; n]];;
 [%%expect{|
 - : (int * int * int * 'a * int * int) list = []
 |}];;
 
 [|(h, m, n, r, v, z)
+  for v in [|-1; -1; 2|] and n in [|3; 0|] and z = 1 downto 2
   for n = -3 to 2
   and m = n to -1
   and r in [||]
-  and h in [|-2; n; -1; 2; 1; -2; n|]
-  for v in [|-1; -1; 2|] and n in [|3; 0|] and z = 1 downto 2|];;
+  and h in [|-2; n; -1; 2; 1; -2; n|]|];;
 [%%expect{|
 - : (int * int * int * '_weak152 * int * int) array = [||]
 |}];;
 
 [(c, k, l, t, z)
-  when z > 0
-  for c in [] and t = 2 downto 1 and k in [c; 2; l; 0; -1; 2; c]
+  for c in [3; 3; 2; -3]
   for z in [3; -2] and l in [2; -3; 3; -2] and t in [-3; -3]
-  for c in [3; 3; 2; -3]];;
+  for c in [] and t = 2 downto 1 and k in [c; 2; l; 0; -1; 2; c]
+  when z > 0];;
 [%%expect{|
 Line 4, characters 47-48:
-4 |   for z in [3; -2] and l in [2; -3; 3; -2] and t in [-3; -3]
-                                                   ^
-Warning 26 [unused-var]: unused variable t.
+4 |
 - : ('a * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable t.
+                                                   ^ for z in [3; -2] and l in [2; -3; 3; -2] and t in [-3; -3]
 |}];;
 
 [|(c, k, l, t, z)
-  when z > 0
-  for c in [||] and t = 2 downto 1 and k in [|c; 2; l; 0; -1; 2; c|]
+  for c in [|3; 3; 2; -3|]
   for z in [|3; -2|] and l in [|2; -3; 3; -2|] and t in [|-3; -3|]
-  for c in [|3; 3; 2; -3|]|];;
+  for c in [||] and t = 2 downto 1 and k in [|c; 2; l; 0; -1; 2; c|]
+  when z > 0|];;
 [%%expect{|
 Line 4, characters 51-52:
-4 |   for z in [|3; -2|] and l in [|2; -3; 3; -2|] and t in [|-3; -3|]
-                                                       ^
-Warning 26 [unused-var]: unused variable t.
+4 |
 - : ('_weak153 * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable t.
+                                                       ^ for z in [|3; -2|] and l in [|2; -3; 3; -2|] and t in [|-3; -3|]
 |}];;
 
-[(i, m) for i in [1; -3; -1; -2; -1; m; 3] for m in [2]];;
+[(i, m) for m in [2] for i in [1; -3; -1; -2; -1; m; 3]];;
 [%%expect{|
 - : (int * int) list =
 [(1, 2); (-3, 2); (-1, 2); (-2, 2); (-1, 2); (2, 2); (3, 2)]
 |}];;
 
-[|(i, m) for i in [|1; -3; -1; -2; -1; m; 3|] for m in [|2|]|];;
+[|(i, m) for m in [|2|] for i in [|1; -3; -1; -2; -1; m; 3|]|];;
 [%%expect{|
 - : (int * int) array =
 [|(1, 2); (-3, 2); (-1, 2); (-2, 2); (-1, 2); (2, 2); (3, 2)|]
@@ -11472,19 +11473,19 @@ Warning 26 [unused-var]: unused variable t.
 - : (int * int * int * int) array = [||]
 |}];;
 
-[k for k in [1; 2; -1; 2; 1; -3] for k in [0; 1; 1]];;
+[k for k in [0; 1; 1] for k in [1; 2; -1; 2; 1; -3]];;
 [%%expect{|
 Line 1, characters 37-38:
-1 | [k for k in [1; 2; -1; 2; 1; -3] for k in [0; 1; 1]];;
+1 | [k for k in [0; 1; 1] for k in [1; 2; -1; 2; 1; -3]];;
                                          ^
 Warning 26 [unused-var]: unused variable k.
 - : int list = [1; 2; -1; 2; 1; -3; 1; 2; -1; 2; 1; -3; 1; 2; -1; 2; 1; -3]
 |}];;
 
-[|k for k in [|1; 2; -1; 2; 1; -3|] for k in [|0; 1; 1|]|];;
+[|k for k in [|0; 1; 1|] for k in [|1; 2; -1; 2; 1; -3|]|];;
 [%%expect{|
 Line 1, characters 40-41:
-1 | [|k for k in [|1; 2; -1; 2; 1; -3|] for k in [|0; 1; 1|]|];;
+1 | [|k for k in [|0; 1; 1|] for k in [|1; 2; -1; 2; 1; -3|]|];;
                                             ^
 Warning 26 [unused-var]: unused variable k.
 - : int array =
@@ -11512,8 +11513,8 @@ Warning 26 [unused-var]: unused variable k.
 |}];;
 
 [(i, m, w)
-  when abs w mod 2 = 0
-  for m in [-3; -2; -3] and i = -3 to 2 and w in [1; -2; 0; 2; 2; -3]];;
+  for m in [-3; -2; -3] and i = -3 to 2 and w in [1; -2; 0; 2; 2; -3]
+  when abs w mod 2 = 0];;
 [%%expect{|
 - : (int * int * int) list =
 [(-3, -3, -2); (-3, -3, 0); (-3, -3, 2); (-3, -3, 2); (-2, -3, -2);
@@ -11532,8 +11533,8 @@ Warning 26 [unused-var]: unused variable k.
 |}];;
 
 [|(i, m, w)
-  when abs w mod 2 = 0
-  for m in [|-3; -2; -3|] and i = -3 to 2 and w in [|1; -2; 0; 2; 2; -3|]|];;
+  for m in [|-3; -2; -3|] and i = -3 to 2 and w in [|1; -2; 0; 2; 2; -3|]
+  when abs w mod 2 = 0|];;
 [%%expect{|
 - : (int * int * int) array =
 [|(-3, -3, -2); (-3, -3, 0); (-3, -3, 2); (-3, -3, 2); (-2, -3, -2);
@@ -11552,54 +11553,54 @@ Warning 26 [unused-var]: unused variable k.
   (2, -3, 2)|]
 |}];;
 
-[(q, x) for x = -3 to 1 for q = 0 downto 1];;
+[(q, x) for q = 0 downto 1 for x = -3 to 1];;
 [%%expect{|
 - : (int * int) list = []
 |}];;
 
-[|(q, x) for x = -3 to 1 for q = 0 downto 1|];;
+[|(q, x) for q = 0 downto 1 for x = -3 to 1|];;
 [%%expect{|
 - : (int * int) array = [||]
 |}];;
 
 [(h, k, l, o, x)
+  for l in [] and h = 3 downto 1
+  when abs l mod 2 = 1
   for o in [-1; 0; -1; 1; 0; -2]
   and k = 2 to -1
   and _ = 2 downto h
-  and x = l downto 0
-  when abs l mod 2 = 1
-  for l in [] and h = 3 downto 1];;
+  and x = l downto 0];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(h, k, l, o, x)
+  for l in [||] and h = 3 downto 1
+  when abs l mod 2 = 1
   for o in [|-1; 0; -1; 1; 0; -2|]
   and k = 2 to -1
   and _ = 2 downto h
-  and x = l downto 0
-  when abs l mod 2 = 1
-  for l in [||] and h = 3 downto 1|];;
+  and x = l downto 0|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(d, f, j, z)
-  when j < 0
-  for z = -1 downto -2 and d = j downto f
-  for _ in [3; 3; 1; 1; -3; j; 2]
+  for j = 2 downto -3
   for f in []
-  for j = 2 downto -3];;
+  for _ in [3; 3; 1; 1; -3; j; 2]
+  for z = -1 downto -2 and d = j downto f
+  when j < 0];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(d, f, j, z)
-  when j < 0
-  for z = -1 downto -2 and d = j downto f
-  for _ in [|3; 3; 1; 1; -3; j; 2|]
+  for j = 2 downto -3
   for f in [||]
-  for j = 2 downto -3|];;
+  for _ in [|3; 3; 1; 1; -3; j; 2|]
+  for z = -1 downto -2 and d = j downto f
+  when j < 0|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
@@ -11625,97 +11626,97 @@ Warning 26 [unused-var]: unused variable k.
 |}];;
 
 [(g, k, o, p, q, s, w, x)
-  for s = -2 to 3
-  for w = x downto 0 and o in [2; 3; 0; -3; 1; -3] and _ = 1 downto 0
+  for x = 0 to 3 and g in [0; 2; -3; 1; 3; -2]
   for k = -3 downto -1 and q = x downto 1 and p = x to 2
-  for x = 0 to 3 and g in [0; 2; -3; 1; 3; -2]];;
+  for w = x downto 0 and o in [2; 3; 0; -3; 1; -3] and _ = 1 downto 0
+  for s = -2 to 3];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(g, k, o, p, q, s, w, x)
-  for s = -2 to 3
-  for w = x downto 0 and o in [|2; 3; 0; -3; 1; -3|] and _ = 1 downto 0
+  for x = 0 to 3 and g in [|0; 2; -3; 1; 3; -2|]
   for k = -3 downto -1 and q = x downto 1 and p = x to 2
-  for x = 0 to 3 and g in [|0; 2; -3; 1; 3; -2|]|];;
+  for w = x downto 0 and o in [|2; 3; 0; -3; 1; -3|] and _ = 1 downto 0
+  for s = -2 to 3|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(a, b, f, h, i, x, z)
+  for h = -3 downto 1 and z = -2 downto -1 and a = -2 to -3
+  for x in [3; 0; 1] and b in [-1; 1; -1; 0; 2; 3]
   for f = 0 downto 3
   and h in [0; 2; 2; -1; -3; 1; 2]
   and z = 1 to 1
-  and i = 1 downto -3
-  for x in [3; 0; 1] and b in [-1; 1; -1; 0; 2; 3]
-  for h = -3 downto 1 and z = -2 downto -1 and a = -2 to -3];;
+  and i = 1 downto -3];;
 [%%expect{|
 Lines 1-7, characters 0-60:
 1 | [(a, b, f, h, i, x, z)
-2 |   for f = 0 downto 3
-3 |   and h in [0; 2; 2; -1; -3; 1; 2]
-4 |   and z = 1 to 1
-5 |   and i = 1 downto -3
-6 |   for x in [3; 0; 1] and b in [-1; 1; -1; 0; 2; 3]
-7 |   for h = -3 downto 1 and z = -2 downto -1 and a = -2 to -3]..
-Warning 26 [unused-var]: unused variable z.
-Lines 1-7, characters 0-60:
-1 | [(a, b, f, h, i, x, z)
-2 |   for f = 0 downto 3
-3 |   and h in [0; 2; 2; -1; -3; 1; 2]
-4 |   and z = 1 to 1
-5 |   and i = 1 downto -3
-6 |   for x in [3; 0; 1] and b in [-1; 1; -1; 0; 2; 3]
-7 |   for h = -3 downto 1 and z = -2 downto -1 and a = -2 to -3]..
-Warning 26 [unused-var]: unused variable h.
+2 |
 - : (int * int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable h. for h = -3 downto 1 and z = -2 downto -1 and a = -2 to -3]..
+7 | for x in [3; 0; 1] and b in [-1; 1; -1; 0; 2; 3]
+6 |
+5 |   and i = 1 downto -3
+4 |   and z = 1 to 1
+3 |   and h in [0; 2; 2; -1; -3; 1; 2] for f = 0 downto 3
+2 |
+1 | [(a, b, f, h, i, x, z)
+Lines 1-7, characters 0-60:
+Warning 26 [unused-var]: unused variable z. for h = -3 downto 1 and z = -2 downto -1 and a = -2 to -3]..
+7 | for x in [3; 0; 1] and b in [-1; 1; -1; 0; 2; 3]
+6 |
+5 |   and i = 1 downto -3
+4 |   and z = 1 to 1
+3 |   and h in [0; 2; 2; -1; -3; 1; 2] for f = 0 downto 3
 |}];;
 
 [|(a, b, f, h, i, x, z)
+  for h = -3 downto 1 and z = -2 downto -1 and a = -2 to -3
+  for x in [|3; 0; 1|] and b in [|-1; 1; -1; 0; 2; 3|]
   for f = 0 downto 3
   and h in [|0; 2; 2; -1; -3; 1; 2|]
   and z = 1 to 1
-  and i = 1 downto -3
-  for x in [|3; 0; 1|] and b in [|-1; 1; -1; 0; 2; 3|]
-  for h = -3 downto 1 and z = -2 downto -1 and a = -2 to -3|];;
+  and i = 1 downto -3|];;
 [%%expect{|
 Lines 1-7, characters 0-61:
 1 | [|(a, b, f, h, i, x, z)
-2 |   for f = 0 downto 3
-3 |   and h in [|0; 2; 2; -1; -3; 1; 2|]
-4 |   and z = 1 to 1
-5 |   and i = 1 downto -3
-6 |   for x in [|3; 0; 1|] and b in [|-1; 1; -1; 0; 2; 3|]
-7 |   for h = -3 downto 1 and z = -2 downto -1 and a = -2 to -3|]..
-Warning 26 [unused-var]: unused variable z.
-Lines 1-7, characters 0-61:
-1 | [|(a, b, f, h, i, x, z)
-2 |   for f = 0 downto 3
-3 |   and h in [|0; 2; 2; -1; -3; 1; 2|]
-4 |   and z = 1 to 1
-5 |   and i = 1 downto -3
-6 |   for x in [|3; 0; 1|] and b in [|-1; 1; -1; 0; 2; 3|]
-7 |   for h = -3 downto 1 and z = -2 downto -1 and a = -2 to -3|]..
-Warning 26 [unused-var]: unused variable h.
+2 |
 - : (int * int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable h. for h = -3 downto 1 and z = -2 downto -1 and a = -2 to -3|]..
+7 | for x in [|3; 0; 1|] and b in [|-1; 1; -1; 0; 2; 3|]
+6 |
+5 |   and i = 1 downto -3
+4 |   and z = 1 to 1
+3 |   and h in [|0; 2; 2; -1; -3; 1; 2|] for f = 0 downto 3
+2 |
+1 | [|(a, b, f, h, i, x, z)
+Lines 1-7, characters 0-61:
+Warning 26 [unused-var]: unused variable z. for h = -3 downto 1 and z = -2 downto -1 and a = -2 to -3|]..
+7 | for x in [|3; 0; 1|] and b in [|-1; 1; -1; 0; 2; 3|]
+6 |
+5 |   and i = 1 downto -3
+4 |   and z = 1 to 1
+3 |   and h in [|0; 2; 2; -1; -3; 1; 2|] for f = 0 downto 3
 |}];;
 
 [(d, i, m, n, q)
-  for d = 2 downto -3 and i in [q; 3; 2; -3; -1; 1; -1]
-  when q > 0
-  when m < 0
+  for q in [] and n = 2 to 0
   for m = -1 downto 3
-  for q in [] and n = 2 to 0];;
+  when m < 0
+  when q > 0
+  for d = 2 downto -3 and i in [q; 3; 2; -3; -1; 1; -1]];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(d, i, m, n, q)
-  for d = 2 downto -3 and i in [|q; 3; 2; -3; -1; 1; -1|]
-  when q > 0
-  when m < 0
+  for q in [||] and n = 2 to 0
   for m = -1 downto 3
-  for q in [||] and n = 2 to 0|];;
+  when m < 0
+  when q > 0
+  for d = 2 downto -3 and i in [|q; 3; 2; -3; -1; 1; -1|]|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
@@ -11759,46 +11760,46 @@ Warning 26 [unused-var]: unused variable h.
 |}];;
 
 [(f, g, i, j, m, q, v, w, x)
+  for q = -1 to 2 and w in [-2; 3; 3] and i in [] and x in [1]
+  for m = 1 to -1 and j in [2; 1; 0; 1; 3]
   for v = 3 downto 1
   and m in [1; 3; 2]
   and f in [1; 0; 2; -1]
-  and g = -2 downto 1
-  for m = 1 to -1 and j in [2; 1; 0; 1; 3]
-  for q = -1 to 2 and w in [-2; 3; 3] and i in [] and x in [1]];;
+  and g = -2 downto 1];;
 [%%expect{|
 Lines 1-7, characters 0-63:
 1 | [(f, g, i, j, m, q, v, w, x)
-2 |   for v = 3 downto 1
-3 |   and m in [1; 3; 2]
-4 |   and f in [1; 0; 2; -1]
-5 |   and g = -2 downto 1
-6 |   for m = 1 to -1 and j in [2; 1; 0; 1; 3]
-7 |   for q = -1 to 2 and w in [-2; 3; 3] and i in [] and x in [1]]..
-Warning 26 [unused-var]: unused variable m.
+2 |
 - : (int * int * 'a * int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable m. for q = -1 to 2 and w in [-2; 3; 3] and i in [] and x in [1]]..
+7 | for m = 1 to -1 and j in [2; 1; 0; 1; 3]
+6 |
+5 |   and g = -2 downto 1
+4 |   and f in [1; 0; 2; -1]
+3 |   and m in [1; 3; 2] for v = 3 downto 1
 |}];;
 
 [|(f, g, i, j, m, q, v, w, x)
+  for q = -1 to 2 and w in [|-2; 3; 3|] and i in [||] and x in [|1|]
+  for m = 1 to -1 and j in [|2; 1; 0; 1; 3|]
   for v = 3 downto 1
   and m in [|1; 3; 2|]
   and f in [|1; 0; 2; -1|]
-  and g = -2 downto 1
-  for m = 1 to -1 and j in [|2; 1; 0; 1; 3|]
-  for q = -1 to 2 and w in [|-2; 3; 3|] and i in [||] and x in [|1|]|];;
+  and g = -2 downto 1|];;
 [%%expect{|
 Lines 1-7, characters 0-70:
 1 | [|(f, g, i, j, m, q, v, w, x)
-2 |   for v = 3 downto 1
-3 |   and m in [|1; 3; 2|]
-4 |   and f in [|1; 0; 2; -1|]
-5 |   and g = -2 downto 1
-6 |   for m = 1 to -1 and j in [|2; 1; 0; 1; 3|]
-7 |   for q = -1 to 2 and w in [|-2; 3; 3|] and i in [||] and x in [|1|]|]..
-Warning 26 [unused-var]: unused variable m.
+2 |
 - : (int * int * '_weak154 * int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable m. for q = -1 to 2 and w in [|-2; 3; 3|] and i in [||] and x in [|1|]|]..
+7 | for m = 1 to -1 and j in [|2; 1; 0; 1; 3|]
+6 |
+5 |   and g = -2 downto 1
+4 |   and f in [|1; 0; 2; -1|]
+3 |   and m in [|1; 3; 2|] for v = 3 downto 1
 |}];;
 
-[(b, n) for b in [0; -2; -3; -3] when n < 0 for n in [-1; -3; -2; -2]];;
+[(b, n) for n in [-1; -3; -2; -2] when n < 0 for b in [0; -2; -3; -3]];;
 [%%expect{|
 - : (int * int) list =
 [(0, -1); (-2, -1); (-3, -1); (-3, -1); (0, -3); (-2, -3); (-3, -3);
@@ -11806,7 +11807,7 @@ Warning 26 [unused-var]: unused variable m.
  (-3, -2); (-3, -2)]
 |}];;
 
-[|(b, n) for b in [|0; -2; -3; -3|] when n < 0 for n in [|-1; -3; -2; -2|]|];;
+[|(b, n) for n in [|-1; -3; -2; -2|] when n < 0 for b in [|0; -2; -3; -3|]|];;
 [%%expect{|
 - : (int * int) array =
 [|(0, -1); (-2, -1); (-3, -1); (-3, -1); (0, -3); (-2, -3); (-3, -3);
@@ -11815,33 +11816,33 @@ Warning 26 [unused-var]: unused variable m.
 |}];;
 
 [(c, d, r, v, z)
-  when d > 0
-  for z = -1 to 2 and v = 1 downto -1
+  for c in [-1] and r = 0 downto 0
   for d = 2 to c
-  for c in [-1] and r = 0 downto 0];;
+  for z = -1 to 2 and v = 1 downto -1
+  when d > 0];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(c, d, r, v, z)
-  when d > 0
-  for z = -1 to 2 and v = 1 downto -1
+  for c in [|-1|] and r = 0 downto 0
   for d = 2 to c
-  for c in [|-1|] and r = 0 downto 0|];;
+  for z = -1 to 2 and v = 1 downto -1
+  when d > 0|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(e, h, l, m, p, s, u)
+  for p in [-3; -2; 0; 0; 2]
+  and l in [1; 0; -1; -1; 1]
+  and e in [0; -3; 3; 3; -1; 3]
+  and m = 3 to 2
   for h in [2; 2; e; 1; e]
   and l = -3 downto 1
   and u = -2 to 3
   and s = -3 downto -3
-  and _ in [3; -3; -3; 3; 1]
-  for p in [-3; -2; 0; 0; 2]
-  and l in [1; 0; -1; -1; 1]
-  and e in [0; -3; 3; 3; -1; 3]
-  and m = 3 to 2];;
+  and _ in [3; -3; -3; 3; 1]];;
 [%%expect{|
 Line 8, characters 6-7:
 8 |   and l in [1; 0; -1; -1; 1]
@@ -11851,15 +11852,15 @@ Warning 26 [unused-var]: unused variable l.
 |}];;
 
 [|(e, h, l, m, p, s, u)
+  for p in [|-3; -2; 0; 0; 2|]
+  and l in [|1; 0; -1; -1; 1|]
+  and e in [|0; -3; 3; 3; -1; 3|]
+  and m = 3 to 2
   for h in [|2; 2; e; 1; e|]
   and l = -3 downto 1
   and u = -2 to 3
   and s = -3 downto -3
-  and _ in [|3; -3; -3; 3; 1|]
-  for p in [|-3; -2; 0; 0; 2|]
-  and l in [|1; 0; -1; -1; 1|]
-  and e in [|0; -3; 3; 3; -1; 3|]
-  and m = 3 to 2|];;
+  and _ in [|3; -3; -3; 3; 1|]|];;
 [%%expect{|
 Line 8, characters 6-7:
 8 |   and l in [|1; 0; -1; -1; 1|]
@@ -11869,43 +11870,43 @@ Warning 26 [unused-var]: unused variable l.
 |}];;
 
 [(f, h, l, m, t, u, z)
-  for u = -1 downto -1
+  for u = 1 to 1 and l = -3 downto 1 and h in [1]
   for f in [-1; -3; 0; -1; -1; 3; 1]
   and t = 1 downto 1
   and z = -2 downto 2
   and m in [h; 2; -3]
-  for u = 1 to 1 and l = -3 downto 1 and h in [1]];;
+  for u = -1 downto -1];;
 [%%expect{|
 Lines 1-7, characters 0-50:
 1 | [(f, h, l, m, t, u, z)
-2 |   for u = -1 downto -1
-3 |   for f in [-1; -3; 0; -1; -1; 3; 1]
-4 |   and t = 1 downto 1
-5 |   and z = -2 downto 2
-6 |   and m in [h; 2; -3]
-7 |   for u = 1 to 1 and l = -3 downto 1 and h in [1]]..
-Warning 26 [unused-var]: unused variable u.
+2 |
 - : (int * int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable u. for u = 1 to 1 and l = -3 downto 1 and h in [1]]..
+7 |
+6 |   and m in [h; 2; -3]
+5 |   and z = -2 downto 2
+4 |   and t = 1 downto 1 for f in [-1; -3; 0; -1; -1; 3; 1]
+3 | for u = -1 downto -1
 |}];;
 
 [|(f, h, l, m, t, u, z)
-  for u = -1 downto -1
+  for u = 1 to 1 and l = -3 downto 1 and h in [|1|]
   for f in [|-1; -3; 0; -1; -1; 3; 1|]
   and t = 1 downto 1
   and z = -2 downto 2
   and m in [|h; 2; -3|]
-  for u = 1 to 1 and l = -3 downto 1 and h in [|1|]|];;
+  for u = -1 downto -1|];;
 [%%expect{|
 Lines 1-7, characters 0-53:
 1 | [|(f, h, l, m, t, u, z)
-2 |   for u = -1 downto -1
-3 |   for f in [|-1; -3; 0; -1; -1; 3; 1|]
-4 |   and t = 1 downto 1
-5 |   and z = -2 downto 2
-6 |   and m in [|h; 2; -3|]
-7 |   for u = 1 to 1 and l = -3 downto 1 and h in [|1|]|]..
-Warning 26 [unused-var]: unused variable u.
+2 |
 - : (int * int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable u. for u = 1 to 1 and l = -3 downto 1 and h in [|1|]|]..
+7 |
+6 |   and m in [|h; 2; -3|]
+5 |   and z = -2 downto 2
+4 |   and t = 1 downto 1 for f in [|-1; -3; 0; -1; -1; 3; 1|]
+3 | for u = -1 downto -1
 |}];;
 
 [(g, h, i, q, t)
@@ -11929,79 +11930,79 @@ Warning 26 [unused-var]: unused variable u.
 |}];;
 
 [(f, o, t)
-  when abs o mod 2 = 1
-  for o in []
-  when abs t mod 2 = 0
+  for t = -3 to 3 and _ = 3 downto 2
   for f = 1 to 3
-  for t = -3 to 3 and _ = 3 downto 2];;
+  when abs t mod 2 = 0
+  for o in []
+  when abs o mod 2 = 1];;
 [%%expect{|
 - : (int * int * int) list = []
 |}];;
 
 [|(f, o, t)
-  when abs o mod 2 = 1
-  for o in [||]
-  when abs t mod 2 = 0
+  for t = -3 to 3 and _ = 3 downto 2
   for f = 1 to 3
-  for t = -3 to 3 and _ = 3 downto 2|];;
+  when abs t mod 2 = 0
+  for o in [||]
+  when abs o mod 2 = 1|];;
 [%%expect{|
 - : (int * int * int) array = [||]
 |}];;
 
 [(h, k, q, v, z)
-  for h = -2 to 2
   for q = -1 downto 0
   and v in [1]
   and z in [3]
   and h = 2 downto -2
-  and k = 0 downto -2];;
+  and k = 0 downto -2
+  for h = -2 to 2];;
 [%%expect{|
 Lines 1-7, characters 0-22:
 1 | [(h, k, q, v, z)
-2 |   for h = -2 to 2
-3 |   for q = -1 downto 0
-4 |   and v in [1]
-5 |   and z in [3]
-6 |   and h = 2 downto -2
-7 |   and k = 0 downto -2]..
-Warning 26 [unused-var]: unused variable h.
+2 |
 - : (int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable h.
+7 |   and k = 0 downto -2]..
+6 |   and h = 2 downto -2
+5 |   and z in [3]
+4 |   and v in [1] for q = -1 downto 0
+3 | for h = -2 to 2
 |}];;
 
 [|(h, k, q, v, z)
-  for h = -2 to 2
   for q = -1 downto 0
   and v in [|1|]
   and z in [|3|]
   and h = 2 downto -2
-  and k = 0 downto -2|];;
+  and k = 0 downto -2
+  for h = -2 to 2|];;
 [%%expect{|
 Lines 1-7, characters 0-23:
 1 | [|(h, k, q, v, z)
-2 |   for h = -2 to 2
-3 |   for q = -1 downto 0
-4 |   and v in [|1|]
-5 |   and z in [|3|]
-6 |   and h = 2 downto -2
-7 |   and k = 0 downto -2|]..
-Warning 26 [unused-var]: unused variable h.
+2 |
 - : (int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable h.
+7 |   and k = 0 downto -2|]..
+6 |   and h = 2 downto -2
+5 |   and z in [|3|]
+4 |   and v in [|1|] for q = -1 downto 0
+3 | for h = -2 to 2
 |}];;
 
 [(b, m, n, s, w)
-  when n < 0
-  for m in [-1; 2]
+  for w in [1; 3; 1; -2]
   for s = -1 to -3 and n = 1 to -3 and b in [-2; 1; -3; 0; w]
-  for w in [1; 3; 1; -2]];;
+  for m in [-1; 2]
+  when n < 0];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(b, m, n, s, w)
-  when n < 0
-  for m in [|-1; 2|]
+  for w in [|1; 3; 1; -2|]
   for s = -1 to -3 and n = 1 to -3 and b in [|-2; 1; -3; 0; w|]
-  for w in [|1; 3; 1; -2|]|];;
+  for m in [|-1; 2|]
+  when n < 0|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
@@ -12027,187 +12028,187 @@ Warning 26 [unused-var]: unused variable h.
 |}];;
 
 [(c, m, o, u)
-  for o = -3 to -3 and u = 1 to 3
+  for m = 1 to -3 and c in [2; 2; -3; -3]
   when abs m mod 2 = 1
-  for m = 1 to -3 and c in [2; 2; -3; -3]];;
+  for o = -3 to -3 and u = 1 to 3];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(c, m, o, u)
-  for o = -3 to -3 and u = 1 to 3
+  for m = 1 to -3 and c in [|2; 2; -3; -3|]
   when abs m mod 2 = 1
-  for m = 1 to -3 and c in [|2; 2; -3; -3|]|];;
+  for o = -3 to -3 and u = 1 to 3|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(a, b, c, e, j, l, m, p)
-  for p in [3; -2; 2; -1; 1] and j in [-2; e; 0; 3; 2]
-  for b in [-2]
-  for e in []
+  for l = 2 to 0 and a in [0; 1; 2; 3; -3; 3]
   for c = 3 to -1 and m = -2 downto 1
-  for l = 2 to 0 and a in [0; 1; 2; 3; -3; 3]];;
+  for e in []
+  for b in [-2]
+  for p in [3; -2; 2; -1; 1] and j in [-2; e; 0; 3; 2]];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, b, c, e, j, l, m, p)
-  for p in [|3; -2; 2; -1; 1|] and j in [|-2; e; 0; 3; 2|]
-  for b in [|-2|]
-  for e in [||]
+  for l = 2 to 0 and a in [|0; 1; 2; 3; -3; 3|]
   for c = 3 to -1 and m = -2 downto 1
-  for l = 2 to 0 and a in [|0; 1; 2; 3; -3; 3|]|];;
+  for e in [||]
+  for b in [|-2|]
+  for p in [|3; -2; 2; -1; 1|] and j in [|-2; e; 0; 3; 2|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(d, e, i, x, z)
-  for x in [-1; 3; -1; -1; 0; 2; z]
-  for z in [-3] and e in [-3]
-  for d = -3 downto 1
+  for i in [-3; 3]
   when i <> 0
-  for i in [-3; 3]];;
+  for d = -3 downto 1
+  for z in [-3] and e in [-3]
+  for x in [-1; 3; -1; -1; 0; 2; z]];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(d, e, i, x, z)
-  for x in [|-1; 3; -1; -1; 0; 2; z|]
-  for z in [|-3|] and e in [|-3|]
-  for d = -3 downto 1
+  for i in [|-3; 3|]
   when i <> 0
-  for i in [|-3; 3|]|];;
+  for d = -3 downto 1
+  for z in [|-3|] and e in [|-3|]
+  for x in [|-1; 3; -1; -1; 0; 2; z|]|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(g, n, q, t, u, w)
-  for n in [0; -1; -2; 2; g; 3; -1]
-  for w = -2 to -2
-  for _ = 1 downto 2 and u = 3 to -1
+  for g = 2 to 0
   for t in [1; -1; 2; 2; 1; -1] and q = 3 downto 0
-  for g = 2 to 0];;
+  for _ = 1 downto 2 and u = 3 to -1
+  for w = -2 to -2
+  for n in [0; -1; -2; 2; g; 3; -1]];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(g, n, q, t, u, w)
-  for n in [|0; -1; -2; 2; g; 3; -1|]
-  for w = -2 to -2
-  for _ = 1 downto 2 and u = 3 to -1
+  for g = 2 to 0
   for t in [|1; -1; 2; 2; 1; -1|] and q = 3 downto 0
-  for g = 2 to 0|];;
+  for _ = 1 downto 2 and u = 3 to -1
+  for w = -2 to -2
+  for n in [|0; -1; -2; 2; g; 3; -1|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(a, e, l, n, q, w)
-  for q in [1] and w in [2; l; 0]
-  when abs q mod 2 = 1
+  for q in [1] and l = 3 to -3 and n in [-3; 2]
   for e = 2 downto 0 and a in [-3; -3; 1; 1; 1; q]
-  for q in [1] and l = 3 to -3 and n in [-3; 2]];;
+  when abs q mod 2 = 1
+  for q in [1] and w in [2; l; 0]];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, e, l, n, q, w)
-  for q in [|1|] and w in [|2; l; 0|]
-  when abs q mod 2 = 1
+  for q in [|1|] and l = 3 to -3 and n in [|-3; 2|]
   for e = 2 downto 0 and a in [|-3; -3; 1; 1; 1; q|]
-  for q in [|1|] and l = 3 to -3 and n in [|-3; 2|]|];;
+  when abs q mod 2 = 1
+  for q in [|1|] and w in [|2; l; 0|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
-[(e, r) when r <> 0 when r <> 0 for r in [1; 1; 3] and e in [1; -1]];;
+[(e, r) for r in [1; 1; 3] and e in [1; -1] when r <> 0 when r <> 0];;
 [%%expect{|
 - : (int * int) list = [(1, 1); (-1, 1); (1, 1); (-1, 1); (1, 3); (-1, 3)]
 |}];;
 
-[|(e, r) when r <> 0 when r <> 0 for r in [|1; 1; 3|] and e in [|1; -1|]|];;
+[|(e, r) for r in [|1; 1; 3|] and e in [|1; -1|] when r <> 0 when r <> 0|];;
 [%%expect{|
 - : (int * int) array = [|(1, 1); (-1, 1); (1, 1); (-1, 1); (1, 3); (-1, 3)|]
 |}];;
 
 [(a, o, p, y)
-  for p in [-2; 0; 0; -3; 1; 2] and o = 1 to 3 and y in []
-  for a = -2 downto 1];;
+  for a = -2 downto 1
+  for p in [-2; 0; 0; -3; 1; 2] and o = 1 to 3 and y in []];;
 [%%expect{|
 - : (int * int * int * 'a) list = []
 |}];;
 
 [|(a, o, p, y)
-  for p in [|-2; 0; 0; -3; 1; 2|] and o = 1 to 3 and y in [||]
-  for a = -2 downto 1|];;
+  for a = -2 downto 1
+  for p in [|-2; 0; 0; -3; 1; 2|] and o = 1 to 3 and y in [||]|];;
 [%%expect{|
 - : (int * int * int * '_weak155) array = [||]
 |}];;
 
 [(h, i, j, p, s, z)
-  for h = 2 to 1 and p = -2 to -3 and s = 0 downto -1
   for i in [2; 1; 1; -1; -2; 1]
   and z = 2 to 2
   and j = 1 to 1
-  and p = -1 downto -2];;
+  and p = -1 downto -2
+  for h = 2 to 1 and p = -2 to -3 and s = 0 downto -1];;
 [%%expect{|
 Lines 1-6, characters 0-23:
 1 | [(h, i, j, p, s, z)
-2 |   for h = 2 to 1 and p = -2 to -3 and s = 0 downto -1
-3 |   for i in [2; 1; 1; -1; -2; 1]
-4 |   and z = 2 to 2
-5 |   and j = 1 to 1
-6 |   and p = -1 downto -2]..
-Warning 26 [unused-var]: unused variable p.
+2 |
 - : (int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable p.
+6 |   and p = -1 downto -2]..
+5 |   and j = 1 to 1
+4 |   and z = 2 to 2 for i in [2; 1; 1; -1; -2; 1]
+3 | for h = 2 to 1 and p = -2 to -3 and s = 0 downto -1
 |}];;
 
 [|(h, i, j, p, s, z)
-  for h = 2 to 1 and p = -2 to -3 and s = 0 downto -1
   for i in [|2; 1; 1; -1; -2; 1|]
   and z = 2 to 2
   and j = 1 to 1
-  and p = -1 downto -2|];;
+  and p = -1 downto -2
+  for h = 2 to 1 and p = -2 to -3 and s = 0 downto -1|];;
 [%%expect{|
 Lines 1-6, characters 0-24:
 1 | [|(h, i, j, p, s, z)
-2 |   for h = 2 to 1 and p = -2 to -3 and s = 0 downto -1
-3 |   for i in [|2; 1; 1; -1; -2; 1|]
-4 |   and z = 2 to 2
-5 |   and j = 1 to 1
-6 |   and p = -1 downto -2|]..
-Warning 26 [unused-var]: unused variable p.
+2 |
 - : (int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable p.
+6 |   and p = -1 downto -2|]..
+5 |   and j = 1 to 1
+4 |   and z = 2 to 2 for i in [|2; 1; 1; -1; -2; 1|]
+3 | for h = 2 to 1 and p = -2 to -3 and s = 0 downto -1
 |}];;
 
 [(g, i, k, l, o, p, s, w, y)
-  for s in [3; -1] and i in [1; -2; -1; -1; -1; 2] and w = 0 downto 2
-  for p in [2; -2; 3] and o in [0; 3; -1; 0; 1; 1] and l in [1]
+  for k = -1 downto 0
   for y in [k; -2] and g in [0; -2; 2; -3; -1; -1; 1]
-  for k = -1 downto 0];;
+  for p in [2; -2; 3] and o in [0; 3; -1; 0; 1; 1] and l in [1]
+  for s in [3; -1] and i in [1; -2; -1; -1; -1; 2] and w = 0 downto 2];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(g, i, k, l, o, p, s, w, y)
-  for s in [|3; -1|] and i in [|1; -2; -1; -1; -1; 2|] and w = 0 downto 2
-  for p in [|2; -2; 3|] and o in [|0; 3; -1; 0; 1; 1|] and l in [|1|]
+  for k = -1 downto 0
   for y in [|k; -2|] and g in [|0; -2; 2; -3; -1; -1; 1|]
-  for k = -1 downto 0|];;
+  for p in [|2; -2; 3|] and o in [|0; 3; -1; 0; 1; 1|] and l in [|1|]
+  for s in [|3; -1|] and i in [|1; -2; -1; -1; -1; 2|] and w = 0 downto 2|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(i, o, p)
-  when abs p mod 2 = 0
-  for i = -3 downto -1 and o in [-3] and p = -3 downto -3];;
+  for i = -3 downto -1 and o in [-3] and p = -3 downto -3
+  when abs p mod 2 = 0];;
 [%%expect{|
 - : (int * int * int) list = []
 |}];;
 
 [|(i, o, p)
-  when abs p mod 2 = 0
-  for i = -3 downto -1 and o in [|-3|] and p = -3 downto -3|];;
+  for i = -3 downto -1 and o in [|-3|] and p = -3 downto -3
+  when abs p mod 2 = 0|];;
 [%%expect{|
 - : (int * int * int) array = [||]
 |}];;
@@ -12223,133 +12224,133 @@ Warning 26 [unused-var]: unused variable p.
 |}];;
 
 [(m, n, o, q, s, t, u, v)
-  for t = -3 downto 2
+  for o = 3 downto -2 and m = 3 to -1 and u in [1; 0] and s = 3 downto 3
   for n in [-3; -2; -3; -1] and q in [] and v = 2 downto 1
-  for o = 3 downto -2 and m = 3 to -1 and u in [1; 0] and s = 3 downto 3];;
+  for t = -3 downto 2];;
 [%%expect{|
 - : (int * int * int * 'a * int * int * int * int) list = []
 |}];;
 
 [|(m, n, o, q, s, t, u, v)
-  for t = -3 downto 2
+  for o = 3 downto -2 and m = 3 to -1 and u in [|1; 0|] and s = 3 downto 3
   for n in [|-3; -2; -3; -1|] and q in [||] and v = 2 downto 1
-  for o = 3 downto -2 and m = 3 to -1 and u in [|1; 0|] and s = 3 downto 3|];;
+  for t = -3 downto 2|];;
 [%%expect{|
 - : (int * int * int * '_weak156 * int * int * int * int) array = [||]
 |}];;
 
 [(i, o, v, z)
-  for z in [0; 3; 0; 3]
-  when i < 0
+  for v = -3 to 2 and o in [2; 0; -1; -1; -3; 0; -1] and i = -3 downto 2
   for i = v downto 1
-  for v = -3 to 2 and o in [2; 0; -1; -1; -3; 0; -1] and i = -3 downto 2];;
+  when i < 0
+  for z in [0; 3; 0; 3]];;
 [%%expect{|
 Lines 1-5, characters 0-73:
 1 | [(i, o, v, z)
-2 |   for z in [0; 3; 0; 3]
-3 |   when i < 0
-4 |   for i = v downto 1
-5 |   for v = -3 to 2 and o in [2; 0; -1; -1; -3; 0; -1] and i = -3 downto 2]..
-Warning 26 [unused-var]: unused variable i.
+2 |
 - : (int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable i. for v = -3 to 2 and o in [2; 0; -1; -1; -3; 0; -1] and i = -3 downto 2]..
+5 | for i = v downto 1
+4 | when i < 0
+3 | for z in [0; 3; 0; 3]
 |}];;
 
 [|(i, o, v, z)
-  for z in [|0; 3; 0; 3|]
-  when i < 0
+  for v = -3 to 2 and o in [|2; 0; -1; -1; -3; 0; -1|] and i = -3 downto 2
   for i = v downto 1
-  for v = -3 to 2 and o in [|2; 0; -1; -1; -3; 0; -1|] and i = -3 downto 2|];;
+  when i < 0
+  for z in [|0; 3; 0; 3|]|];;
 [%%expect{|
 Lines 1-5, characters 0-76:
 1 | [|(i, o, v, z)
-2 |   for z in [|0; 3; 0; 3|]
-3 |   when i < 0
-4 |   for i = v downto 1
-5 |   for v = -3 to 2 and o in [|2; 0; -1; -1; -3; 0; -1|] and i = -3 downto 2|]..
-Warning 26 [unused-var]: unused variable i.
+2 |
 - : (int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable i. for v = -3 to 2 and o in [|2; 0; -1; -1; -3; 0; -1|] and i = -3 downto 2|]..
+5 | for i = v downto 1
+4 | when i < 0
+3 | for z in [|0; 3; 0; 3|]
 |}];;
 
 [(d, f, p, z)
+  for f in [0; -1; -3]
   for p in [-1; 0; 3; 1; 0; f; 0]
   and d in [2; 3; 0; 1; 3; f; -2]
-  and z = -2 downto 3
-  for f in [0; -1; -3]];;
+  and z = -2 downto 3];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(d, f, p, z)
+  for f in [|0; -1; -3|]
   for p in [|-1; 0; 3; 1; 0; f; 0|]
   and d in [|2; 3; 0; 1; 3; f; -2|]
-  and z = -2 downto 3
-  for f in [|0; -1; -3|]|];;
+  and z = -2 downto 3|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(d, l, q, t, z)
-  for q in [3; 0; -2; 0; 1; -2] and z = 3 to -1 and t = 1 to 2
+  for l in [2; 3; 3; -1]
   for d in []
-  for l in [2; 3; 3; -1]];;
+  for q in [3; 0; -2; 0; 1; -2] and z = 3 to -1 and t = 1 to 2];;
 [%%expect{|
 - : ('a * int * int * int * int) list = []
 |}];;
 
 [|(d, l, q, t, z)
-  for q in [|3; 0; -2; 0; 1; -2|] and z = 3 to -1 and t = 1 to 2
+  for l in [|2; 3; 3; -1|]
   for d in [||]
-  for l in [|2; 3; 3; -1|]|];;
+  for q in [|3; 0; -2; 0; 1; -2|] and z = 3 to -1 and t = 1 to 2|];;
 [%%expect{|
 - : ('_weak157 * int * int * int * int) array = [||]
 |}];;
 
 [(a, e, f, g, i, n, q)
-  for n = 2 downto 2 and g in [0; -2; q; e; 0; -3] and _ in []
-  for e in [2; 1; 3; -3; -3; 3; -2]
+  for a = -3 to -3 and g = -3 downto -3
   for f in [-1] and i = 2 downto -1 and q in [a; -3; -3; 0; 3]
-  for a = -3 to -3 and g = -3 downto -3];;
+  for e in [2; 1; 3; -3; -3; 3; -2]
+  for n = 2 downto 2 and g in [0; -2; q; e; 0; -3] and _ in []];;
 [%%expect{|
 Lines 1-5, characters 0-40:
 1 | [(a, e, f, g, i, n, q)
-2 |   for n = 2 downto 2 and g in [0; -2; q; e; 0; -3] and _ in []
-3 |   for e in [2; 1; 3; -3; -3; 3; -2]
-4 |   for f in [-1] and i = 2 downto -1 and q in [a; -3; -3; 0; 3]
-5 |   for a = -3 to -3 and g = -3 downto -3]..
-Warning 26 [unused-var]: unused variable g.
+2 |
 - : (int * int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable g. for a = -3 to -3 and g = -3 downto -3]..
+5 | for f in [-1] and i = 2 downto -1 and q in [a; -3; -3; 0; 3]
+4 | for e in [2; 1; 3; -3; -3; 3; -2]
+3 | for n = 2 downto 2 and g in [0; -2; q; e; 0; -3] and _ in []
 |}];;
 
 [|(a, e, f, g, i, n, q)
-  for n = 2 downto 2 and g in [|0; -2; q; e; 0; -3|] and _ in [||]
-  for e in [|2; 1; 3; -3; -3; 3; -2|]
+  for a = -3 to -3 and g = -3 downto -3
   for f in [|-1|] and i = 2 downto -1 and q in [|a; -3; -3; 0; 3|]
-  for a = -3 to -3 and g = -3 downto -3|];;
+  for e in [|2; 1; 3; -3; -3; 3; -2|]
+  for n = 2 downto 2 and g in [|0; -2; q; e; 0; -3|] and _ in [||]|];;
 [%%expect{|
 Lines 1-5, characters 0-41:
 1 | [|(a, e, f, g, i, n, q)
-2 |   for n = 2 downto 2 and g in [|0; -2; q; e; 0; -3|] and _ in [||]
-3 |   for e in [|2; 1; 3; -3; -3; 3; -2|]
-4 |   for f in [|-1|] and i = 2 downto -1 and q in [|a; -3; -3; 0; 3|]
-5 |   for a = -3 to -3 and g = -3 downto -3|]..
-Warning 26 [unused-var]: unused variable g.
+2 |
 - : (int * int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable g. for a = -3 to -3 and g = -3 downto -3|]..
+5 | for f in [|-1|] and i = 2 downto -1 and q in [|a; -3; -3; 0; 3|]
+4 | for e in [|2; 1; 3; -3; -3; 3; -2|]
+3 | for n = 2 downto 2 and g in [|0; -2; q; e; 0; -3|] and _ in [||]
 |}];;
 
 [(a, h, i, k, o, z)
-  for z in [3; -1; 3; 2; 1; k] and a = 0 to a and o in [1; 1; -3; -2; -2]
-  when abs h mod 2 = 0
+  for k = 1 downto -2 and a = 1 to -1
   for _ in [] and h = 1 to -1 and i = 1 to 3
-  for k = 1 downto -2 and a = 1 to -1];;
+  when abs h mod 2 = 0
+  for z in [3; -1; 3; 2; 1; k] and a = 0 to a and o in [1; 1; -3; -2; -2]];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, h, i, k, o, z)
-  for z in [|3; -1; 3; 2; 1; k|] and a = 0 to a and o in [|1; 1; -3; -2; -2|]
-  when abs h mod 2 = 0
+  for k = 1 downto -2 and a = 1 to -1
   for _ in [||] and h = 1 to -1 and i = 1 to 3
-  for k = 1 downto -2 and a = 1 to -1|];;
+  when abs h mod 2 = 0
+  for z in [|3; -1; 3; 2; 1; k|] and a = 0 to a and o in [|1; 1; -3; -2; -2|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
@@ -12377,12 +12378,12 @@ Warning 26 [unused-var]: unused variable g.
 |}];;
 
 [(w, z)
-  when z > 0
+  for w in [0]
   for w in [2; -1; 3; -2; 3] and z in [-3; 1; 3; 1]
-  for w in [0]];;
+  when z > 0];;
 [%%expect{|
 Line 4, characters 6-7:
-4 |   for w in [0]];;
+4 | for w in [0]];;
           ^
 Warning 26 [unused-var]: unused variable w.
 - : (int * int) list =
@@ -12391,12 +12392,12 @@ Warning 26 [unused-var]: unused variable w.
 |}];;
 
 [|(w, z)
-  when z > 0
+  for w in [|0|]
   for w in [|2; -1; 3; -2; 3|] and z in [|-3; 1; 3; 1|]
-  for w in [|0|]|];;
+  when z > 0|];;
 [%%expect{|
 Line 4, characters 6-7:
-4 |   for w in [|0|]|];;
+4 | for w in [|0|]|];;
           ^
 Warning 26 [unused-var]: unused variable w.
 - : (int * int) array =
@@ -12405,24 +12406,24 @@ Warning 26 [unused-var]: unused variable w.
 |}];;
 
 [(a, l, r, s, z)
-  for z = s to -2
+  for l = 1 downto -3 and s in [0; 0; 1; 2] and a in [0; 1] and r in []
   for s in [2; -2; 3; l]
-  for l = 1 downto -3 and s in [0; 0; 1; 2] and a in [0; 1] and r in []];;
+  for z = s to -2];;
 [%%expect{|
 Line 4, characters 26-27:
-4 |   for l = 1 downto -3 and s in [0; 0; 1; 2] and a in [0; 1] and r in []];;
+4 | for l = 1 downto -3 and s in [0; 0; 1; 2] and a in [0; 1] and r in []];;
                               ^
 Warning 26 [unused-var]: unused variable s.
 - : (int * int * 'a * int * int) list = []
 |}];;
 
 [|(a, l, r, s, z)
-  for z = s to -2
-  for s in [|2; -2; 3; l|]
   for l = 1 downto -3
   and s in [|0; 0; 1; 2|]
   and a in [|0; 1|]
-  and r in [||]|];;
+  and r in [||]
+  for s in [|2; -2; 3; l|]
+  for z = s to -2|];;
 [%%expect{|
 Line 5, characters 6-7:
 5 |   and s in [|0; 0; 1; 2|]
@@ -12432,211 +12433,211 @@ Warning 26 [unused-var]: unused variable s.
 |}];;
 
 [(e, h, o)
-  for _ = -3 downto -1 and o = -2 downto 1 and h = -3 to 3
+  for o in [1; -3; -3; 0] and e in [3; 1; 0; 3; 3; -3]
   when o <> 0
-  for o in [1; -3; -3; 0] and e in [3; 1; 0; 3; 3; -3]];;
+  for _ = -3 downto -1 and o = -2 downto 1 and h = -3 to 3];;
 [%%expect{|
 - : (int * int * int) list = []
 |}];;
 
 [|(e, h, o)
-  for _ = -3 downto -1 and o = -2 downto 1 and h = -3 to 3
+  for o in [|1; -3; -3; 0|] and e in [|3; 1; 0; 3; 3; -3|]
   when o <> 0
-  for o in [|1; -3; -3; 0|] and e in [|3; 1; 0; 3; 3; -3|]|];;
+  for _ = -3 downto -1 and o = -2 downto 1 and h = -3 to 3|];;
 [%%expect{|
 - : (int * int * int) array = [||]
 |}];;
 
 [(a, b, m, x)
-  when a <> 0
+  for x in [-1; 2; 0] and a = 2 to -3
   for m in [-2; 1; x; -1; 3; 3; -1] and b in [x; 0]
-  for x in [-1; 2; 0] and a = 2 to -3];;
+  when a <> 0];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(a, b, m, x)
-  when a <> 0
+  for x in [|-1; 2; 0|] and a = 2 to -3
   for m in [|-2; 1; x; -1; 3; 3; -1|] and b in [|x; 0|]
-  for x in [|-1; 2; 0|] and a = 2 to -3|];;
+  when a <> 0|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(b, c, e, o, t)
-  for o in [-2; -3; 0] and c in [3; -2; -3; -2; -2; -3; 3] and b in []
-  when e < 0
+  for t in [1]
   for e in [0]
-  for t in [1]];;
+  when e < 0
+  for o in [-2; -3; 0] and c in [3; -2; -3; -2; -2; -3; 3] and b in []];;
 [%%expect{|
 - : ('a * int * int * int * int) list = []
 |}];;
 
 [|(b, c, e, o, t)
-  for o in [|-2; -3; 0|] and c in [|3; -2; -3; -2; -2; -3; 3|] and b in [||]
-  when e < 0
+  for t in [|1|]
   for e in [|0|]
-  for t in [|1|]|];;
+  when e < 0
+  for o in [|-2; -3; 0|] and c in [|3; -2; -3; -2; -2; -3; 3|] and b in [||]|];;
 [%%expect{|
 - : ('_weak160 * int * int * int * int) array = [||]
 |}];;
 
 [(c, g, j, s, x, y)
-  when abs c mod 2 = 0
-  for s = 3 to 3
-  for x = 2 to -3 and g in [2; -1; -1; j; 0; -3]
+  for y = -1 to -1 and j in []
   for _ in [-2; 2; -1; 2; -2] and c = 1 to 0
-  for y = -1 to -1 and j in []];;
+  for x = 2 to -3 and g in [2; -1; -1; j; 0; -3]
+  for s = 3 to 3
+  when abs c mod 2 = 0];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(c, g, j, s, x, y)
-  when abs c mod 2 = 0
-  for s = 3 to 3
-  for x = 2 to -3 and g in [|2; -1; -1; j; 0; -3|]
+  for y = -1 to -1 and j in [||]
   for _ in [|-2; 2; -1; 2; -2|] and c = 1 to 0
-  for y = -1 to -1 and j in [||]|];;
+  for x = 2 to -3 and g in [|2; -1; -1; j; 0; -3|]
+  for s = 3 to 3
+  when abs c mod 2 = 0|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(d, e, f, i, m, q, v, w)
-  for q = 1 downto 3
-  and m in [-3; 2]
-  and v = -2 downto -1
-  and d in [-1; 1; 3; -2; e; 3]
-  and f = 2 to -2
   for e in []
   and q in []
   and v = 1 to -2
   and i = 2 downto 0
-  and w in [3; -3; 3; 0; 1]];;
+  and w in [3; -3; 3; 0; 1]
+  for q = 1 downto 3
+  and m in [-3; 2]
+  and v = -2 downto -1
+  and d in [-1; 1; 3; -2; e; 3]
+  and f = 2 to -2];;
 [%%expect{|
 Lines 1-11, characters 0-28:
  1 | [(d, e, f, i, m, q, v, w)
- 2 |   for q = 1 downto 3
- 3 |   and m in [-3; 2]
- 4 |   and v = -2 downto -1
- 5 |   and d in [-1; 1; 3; -2; e; 3]
-...
- 8 |   and q in []
- 9 |   and v = 1 to -2
-10 |   and i = 2 downto 0
-11 |   and w in [3; -3; 3; 0; 1]]..
-Warning 26 [unused-var]: unused variable v.
-Line 8, characters 6-7:
-8 |   and q in []
-          ^
-Warning 26 [unused-var]: unused variable q.
+ 2 |
 - : (int * int * int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable q.
+          ^
+8 |   and q in []
+Line 8, characters 6-7:
+Warning 26 [unused-var]: unused variable v.
+11 |   and w in [3; -3; 3; 0; 1]]..
+10 |   and i = 2 downto 0
+ 9 |   and v = 1 to -2
+ 8 |   and q in []
+...
+ 5 |   and d in [-1; 1; 3; -2; e; 3]
+ 4 |   and v = -2 downto -1
+ 3 |   and m in [-3; 2] for q = 1 downto 3
 |}];;
 
 [|(d, e, f, i, m, q, v, w)
-  for q = 1 downto 3
-  and m in [|-3; 2|]
-  and v = -2 downto -1
-  and d in [|-1; 1; 3; -2; e; 3|]
-  and f = 2 to -2
   for e in [||]
   and q in [||]
   and v = 1 to -2
   and i = 2 downto 0
-  and w in [|3; -3; 3; 0; 1|]|];;
+  and w in [|3; -3; 3; 0; 1|]
+  for q = 1 downto 3
+  and m in [|-3; 2|]
+  and v = -2 downto -1
+  and d in [|-1; 1; 3; -2; e; 3|]
+  and f = 2 to -2|];;
 [%%expect{|
 Lines 1-11, characters 0-31:
  1 | [|(d, e, f, i, m, q, v, w)
- 2 |   for q = 1 downto 3
- 3 |   and m in [|-3; 2|]
- 4 |   and v = -2 downto -1
- 5 |   and d in [|-1; 1; 3; -2; e; 3|]
-...
- 8 |   and q in [||]
- 9 |   and v = 1 to -2
-10 |   and i = 2 downto 0
-11 |   and w in [|3; -3; 3; 0; 1|]|]..
-Warning 26 [unused-var]: unused variable v.
-Line 8, characters 6-7:
-8 |   and q in [||]
-          ^
-Warning 26 [unused-var]: unused variable q.
+ 2 |
 - : (int * int * int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable q.
+          ^
+8 |   and q in [||]
+Line 8, characters 6-7:
+Warning 26 [unused-var]: unused variable v.
+11 |   and w in [|3; -3; 3; 0; 1|]|]..
+10 |   and i = 2 downto 0
+ 9 |   and v = 1 to -2
+ 8 |   and q in [||]
+...
+ 5 |   and d in [|-1; 1; 3; -2; e; 3|]
+ 4 |   and v = -2 downto -1
+ 3 |   and m in [|-3; 2|] for q = 1 downto 3
 |}];;
 
 [(c, d, g, k, l, n, p, q, y)
-  for y in [2; n; 0] and d = n to q
-  for p = -2 downto 1
-  for g in [2] and k in [-1; -2; -1; q; -3; -2; c]
+  for l in [1; -2; -1; 3; -1] and n = 0 downto -2
   for c = 0 to n and q = 1 to 3
-  for l in [1; -2; -1; 3; -1] and n = 0 downto -2];;
+  for g in [2] and k in [-1; -2; -1; q; -3; -2; c]
+  for p = -2 downto 1
+  for y in [2; n; 0] and d = n to q];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(c, d, g, k, l, n, p, q, y)
-  for y in [|2; n; 0|] and d = n to q
-  for p = -2 downto 1
-  for g in [|2|] and k in [|-1; -2; -1; q; -3; -2; c|]
+  for l in [|1; -2; -1; 3; -1|] and n = 0 downto -2
   for c = 0 to n and q = 1 to 3
-  for l in [|1; -2; -1; 3; -1|] and n = 0 downto -2|];;
+  for g in [|2|] and k in [|-1; -2; -1; q; -3; -2; c|]
+  for p = -2 downto 1
+  for y in [|2; n; 0|] and d = n to q|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(m, z)
-  for m in [-3; -3; -3; -2; -1] and z = 3 downto 3
-  when m < 0
-  when abs z mod 2 = 0
+  for z in [-3; 0; 2]
   for m = 0 to 2
-  for z in [-3; 0; 2]];;
+  when abs z mod 2 = 0
+  when m < 0
+  for m in [-3; -3; -3; -2; -1] and z = 3 downto 3];;
 [%%expect{|
 - : (int * int) list = []
 |}];;
 
 [|(m, z)
-  for m in [|-3; -3; -3; -2; -1|] and z = 3 downto 3
-  when m < 0
-  when abs z mod 2 = 0
+  for z in [|-3; 0; 2|]
   for m = 0 to 2
-  for z in [|-3; 0; 2|]|];;
+  when abs z mod 2 = 0
+  when m < 0
+  for m in [|-3; -3; -3; -2; -1|] and z = 3 downto 3|];;
 [%%expect{|
 - : (int * int) array = [||]
 |}];;
 
 [(e, n, p)
-  when abs e mod 2 = 1
-  for p = 0 to -2
-  when n > 0
+  for p = -1 downto -2 and n = 3 downto -3
   for e in []
-  for p = -1 downto -2 and n = 3 downto -3];;
+  when n > 0
+  for p = 0 to -2
+  when abs e mod 2 = 1];;
 [%%expect{|
 Lines 1-6, characters 0-43:
 1 | [(e, n, p)
-2 |   when abs e mod 2 = 1
-3 |   for p = 0 to -2
-4 |   when n > 0
-5 |   for e in []
-6 |   for p = -1 downto -2 and n = 3 downto -3]..
-Warning 26 [unused-var]: unused variable p.
+2 |
 - : (int * int * int) list = []
+Warning 26 [unused-var]: unused variable p. for p = -1 downto -2 and n = 3 downto -3]..
+6 | for e in []
+5 | when n > 0
+4 | for p = 0 to -2
+3 | when abs e mod 2 = 1
 |}];;
 
 [|(e, n, p)
-  when abs e mod 2 = 1
-  for p = 0 to -2
-  when n > 0
+  for p = -1 downto -2 and n = 3 downto -3
   for e in [||]
-  for p = -1 downto -2 and n = 3 downto -3|];;
+  when n > 0
+  for p = 0 to -2
+  when abs e mod 2 = 1|];;
 [%%expect{|
 Lines 1-6, characters 0-44:
 1 | [|(e, n, p)
-2 |   when abs e mod 2 = 1
-3 |   for p = 0 to -2
-4 |   when n > 0
-5 |   for e in [||]
-6 |   for p = -1 downto -2 and n = 3 downto -3|]..
-Warning 26 [unused-var]: unused variable p.
+2 |
 - : (int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable p. for p = -1 downto -2 and n = 3 downto -3|]..
+6 | for e in [||]
+5 | when n > 0
+4 | for p = 0 to -2
+3 | when abs e mod 2 = 1
 |}];;
 
 [(m, n, q, s)
@@ -12676,37 +12677,37 @@ Warning 26 [unused-var]: unused variable p.
 |}];;
 
 [(f, h, m, n, o, r, t, v)
-  for f = 0 downto 1 and o = -2 downto -3 and n = -3 to 1
-  for v in [3] and h = -1 to 3 and m = -1 downto -2
+  for r = -3 downto 3 and n in [3; -2; -3; 3] and t in [-2; -1]
   for f in [t; -1; -2; 2; -1; 1; -3]
-  for r = -3 downto 3 and n in [3; -2; -3; 3] and t in [-2; -1]];;
+  for v in [3] and h = -1 to 3 and m = -1 downto -2
+  for f = 0 downto 1 and o = -2 downto -3 and n = -3 to 1];;
 [%%expect{|
 Line 5, characters 26-27:
-5 |   for r = -3 downto 3 and n in [3; -2; -3; 3] and t in [-2; -1]];;
+5 | for r = -3 downto 3 and n in [3; -2; -3; 3] and t in [-2; -1]];;
                               ^
 Warning 26 [unused-var]: unused variable n.
 Line 4, characters 6-7:
-4 |   for f in [t; -1; -2; 2; -1; 1; -3]
-          ^
-Warning 26 [unused-var]: unused variable f.
+4 |
 - : (int * int * int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable f.
+          ^ for f in [t; -1; -2; 2; -1; 1; -3]
 |}];;
 
 [|(f, h, m, n, o, r, t, v)
-  for f = 0 downto 1 and o = -2 downto -3 and n = -3 to 1
-  for v in [|3|] and h = -1 to 3 and m = -1 downto -2
+  for r = -3 downto 3 and n in [|3; -2; -3; 3|] and t in [|-2; -1|]
   for f in [|t; -1; -2; 2; -1; 1; -3|]
-  for r = -3 downto 3 and n in [|3; -2; -3; 3|] and t in [|-2; -1|]|];;
+  for v in [|3|] and h = -1 to 3 and m = -1 downto -2
+  for f = 0 downto 1 and o = -2 downto -3 and n = -3 to 1|];;
 [%%expect{|
 Line 5, characters 26-27:
-5 |   for r = -3 downto 3 and n in [|3; -2; -3; 3|] and t in [|-2; -1|]|];;
+5 | for r = -3 downto 3 and n in [|3; -2; -3; 3|] and t in [|-2; -1|]|];;
                               ^
 Warning 26 [unused-var]: unused variable n.
 Line 4, characters 6-7:
-4 |   for f in [|t; -1; -2; 2; -1; 1; -3|]
-          ^
-Warning 26 [unused-var]: unused variable f.
+4 |
 - : (int * int * int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable f.
+          ^ for f in [|t; -1; -2; 2; -1; 1; -3|]
 |}];;
 
 [(d, k, q, t)
@@ -12730,147 +12731,147 @@ Warning 26 [unused-var]: unused variable f.
 |}];;
 
 [(a, j, r, s)
-  when r <> 0
-  for j in [3; 1; -2]
+  for a = -2 to 0 and r = 0 downto -1 and s = -1 downto 3
   when s > 0
-  for a = -2 to 0 and r = 0 downto -1 and s = -1 downto 3];;
+  for j in [3; 1; -2]
+  when r <> 0];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(a, j, r, s)
-  when r <> 0
-  for j in [|3; 1; -2|]
+  for a = -2 to 0 and r = 0 downto -1 and s = -1 downto 3
   when s > 0
-  for a = -2 to 0 and r = 0 downto -1 and s = -1 downto 3|];;
+  for j in [|3; 1; -2|]
+  when r <> 0|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(c, d, g, u, v, w, x)
-  for w in [1] and d = -2 to 0
-  for g in [] and u = 2 to 3 and x in [] and v = -3 to 2 and c in [3; 1]];;
+  for g in [] and u = 2 to 3 and x in [] and v = -3 to 2 and c in [3; 1]
+  for w in [1] and d = -2 to 0];;
 [%%expect{|
 - : (int * int * 'a * int * int * int * 'b) list = []
 |}];;
 
 [|(c, d, g, u, v, w, x)
-  for w in [|1|] and d = -2 to 0
   for g in [||]
   and u = 2 to 3
   and x in [||]
   and v = -3 to 2
-  and c in [|3; 1|]|];;
+  and c in [|3; 1|]
+  for w in [|1|] and d = -2 to 0|];;
 [%%expect{|
 - : (int * int * '_weak163 * int * int * int * '_weak164) array = [||]
 |}];;
 
 [(b, c, d, e, l, o, s)
-  when o > 0
-  for e in [] and d in [] and o = -2 downto 3
+  for l in [-3; 1; -2; 0; -2]
   for b = 2 to -1 and s in [2; -1; 0; l; 1; 2; -1] and c = 0 downto 3
-  for l in [-3; 1; -2; 0; -2]];;
+  for e in [] and d in [] and o = -2 downto 3
+  when o > 0];;
 [%%expect{|
 - : (int * int * 'a * 'b * int * int * int) list = []
 |}];;
 
 [|(b, c, d, e, l, o, s)
-  when o > 0
-  for e in [||] and d in [||] and o = -2 downto 3
+  for l in [|-3; 1; -2; 0; -2|]
   for b = 2 to -1 and s in [|2; -1; 0; l; 1; 2; -1|] and c = 0 downto 3
-  for l in [|-3; 1; -2; 0; -2|]|];;
+  for e in [||] and d in [||] and o = -2 downto 3
+  when o > 0|];;
 [%%expect{|
 - : (int * int * '_weak165 * '_weak166 * int * int * int) array = [||]
 |}];;
 
 [(v, y, z)
-  for z in [-2; -3; 3; 2]
-  for v = 1 downto -3
+  for y = 1 to -2
   for y = y to -3
-  for y = 1 to -2];;
+  for v = 1 downto -3
+  for z in [-2; -3; 3; 2]];;
 [%%expect{|
 - : (int * int * int) list = []
 |}];;
 
 [|(v, y, z)
-  for z in [|-2; -3; 3; 2|]
-  for v = 1 downto -3
+  for y = 1 to -2
   for y = y to -3
-  for y = 1 to -2|];;
+  for v = 1 downto -3
+  for z in [|-2; -3; 3; 2|]|];;
 [%%expect{|
 - : (int * int * int) array = [||]
 |}];;
 
 [(d, e, o, t, w, z)
-  when abs w mod 2 = 1
-  for o = -1 to 3 and t = -1 downto 2
-  for z = 3 to w and e = -1 downto w
+  for d in [3; 3; -3; 0; 2; -2; -3] and w in []
   when w > 0
-  for d in [3; 3; -3; 0; 2; -2; -3] and w in []];;
+  for z = 3 to w and e = -1 downto w
+  for o = -1 to 3 and t = -1 downto 2
+  when abs w mod 2 = 1];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(d, e, o, t, w, z)
-  when abs w mod 2 = 1
-  for o = -1 to 3 and t = -1 downto 2
-  for z = 3 to w and e = -1 downto w
+  for d in [|3; 3; -3; 0; 2; -2; -3|] and w in [||]
   when w > 0
-  for d in [|3; 3; -3; 0; 2; -2; -3|] and w in [||]|];;
+  for z = 3 to w and e = -1 downto w
+  for o = -1 to 3 and t = -1 downto 2
+  when abs w mod 2 = 1|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(a, d, e, g, n, p, t, x, z)
-  for g = 0 to -3 and x in [1] and n = -2 downto 2
-  for e in [3; 3; -1; 3] and g = 0 to -2 and t in [-2]
+  for z in [3] and p = 3 to -3 and a = 2 downto 0
   for d = -2 to 1
-  for z in [3] and p = 3 to -3 and a = 2 downto 0];;
+  for e in [3; 3; -1; 3] and g = 0 to -2 and t in [-2]
+  for g = 0 to -3 and x in [1] and n = -2 downto 2];;
 [%%expect{|
 Lines 1-5, characters 0-50:
 1 | [(a, d, e, g, n, p, t, x, z)
-2 |   for g = 0 to -3 and x in [1] and n = -2 downto 2
-3 |   for e in [3; 3; -1; 3] and g = 0 to -2 and t in [-2]
-4 |   for d = -2 to 1
-5 |   for z in [3] and p = 3 to -3 and a = 2 downto 0]..
-Warning 26 [unused-var]: unused variable g.
+2 |
 - : (int * int * int * int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable g. for z in [3] and p = 3 to -3 and a = 2 downto 0]..
+5 | for d = -2 to 1
+4 | for e in [3; 3; -1; 3] and g = 0 to -2 and t in [-2]
+3 | for g = 0 to -3 and x in [1] and n = -2 downto 2
 |}];;
 
 [|(a, d, e, g, n, p, t, x, z)
-  for g = 0 to -3 and x in [|1|] and n = -2 downto 2
-  for e in [|3; 3; -1; 3|] and g = 0 to -2 and t in [|-2|]
+  for z in [|3|] and p = 3 to -3 and a = 2 downto 0
   for d = -2 to 1
-  for z in [|3|] and p = 3 to -3 and a = 2 downto 0|];;
+  for e in [|3; 3; -1; 3|] and g = 0 to -2 and t in [|-2|]
+  for g = 0 to -3 and x in [|1|] and n = -2 downto 2|];;
 [%%expect{|
 Lines 1-5, characters 0-53:
 1 | [|(a, d, e, g, n, p, t, x, z)
-2 |   for g = 0 to -3 and x in [|1|] and n = -2 downto 2
-3 |   for e in [|3; 3; -1; 3|] and g = 0 to -2 and t in [|-2|]
-4 |   for d = -2 to 1
-5 |   for z in [|3|] and p = 3 to -3 and a = 2 downto 0|]..
-Warning 26 [unused-var]: unused variable g.
+2 |
 - : (int * int * int * int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable g. for z in [|3|] and p = 3 to -3 and a = 2 downto 0|]..
+5 | for d = -2 to 1
+4 | for e in [|3; 3; -1; 3|] and g = 0 to -2 and t in [|-2|]
+3 | for g = 0 to -3 and x in [|1|] and n = -2 downto 2
 |}];;
 
 [(d, j, n, s, u, z)
+  for s = 0 downto 1
+  for n = 1 to s
   for u in [-1]
   and j = -2 to 3
   and z in [0; -3; 0; -3; 1; n]
-  and d in [1; -3; 3; 3; 3; 2]
-  for n = 1 to s
-  for s = 0 downto 1];;
+  and d in [1; -3; 3; 3; 3; 2]];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(d, j, n, s, u, z)
+  for s = 0 downto 1
+  for n = 1 to s
   for u in [|-1|]
   and j = -2 to 3
   and z in [|0; -3; 0; -3; 1; n|]
-  and d in [|1; -3; 3; 3; 3; 2|]
-  for n = 1 to s
-  for s = 0 downto 1|];;
+  and d in [|1; -3; 3; 3; 3; 2|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
@@ -12886,17 +12887,17 @@ Warning 26 [unused-var]: unused variable g.
 |}];;
 
 [(g, k, l, o, p, r, s, u, y)
-  for p = g downto k and u in [y; 1; 0; -3; 3; 2; -2] and o = g to 1
+  for s in [2; -2; -2; 0; -1; 1; -1] and k = 1 downto 3
   for g = -2 to -2 and l = 0 downto 0 and r = -1 to -2 and y in [3]
-  for s in [2; -2; -2; 0; -1; 1; -1] and k = 1 downto 3];;
+  for p = g downto k and u in [y; 1; 0; -3; 3; 2; -2] and o = g to 1];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(g, k, l, o, p, r, s, u, y)
-  for p = g downto k and u in [|y; 1; 0; -3; 3; 2; -2|] and o = g to 1
+  for s in [|2; -2; -2; 0; -1; 1; -1|] and k = 1 downto 3
   for g = -2 to -2 and l = 0 downto 0 and r = -1 to -2 and y in [|3|]
-  for s in [|2; -2; -2; 0; -1; 1; -1|] and k = 1 downto 3|];;
+  for p = g downto k and u in [|y; 1; 0; -3; 3; 2; -2|] and o = g to 1|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int * int) array = [||]
 |}];;
@@ -12912,243 +12913,243 @@ Warning 26 [unused-var]: unused variable g.
 |}];;
 
 [(c, d, m, n, q, v)
-  for d = -3 downto 3 and v = 1 to 1
-  for n in [-1; -2; -2]
-  for c = 1 to -1 and m in [0; 0; 1; -3; 1]
+  for d = 0 to -2
   for v in [] and q = -3 to 3
-  for d = 0 to -2];;
+  for c = 1 to -1 and m in [0; 0; 1; -3; 1]
+  for n in [-1; -2; -2]
+  for d = -3 downto 3 and v = 1 to 1];;
 [%%expect{|
 Lines 1-6, characters 0-18:
 1 | [(c, d, m, n, q, v)
-2 |   for d = -3 downto 3 and v = 1 to 1
-3 |   for n in [-1; -2; -2]
-4 |   for c = 1 to -1 and m in [0; 0; 1; -3; 1]
-5 |   for v in [] and q = -3 to 3
-6 |   for d = 0 to -2]..
-Warning 26 [unused-var]: unused variable d.
-Line 5, characters 6-7:
-5 |   for v in [] and q = -3 to 3
-          ^
-Warning 26 [unused-var]: unused variable v.
+2 |
 - : (int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable v.
+          ^ for v in [] and q = -3 to 3
+5 |
+Line 5, characters 6-7:
+Warning 26 [unused-var]: unused variable d. for d = 0 to -2]..
+6 | for v in [] and q = -3 to 3
+5 | for c = 1 to -1 and m in [0; 0; 1; -3; 1]
+4 | for n in [-1; -2; -2]
+3 | for d = -3 downto 3 and v = 1 to 1
 |}];;
 
 [|(c, d, m, n, q, v)
-  for d = -3 downto 3 and v = 1 to 1
-  for n in [|-1; -2; -2|]
-  for c = 1 to -1 and m in [|0; 0; 1; -3; 1|]
+  for d = 0 to -2
   for v in [||] and q = -3 to 3
-  for d = 0 to -2|];;
+  for c = 1 to -1 and m in [|0; 0; 1; -3; 1|]
+  for n in [|-1; -2; -2|]
+  for d = -3 downto 3 and v = 1 to 1|];;
 [%%expect{|
 Lines 1-6, characters 0-19:
 1 | [|(c, d, m, n, q, v)
-2 |   for d = -3 downto 3 and v = 1 to 1
-3 |   for n in [|-1; -2; -2|]
-4 |   for c = 1 to -1 and m in [|0; 0; 1; -3; 1|]
-5 |   for v in [||] and q = -3 to 3
-6 |   for d = 0 to -2|]..
-Warning 26 [unused-var]: unused variable d.
-Line 5, characters 6-7:
-5 |   for v in [||] and q = -3 to 3
-          ^
-Warning 26 [unused-var]: unused variable v.
+2 |
 - : (int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable v.
+          ^ for v in [||] and q = -3 to 3
+5 |
+Line 5, characters 6-7:
+Warning 26 [unused-var]: unused variable d. for d = 0 to -2|]..
+6 | for v in [||] and q = -3 to 3
+5 | for c = 1 to -1 and m in [|0; 0; 1; -3; 1|]
+4 | for n in [|-1; -2; -2|]
+3 | for d = -3 downto 3 and v = 1 to 1
 |}];;
 
 [(c, d, e, f, n, w, z)
-  for c = -3 to 0 and f in [3; 2; -1; -3] and z in [-1; -3; 2; 2; -3]
   for e in []
   and n = -2 to -2
   and w in [-1]
   and f = -1 downto 1
-  and d = -1 downto -1];;
+  and d = -1 downto -1
+  for c = -3 to 0 and f in [3; 2; -1; -3] and z in [-1; -3; 2; 2; -3]];;
 [%%expect{|
 Lines 1-7, characters 0-23:
 1 | [(c, d, e, f, n, w, z)
-2 |   for c = -3 to 0 and f in [3; 2; -1; -3] and z in [-1; -3; 2; 2; -3]
-3 |   for e in []
-4 |   and n = -2 to -2
-5 |   and w in [-1]
-6 |   and f = -1 downto 1
-7 |   and d = -1 downto -1]..
-Warning 26 [unused-var]: unused variable f.
+2 |
 - : (int * int * 'a * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable f.
+7 |   and d = -1 downto -1]..
+6 |   and f = -1 downto 1
+5 |   and w in [-1]
+4 |   and n = -2 to -2 for e in []
+3 | for c = -3 to 0 and f in [3; 2; -1; -3] and z in [-1; -3; 2; 2; -3]
 |}];;
 
 [|(c, d, e, f, n, w, z)
-  for c = -3 to 0 and f in [|3; 2; -1; -3|] and z in [|-1; -3; 2; 2; -3|]
   for e in [||]
   and n = -2 to -2
   and w in [|-1|]
   and f = -1 downto 1
-  and d = -1 downto -1|];;
+  and d = -1 downto -1
+  for c = -3 to 0 and f in [|3; 2; -1; -3|] and z in [|-1; -3; 2; 2; -3|]|];;
 [%%expect{|
 Lines 1-7, characters 0-24:
 1 | [|(c, d, e, f, n, w, z)
-2 |   for c = -3 to 0 and f in [|3; 2; -1; -3|] and z in [|-1; -3; 2; 2; -3|]
-3 |   for e in [||]
-4 |   and n = -2 to -2
-5 |   and w in [|-1|]
-6 |   and f = -1 downto 1
-7 |   and d = -1 downto -1|]..
-Warning 26 [unused-var]: unused variable f.
+2 |
 - : (int * int * '_weak167 * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable f.
+7 |   and d = -1 downto -1|]..
+6 |   and f = -1 downto 1
+5 |   and w in [|-1|]
+4 |   and n = -2 to -2 for e in [||]
+3 | for c = -3 to 0 and f in [|3; 2; -1; -3|] and z in [|-1; -3; 2; 2; -3|]
 |}];;
 
-[(c, u) when u > 0 for u in [] for _ = -3 downto -3 and c = 2 to -3];;
+[(c, u) for _ = -3 downto -3 and c = 2 to -3 for u in [] when u > 0];;
 [%%expect{|
 - : (int * int) list = []
 |}];;
 
-[|(c, u) when u > 0 for u in [||] for _ = -3 downto -3 and c = 2 to -3|];;
+[|(c, u) for _ = -3 downto -3 and c = 2 to -3 for u in [||] when u > 0|];;
 [%%expect{|
 - : (int * int) array = [||]
 |}];;
 
 [(f, g, i, l, s, y, z)
-  when g <> 0
-  for y in [l] and f = -3 to 0 and s in [0; 2; 3; i; 1]
   for l = 3 to 0
   and g in [2; -2; -1; 0; 0]
   and i = 1 to 0
-  and z in [1; 2; 3; 2]];;
+  and z in [1; 2; 3; 2]
+  for y in [l] and f = -3 to 0 and s in [0; 2; 3; i; 1]
+  when g <> 0];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(f, g, i, l, s, y, z)
-  when g <> 0
-  for y in [|l|] and f = -3 to 0 and s in [|0; 2; 3; i; 1|]
   for l = 3 to 0
   and g in [|2; -2; -1; 0; 0|]
   and i = 1 to 0
-  and z in [|1; 2; 3; 2|]|];;
+  and z in [|1; 2; 3; 2|]
+  for y in [|l|] and f = -3 to 0 and s in [|0; 2; 3; i; 1|]
+  when g <> 0|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(b, c, g, r, v, y)
-  when b > 0
-  for c in []
-  for y = b downto 2 and r in [3; -1; 1; 1; -3; 0; -2]
+  for g in [0; -3; 1] and b in [-1]
   for v = 3 to 0
-  for g in [0; -3; 1] and b in [-1]];;
+  for y = b downto 2 and r in [3; -1; 1; 1; -3; 0; -2]
+  for c in []
+  when b > 0];;
 [%%expect{|
 - : (int * 'a * int * int * int * int) list = []
 |}];;
 
 [|(b, c, g, r, v, y)
-  when b > 0
-  for c in [||]
-  for y = b downto 2 and r in [|3; -1; 1; 1; -3; 0; -2|]
+  for g in [|0; -3; 1|] and b in [|-1|]
   for v = 3 to 0
-  for g in [|0; -3; 1|] and b in [|-1|]|];;
+  for y = b downto 2 and r in [|3; -1; 1; 1; -3; 0; -2|]
+  for c in [||]
+  when b > 0|];;
 [%%expect{|
 - : (int * '_weak168 * int * int * int * int) array = [||]
 |}];;
 
 [(e, f, j, p, q, u, y)
-  for y in [2; 3; 1] and p in [1; -2; -2; -1] and j = 2 to 0
+  for y = -3 downto -2 and f in [-2; 0; 2; -1; 0; -1; -1] and u = 2 to -3
   for j = -3 to -3 and q in [-3; 1] and e in [-3; -1; 3]
-  for y = -3 downto -2 and f in [-2; 0; 2; -1; 0; -1; -1] and u = 2 to -3];;
+  for y in [2; 3; 1] and p in [1; -2; -2; -1] and j = 2 to 0];;
 [%%expect{|
 Lines 1-4, characters 0-74:
 1 | [(e, f, j, p, q, u, y)
-2 |   for y in [2; 3; 1] and p in [1; -2; -2; -1] and j = 2 to 0
-3 |   for j = -3 to -3 and q in [-3; 1] and e in [-3; -1; 3]
-4 |   for y = -3 downto -2 and f in [-2; 0; 2; -1; 0; -1; -1] and u = 2 to -3]..
-Warning 26 [unused-var]: unused variable y.
-Lines 1-4, characters 0-74:
-1 | [(e, f, j, p, q, u, y)
-2 |   for y in [2; 3; 1] and p in [1; -2; -2; -1] and j = 2 to 0
-3 |   for j = -3 to -3 and q in [-3; 1] and e in [-3; -1; 3]
-4 |   for y = -3 downto -2 and f in [-2; 0; 2; -1; 0; -1; -1] and u = 2 to -3]..
-Warning 26 [unused-var]: unused variable j.
+2 |
 - : (int * int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable j. for y = -3 downto -2 and f in [-2; 0; 2; -1; 0; -1; -1] and u = 2 to -3]..
+4 | for j = -3 to -3 and q in [-3; 1] and e in [-3; -1; 3]
+3 | for y in [2; 3; 1] and p in [1; -2; -2; -1] and j = 2 to 0
+2 |
+1 | [(e, f, j, p, q, u, y)
+Lines 1-4, characters 0-74:
+Warning 26 [unused-var]: unused variable y. for y = -3 downto -2 and f in [-2; 0; 2; -1; 0; -1; -1] and u = 2 to -3]..
+4 | for j = -3 to -3 and q in [-3; 1] and e in [-3; -1; 3]
+3 | for y in [2; 3; 1] and p in [1; -2; -2; -1] and j = 2 to 0
 |}];;
 
 [|(e, f, j, p, q, u, y)
-  for y in [|2; 3; 1|] and p in [|1; -2; -2; -1|] and j = 2 to 0
+  for y = -3 downto -2 and f in [|-2; 0; 2; -1; 0; -1; -1|] and u = 2 to -3
   for j = -3 to -3 and q in [|-3; 1|] and e in [|-3; -1; 3|]
-  for y = -3 downto -2 and f in [|-2; 0; 2; -1; 0; -1; -1|] and u = 2 to -3|];;
+  for y in [|2; 3; 1|] and p in [|1; -2; -2; -1|] and j = 2 to 0|];;
 [%%expect{|
 Lines 1-4, characters 0-77:
 1 | [|(e, f, j, p, q, u, y)
-2 |   for y in [|2; 3; 1|] and p in [|1; -2; -2; -1|] and j = 2 to 0
-3 |   for j = -3 to -3 and q in [|-3; 1|] and e in [|-3; -1; 3|]
-4 |   for y = -3 downto -2 and f in [|-2; 0; 2; -1; 0; -1; -1|] and u = 2 to -3|]..
-Warning 26 [unused-var]: unused variable y.
-Lines 1-4, characters 0-77:
-1 | [|(e, f, j, p, q, u, y)
-2 |   for y in [|2; 3; 1|] and p in [|1; -2; -2; -1|] and j = 2 to 0
-3 |   for j = -3 to -3 and q in [|-3; 1|] and e in [|-3; -1; 3|]
-4 |   for y = -3 downto -2 and f in [|-2; 0; 2; -1; 0; -1; -1|] and u = 2 to -3|]..
-Warning 26 [unused-var]: unused variable j.
+2 |
 - : (int * int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable j. for y = -3 downto -2 and f in [|-2; 0; 2; -1; 0; -1; -1|] and u = 2 to -3|]..
+4 | for j = -3 to -3 and q in [|-3; 1|] and e in [|-3; -1; 3|]
+3 | for y in [|2; 3; 1|] and p in [|1; -2; -2; -1|] and j = 2 to 0
+2 |
+1 | [|(e, f, j, p, q, u, y)
+Lines 1-4, characters 0-77:
+Warning 26 [unused-var]: unused variable y. for y = -3 downto -2 and f in [|-2; 0; 2; -1; 0; -1; -1|] and u = 2 to -3|]..
+4 | for j = -3 to -3 and q in [|-3; 1|] and e in [|-3; -1; 3|]
+3 | for y in [|2; 3; 1|] and p in [|1; -2; -2; -1|] and j = 2 to 0
 |}];;
 
 [(d, n, p, r, u, v)
-  for r = 2 downto -2
-  when abs p mod 2 = 1
-  for d in [1; -1; -2] and u in [p; -2; -1; 0; 3; -2]
+  for n = 2 to 1
   for p in [0] and v = 2 downto n
-  for n = 2 to 1];;
+  for d in [1; -1; -2] and u in [p; -2; -1; 0; 3; -2]
+  when abs p mod 2 = 1
+  for r = 2 downto -2];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(d, n, p, r, u, v)
-  for r = 2 downto -2
-  when abs p mod 2 = 1
-  for d in [|1; -1; -2|] and u in [|p; -2; -1; 0; 3; -2|]
+  for n = 2 to 1
   for p in [|0|] and v = 2 downto n
-  for n = 2 to 1|];;
+  for d in [|1; -1; -2|] and u in [|p; -2; -1; 0; 3; -2|]
+  when abs p mod 2 = 1
+  for r = 2 downto -2|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(d, k, p, r, t, v, x)
-  for d = -3 to 0
+  for p = 3 to 0 and v = 2 to -2 and t = -2 downto 1 and d = 0 downto -1
   for r in [3; 0; 0; 0] and k = -3 to 2 and _ = 3 downto -2 and x in [-1]
-  for p = 3 to 0 and v = 2 to -2 and t = -2 downto 1 and d = 0 downto -1];;
+  for d = -3 to 0];;
 [%%expect{|
 Lines 1-4, characters 0-73:
 1 | [(d, k, p, r, t, v, x)
-2 |   for d = -3 to 0
-3 |   for r in [3; 0; 0; 0] and k = -3 to 2 and _ = 3 downto -2 and x in [-1]
-4 |   for p = 3 to 0 and v = 2 to -2 and t = -2 downto 1 and d = 0 downto -1]..
-Warning 26 [unused-var]: unused variable d.
+2 |
 - : (int * int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable d. for p = 3 to 0 and v = 2 to -2 and t = -2 downto 1 and d = 0 downto -1]..
+4 | for r in [3; 0; 0; 0] and k = -3 to 2 and _ = 3 downto -2 and x in [-1]
+3 | for d = -3 to 0
 |}];;
 
 [|(d, k, p, r, t, v, x)
-  for d = -3 to 0
+  for p = 3 to 0 and v = 2 to -2 and t = -2 downto 1 and d = 0 downto -1
   for r in [|3; 0; 0; 0|] and k = -3 to 2 and _ = 3 downto -2 and x in [|-1|]
-  for p = 3 to 0 and v = 2 to -2 and t = -2 downto 1 and d = 0 downto -1|];;
+  for d = -3 to 0|];;
 [%%expect{|
 Lines 1-4, characters 0-74:
 1 | [|(d, k, p, r, t, v, x)
-2 |   for d = -3 to 0
-3 |   for r in [|3; 0; 0; 0|] and k = -3 to 2 and _ = 3 downto -2 and x in [|-1|]
-4 |   for p = 3 to 0 and v = 2 to -2 and t = -2 downto 1 and d = 0 downto -1|]..
-Warning 26 [unused-var]: unused variable d.
+2 |
 - : (int * int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable d. for p = 3 to 0 and v = 2 to -2 and t = -2 downto 1 and d = 0 downto -1|]..
+4 | for r in [|3; 0; 0; 0|] and k = -3 to 2 and _ = 3 downto -2 and x in [|-1|]
+3 | for d = -3 to 0
 |}];;
 
 [(a, e, k, m, r, t, v)
-  for a in [-2; -1; 3; 2] and e = -1 to 0 and k = -1 downto -2
-  for r = 1 to -2
+  for v in [1; -1] and t in [-2]
   for m = 0 downto 0
-  for v in [1; -1] and t in [-2]];;
+  for r = 1 to -2
+  for a in [-2; -1; 3; 2] and e = -1 to 0 and k = -1 downto -2];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, e, k, m, r, t, v)
-  for a in [|-2; -1; 3; 2|] and e = -1 to 0 and k = -1 downto -2
-  for r = 1 to -2
+  for v in [|1; -1|] and t in [|-2|]
   for m = 0 downto 0
-  for v in [|1; -1|] and t in [|-2|]|];;
+  for r = 1 to -2
+  for a in [|-2; -1; 3; 2|] and e = -1 to 0 and k = -1 downto -2|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
@@ -13167,14 +13168,14 @@ Warning 26 [unused-var]: unused variable d.
   (-1, -3); (-2, -3); (-1, -1); (-2, -1); (-1, -3); (-2, -3)|]
 |}];;
 
-[(a, l) when abs a mod 2 = 0 for a = 3 downto -2 for l in [-2; 0; 2; 3]];;
+[(a, l) for l in [-2; 0; 2; 3] for a = 3 downto -2 when abs a mod 2 = 0];;
 [%%expect{|
 - : (int * int) list =
 [(2, -2); (0, -2); (-2, -2); (2, 0); (0, 0); (-2, 0); (2, 2); (0, 2);
  (-2, 2); (2, 3); (0, 3); (-2, 3)]
 |}];;
 
-[|(a, l) when abs a mod 2 = 0 for a = 3 downto -2 for l in [|-2; 0; 2; 3|]|];;
+[|(a, l) for l in [|-2; 0; 2; 3|] for a = 3 downto -2 when abs a mod 2 = 0|];;
 [%%expect{|
 - : (int * int) array =
 [|(2, -2); (0, -2); (-2, -2); (2, 0); (0, 0); (-2, 0); (2, 2); (0, 2);
@@ -13182,251 +13183,251 @@ Warning 26 [unused-var]: unused variable d.
 |}];;
 
 [(c, h, j, r, v)
-  when abs v mod 2 = 1
+  for c in [] and v in [0; -3; -2; -3; 3; 1; 1] and r in []
   for h = v to 0 and j = 2 downto 1
-  for c in [] and v in [0; -3; -2; -3; 3; 1; 1] and r in []];;
+  when abs v mod 2 = 1];;
 [%%expect{|
 - : ('a * int * int * 'b * int) list = []
 |}];;
 
 [|(c, h, j, r, v)
-  when abs v mod 2 = 1
+  for c in [||] and v in [|0; -3; -2; -3; 3; 1; 1|] and r in [||]
   for h = v to 0 and j = 2 downto 1
-  for c in [||] and v in [|0; -3; -2; -3; 3; 1; 1|] and r in [||]|];;
+  when abs v mod 2 = 1|];;
 [%%expect{|
 - : ('_weak169 * int * int * '_weak170 * int) array = [||]
 |}];;
 
 [(a, d, f, i, n, z)
-  for n in [] and f in []
-  for z = 1 to -1
-  for n = -1 to 1 and i = 3 downto 2
+  for a = 2 downto 0
   for d in [-2; -3; 3; 3; -3; -2]
-  for a = 2 downto 0];;
+  for n = -1 to 1 and i = 3 downto 2
+  for z = 1 to -1
+  for n in [] and f in []];;
 [%%expect{|
 Lines 1-6, characters 0-21:
 1 | [(a, d, f, i, n, z)
-2 |   for n in [] and f in []
-3 |   for z = 1 to -1
-4 |   for n = -1 to 1 and i = 3 downto 2
-5 |   for d in [-2; -3; 3; 3; -3; -2]
-6 |   for a = 2 downto 0]..
-Warning 26 [unused-var]: unused variable n.
+2 |
 - : (int * int * 'a * int * 'b * int) list = []
+Warning 26 [unused-var]: unused variable n. for a = 2 downto 0]..
+6 | for d in [-2; -3; 3; 3; -3; -2]
+5 | for n = -1 to 1 and i = 3 downto 2
+4 | for z = 1 to -1
+3 | for n in [] and f in []
 |}];;
 
 [|(a, d, f, i, n, z)
-  for n in [||] and f in [||]
-  for z = 1 to -1
-  for n = -1 to 1 and i = 3 downto 2
+  for a = 2 downto 0
   for d in [|-2; -3; 3; 3; -3; -2|]
-  for a = 2 downto 0|];;
+  for n = -1 to 1 and i = 3 downto 2
+  for z = 1 to -1
+  for n in [||] and f in [||]|];;
 [%%expect{|
 Lines 1-6, characters 0-22:
 1 | [|(a, d, f, i, n, z)
-2 |   for n in [||] and f in [||]
-3 |   for z = 1 to -1
-4 |   for n = -1 to 1 and i = 3 downto 2
-5 |   for d in [|-2; -3; 3; 3; -3; -2|]
-6 |   for a = 2 downto 0|]..
-Warning 26 [unused-var]: unused variable n.
+2 |
 - : (int * int * '_weak171 * int * '_weak172 * int) array = [||]
+Warning 26 [unused-var]: unused variable n. for a = 2 downto 0|]..
+6 | for d in [|-2; -3; 3; 3; -3; -2|]
+5 | for n = -1 to 1 and i = 3 downto 2
+4 | for z = 1 to -1
+3 | for n in [||] and f in [||]
 |}];;
 
 [(a, g, n, q, z)
-  when n < 0
-  for a = -1 downto 0 and z = g to 0 and _ in [-2; -3; 1; -2; 3; 0]
+  for q in [-2; 3; 1; 1; 2; -1; -2] and g in []
   for n = -3 to -3
-  for q in [-2; 3; 1; 1; 2; -1; -2] and g in []];;
+  for a = -1 downto 0 and z = g to 0 and _ in [-2; -3; 1; -2; 3; 0]
+  when n < 0];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(a, g, n, q, z)
-  when n < 0
-  for a = -1 downto 0 and z = g to 0 and _ in [|-2; -3; 1; -2; 3; 0|]
+  for q in [|-2; 3; 1; 1; 2; -1; -2|] and g in [||]
   for n = -3 to -3
-  for q in [|-2; 3; 1; 1; 2; -1; -2|] and g in [||]|];;
+  for a = -1 downto 0 and z = g to 0 and _ in [|-2; -3; 1; -2; 3; 0|]
+  when n < 0|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(c, n, q, u, x)
-  for u in [3; 1; 1; -2; n; 0; -2]
-  when u <> 0
-  for c in [] and x in []
+  for u in [1; -3; 3; 1; 0; 1] and q = 1 downto -3
   for x in [-3; 0; 3] and n = q to 1
-  for u in [1; -3; 3; 1; 0; 1] and q = 1 downto -3];;
+  for c in [] and x in []
+  when u <> 0
+  for u in [3; 1; 1; -2; n; 0; -2]];;
 [%%expect{|
 Line 5, characters 6-7:
-5 |   for x in [-3; 0; 3] and n = q to 1
-          ^
-Warning 26 [unused-var]: unused variable x.
+5 |
 - : ('a * int * int * int * 'b) list = []
+Warning 26 [unused-var]: unused variable x.
+          ^ for x in [-3; 0; 3] and n = q to 1
 |}];;
 
 [|(c, n, q, u, x)
-  for u in [|3; 1; 1; -2; n; 0; -2|]
-  when u <> 0
-  for c in [||] and x in [||]
+  for u in [|1; -3; 3; 1; 0; 1|] and q = 1 downto -3
   for x in [|-3; 0; 3|] and n = q to 1
-  for u in [|1; -3; 3; 1; 0; 1|] and q = 1 downto -3|];;
+  for c in [||] and x in [||]
+  when u <> 0
+  for u in [|3; 1; 1; -2; n; 0; -2|]|];;
 [%%expect{|
 Line 5, characters 6-7:
-5 |   for x in [|-3; 0; 3|] and n = q to 1
-          ^
-Warning 26 [unused-var]: unused variable x.
+5 |
 - : ('_weak173 * int * int * int * '_weak174) array = [||]
+Warning 26 [unused-var]: unused variable x.
+          ^ for x in [|-3; 0; 3|] and n = q to 1
 |}];;
 
 [(b, d, m, q, u, v, w)
-  for m = -3 to -3 and d in [2; -1; 3; -3; 0] and w = -1 to -1
+  for v = -2 downto 0 and q in [1; 1; 3; -1] and u in [-2]
   for b in [v; 2; 0; 2]
-  for v = -2 downto 0 and q in [1; 1; 3; -1] and u in [-2]];;
+  for m = -3 to -3 and d in [2; -1; 3; -3; 0] and w = -1 to -1];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(b, d, m, q, u, v, w)
-  for m = -3 to -3 and d in [|2; -1; 3; -3; 0|] and w = -1 to -1
+  for v = -2 downto 0 and q in [|1; 1; 3; -1|] and u in [|-2|]
   for b in [|v; 2; 0; 2|]
-  for v = -2 downto 0 and q in [|1; 1; 3; -1|] and u in [|-2|]|];;
+  for m = -3 to -3 and d in [|2; -1; 3; -3; 0|] and w = -1 to -1|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(g, h, k, o, x)
-  for k in [h; 0; -2]
-  when abs x mod 2 = 1
+  for x = 0 to -1 and g in [-1; 1; -2; -1] and o = 0 downto 2
   for h = 3 to g
-  for x = 0 to -1 and g in [-1; 1; -2; -1] and o = 0 downto 2];;
+  when abs x mod 2 = 1
+  for k in [h; 0; -2]];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(g, h, k, o, x)
-  for k in [|h; 0; -2|]
-  when abs x mod 2 = 1
+  for x = 0 to -1 and g in [|-1; 1; -2; -1|] and o = 0 downto 2
   for h = 3 to g
-  for x = 0 to -1 and g in [|-1; 1; -2; -1|] and o = 0 downto 2|];;
+  when abs x mod 2 = 1
+  for k in [|h; 0; -2|]|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(b, d, h, j, k, y)
-  for _ = -1 downto -1
-  when k <> 0
+  for j in [3] and k in [3; 3; 3; -3] and h in [-3; -3; 3; -1; -2]
   for d in [h; -3] and b in [-3] and y in []
-  for j in [3] and k in [3; 3; 3; -3] and h in [-3; -3; 3; -1; -2]];;
+  when k <> 0
+  for _ = -1 downto -1];;
 [%%expect{|
 - : (int * int * int * int * int * 'a) list = []
 |}];;
 
 [|(b, d, h, j, k, y)
-  for _ = -1 downto -1
-  when k <> 0
+  for j in [|3|] and k in [|3; 3; 3; -3|] and h in [|-3; -3; 3; -1; -2|]
   for d in [|h; -3|] and b in [|-3|] and y in [||]
-  for j in [|3|] and k in [|3; 3; 3; -3|] and h in [|-3; -3; 3; -1; -2|]|];;
+  when k <> 0
+  for _ = -1 downto -1|];;
 [%%expect{|
 - : (int * int * int * int * int * '_weak175) array = [||]
 |}];;
 
 [(b, k, l, m, u, y)
-  when b <> 0
-  for u in [-3; -2] and k in [2] and y = 1 to 2
+  for b = 2 downto 2 and l in [-1; -3; -3; -2]
   for y in [2; -1; -1; l] and m = -3 downto 1
-  for b = 2 downto 2 and l in [-1; -3; -3; -2]];;
+  for u in [-3; -2] and k in [2] and y = 1 to 2
+  when b <> 0];;
 [%%expect{|
 Line 4, characters 6-7:
-4 |   for y in [2; -1; -1; l] and m = -3 downto 1
-          ^
-Warning 26 [unused-var]: unused variable y.
+4 |
 - : (int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable y.
+          ^ for y in [2; -1; -1; l] and m = -3 downto 1
 |}];;
 
 [|(b, k, l, m, u, y)
-  when b <> 0
-  for u in [|-3; -2|] and k in [|2|] and y = 1 to 2
+  for b = 2 downto 2 and l in [|-1; -3; -3; -2|]
   for y in [|2; -1; -1; l|] and m = -3 downto 1
-  for b = 2 downto 2 and l in [|-1; -3; -3; -2|]|];;
+  for u in [|-3; -2|] and k in [|2|] and y = 1 to 2
+  when b <> 0|];;
 [%%expect{|
 Line 4, characters 6-7:
-4 |   for y in [|2; -1; -1; l|] and m = -3 downto 1
-          ^
-Warning 26 [unused-var]: unused variable y.
+4 |
 - : (int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable y.
+          ^ for y in [|2; -1; -1; l|] and m = -3 downto 1
 |}];;
 
 [(a, g, i, l, u)
-  for g = 0 to 2 and a in []
-  for u in [3; 0; -1; -3; 2; 0] and g = -1 to -2
+  for u = 2 to 2 and i in [] and l in [2; 0; -2]
   for _ in []
-  for u = 2 to 2 and i in [] and l in [2; 0; -2]];;
+  for u in [3; 0; -1; -3; 2; 0] and g = -1 to -2
+  for g = 0 to 2 and a in []];;
 [%%expect{|
 Lines 1-5, characters 0-49:
 1 | [(a, g, i, l, u)
-2 |   for g = 0 to 2 and a in []
-3 |   for u in [3; 0; -1; -3; 2; 0] and g = -1 to -2
-4 |   for _ in []
-5 |   for u = 2 to 2 and i in [] and l in [2; 0; -2]]..
-Warning 26 [unused-var]: unused variable u.
-Lines 1-5, characters 0-49:
-1 | [(a, g, i, l, u)
-2 |   for g = 0 to 2 and a in []
-3 |   for u in [3; 0; -1; -3; 2; 0] and g = -1 to -2
-4 |   for _ in []
-5 |   for u = 2 to 2 and i in [] and l in [2; 0; -2]]..
-Warning 26 [unused-var]: unused variable g.
+2 |
 - : ('a * int * 'b * int * int) list = []
+Warning 26 [unused-var]: unused variable g. for u = 2 to 2 and i in [] and l in [2; 0; -2]]..
+5 | for _ in []
+4 | for u in [3; 0; -1; -3; 2; 0] and g = -1 to -2
+3 | for g = 0 to 2 and a in []
+2 |
+1 | [(a, g, i, l, u)
+Lines 1-5, characters 0-49:
+Warning 26 [unused-var]: unused variable u. for u = 2 to 2 and i in [] and l in [2; 0; -2]]..
+5 | for _ in []
+4 | for u in [3; 0; -1; -3; 2; 0] and g = -1 to -2
+3 | for g = 0 to 2 and a in []
 |}];;
 
 [|(a, g, i, l, u)
-  for g = 0 to 2 and a in [||]
-  for u in [|3; 0; -1; -3; 2; 0|] and g = -1 to -2
+  for u = 2 to 2 and i in [||] and l in [|2; 0; -2|]
   for _ in [||]
-  for u = 2 to 2 and i in [||] and l in [|2; 0; -2|]|];;
+  for u in [|3; 0; -1; -3; 2; 0|] and g = -1 to -2
+  for g = 0 to 2 and a in [||]|];;
 [%%expect{|
 Lines 1-5, characters 0-54:
 1 | [|(a, g, i, l, u)
-2 |   for g = 0 to 2 and a in [||]
-3 |   for u in [|3; 0; -1; -3; 2; 0|] and g = -1 to -2
-4 |   for _ in [||]
-5 |   for u = 2 to 2 and i in [||] and l in [|2; 0; -2|]|]..
-Warning 26 [unused-var]: unused variable u.
-Lines 1-5, characters 0-54:
-1 | [|(a, g, i, l, u)
-2 |   for g = 0 to 2 and a in [||]
-3 |   for u in [|3; 0; -1; -3; 2; 0|] and g = -1 to -2
-4 |   for _ in [||]
-5 |   for u = 2 to 2 and i in [||] and l in [|2; 0; -2|]|]..
-Warning 26 [unused-var]: unused variable g.
+2 |
 - : ('_weak176 * int * '_weak177 * int * int) array = [||]
+Warning 26 [unused-var]: unused variable g. for u = 2 to 2 and i in [||] and l in [|2; 0; -2|]|]..
+5 | for _ in [||]
+4 | for u in [|3; 0; -1; -3; 2; 0|] and g = -1 to -2
+3 | for g = 0 to 2 and a in [||]
+2 |
+1 | [|(a, g, i, l, u)
+Lines 1-5, characters 0-54:
+Warning 26 [unused-var]: unused variable u. for u = 2 to 2 and i in [||] and l in [|2; 0; -2|]|]..
+5 | for _ in [||]
+4 | for u in [|3; 0; -1; -3; 2; 0|] and g = -1 to -2
+3 | for g = 0 to 2 and a in [||]
 |}];;
 
 [(d, g, k, l, n, o, t, x, z)
-  for t = -3 to 2 and g = -2 to g
-  for k = -1 downto 1 and o = -1 to -2
+  for g = -3 to -2 and x = -1 downto -1 and n in []
   for z = -2 to g and l in [-3; 0; n] and d in [1; 2; 3]
-  for g = -3 to -2 and x = -1 downto -1 and n in []];;
+  for k = -1 downto 1 and o = -1 to -2
+  for t = -3 to 2 and g = -2 to g];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(d, g, k, l, n, o, t, x, z)
-  for t = -3 to 2 and g = -2 to g
-  for k = -1 downto 1 and o = -1 to -2
+  for g = -3 to -2 and x = -1 downto -1 and n in [||]
   for z = -2 to g and l in [|-3; 0; n|] and d in [|1; 2; 3|]
-  for g = -3 to -2 and x = -1 downto -1 and n in [||]|];;
+  for k = -1 downto 1 and o = -1 to -2
+  for t = -3 to 2 and g = -2 to g|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int * int) array = [||]
 |}];;
 
-[w when abs w mod 2 = 0 for w = 1 to 2];;
+[w for w = 1 to 2 when abs w mod 2 = 0];;
 [%%expect{|
 - : int list = [2]
 |}];;
 
-[|w when abs w mod 2 = 0 for w = 1 to 2|];;
+[|w for w = 1 to 2 when abs w mod 2 = 0|];;
 [%%expect{|
 - : int array = [|2|]
 |}];;
@@ -13442,89 +13443,89 @@ Warning 26 [unused-var]: unused variable g.
 |}];;
 
 [(a, b, k, r, u, w, y)
-  for u in [2; -3; -1; k] and a in [3; k; 3; -2; 0; 0; -2]
-  for b = 0 to -1 and k in [-3; y; 0]
-  when abs y mod 2 = 1
+  for r = -3 downto 0 and y in [3; -2; -1; 3]
   for w in [1]
-  for r = -3 downto 0 and y in [3; -2; -1; 3]];;
+  when abs y mod 2 = 1
+  for b = 0 to -1 and k in [-3; y; 0]
+  for u in [2; -3; -1; k] and a in [3; k; 3; -2; 0; 0; -2]];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, b, k, r, u, w, y)
-  for u in [|2; -3; -1; k|] and a in [|3; k; 3; -2; 0; 0; -2|]
-  for b = 0 to -1 and k in [|-3; y; 0|]
-  when abs y mod 2 = 1
+  for r = -3 downto 0 and y in [|3; -2; -1; 3|]
   for w in [|1|]
-  for r = -3 downto 0 and y in [|3; -2; -1; 3|]|];;
+  when abs y mod 2 = 1
+  for b = 0 to -1 and k in [|-3; y; 0|]
+  for u in [|2; -3; -1; k|] and a in [|3; k; 3; -2; 0; 0; -2|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(d, e, f, k, r, t, v)
+  for f = 0 downto 1 and e in [0; -3; 2] and d = -1 to 2
+  for k = 0 to 0 and v in [0]
   for r = 2 to -3
   and k in [2; 1; -3; -3; 1; 1]
   and t in [-2; 0; -1; 0; 3]
-  and _ = -1 downto 0
-  for k = 0 to 0 and v in [0]
-  for f = 0 downto 1 and e in [0; -3; 2] and d = -1 to 2];;
+  and _ = -1 downto 0];;
 [%%expect{|
 Lines 1-7, characters 0-57:
 1 | [(d, e, f, k, r, t, v)
-2 |   for r = 2 to -3
-3 |   and k in [2; 1; -3; -3; 1; 1]
-4 |   and t in [-2; 0; -1; 0; 3]
-5 |   and _ = -1 downto 0
-6 |   for k = 0 to 0 and v in [0]
-7 |   for f = 0 downto 1 and e in [0; -3; 2] and d = -1 to 2]..
-Warning 26 [unused-var]: unused variable k.
+2 |
 - : (int * int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable k. for f = 0 downto 1 and e in [0; -3; 2] and d = -1 to 2]..
+7 | for k = 0 to 0 and v in [0]
+6 |
+5 |   and _ = -1 downto 0
+4 |   and t in [-2; 0; -1; 0; 3]
+3 |   and k in [2; 1; -3; -3; 1; 1] for r = 2 to -3
 |}];;
 
 [|(d, e, f, k, r, t, v)
+  for f = 0 downto 1 and e in [|0; -3; 2|] and d = -1 to 2
+  for k = 0 to 0 and v in [|0|]
   for r = 2 to -3
   and k in [|2; 1; -3; -3; 1; 1|]
   and t in [|-2; 0; -1; 0; 3|]
-  and _ = -1 downto 0
-  for k = 0 to 0 and v in [|0|]
-  for f = 0 downto 1 and e in [|0; -3; 2|] and d = -1 to 2|];;
+  and _ = -1 downto 0|];;
 [%%expect{|
 Lines 1-7, characters 0-60:
 1 | [|(d, e, f, k, r, t, v)
-2 |   for r = 2 to -3
-3 |   and k in [|2; 1; -3; -3; 1; 1|]
-4 |   and t in [|-2; 0; -1; 0; 3|]
-5 |   and _ = -1 downto 0
-6 |   for k = 0 to 0 and v in [|0|]
-7 |   for f = 0 downto 1 and e in [|0; -3; 2|] and d = -1 to 2|]..
-Warning 26 [unused-var]: unused variable k.
+2 |
 - : (int * int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable k. for f = 0 downto 1 and e in [|0; -3; 2|] and d = -1 to 2|]..
+7 | for k = 0 to 0 and v in [|0|]
+6 |
+5 |   and _ = -1 downto 0
+4 |   and t in [|-2; 0; -1; 0; 3|]
+3 |   and k in [|2; 1; -3; -3; 1; 1|] for r = 2 to -3
 |}];;
 
 [(f, g, l, q, u, x)
-  for l in [1; -1; 2; f] and q = 0 to -1
-  for g in [1]
+  for x = 0 to 0
   for g in [-3; -1; x] and f in [-1; -2; -2; -2; -1; -2; -3] and u = 1 to x
-  for x = 0 to 0];;
+  for g in [1]
+  for l in [1; -1; 2; f] and q = 0 to -1];;
 [%%expect{|
 Line 4, characters 6-7:
-4 |   for g in [-3; -1; x] and f in [-1; -2; -2; -2; -1; -2; -3] and u = 1 to x
-          ^
-Warning 26 [unused-var]: unused variable g.
+4 |
 - : (int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable g.
+          ^ for g in [-3; -1; x] and f in [-1; -2; -2; -2; -1; -2; -3] and u = 1 to x
 |}];;
 
 [|(f, g, l, q, u, x)
-  for l in [|1; -1; 2; f|] and q = 0 to -1
-  for g in [|1|]
+  for x = 0 to 0
   for g in [|-3; -1; x|] and f in [|-1; -2; -2; -2; -1; -2; -3|] and u = 1 to x
-  for x = 0 to 0|];;
+  for g in [|1|]
+  for l in [|1; -1; 2; f|] and q = 0 to -1|];;
 [%%expect{|
 Line 4, characters 6-7:
-4 |   for g in [|-3; -1; x|] and f in [|-1; -2; -2; -2; -1; -2; -3|] and u = 1 to x
-          ^
-Warning 26 [unused-var]: unused variable g.
+4 |
 - : (int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable g.
+          ^ for g in [|-3; -1; x|] and f in [|-1; -2; -2; -2; -1; -2; -3|] and u = 1 to x
 |}];;
 
 [(d, e, p, u, x)
@@ -13612,12 +13613,12 @@ Warning 26 [unused-var]: unused variable g.
 |}];;
 
 [(f, h, k, n, o, q, z)
-  for q = 3 to -1 and h in [2] and k in [f] and n in [2; z; -1; 2; 0]
-  for z in [-3; 3; k; 2; 2]
   for k in [-1; -2; 1; -2; 2]
   and f in [0]
   and o in [3; 0; -2]
-  and z in [-3; -3]];;
+  and z in [-3; -3]
+  for z in [-3; 3; k; 2; 2]
+  for q = 3 to -1 and h in [2] and k in [f] and n in [2; z; -1; 2; 0]];;
 [%%expect{|
 Line 7, characters 6-7:
 7 |   and z in [-3; -3]];;
@@ -13627,12 +13628,12 @@ Warning 26 [unused-var]: unused variable z.
 |}];;
 
 [|(f, h, k, n, o, q, z)
-  for q = 3 to -1 and h in [|2|] and k in [|f|] and n in [|2; z; -1; 2; 0|]
-  for z in [|-3; 3; k; 2; 2|]
   for k in [|-1; -2; 1; -2; 2|]
   and f in [|0|]
   and o in [|3; 0; -2|]
-  and z in [|-3; -3|]|];;
+  and z in [|-3; -3|]
+  for z in [|-3; 3; k; 2; 2|]
+  for q = 3 to -1 and h in [|2|] and k in [|f|] and n in [|2; z; -1; 2; 0|]|];;
 [%%expect{|
 Line 7, characters 6-7:
 7 |   and z in [|-3; -3|]|];;
@@ -13661,38 +13662,38 @@ Warning 26 [unused-var]: unused variable z.
 |}];;
 
 [(b, m, q, x)
-  when m > 0
-  for b in [-2] and m = -1 to -3 and q in [2; 3; 0; -1] and x in [-3; 2]];;
+  for b in [-2] and m = -1 to -3 and q in [2; 3; 0; -1] and x in [-3; 2]
+  when m > 0];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(b, m, q, x)
-  when m > 0
   for b in [|-2|]
   and m = -1 to -3
   and q in [|2; 3; 0; -1|]
-  and x in [|-3; 2|]|];;
+  and x in [|-3; 2|]
+  when m > 0|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(e, l, r, v, w, z)
-  for l in [1; 1; -1; -2; z] and e = 2 downto 1
-  for w = 0 downto -3
-  for z = -2 downto 2
+  for v = -1 downto -2
   for r in [v]
-  for v = -1 downto -2];;
+  for z = -2 downto 2
+  for w = 0 downto -3
+  for l in [1; 1; -1; -2; z] and e = 2 downto 1];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(e, l, r, v, w, z)
-  for l in [|1; 1; -1; -2; z|] and e = 2 downto 1
-  for w = 0 downto -3
-  for z = -2 downto 2
+  for v = -1 downto -2
   for r in [|v|]
-  for v = -1 downto -2|];;
+  for z = -2 downto 2
+  for w = 0 downto -3
+  for l in [|1; 1; -1; -2; z|] and e = 2 downto 1|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
@@ -13720,10 +13721,10 @@ Warning 26 [unused-var]: unused variable z.
 |}];;
 
 [(a, m, q, x)
-  when x <> 0
-  when abs m mod 2 = 0
+  for q = 3 downto 0 and m = 2 downto 2 and a = -3 downto -3
   for x in [3; -1; -2; -2; -3; 2; 2]
-  for q = 3 downto 0 and m = 2 downto 2 and a = -3 downto -3];;
+  when abs m mod 2 = 0
+  when x <> 0];;
 [%%expect{|
 - : (int * int * int * int) list =
 [(-3, 2, 3, 3); (-3, 2, 3, -1); (-3, 2, 3, -2); (-3, 2, 3, -2);
@@ -13736,10 +13737,10 @@ Warning 26 [unused-var]: unused variable z.
 |}];;
 
 [|(a, m, q, x)
-  when x <> 0
-  when abs m mod 2 = 0
+  for q = 3 downto 0 and m = 2 downto 2 and a = -3 downto -3
   for x in [|3; -1; -2; -2; -3; 2; 2|]
-  for q = 3 downto 0 and m = 2 downto 2 and a = -3 downto -3|];;
+  when abs m mod 2 = 0
+  when x <> 0|];;
 [%%expect{|
 - : (int * int * int * int) array =
 [|(-3, 2, 3, 3); (-3, 2, 3, -1); (-3, 2, 3, -2); (-3, 2, 3, -2);
@@ -13752,131 +13753,131 @@ Warning 26 [unused-var]: unused variable z.
 |}];;
 
 [(c, h, i, t, u, y, z)
-  for h in [-3] and t = 1 to c
-  for z in [-2; -2; -3; -3] and c in [y; i; -1; -1]
+  for t in [] and u in [2; -2; -3; -1; 0; 0] and y in []
   for i = 1 downto 0
-  for t in [] and u in [2; -2; -3; -1; 0; 0] and y in []];;
+  for z in [-2; -2; -3; -3] and c in [y; i; -1; -1]
+  for h in [-3] and t = 1 to c];;
 [%%expect{|
 Line 5, characters 6-7:
-5 |   for t in [] and u in [2; -2; -3; -1; 0; 0] and y in []];;
+5 | for t in [] and u in [2; -2; -3; -1; 0; 0] and y in []];;
           ^
 Warning 26 [unused-var]: unused variable t.
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(c, h, i, t, u, y, z)
-  for h in [|-3|] and t = 1 to c
-  for z in [|-2; -2; -3; -3|] and c in [|y; i; -1; -1|]
+  for t in [||] and u in [|2; -2; -3; -1; 0; 0|] and y in [||]
   for i = 1 downto 0
-  for t in [||] and u in [|2; -2; -3; -1; 0; 0|] and y in [||]|];;
+  for z in [|-2; -2; -3; -3|] and c in [|y; i; -1; -1|]
+  for h in [|-3|] and t = 1 to c|];;
 [%%expect{|
 Line 5, characters 6-7:
-5 |   for t in [||] and u in [|2; -2; -3; -1; 0; 0|] and y in [||]|];;
+5 | for t in [||] and u in [|2; -2; -3; -1; 0; 0|] and y in [||]|];;
           ^
 Warning 26 [unused-var]: unused variable t.
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(o, u, v)
-  when u > 0
-  for _ = -3 downto -1
+  for o in [1; 1; -1; 0; 0; 1]
   for v in [-3; -3; -2; o; -3; -1] and u = -3 downto -3
-  for o in [1; 1; -1; 0; 0; 1]];;
+  for _ = -3 downto -1
+  when u > 0];;
 [%%expect{|
 - : (int * int * int) list = []
 |}];;
 
 [|(o, u, v)
-  when u > 0
-  for _ = -3 downto -1
+  for o in [|1; 1; -1; 0; 0; 1|]
   for v in [|-3; -3; -2; o; -3; -1|] and u = -3 downto -3
-  for o in [|1; 1; -1; 0; 0; 1|]|];;
+  for _ = -3 downto -1
+  when u > 0|];;
 [%%expect{|
 - : (int * int * int) array = [||]
 |}];;
 
 [(v, w)
-  when w > 0
-  when abs w mod 2 = 1
+  for v = -2 downto -3
   for w = 1 downto -1 and _ = v downto -3
-  for v = -2 downto -3];;
+  when abs w mod 2 = 1
+  when w > 0];;
 [%%expect{|
 - : (int * int) list = [(-2, 1); (-2, 1); (-3, 1)]
 |}];;
 
 [|(v, w)
-  when w > 0
-  when abs w mod 2 = 1
+  for v = -2 downto -3
   for w = 1 downto -1 and _ = v downto -3
-  for v = -2 downto -3|];;
+  when abs w mod 2 = 1
+  when w > 0|];;
 [%%expect{|
 - : (int * int) array = [|(-2, 1); (-2, 1); (-3, 1)|]
 |}];;
 
 [(d, g, w, x, z)
-  for d in [3; -3; 0]
-  for w = -1 downto 0
+  for _ = 1 downto -1 and z = 3 to -2
   for x = 2 downto -1 and g = -2 to 1 and _ = 1 to -1
-  for _ = 1 downto -1 and z = 3 to -2];;
+  for w = -1 downto 0
+  for d in [3; -3; 0]];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(d, g, w, x, z)
-  for d in [|3; -3; 0|]
-  for w = -1 downto 0
+  for _ = 1 downto -1 and z = 3 to -2
   for x = 2 downto -1 and g = -2 to 1 and _ = 1 to -1
-  for _ = 1 downto -1 and z = 3 to -2|];;
+  for w = -1 downto 0
+  for d in [|3; -3; 0|]|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(d, e, f, j, k, l, t, v)
-  for j = -1 downto -3 and f = -3 to 1 and t in [] and k in [e; 1; 3; 3]
-  for d in [-3] and v = 3 downto 2
   for d in [3; 2; 3; -1; -1; -1]
   and l = 0 to 3
   and j = 3 downto -3
-  and e in [-3; -2; 2; 3; 0; -2]];;
+  and e in [-3; -2; 2; 3; 0; -2]
+  for d in [-3] and v = 3 downto 2
+  for j = -1 downto -3 and f = -3 to 1 and t in [] and k in [e; 1; 3; 3]];;
 [%%expect{|
 Lines 1-7, characters 0-33:
 1 | [(d, e, f, j, k, l, t, v)
-2 |   for j = -1 downto -3 and f = -3 to 1 and t in [] and k in [e; 1; 3; 3]
-3 |   for d in [-3] and v = 3 downto 2
-4 |   for d in [3; 2; 3; -1; -1; -1]
-5 |   and l = 0 to 3
-6 |   and j = 3 downto -3
-7 |   and e in [-3; -2; 2; 3; 0; -2]]..
-Warning 26 [unused-var]: unused variable j.
-Line 4, characters 6-7:
-4 |   for d in [3; 2; 3; -1; -1; -1]
-          ^
-Warning 26 [unused-var]: unused variable d.
+2 |
 - : (int * int * int * int * int * int * 'a * int) list = []
+Warning 26 [unused-var]: unused variable d.
+          ^ for d in [3; 2; 3; -1; -1; -1]
+4 |
+Line 4, characters 6-7:
+Warning 26 [unused-var]: unused variable j.
+7 |   and e in [-3; -2; 2; 3; 0; -2]]..
+6 |   and j = 3 downto -3
+5 |   and l = 0 to 3 for d in [3; 2; 3; -1; -1; -1]
+4 | for d in [-3] and v = 3 downto 2
+3 | for j = -1 downto -3 and f = -3 to 1 and t in [] and k in [e; 1; 3; 3]
 |}];;
 
 [|(d, e, f, j, k, l, t, v)
-  for j = -1 downto -3 and f = -3 to 1 and t in [||] and k in [|e; 1; 3; 3|]
-  for d in [|-3|] and v = 3 downto 2
   for d in [|3; 2; 3; -1; -1; -1|]
   and l = 0 to 3
   and j = 3 downto -3
-  and e in [|-3; -2; 2; 3; 0; -2|]|];;
+  and e in [|-3; -2; 2; 3; 0; -2|]
+  for d in [|-3|] and v = 3 downto 2
+  for j = -1 downto -3 and f = -3 to 1 and t in [||] and k in [|e; 1; 3; 3|]|];;
 [%%expect{|
 Lines 1-7, characters 0-36:
 1 | [|(d, e, f, j, k, l, t, v)
-2 |   for j = -1 downto -3 and f = -3 to 1 and t in [||] and k in [|e; 1; 3; 3|]
-3 |   for d in [|-3|] and v = 3 downto 2
-4 |   for d in [|3; 2; 3; -1; -1; -1|]
-5 |   and l = 0 to 3
-6 |   and j = 3 downto -3
-7 |   and e in [|-3; -2; 2; 3; 0; -2|]|]..
-Warning 26 [unused-var]: unused variable j.
-Line 4, characters 6-7:
-4 |   for d in [|3; 2; 3; -1; -1; -1|]
-          ^
-Warning 26 [unused-var]: unused variable d.
+2 |
 - : (int * int * int * int * int * int * '_weak180 * int) array = [||]
+Warning 26 [unused-var]: unused variable d.
+          ^ for d in [|3; 2; 3; -1; -1; -1|]
+4 |
+Line 4, characters 6-7:
+Warning 26 [unused-var]: unused variable j.
+7 |   and e in [|-3; -2; 2; 3; 0; -2|]|]..
+6 |   and j = 3 downto -3
+5 |   and l = 0 to 3 for d in [|3; 2; 3; -1; -1; -1|]
+4 | for d in [|-3|] and v = 3 downto 2
+3 | for j = -1 downto -3 and f = -3 to 1 and t in [||] and k in [|e; 1; 3; 3|]
 |}];;
 
 [(d, j, r, w)
@@ -13936,19 +13937,19 @@ Warning 26 [unused-var]: unused variable d.
 |}];;
 
 [(a, q, w)
-  for a in []
+  for w in [3; 0; 2] and q = 2 to 3
   when q > 0
   when q > 0
-  for w in [3; 0; 2] and q = 2 to 3];;
+  for a in []];;
 [%%expect{|
 - : ('a * int * int) list = []
 |}];;
 
 [|(a, q, w)
-  for a in [||]
+  for w in [|3; 0; 2|] and q = 2 to 3
   when q > 0
   when q > 0
-  for w in [|3; 0; 2|] and q = 2 to 3|];;
+  for a in [||]|];;
 [%%expect{|
 - : ('_weak182 * int * int) array = [||]
 |}];;
@@ -13965,41 +13966,41 @@ Warning 26 [unused-var]: unused variable d.
 |}];;
 
 [(b, e, g, h, j, m, o, u, v, z)
-  for o = j to -1 and e in [1; 2; -3; 1]
-  for m = -1 to -1 and g in [2; 3; 2; -1; 0]
-  for u in [-2; -2; 0; 3] and v in [3; -2; 2; j; -1; -3; 2]
+  for z = -2 downto 2 and b in [-3; -3; 2; -3]
   for j = 2 to -2 and h = -3 downto 2
-  for z = -2 downto 2 and b in [-3; -3; 2; -3]];;
+  for u in [-2; -2; 0; 3] and v in [3; -2; 2; j; -1; -3; 2]
+  for m = -1 to -1 and g in [2; 3; 2; -1; 0]
+  for o = j to -1 and e in [1; 2; -3; 1]];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(b, e, g, h, j, m, o, u, v, z)
-  for o = j to -1 and e in [|1; 2; -3; 1|]
-  for m = -1 to -1 and g in [|2; 3; 2; -1; 0|]
-  for u in [|-2; -2; 0; 3|] and v in [|3; -2; 2; j; -1; -3; 2|]
+  for z = -2 downto 2 and b in [|-3; -3; 2; -3|]
   for j = 2 to -2 and h = -3 downto 2
-  for z = -2 downto 2 and b in [|-3; -3; 2; -3|]|];;
+  for u in [|-2; -2; 0; 3|] and v in [|3; -2; 2; j; -1; -3; 2|]
+  for m = -1 to -1 and g in [|2; 3; 2; -1; 0|]
+  for o = j to -1 and e in [|1; 2; -3; 1|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(c, k, n, r, t, u, y)
-  for t = 3 downto 1 and y = 1 to n and c = 3 to -3
   for r = -3 to 3
   and n in [1; -2; 2; 3; -1; 1; -2]
   and u in [1]
-  and k in [1; -2; -3; -2; 3]];;
+  and k in [1; -2; -3; -2; 3]
+  for t = 3 downto 1 and y = 1 to n and c = 3 to -3];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(c, k, n, r, t, u, y)
-  for t = 3 downto 1 and y = 1 to n and c = 3 to -3
   for r = -3 to 3
   and n in [|1; -2; 2; 3; -1; 1; -2|]
   and u in [|1|]
-  and k in [|1; -2; -3; -2; 3|]|];;
+  and k in [|1; -2; -3; -2; 3|]
+  for t = 3 downto 1 and y = 1 to n and c = 3 to -3|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
@@ -14047,251 +14048,251 @@ Warning 26 [unused-var]: unused variable d.
 |}];;
 
 [(e, f, l, n, q, r)
-  for n in [r; 3; -2; -2; -2; 0] and f = -3 downto -2 and r = -1 downto 0
-  when abs q mod 2 = 0
-  for q = -1 downto 2 and l in [1; 2; 1; 1; 0; 2] and e = -1 to 0
   for _ in [2; 2; 2; -3; -1; -1]
   and f = -2 downto -3
-  and r in [-2; 2; 3; 1; 0]];;
+  and r in [-2; 2; 3; 1; 0]
+  for q = -1 downto 2 and l in [1; 2; 1; 1; 0; 2] and e = -1 to 0
+  when abs q mod 2 = 0
+  for n in [r; 3; -2; -2; -2; 0] and f = -3 downto -2 and r = -1 downto 0];;
 [%%expect{|
 Lines 1-7, characters 0-28:
 1 | [(e, f, l, n, q, r)
-2 |   for n in [r; 3; -2; -2; -2; 0] and f = -3 downto -2 and r = -1 downto 0
-3 |   when abs q mod 2 = 0
-4 |   for q = -1 downto 2 and l in [1; 2; 1; 1; 0; 2] and e = -1 to 0
-5 |   for _ in [2; 2; 2; -3; -1; -1]
-6 |   and f = -2 downto -3
-7 |   and r in [-2; 2; 3; 1; 0]]..
-Warning 26 [unused-var]: unused variable f.
+2 |
 - : (int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable f.
+7 |   and r in [-2; 2; 3; 1; 0]]..
+6 |   and f = -2 downto -3 for _ in [2; 2; 2; -3; -1; -1]
+5 | for q = -1 downto 2 and l in [1; 2; 1; 1; 0; 2] and e = -1 to 0
+4 | when abs q mod 2 = 0
+3 | for n in [r; 3; -2; -2; -2; 0] and f = -3 downto -2 and r = -1 downto 0
 |}];;
 
 [|(e, f, l, n, q, r)
-  for n in [|r; 3; -2; -2; -2; 0|] and f = -3 downto -2 and r = -1 downto 0
-  when abs q mod 2 = 0
-  for q = -1 downto 2 and l in [|1; 2; 1; 1; 0; 2|] and e = -1 to 0
   for _ in [|2; 2; 2; -3; -1; -1|]
   and f = -2 downto -3
-  and r in [|-2; 2; 3; 1; 0|]|];;
+  and r in [|-2; 2; 3; 1; 0|]
+  for q = -1 downto 2 and l in [|1; 2; 1; 1; 0; 2|] and e = -1 to 0
+  when abs q mod 2 = 0
+  for n in [|r; 3; -2; -2; -2; 0|] and f = -3 downto -2 and r = -1 downto 0|];;
 [%%expect{|
 Lines 1-7, characters 0-31:
 1 | [|(e, f, l, n, q, r)
-2 |   for n in [|r; 3; -2; -2; -2; 0|] and f = -3 downto -2 and r = -1 downto 0
-3 |   when abs q mod 2 = 0
-4 |   for q = -1 downto 2 and l in [|1; 2; 1; 1; 0; 2|] and e = -1 to 0
-5 |   for _ in [|2; 2; 2; -3; -1; -1|]
-6 |   and f = -2 downto -3
-7 |   and r in [|-2; 2; 3; 1; 0|]|]..
-Warning 26 [unused-var]: unused variable f.
+2 |
 - : (int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable f.
+7 |   and r in [|-2; 2; 3; 1; 0|]|]..
+6 |   and f = -2 downto -3 for _ in [|2; 2; 2; -3; -1; -1|]
+5 | for q = -1 downto 2 and l in [|1; 2; 1; 1; 0; 2|] and e = -1 to 0
+4 | when abs q mod 2 = 0
+3 | for n in [|r; 3; -2; -2; -2; 0|] and f = -3 downto -2 and r = -1 downto 0
 |}];;
 
 [(a, h, p, t, y)
-  when abs y mod 2 = 0
-  for y = 1 downto -3
   for p = 3 to -2
   and t in [-2; 3; -2; 0; -2; -2]
   and a in [3]
-  and h = 0 to -3];;
+  and h = 0 to -3
+  for y = 1 downto -3
+  when abs y mod 2 = 0];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(a, h, p, t, y)
-  when abs y mod 2 = 0
-  for y = 1 downto -3
   for p = 3 to -2
   and t in [|-2; 3; -2; 0; -2; -2|]
   and a in [|3|]
-  and h = 0 to -3|];;
+  and h = 0 to -3
+  for y = 1 downto -3
+  when abs y mod 2 = 0|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(b, e, i, z)
-  for e in [-1; 0; 2; -2; 1]
-  for i in [0; 0; 2]
-  when z > 0
+  for _ in [2; 3; 0; 1; 1; 3; -2]
   for z = 1 to 0 and b = 0 downto 3
-  for _ in [2; 3; 0; 1; 1; 3; -2]];;
+  when z > 0
+  for i in [0; 0; 2]
+  for e in [-1; 0; 2; -2; 1]];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(b, e, i, z)
-  for e in [|-1; 0; 2; -2; 1|]
-  for i in [|0; 0; 2|]
-  when z > 0
+  for _ in [|2; 3; 0; 1; 1; 3; -2|]
   for z = 1 to 0 and b = 0 downto 3
-  for _ in [|2; 3; 0; 1; 1; 3; -2|]|];;
+  when z > 0
+  for i in [|0; 0; 2|]
+  for e in [|-1; 0; 2; -2; 1|]|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(b, d, k, n, r)
-  when abs d mod 2 = 1
-  for n = 1 downto 0
-  for k = -2 downto -2
+  for b in [0; -1; -3; 0] and r = -2 to -3
   for b = -2 to 0 and d in [-3]
-  for b in [0; -1; -3; 0] and r = -2 to -3];;
+  for k = -2 downto -2
+  for n = 1 downto 0
+  when abs d mod 2 = 1];;
 [%%expect{|
 Line 6, characters 6-7:
-6 |   for b in [0; -1; -3; 0] and r = -2 to -3];;
+6 | for b in [0; -1; -3; 0] and r = -2 to -3];;
           ^
 Warning 26 [unused-var]: unused variable b.
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(b, d, k, n, r)
-  when abs d mod 2 = 1
-  for n = 1 downto 0
-  for k = -2 downto -2
+  for b in [|0; -1; -3; 0|] and r = -2 to -3
   for b = -2 to 0 and d in [|-3|]
-  for b in [|0; -1; -3; 0|] and r = -2 to -3|];;
+  for k = -2 downto -2
+  for n = 1 downto 0
+  when abs d mod 2 = 1|];;
 [%%expect{|
 Line 6, characters 6-7:
-6 |   for b in [|0; -1; -3; 0|] and r = -2 to -3|];;
+6 | for b in [|0; -1; -3; 0|] and r = -2 to -3|];;
           ^
 Warning 26 [unused-var]: unused variable b.
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(c, e, l, u, x)
-  for c in [0; l; -3; 3; 3]
-  for x in [-1; 0; 0; -1] and l = 3 to 0 and u = 2 to 1 and e = -2 downto 3];;
+  for x in [-1; 0; 0; -1] and l = 3 to 0 and u = 2 to 1 and e = -2 downto 3
+  for c in [0; l; -3; 3; 3]];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(c, e, l, u, x)
-  for c in [|0; l; -3; 3; 3|]
   for x in [|-1; 0; 0; -1|]
   and l = 3 to 0
   and u = 2 to 1
-  and e = -2 downto 3|];;
+  and e = -2 downto 3
+  for c in [|0; l; -3; 3; 3|]|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(a, c, g, h, m, s, u, v, w, x)
-  for h = -2 downto 1 and g in [-1; 1; v] and m = x to 0
-  for u in []
+  for a in [-3; 0; -2; -1; 2; 3] and c = 2 downto -1 and v in [1; -2]
   for x = -3 to 0 and w in [0; 1] and s in [3; v; -3]
-  for a in [-3; 0; -2; -1; 2; 3] and c = 2 downto -1 and v in [1; -2]];;
+  for u in []
+  for h = -2 downto 1 and g in [-1; 1; v] and m = x to 0];;
 [%%expect{|
 - : (int * int * int * int * int * int * 'a * int * int * int) list = []
 |}];;
 
 [|(a, c, g, h, m, s, u, v, w, x)
-  for h = -2 downto 1 and g in [|-1; 1; v|] and m = x to 0
-  for u in [||]
+  for a in [|-3; 0; -2; -1; 2; 3|] and c = 2 downto -1 and v in [|1; -2|]
   for x = -3 to 0 and w in [|0; 1|] and s in [|3; v; -3|]
-  for a in [|-3; 0; -2; -1; 2; 3|] and c = 2 downto -1 and v in [|1; -2|]|];;
+  for u in [||]
+  for h = -2 downto 1 and g in [|-1; 1; v|] and m = x to 0|];;
 [%%expect{|
 - : (int * int * int * int * int * int * '_weak183 * int * int * int) array =
 [||]
 |}];;
 
 [(e, g, m, o)
-  for e = 2 downto 3
+  for m in [3; 0] and g in [3; 2; -2; -2; 1; -3] and o in [2; -2; -2; -2; 0]
   when g <> 0
-  for m in [3; 0] and g in [3; 2; -2; -2; 1; -3] and o in [2; -2; -2; -2; 0]];;
+  for e = 2 downto 3];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(e, g, m, o)
-  for e = 2 downto 3
-  when g <> 0
   for m in [|3; 0|]
   and g in [|3; 2; -2; -2; 1; -3|]
-  and o in [|2; -2; -2; -2; 0|]|];;
+  and o in [|2; -2; -2; -2; 0|]
+  when g <> 0
+  for e = 2 downto 3|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(a, h, r, u, w, z)
-  for r = 1 to -1
-  for h in [1; -2; 1; 1; -2] and z in [1; 0; 2]
-  for a in [2; w; -2; 0] and u = r downto 1
+  for r in [2; -2; -1; -2; -1]
   for w = 2 downto -3 and _ = -3 to 2
-  for r in [2; -2; -1; -2; -1]];;
+  for a in [2; w; -2; 0] and u = r downto 1
+  for h in [1; -2; 1; 1; -2] and z in [1; 0; 2]
+  for r = 1 to -1];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, h, r, u, w, z)
-  for r = 1 to -1
-  for h in [|1; -2; 1; 1; -2|] and z in [|1; 0; 2|]
-  for a in [|2; w; -2; 0|] and u = r downto 1
+  for r in [|2; -2; -1; -2; -1|]
   for w = 2 downto -3 and _ = -3 to 2
-  for r in [|2; -2; -1; -2; -1|]|];;
+  for a in [|2; w; -2; 0|] and u = r downto 1
+  for h in [|1; -2; 1; 1; -2|] and z in [|1; 0; 2|]
+  for r = 1 to -1|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
-[g when abs g mod 2 = 0 for g = -2 downto -3];;
+[g for g = -2 downto -3 when abs g mod 2 = 0];;
 [%%expect{|
 - : int list = [-2]
 |}];;
 
-[|g when abs g mod 2 = 0 for g = -2 downto -3|];;
+[|g for g = -2 downto -3 when abs g mod 2 = 0|];;
 [%%expect{|
 - : int array = [|-2|]
 |}];;
 
 [(a, c, i, p, s, w)
-  for p in [-1; -2; -2] and a in []
-  for i = -1 downto 3
+  for w in [-2; 1; 1; -3; -1; -2] and c in [0] and a = 0 to 3
   for s = 3 downto -1 and c in [-1; -1; 3; -1]
-  for w in [-2; 1; 1; -3; -1; -2] and c in [0] and a = 0 to 3];;
+  for i = -1 downto 3
+  for p in [-1; -2; -2] and a in []];;
 [%%expect{|
 Lines 1-5, characters 0-62:
 1 | [(a, c, i, p, s, w)
-2 |   for p in [-1; -2; -2] and a in []
-3 |   for i = -1 downto 3
-4 |   for s = 3 downto -1 and c in [-1; -1; 3; -1]
-5 |   for w in [-2; 1; 1; -3; -1; -2] and c in [0] and a = 0 to 3]..
-Warning 26 [unused-var]: unused variable a.
+2 | for w in [-2; 1; 1; -3; -1; -2] and c in [0] and a = 0 to 3
+5 |
 Line 5, characters 38-39:
-5 |   for w in [-2; 1; 1; -3; -1; -2] and c in [0] and a = 0 to 3];;
+Warning 26 [unused-var]: unused variable a. for w in [-2; 1; 1; -3; -1; -2] and c in [0] and a = 0 to 3]..
+5 | for s = 3 downto -1 and c in [-1; -1; 3; -1]
+4 | for i = -1 downto 3
+3 | for p in [-1; -2; -2] and a in []];;
                                           ^
 Warning 26 [unused-var]: unused variable c.
 - : ('a * int * int * int * int * int) list = []
 |}];;
 
 [|(a, c, i, p, s, w)
-  for p in [|-1; -2; -2|] and a in [||]
-  for i = -1 downto 3
+  for w in [|-2; 1; 1; -3; -1; -2|] and c in [|0|] and a = 0 to 3
   for s = 3 downto -1 and c in [|-1; -1; 3; -1|]
-  for w in [|-2; 1; 1; -3; -1; -2|] and c in [|0|] and a = 0 to 3|];;
+  for i = -1 downto 3
+  for p in [|-1; -2; -2|] and a in [||]|];;
 [%%expect{|
 Lines 1-5, characters 0-67:
 1 | [|(a, c, i, p, s, w)
-2 |   for p in [|-1; -2; -2|] and a in [||]
-3 |   for i = -1 downto 3
-4 |   for s = 3 downto -1 and c in [|-1; -1; 3; -1|]
-5 |   for w in [|-2; 1; 1; -3; -1; -2|] and c in [|0|] and a = 0 to 3|]..
-Warning 26 [unused-var]: unused variable a.
+2 | for w in [|-2; 1; 1; -3; -1; -2|] and c in [|0|] and a = 0 to 3
+5 |
 Line 5, characters 40-41:
-5 |   for w in [|-2; 1; 1; -3; -1; -2|] and c in [|0|] and a = 0 to 3|];;
+Warning 26 [unused-var]: unused variable a. for w in [|-2; 1; 1; -3; -1; -2|] and c in [|0|] and a = 0 to 3|]..
+5 | for s = 3 downto -1 and c in [|-1; -1; 3; -1|]
+4 | for i = -1 downto 3
+3 | for p in [|-1; -2; -2|] and a in [||]|];;
                                             ^
 Warning 26 [unused-var]: unused variable c.
 - : ('_weak184 * int * int * int * int * int) array = [||]
 |}];;
 
 [(c, e, j, k, x)
-  for k = 1 to c and x in [-2; -3] and j = 2 to -1
+  for e = -1 to 0
   for c in [3; 1; -2]
-  for e = -1 to 0];;
+  for k = 1 to c and x in [-2; -3] and j = 2 to -1];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(c, e, j, k, x)
-  for k = 1 to c and x in [|-2; -3|] and j = 2 to -1
+  for e = -1 to 0
   for c in [|3; 1; -2|]
-  for e = -1 to 0|];;
+  for k = 1 to c and x in [|-2; -3|] and j = 2 to -1|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
@@ -14329,162 +14330,162 @@ Warning 26 [unused-var]: unused variable c.
 |}];;
 
 [(c, f, i, j, m, p, u, z)
-  for u = 1 downto -3
-  and j in [2; f; 0; 1; 0; 2]
-  and m in [-1; 1; -1; -1; 2]
-  and z in [-3; 0]
   for f = 2 downto 2
   and p in [-1]
   and c in []
   and i = 3 to 3
-  and u = 0 downto 3];;
+  and u = 0 downto 3
+  for u = 1 downto -3
+  and j in [2; f; 0; 1; 0; 2]
+  and m in [-1; 1; -1; -1; 2]
+  and z in [-3; 0]];;
 [%%expect{|
 Lines 1-10, characters 0-21:
  1 | [(c, f, i, j, m, p, u, z)
- 2 |   for u = 1 downto -3
- 3 |   and j in [2; f; 0; 1; 0; 2]
- 4 |   and m in [-1; 1; -1; -1; 2]
- 5 |   and z in [-3; 0]
- 6 |   for f = 2 downto 2
- 7 |   and p in [-1]
- 8 |   and c in []
- 9 |   and i = 3 to 3
-10 |   and u = 0 downto 3]..
-Warning 26 [unused-var]: unused variable u.
+ 2 |
 - : ('a * int * int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable u.
+10 |   and u = 0 downto 3]..
+ 9 |   and i = 3 to 3
+ 8 |   and c in []
+ 7 |   and p in [-1] for f = 2 downto 2
+ 6 |
+ 5 |   and z in [-3; 0]
+ 4 |   and m in [-1; 1; -1; -1; 2]
+ 3 |   and j in [2; f; 0; 1; 0; 2] for u = 1 downto -3
 |}];;
 
 [|(c, f, i, j, m, p, u, z)
-  for u = 1 downto -3
-  and j in [|2; f; 0; 1; 0; 2|]
-  and m in [|-1; 1; -1; -1; 2|]
-  and z in [|-3; 0|]
   for f = 2 downto 2
   and p in [|-1|]
   and c in [||]
   and i = 3 to 3
-  and u = 0 downto 3|];;
+  and u = 0 downto 3
+  for u = 1 downto -3
+  and j in [|2; f; 0; 1; 0; 2|]
+  and m in [|-1; 1; -1; -1; 2|]
+  and z in [|-3; 0|]|];;
 [%%expect{|
 Lines 1-10, characters 0-22:
  1 | [|(c, f, i, j, m, p, u, z)
- 2 |   for u = 1 downto -3
- 3 |   and j in [|2; f; 0; 1; 0; 2|]
- 4 |   and m in [|-1; 1; -1; -1; 2|]
- 5 |   and z in [|-3; 0|]
- 6 |   for f = 2 downto 2
- 7 |   and p in [|-1|]
- 8 |   and c in [||]
- 9 |   and i = 3 to 3
-10 |   and u = 0 downto 3|]..
-Warning 26 [unused-var]: unused variable u.
+ 2 |
 - : ('_weak185 * int * int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable u.
+10 |   and u = 0 downto 3|]..
+ 9 |   and i = 3 to 3
+ 8 |   and c in [||]
+ 7 |   and p in [|-1|] for f = 2 downto 2
+ 6 |
+ 5 |   and z in [|-3; 0|]
+ 4 |   and m in [|-1; 1; -1; -1; 2|]
+ 3 |   and j in [|2; f; 0; 1; 0; 2|] for u = 1 downto -3
 |}];;
 
 [(e, h, i, j, l, o, t, u)
+  for i in [0; 2; -2; 0] and t in []
+  for u = 0 downto -3 and h in [3; 3; 3]
   for e in [0; -1; -2]
   and l in [3; 0; -2; -1]
   and j = -2 to 2
-  and o in [h; 0; -3; -2]
-  for u = 0 downto -3 and h in [3; 3; 3]
-  for i in [0; 2; -2; 0] and t in []];;
+  and o in [h; 0; -3; -2]];;
 [%%expect{|
 - : (int * int * int * int * int * int * 'a * int) list = []
 |}];;
 
 [|(e, h, i, j, l, o, t, u)
+  for i in [|0; 2; -2; 0|] and t in [||]
+  for u = 0 downto -3 and h in [|3; 3; 3|]
   for e in [|0; -1; -2|]
   and l in [|3; 0; -2; -1|]
   and j = -2 to 2
-  and o in [|h; 0; -3; -2|]
-  for u = 0 downto -3 and h in [|3; 3; 3|]
-  for i in [|0; 2; -2; 0|] and t in [||]|];;
+  and o in [|h; 0; -3; -2|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int * '_weak186 * int) array = [||]
 |}];;
 
-[d when d <> 0 for d = 1 to 2];;
+[d for d = 1 to 2 when d <> 0];;
 [%%expect{|
 - : int list = [1; 2]
 |}];;
 
-[|d when d <> 0 for d = 1 to 2|];;
+[|d for d = 1 to 2 when d <> 0|];;
 [%%expect{|
 - : int array = [|1; 2|]
 |}];;
 
 [(n, p, u, w, x)
-  for u = 1 to x and _ = -3 downto 1 and p in [1; 3; -2] and n in [1]
+  for x = -1 to 0
   for w = -3 to -3 and x in [-2; 0]
-  for x = -1 to 0];;
+  for u = 1 to x and _ = -3 downto 1 and p in [1; 3; -2] and n in [1]];;
 [%%expect{|
 Lines 1-4, characters 0-18:
 1 | [(n, p, u, w, x)
-2 |   for u = 1 to x and _ = -3 downto 1 and p in [1; 3; -2] and n in [1]
-3 |   for w = -3 to -3 and x in [-2; 0]
-4 |   for x = -1 to 0]..
-Warning 26 [unused-var]: unused variable x.
+2 |
 - : (int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable x. for x = -1 to 0]..
+4 | for w = -3 to -3 and x in [-2; 0]
+3 | for u = 1 to x and _ = -3 downto 1 and p in [1; 3; -2] and n in [1]
 |}];;
 
 [|(n, p, u, w, x)
-  for u = 1 to x and _ = -3 downto 1 and p in [|1; 3; -2|] and n in [|1|]
+  for x = -1 to 0
   for w = -3 to -3 and x in [|-2; 0|]
-  for x = -1 to 0|];;
+  for u = 1 to x and _ = -3 downto 1 and p in [|1; 3; -2|] and n in [|1|]|];;
 [%%expect{|
 Lines 1-4, characters 0-19:
 1 | [|(n, p, u, w, x)
-2 |   for u = 1 to x and _ = -3 downto 1 and p in [|1; 3; -2|] and n in [|1|]
-3 |   for w = -3 to -3 and x in [|-2; 0|]
-4 |   for x = -1 to 0|]..
-Warning 26 [unused-var]: unused variable x.
+2 |
 - : (int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable x. for x = -1 to 0|]..
+4 | for w = -3 to -3 and x in [|-2; 0|]
+3 | for u = 1 to x and _ = -3 downto 1 and p in [|1; 3; -2|] and n in [|1|]
 |}];;
 
 [(f, i, n, q)
-  for q = -3 to 0
-  for i = -2 to -1
-  for _ = 2 to 2
+  for f = 1 to -1 and n in [3]
   when f < 0
-  for f = 1 to -1 and n in [3]];;
+  for _ = 2 to 2
+  for i = -2 to -1
+  for q = -3 to 0];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(f, i, n, q)
-  for q = -3 to 0
-  for i = -2 to -1
-  for _ = 2 to 2
+  for f = 1 to -1 and n in [|3|]
   when f < 0
-  for f = 1 to -1 and n in [|3|]|];;
+  for _ = 2 to 2
+  for i = -2 to -1
+  for q = -3 to 0|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(b, c, o, r, z)
+  for b in [2] and _ = 2 downto -1
   for o = 1 to -3
   and z = -1 downto -2
   and r in [0; -2; -3; 0; b; -1]
-  and c in [3; -3; -2]
-  for b in [2] and _ = 2 downto -1];;
+  and c in [3; -3; -2]];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(b, c, o, r, z)
+  for b in [|2|] and _ = 2 downto -1
   for o = 1 to -3
   and z = -1 downto -2
   and r in [|0; -2; -3; 0; b; -1|]
-  and c in [|3; -3; -2|]
-  for b in [|2|] and _ = 2 downto -1|];;
+  and c in [|3; -3; -2|]|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(b, i, l, n)
-  when l < 0
-  for l in [2; 2; i; 0; -3; 2; -2] and n in [3; 1; 2]
+  for i = 2 downto -3 and b = 3 to 3
   when i <> 0
-  for i = 2 downto -3 and b = 3 to 3];;
+  for l in [2; 2; i; 0; -3; 2; -2] and n in [3; 1; 2]
+  when l < 0];;
 [%%expect{|
 - : (int * int * int * int) list =
 [(3, 2, -3, 3); (3, 2, -3, 1); (3, 2, -3, 2); (3, 2, -2, 3); (3, 2, -2, 1);
@@ -14500,10 +14501,10 @@ Warning 26 [unused-var]: unused variable x.
 |}];;
 
 [|(b, i, l, n)
-  when l < 0
-  for l in [|2; 2; i; 0; -3; 2; -2|] and n in [|3; 1; 2|]
+  for i = 2 downto -3 and b = 3 to 3
   when i <> 0
-  for i = 2 downto -3 and b = 3 to 3|];;
+  for l in [|2; 2; i; 0; -3; 2; -2|] and n in [|3; 1; 2|]
+  when l < 0|];;
 [%%expect{|
 - : (int * int * int * int) array =
 [|(3, 2, -3, 3); (3, 2, -3, 1); (3, 2, -3, 2); (3, 2, -2, 3); (3, 2, -2, 1);
@@ -14519,145 +14520,145 @@ Warning 26 [unused-var]: unused variable x.
 |}];;
 
 [(c, f, l, r, t, u)
-  for c = -3 downto 2 and f in [] and t in [u; -2; 3] and r = 3 to 3
-  for l = 3 downto -1 and u in [2; -2; -3; 2; 3; 1]];;
+  for l = 3 downto -1 and u in [2; -2; -3; 2; 3; 1]
+  for c = -3 downto 2 and f in [] and t in [u; -2; 3] and r = 3 to 3];;
 [%%expect{|
 - : (int * 'a * int * int * int * int) list = []
 |}];;
 
 [|(c, f, l, r, t, u)
-  for c = -3 downto 2 and f in [||] and t in [|u; -2; 3|] and r = 3 to 3
-  for l = 3 downto -1 and u in [|2; -2; -3; 2; 3; 1|]|];;
+  for l = 3 downto -1 and u in [|2; -2; -3; 2; 3; 1|]
+  for c = -3 downto 2 and f in [||] and t in [|u; -2; 3|] and r = 3 to 3|];;
 [%%expect{|
 - : (int * '_weak187 * int * int * int * int) array = [||]
 |}];;
 
 [(a, g, h, j, m, u, z)
-  for u in [] and a = 3 to -3
-  for j = 3 downto -1
-  for g in [-1; 0; 3; -1; 3; 1] and m = -2 to -3
+  for m = 2 downto -2 and h in [-2; 2]
   for z = h to 1 and _ in [3; -1; 3; 3; -3; -2; 2]
-  for m = 2 downto -2 and h in [-2; 2]];;
+  for g in [-1; 0; 3; -1; 3; 1] and m = -2 to -3
+  for j = 3 downto -1
+  for u in [] and a = 3 to -3];;
 [%%expect{|
 Lines 1-6, characters 0-39:
 1 | [(a, g, h, j, m, u, z)
-2 |   for u in [] and a = 3 to -3
-3 |   for j = 3 downto -1
-4 |   for g in [-1; 0; 3; -1; 3; 1] and m = -2 to -3
-5 |   for z = h to 1 and _ in [3; -1; 3; 3; -3; -2; 2]
-6 |   for m = 2 downto -2 and h in [-2; 2]]..
-Warning 26 [unused-var]: unused variable m.
+2 |
 - : (int * int * int * int * int * 'a * int) list = []
+Warning 26 [unused-var]: unused variable m. for m = 2 downto -2 and h in [-2; 2]]..
+6 | for z = h to 1 and _ in [3; -1; 3; 3; -3; -2; 2]
+5 | for g in [-1; 0; 3; -1; 3; 1] and m = -2 to -3
+4 | for j = 3 downto -1
+3 | for u in [] and a = 3 to -3
 |}];;
 
 [|(a, g, h, j, m, u, z)
-  for u in [||] and a = 3 to -3
-  for j = 3 downto -1
-  for g in [|-1; 0; 3; -1; 3; 1|] and m = -2 to -3
+  for m = 2 downto -2 and h in [|-2; 2|]
   for z = h to 1 and _ in [|3; -1; 3; 3; -3; -2; 2|]
-  for m = 2 downto -2 and h in [|-2; 2|]|];;
+  for g in [|-1; 0; 3; -1; 3; 1|] and m = -2 to -3
+  for j = 3 downto -1
+  for u in [||] and a = 3 to -3|];;
 [%%expect{|
 Lines 1-6, characters 0-42:
 1 | [|(a, g, h, j, m, u, z)
-2 |   for u in [||] and a = 3 to -3
-3 |   for j = 3 downto -1
-4 |   for g in [|-1; 0; 3; -1; 3; 1|] and m = -2 to -3
-5 |   for z = h to 1 and _ in [|3; -1; 3; 3; -3; -2; 2|]
-6 |   for m = 2 downto -2 and h in [|-2; 2|]|]..
-Warning 26 [unused-var]: unused variable m.
+2 |
 - : (int * int * int * int * int * '_weak188 * int) array = [||]
+Warning 26 [unused-var]: unused variable m. for m = 2 downto -2 and h in [|-2; 2|]|]..
+6 | for z = h to 1 and _ in [|3; -1; 3; 3; -3; -2; 2|]
+5 | for g in [|-1; 0; 3; -1; 3; 1|] and m = -2 to -3
+4 | for j = 3 downto -1
+3 | for u in [||] and a = 3 to -3
 |}];;
 
 [(d, f, h, i, o, r, u)
-  for o = -3 downto -2 and r = 0 downto 3 and d = -3 to 1
-  when f < 0
   for f in [2]
   and h in [1; -2; -1; 0; -2]
   and i in [2; 3; -2; 1]
-  and u in [0; 1; 2; -1; 0; 3; 0]];;
+  and u in [0; 1; 2; -1; 0; 3; 0]
+  when f < 0
+  for o = -3 downto -2 and r = 0 downto 3 and d = -3 to 1];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(d, f, h, i, o, r, u)
-  for o = -3 downto -2 and r = 0 downto 3 and d = -3 to 1
-  when f < 0
   for f in [|2|]
   and h in [|1; -2; -1; 0; -2|]
   and i in [|2; 3; -2; 1|]
-  and u in [|0; 1; 2; -1; 0; 3; 0|]|];;
+  and u in [|0; 1; 2; -1; 0; 3; 0|]
+  when f < 0
+  for o = -3 downto -2 and r = 0 downto 3 and d = -3 to 1|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(b, c, f, k, m, q, z)
-  for b in [k; 2; 3; -1; 0; 1; -2] and q in [] and c in [0; -2; -2; 2; 0; 3; -2]
-  for m = 2 to -3 and z in [-2; f; 3; -2; 3; 1]
+  for f = 3 downto -1
   for f = -2 downto -1 and k = 0 downto -3
-  for f = 3 downto -1];;
+  for m = 2 to -3 and z in [-2; f; 3; -2; 3; 1]
+  for b in [k; 2; 3; -1; 0; 1; -2] and q in [] and c in [0; -2; -2; 2; 0; 3; -2]];;
 [%%expect{|
 Lines 1-5, characters 0-22:
 1 | [(b, c, f, k, m, q, z)
-2 |   for b in [k; 2; 3; -1; 0; 1; -2] and q in [] and c in [0; -2; -2; 2; 0; 3; -2]
-3 |   for m = 2 to -3 and z in [-2; f; 3; -2; 3; 1]
-4 |   for f = -2 downto -1 and k = 0 downto -3
-5 |   for f = 3 downto -1]..
-Warning 26 [unused-var]: unused variable f.
+2 |
 - : (int * int * int * int * int * 'a * int) list = []
+Warning 26 [unused-var]: unused variable f. for f = 3 downto -1]..
+5 | for f = -2 downto -1 and k = 0 downto -3
+4 | for m = 2 to -3 and z in [-2; f; 3; -2; 3; 1]
+3 | for b in [k; 2; 3; -1; 0; 1; -2] and q in [] and c in [0; -2; -2; 2; 0; 3; -2]
 |}];;
 
 [|(b, c, f, k, m, q, z)
+  for f = 3 downto -1
+  for f = -2 downto -1 and k = 0 downto -3
+  for m = 2 to -3 and z in [|-2; f; 3; -2; 3; 1|]
   for b in [|k; 2; 3; -1; 0; 1; -2|]
   and q in [||]
-  and c in [|0; -2; -2; 2; 0; 3; -2|]
-  for m = 2 to -3 and z in [|-2; f; 3; -2; 3; 1|]
-  for f = -2 downto -1 and k = 0 downto -3
-  for f = 3 downto -1|];;
+  and c in [|0; -2; -2; 2; 0; 3; -2|]|];;
 [%%expect{|
 Lines 1-7, characters 0-23:
 1 | [|(b, c, f, k, m, q, z)
-2 |   for b in [|k; 2; 3; -1; 0; 1; -2|]
-3 |   and q in [||]
-4 |   and c in [|0; -2; -2; 2; 0; 3; -2|]
-5 |   for m = 2 to -3 and z in [|-2; f; 3; -2; 3; 1|]
-6 |   for f = -2 downto -1 and k = 0 downto -3
-7 |   for f = 3 downto -1|]..
-Warning 26 [unused-var]: unused variable f.
+2 |
 - : (int * int * int * int * int * '_weak189 * int) array = [||]
+Warning 26 [unused-var]: unused variable f. for f = 3 downto -1|]..
+7 | for f = -2 downto -1 and k = 0 downto -3
+6 | for m = 2 to -3 and z in [|-2; f; 3; -2; 3; 1|]
+5 |
+4 |   and c in [|0; -2; -2; 2; 0; 3; -2|]
+3 |   and q in [||] for b in [|k; 2; 3; -1; 0; 1; -2|]
 |}];;
 
 [(d, f, g, i, q, z)
-  for g = 3 downto 1 and q = 2 to 0 and i = -1 to 2
-  for d = 0 downto 1
+  for z = 2 to -3
   for f = -1 to 3 and g in [-3] and i in [2; -1]
-  for z = 2 to -3];;
+  for d = 0 downto 1
+  for g = 3 downto 1 and q = 2 to 0 and i = -1 to 2];;
 [%%expect{|
 Line 4, characters 36-37:
-4 |   for f = -1 to 3 and g in [-3] and i in [2; -1]
-                                        ^
-Warning 26 [unused-var]: unused variable i.
-Line 4, characters 22-23:
-4 |   for f = -1 to 3 and g in [-3] and i in [2; -1]
-                          ^
-Warning 26 [unused-var]: unused variable g.
+4 |
 - : (int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable g.
+                          ^ for f = -1 to 3 and g in [-3] and i in [2; -1]
+4 |
+Line 4, characters 22-23:
+Warning 26 [unused-var]: unused variable i.
+                                        ^ for f = -1 to 3 and g in [-3] and i in [2; -1]
 |}];;
 
 [|(d, f, g, i, q, z)
-  for g = 3 downto 1 and q = 2 to 0 and i = -1 to 2
-  for d = 0 downto 1
+  for z = 2 to -3
   for f = -1 to 3 and g in [|-3|] and i in [|2; -1|]
-  for z = 2 to -3|];;
+  for d = 0 downto 1
+  for g = 3 downto 1 and q = 2 to 0 and i = -1 to 2|];;
 [%%expect{|
 Line 4, characters 38-39:
-4 |   for f = -1 to 3 and g in [|-3|] and i in [|2; -1|]
-                                          ^
-Warning 26 [unused-var]: unused variable i.
-Line 4, characters 22-23:
-4 |   for f = -1 to 3 and g in [|-3|] and i in [|2; -1|]
-                          ^
-Warning 26 [unused-var]: unused variable g.
+4 |
 - : (int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable g.
+                          ^ for f = -1 to 3 and g in [|-3|] and i in [|2; -1|]
+4 |
+Line 4, characters 22-23:
+Warning 26 [unused-var]: unused variable i.
+                                          ^ for f = -1 to 3 and g in [|-3|] and i in [|2; -1|]
 |}];;
 
 [(a, o, s, u)
@@ -14679,19 +14680,19 @@ Warning 26 [unused-var]: unused variable g.
 |}];;
 
 [(a, i, j, k, q, w, x, y)
-  for i = -1 downto 3 and w = 1 to j and _ in [-2; j; x]
-  for y in [2; a; -1; -1] and k in [1; q; -1; 1] and j in [-1; -1; 1]
+  for a in [3; -1; 1]
   for q = -3 to -3 and x = -3 to -3
-  for a in [3; -1; 1]];;
+  for y in [2; a; -1; -1] and k in [1; q; -1; 1] and j in [-1; -1; 1]
+  for i = -1 downto 3 and w = 1 to j and _ in [-2; j; x]];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, i, j, k, q, w, x, y)
-  for i = -1 downto 3 and w = 1 to j and _ in [|-2; j; x|]
-  for y in [|2; a; -1; -1|] and k in [|1; q; -1; 1|] and j in [|-1; -1; 1|]
+  for a in [|3; -1; 1|]
   for q = -3 to -3 and x = -3 to -3
-  for a in [|3; -1; 1|]|];;
+  for y in [|2; a; -1; -1|] and k in [|1; q; -1; 1|] and j in [|-1; -1; 1|]
+  for i = -1 downto 3 and w = 1 to j and _ in [|-2; j; x|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) array = [||]
 |}];;
@@ -14707,47 +14708,47 @@ Warning 26 [unused-var]: unused variable g.
 |}];;
 
 [(c, d, e, f, g, i, l, r)
-  for e in [-3; i; -1; -3; c]
-  and f = 0 to -2
-  and c in [-1; 1; 3; 2; 3; d]
-  and g in [2]
   for i in [-3]
   and l = 3 downto 2
   and c = -3 downto -1
   and d in [-1]
-  and r in [2]];;
+  and r in [2]
+  for e in [-3; i; -1; -3; c]
+  and f = 0 to -2
+  and c in [-1; 1; 3; 2; 3; d]
+  and g in [2]];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(c, d, e, f, g, i, l, r)
-  for e in [|-3; i; -1; -3; c|]
-  and f = 0 to -2
-  and c in [|-1; 1; 3; 2; 3; d|]
-  and g in [|2|]
   for i in [|-3|]
   and l = 3 downto 2
   and c = -3 downto -1
   and d in [|-1|]
-  and r in [|2|]|];;
+  and r in [|2|]
+  for e in [|-3; i; -1; -3; c|]
+  and f = 0 to -2
+  and c in [|-1; 1; 3; 2; 3; d|]
+  and g in [|2|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(e, k, m, n, r)
-  for e in [2; -1; -3]
-  for k = 2 to 3
+  for m in [-3; -1; -3; 0; -3; 0; -3] and r in [2]
   for n = 0 downto 1
-  for m in [-3; -1; -3; 0; -3; 0; -3] and r in [2]];;
+  for k = 2 to 3
+  for e in [2; -1; -3]];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(e, k, m, n, r)
-  for e in [|2; -1; -3|]
-  for k = 2 to 3
+  for m in [|-3; -1; -3; 0; -3; 0; -3|] and r in [|2|]
   for n = 0 downto 1
-  for m in [|-3; -1; -3; 0; -3; 0; -3|] and r in [|2|]|];;
+  for k = 2 to 3
+  for e in [|2; -1; -3|]|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
@@ -14773,37 +14774,37 @@ Warning 26 [unused-var]: unused variable g.
 |}];;
 
 [(j, q, u, y)
-  for u = 1 downto 2
-  for q in [-3; -1; -3; -1; -2; 3; -1]
+  for y = -3 downto 0
   for j = 1 to y
-  for y = -3 downto 0];;
+  for q in [-3; -1; -3; -1; -2; 3; -1]
+  for u = 1 downto 2];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(j, q, u, y)
-  for u = 1 downto 2
-  for q in [|-3; -1; -3; -1; -2; 3; -1|]
+  for y = -3 downto 0
   for j = 1 to y
-  for y = -3 downto 0|];;
+  for q in [|-3; -1; -3; -1; -2; 3; -1|]
+  for u = 1 downto 2|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(c, g, m, p, y)
-  when y <> 0
-  for c = 0 to 0
+  for m in [-3; 1; -3; 3; 0; 1] and g = -1 downto 0 and p = -2 downto 3
   for y in [1; -2; 3]
-  for m in [-3; 1; -3; 3; 0; 1] and g = -1 downto 0 and p = -2 downto 3];;
+  for c = 0 to 0
+  when y <> 0];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(c, g, m, p, y)
-  when y <> 0
-  for c = 0 to 0
+  for m in [|-3; 1; -3; 3; 0; 1|] and g = -1 downto 0 and p = -2 downto 3
   for y in [|1; -2; 3|]
-  for m in [|-3; 1; -3; 3; 0; 1|] and g = -1 downto 0 and p = -2 downto 3|];;
+  for c = 0 to 0
+  when y <> 0|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
@@ -14819,90 +14820,90 @@ Warning 26 [unused-var]: unused variable g.
 |}];;
 
 [(a, f, l, m, p, x)
-  for a = 1 to 2 and p = -2 downto 3 and m = 1 to x and l in [1; 3; -2]
-  for x = -1 downto 2 and f = 3 downto 1];;
+  for x = -1 downto 2 and f = 3 downto 1
+  for a = 1 to 2 and p = -2 downto 3 and m = 1 to x and l in [1; 3; -2]];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, f, l, m, p, x)
-  for a = 1 to 2 and p = -2 downto 3 and m = 1 to x and l in [|1; 3; -2|]
-  for x = -1 downto 2 and f = 3 downto 1|];;
+  for x = -1 downto 2 and f = 3 downto 1
+  for a = 1 to 2 and p = -2 downto 3 and m = 1 to x and l in [|1; 3; -2|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(f, l, n, v, w, x, z)
-  for f = -2 downto -3
+  for n = 2 to 0 and x = 0 downto 2 and l = -2 to 1 and v in [0; 0]
   for w in [l; 2] and z in [0; 1; v; 0; x; 3; 2]
-  for n = 2 to 0 and x = 0 downto 2 and l = -2 to 1 and v in [0; 0]];;
+  for f = -2 downto -3];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(f, l, n, v, w, x, z)
-  for f = -2 downto -3
+  for n = 2 to 0 and x = 0 downto 2 and l = -2 to 1 and v in [|0; 0|]
   for w in [|l; 2|] and z in [|0; 1; v; 0; x; 3; 2|]
-  for n = 2 to 0 and x = 0 downto 2 and l = -2 to 1 and v in [|0; 0|]|];;
+  for f = -2 downto -3|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(g, o, q, r, z)
+  for o = 2 downto -3
   for q in [1]
   and _ in [0; 1; -1; 2; 3; -2]
   and z = -3 downto -2
   and r = o downto 0
-  and g = o to 1
-  for o = 2 downto -3];;
+  and g = o to 1];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(g, o, q, r, z)
+  for o = 2 downto -3
   for q in [|1|]
   and _ in [|0; 1; -1; 2; 3; -2|]
   and z = -3 downto -2
   and r = o downto 0
-  and g = o to 1
-  for o = 2 downto -3|];;
+  and g = o to 1|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(a, e, l, n, s, z)
-  for z in [] and n = 3 downto -1 and e in [1; -3] and s in []
-  for a = -1 to 0 and l = 1 downto 2];;
+  for a = -1 to 0 and l = 1 downto 2
+  for z in [] and n = 3 downto -1 and e in [1; -3] and s in []];;
 [%%expect{|
 - : (int * int * int * int * 'a * 'b) list = []
 |}];;
 
 [|(a, e, l, n, s, z)
-  for z in [||] and n = 3 downto -1 and e in [|1; -3|] and s in [||]
-  for a = -1 to 0 and l = 1 downto 2|];;
+  for a = -1 to 0 and l = 1 downto 2
+  for z in [||] and n = 3 downto -1 and e in [|1; -3|] and s in [||]|];;
 [%%expect{|
 - : (int * int * int * int * '_weak192 * '_weak193) array = [||]
 |}];;
 
 [(a, l, m, p, t, w, x)
-  for p = -1 downto -3 and l in [-1; -2; -3; -1]
+  for a in [] and w = 3 downto -2
   for t in [2; -2] and m = 1 to 0 and x = -1 downto 0 and a = w downto 3
-  for a in [] and w = 3 downto -2];;
+  for p = -1 downto -3 and l in [-1; -2; -3; -1]];;
 [%%expect{|
 Line 4, characters 6-7:
-4 |   for a in [] and w = 3 downto -2];;
+4 | for a in [] and w = 3 downto -2];;
           ^
 Warning 26 [unused-var]: unused variable a.
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, l, m, p, t, w, x)
-  for p = -1 downto -3 and l in [|-1; -2; -3; -1|]
+  for a in [||] and w = 3 downto -2
   for t in [|2; -2|] and m = 1 to 0 and x = -1 downto 0 and a = w downto 3
-  for a in [||] and w = 3 downto -2|];;
+  for p = -1 downto -3 and l in [|-1; -2; -3; -1|]|];;
 [%%expect{|
 Line 4, characters 6-7:
-4 |   for a in [||] and w = 3 downto -2|];;
+4 | for a in [||] and w = 3 downto -2|];;
           ^
 Warning 26 [unused-var]: unused variable a.
 - : (int * int * int * int * int * int * int) array = [||]
@@ -14927,113 +14928,113 @@ Warning 26 [unused-var]: unused variable a.
 |}];;
 
 [(a, c, e, f, i, k, l, p)
-  for f in [2; 2; 2; 3] and p = 1 to -2
-  when l > 0
-  for l in [-3; 3] and e = 0 to 3
+  for i in [3] and k = 1 to 0
   for a in [2] and c in [i; 1; -2]
-  for i in [3] and k = 1 to 0];;
+  for l in [-3; 3] and e = 0 to 3
+  when l > 0
+  for f in [2; 2; 2; 3] and p = 1 to -2];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, c, e, f, i, k, l, p)
-  for f in [|2; 2; 2; 3|] and p = 1 to -2
-  when l > 0
-  for l in [|-3; 3|] and e = 0 to 3
+  for i in [|3|] and k = 1 to 0
   for a in [|2|] and c in [|i; 1; -2|]
-  for i in [|3|] and k = 1 to 0|];;
+  for l in [|-3; 3|] and e = 0 to 3
+  when l > 0
+  for f in [|2; 2; 2; 3|] and p = 1 to -2|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(a, h, k, m, o, v)
-  for h = 3 downto 0 and k in [1; 0; -1]
   for m in [0; -1; 1; -3; 1]
   and a = 2 to 1
   and v = 2 downto -3
-  and o in [0; 0; -1]];;
+  and o in [0; 0; -1]
+  for h = 3 downto 0 and k in [1; 0; -1]];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, h, k, m, o, v)
-  for h = 3 downto 0 and k in [|1; 0; -1|]
   for m in [|0; -1; 1; -3; 1|]
   and a = 2 to 1
   and v = 2 downto -3
-  and o in [|0; 0; -1|]|];;
+  and o in [|0; 0; -1|]
+  for h = 3 downto 0 and k in [|1; 0; -1|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(a, m, n, r, z)
-  when a > 0
-  for m = -1 downto 0
-  for z in [] and a = 3 downto r
+  for n = 2 to 2
   for r = 2 to 1
-  for n = 2 to 2];;
+  for z in [] and a = 3 downto r
+  for m = -1 downto 0
+  when a > 0];;
 [%%expect{|
 - : (int * int * int * int * 'a) list = []
 |}];;
 
 [|(a, m, n, r, z)
-  when a > 0
-  for m = -1 downto 0
-  for z in [||] and a = 3 downto r
+  for n = 2 to 2
   for r = 2 to 1
-  for n = 2 to 2|];;
+  for z in [||] and a = 3 downto r
+  for m = -1 downto 0
+  when a > 0|];;
 [%%expect{|
 - : (int * int * int * int * '_weak194) array = [||]
 |}];;
 
 [(b, f, k, l, n, o, u)
-  for k = 2 to -2
-  for n = -1 to -2 and l in [3; 0; 1; -1]
-  for u = 0 downto 3 and o in [f; -3; 2; f; 2; -3]
+  for b in [-3; -1; 3; 1; 0; -1]
   for b in [0; -2; -3; 0; 0] and f = 2 to b
-  for b in [-3; -1; 3; 1; 0; -1]];;
+  for u = 0 downto 3 and o in [f; -3; 2; f; 2; -3]
+  for n = -1 to -2 and l in [3; 0; 1; -1]
+  for k = 2 to -2];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(b, f, k, l, n, o, u)
-  for k = 2 to -2
-  for n = -1 to -2 and l in [|3; 0; 1; -1|]
-  for u = 0 downto 3 and o in [|f; -3; 2; f; 2; -3|]
+  for b in [|-3; -1; 3; 1; 0; -1|]
   for b in [|0; -2; -3; 0; 0|] and f = 2 to b
-  for b in [|-3; -1; 3; 1; 0; -1|]|];;
+  for u = 0 downto 3 and o in [|f; -3; 2; f; 2; -3|]
+  for n = -1 to -2 and l in [|3; 0; 1; -1|]
+  for k = 2 to -2|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(a, b, k, n, r, t, v, w)
+  for k in [] and r = -1 to 1 and b = 0 downto -3 and t in [-1; 0; 1]
+  for _ = -2 to 2 and n in [-2; -1; -2; t; 2]
   for n in [-1; 3; 2; -3; -2]
   and v = 1 to 1
   and w = 1 to 0
-  and a in [-2; 2; 0; 0; -3]
-  for _ = -2 to 2 and n in [-2; -1; -2; t; 2]
-  for k in [] and r = -1 to 1 and b = 0 downto -3 and t in [-1; 0; 1]];;
+  and a in [-2; 2; 0; 0; -3]];;
 [%%expect{|
 Line 6, characters 22-23:
-6 |   for _ = -2 to 2 and n in [-2; -1; -2; t; 2]
-                          ^
-Warning 26 [unused-var]: unused variable n.
+6 |
 - : (int * int * 'a * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable n.
+                          ^ for _ = -2 to 2 and n in [-2; -1; -2; t; 2]
 |}];;
 
 [|(a, b, k, n, r, t, v, w)
+  for k in [||] and r = -1 to 1 and b = 0 downto -3 and t in [|-1; 0; 1|]
+  for _ = -2 to 2 and n in [|-2; -1; -2; t; 2|]
   for n in [|-1; 3; 2; -3; -2|]
   and v = 1 to 1
   and w = 1 to 0
-  and a in [|-2; 2; 0; 0; -3|]
-  for _ = -2 to 2 and n in [|-2; -1; -2; t; 2|]
-  for k in [||] and r = -1 to 1 and b = 0 downto -3 and t in [|-1; 0; 1|]|];;
+  and a in [|-2; 2; 0; 0; -3|]|];;
 [%%expect{|
 Line 6, characters 22-23:
-6 |   for _ = -2 to 2 and n in [|-2; -1; -2; t; 2|]
-                          ^
-Warning 26 [unused-var]: unused variable n.
+6 |
 - : (int * int * '_weak195 * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable n.
+                          ^ for _ = -2 to 2 and n in [|-2; -1; -2; t; 2|]
 |}];;
 
 [f for f = 1 to 1];;
@@ -15047,56 +15048,56 @@ Warning 26 [unused-var]: unused variable n.
 |}];;
 
 [(d, h, j, p, s, x)
-  for h = -2 downto 3 and s in [2; 2; 0; 1] and j = -1 downto -2
+  for p = 2 downto -2 and d in [-2; -3; 3; 1; 2; 0]
   for _ in [-3; d] and x in [-1]
-  for p = 2 downto -2 and d in [-2; -3; 3; 1; 2; 0]];;
+  for h = -2 downto 3 and s in [2; 2; 0; 1] and j = -1 downto -2];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(d, h, j, p, s, x)
-  for h = -2 downto 3 and s in [|2; 2; 0; 1|] and j = -1 downto -2
+  for p = 2 downto -2 and d in [|-2; -3; 3; 1; 2; 0|]
   for _ in [|-3; d|] and x in [|-1|]
-  for p = 2 downto -2 and d in [|-2; -3; 3; 1; 2; 0|]|];;
+  for h = -2 downto 3 and s in [|2; 2; 0; 1|] and j = -1 downto -2|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(m, u, v, z)
-  when abs m mod 2 = 1
+  for v in [1; 0; 3; 0] and m = 2 to 2 and z in [0; 1; 2] and u = -1 to 2
   when abs v mod 2 = 0
-  for v in [1; 0; 3; 0] and m = 2 to 2 and z in [0; 1; 2] and u = -1 to 2];;
+  when abs m mod 2 = 1];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(m, u, v, z)
-  when abs m mod 2 = 1
-  when abs v mod 2 = 0
   for v in [|1; 0; 3; 0|]
   and m = 2 to 2
   and z in [|0; 1; 2|]
-  and u = -1 to 2|];;
+  and u = -1 to 2
+  when abs v mod 2 = 0
+  when abs m mod 2 = 1|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(b, i, m, q, y)
-  for _ = -3 to -3
-  for m = -2 downto 3
-  for b = -1 downto -1
+  for y = 3 downto -2 and q = -1 downto 3
   for i in [-3]
-  for y = 3 downto -2 and q = -1 downto 3];;
+  for b = -1 downto -1
+  for m = -2 downto 3
+  for _ = -3 to -3];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(b, i, m, q, y)
-  for _ = -3 to -3
-  for m = -2 downto 3
-  for b = -1 downto -1
+  for y = 3 downto -2 and q = -1 downto 3
   for i in [|-3|]
-  for y = 3 downto -2 and q = -1 downto 3|];;
+  for b = -1 downto -1
+  for m = -2 downto 3
+  for _ = -3 to -3|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
@@ -15112,251 +15113,251 @@ Warning 26 [unused-var]: unused variable n.
 |}];;
 
 [(d, g, j, o, v, w)
-  for v = 3 downto 0
-  for d = 1 downto 0 and o in []
+  for j = 2 downto 3 and w in [-1; 1; -3; -3; -3] and g in []
   when abs j mod 2 = 1
-  for j = 2 downto 3 and w in [-1; 1; -3; -3; -3] and g in []];;
+  for d = 1 downto 0 and o in []
+  for v = 3 downto 0];;
 [%%expect{|
 - : (int * 'a * int * 'b * int * int) list = []
 |}];;
 
 [|(d, g, j, o, v, w)
-  for v = 3 downto 0
-  for d = 1 downto 0 and o in [||]
+  for j = 2 downto 3 and w in [|-1; 1; -3; -3; -3|] and g in [||]
   when abs j mod 2 = 1
-  for j = 2 downto 3 and w in [|-1; 1; -3; -3; -3|] and g in [||]|];;
+  for d = 1 downto 0 and o in [||]
+  for v = 3 downto 0|];;
 [%%expect{|
 - : (int * '_weak196 * int * '_weak197 * int * int) array = [||]
 |}];;
 
 [(b, h, r, u)
-  when r <> 0
-  when b < 0
+  for b = 3 downto -3 and r in [-2; -2] and u in [-2; -3; 0; 0; -1; 2]
   for h = r downto 0
-  for b = 3 downto -3 and r in [-2; -2] and u in [-2; -3; 0; 0; -1; 2]];;
+  when b < 0
+  when r <> 0];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(b, h, r, u)
-  when r <> 0
-  when b < 0
+  for b = 3 downto -3 and r in [|-2; -2|] and u in [|-2; -3; 0; 0; -1; 2|]
   for h = r downto 0
-  for b = 3 downto -3 and r in [|-2; -2|] and u in [|-2; -3; 0; 0; -1; 2|]|];;
+  when b < 0
+  when r <> 0|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(e, m, s, t, v)
-  for e = -1 downto m
-  for s in [0; 1; -2] and v = -1 to -1 and m = -3 to t
+  for t = -2 downto 0 and e = 2 to -1
   when t < 0
-  for t = -2 downto 0 and e = 2 to -1];;
+  for s in [0; 1; -2] and v = -1 to -1 and m = -3 to t
+  for e = -1 downto m];;
 [%%expect{|
 Lines 1-5, characters 0-38:
 1 | [(e, m, s, t, v)
-2 |   for e = -1 downto m
-3 |   for s in [0; 1; -2] and v = -1 to -1 and m = -3 to t
-4 |   when t < 0
-5 |   for t = -2 downto 0 and e = 2 to -1]..
-Warning 26 [unused-var]: unused variable e.
+2 |
 - : (int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable e. for t = -2 downto 0 and e = 2 to -1]..
+5 | when t < 0
+4 | for s in [0; 1; -2] and v = -1 to -1 and m = -3 to t
+3 | for e = -1 downto m
 |}];;
 
 [|(e, m, s, t, v)
-  for e = -1 downto m
-  for s in [|0; 1; -2|] and v = -1 to -1 and m = -3 to t
+  for t = -2 downto 0 and e = 2 to -1
   when t < 0
-  for t = -2 downto 0 and e = 2 to -1|];;
+  for s in [|0; 1; -2|] and v = -1 to -1 and m = -3 to t
+  for e = -1 downto m|];;
 [%%expect{|
 Lines 1-5, characters 0-39:
 1 | [|(e, m, s, t, v)
-2 |   for e = -1 downto m
-3 |   for s in [|0; 1; -2|] and v = -1 to -1 and m = -3 to t
-4 |   when t < 0
-5 |   for t = -2 downto 0 and e = 2 to -1|]..
-Warning 26 [unused-var]: unused variable e.
+2 |
 - : (int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable e. for t = -2 downto 0 and e = 2 to -1|]..
+5 | when t < 0
+4 | for s in [|0; 1; -2|] and v = -1 to -1 and m = -3 to t
+3 | for e = -1 downto m
 |}];;
 
 [(j, p, x, y)
-  when y < 0
+  for x = 2 downto -2 and p = 1 to 2 and y in [-1; 3] and j = -1 downto 3
   when y > 0
-  for x = 2 downto -2 and p = 1 to 2 and y in [-1; 3] and j = -1 downto 3];;
+  when y < 0];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(j, p, x, y)
-  when y < 0
+  for x = 2 downto -2 and p = 1 to 2 and y in [|-1; 3|] and j = -1 downto 3
   when y > 0
-  for x = 2 downto -2 and p = 1 to 2 and y in [|-1; 3|] and j = -1 downto 3|];;
+  when y < 0|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(s, v)
-  when abs v mod 2 = 1
+  for v = 2 to -3 and s in [-2; 2; -3; 0; 3] and _ = 2 downto -2
   when v > 0
-  for v = 2 to -3 and s in [-2; 2; -3; 0; 3] and _ = 2 downto -2];;
+  when abs v mod 2 = 1];;
 [%%expect{|
 - : (int * int) list = []
 |}];;
 
 [|(s, v)
-  when abs v mod 2 = 1
+  for v = 2 to -3 and s in [|-2; 2; -3; 0; 3|] and _ = 2 downto -2
   when v > 0
-  for v = 2 to -3 and s in [|-2; 2; -3; 0; 3|] and _ = 2 downto -2|];;
+  when abs v mod 2 = 1|];;
 [%%expect{|
 - : (int * int) array = [||]
 |}];;
 
 [(b, c, d, i, k, m, o, q, r, s, t)
-  for c = 0 downto 3 and q in [-3] and d in [b]
-  for i = -2 to r and m in [-1; b; -2; -1]
+  for s in [-3; -2; 0; -2; -2] and t = 0 downto 3 and k in [2; 2; -1]
   for b = 3 to 3 and o = s downto s and r = k to -3
-  for s in [-3; -2; 0; -2; -2] and t = 0 downto 3 and k in [2; 2; -1]];;
+  for i = -2 to r and m in [-1; b; -2; -1]
+  for c = 0 downto 3 and q in [-3] and d in [b]];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int * int * int * int) list =
 []
 |}];;
 
 [|(b, c, d, i, k, m, o, q, r, s, t)
-  for c = 0 downto 3 and q in [|-3|] and d in [|b|]
-  for i = -2 to r and m in [|-1; b; -2; -1|]
+  for s in [|-3; -2; 0; -2; -2|] and t = 0 downto 3 and k in [|2; 2; -1|]
   for b = 3 to 3 and o = s downto s and r = k to -3
-  for s in [|-3; -2; 0; -2; -2|] and t = 0 downto 3 and k in [|2; 2; -1|]|];;
+  for i = -2 to r and m in [|-1; b; -2; -1|]
+  for c = 0 downto 3 and q in [|-3|] and d in [|b|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int * int * int * int) array =
 [||]
 |}];;
 
 [(a, c, h, j, o, q, v)
-  for o = 1 downto 1
-  and a in [1; 1; -1]
-  and c in [0; -3; 2; -3; 1; 2]
-  and h in [-2; q; 2; 2; -1; v; 2]
   for v in [1; 1; 3; -2; -1; 0]
   and _ = 2 to -2
   and j = -1 to 1
   and a = 2 downto -3
-  and q = -1 downto 2];;
+  and q = -1 downto 2
+  for o = 1 downto 1
+  and a in [1; 1; -1]
+  and c in [0; -3; 2; -3; 1; 2]
+  and h in [-2; q; 2; 2; -1; v; 2]];;
 [%%expect{|
 Lines 1-10, characters 0-22:
  1 | [(a, c, h, j, o, q, v)
- 2 |   for o = 1 downto 1
- 3 |   and a in [1; 1; -1]
- 4 |   and c in [0; -3; 2; -3; 1; 2]
- 5 |   and h in [-2; q; 2; 2; -1; v; 2]
- 6 |   for v in [1; 1; 3; -2; -1; 0]
- 7 |   and _ = 2 to -2
- 8 |   and j = -1 to 1
- 9 |   and a = 2 downto -3
-10 |   and q = -1 downto 2]..
-Warning 26 [unused-var]: unused variable a.
+ 2 |
 - : (int * int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable a.
+10 |   and q = -1 downto 2]..
+ 9 |   and a = 2 downto -3
+ 8 |   and j = -1 to 1
+ 7 |   and _ = 2 to -2 for v in [1; 1; 3; -2; -1; 0]
+ 6 |
+ 5 |   and h in [-2; q; 2; 2; -1; v; 2]
+ 4 |   and c in [0; -3; 2; -3; 1; 2]
+ 3 |   and a in [1; 1; -1] for o = 1 downto 1
 |}];;
 
 [|(a, c, h, j, o, q, v)
-  for o = 1 downto 1
-  and a in [|1; 1; -1|]
-  and c in [|0; -3; 2; -3; 1; 2|]
-  and h in [|-2; q; 2; 2; -1; v; 2|]
   for v in [|1; 1; 3; -2; -1; 0|]
   and _ = 2 to -2
   and j = -1 to 1
   and a = 2 downto -3
-  and q = -1 downto 2|];;
+  and q = -1 downto 2
+  for o = 1 downto 1
+  and a in [|1; 1; -1|]
+  and c in [|0; -3; 2; -3; 1; 2|]
+  and h in [|-2; q; 2; 2; -1; v; 2|]|];;
 [%%expect{|
 Lines 1-10, characters 0-23:
  1 | [|(a, c, h, j, o, q, v)
- 2 |   for o = 1 downto 1
- 3 |   and a in [|1; 1; -1|]
- 4 |   and c in [|0; -3; 2; -3; 1; 2|]
- 5 |   and h in [|-2; q; 2; 2; -1; v; 2|]
- 6 |   for v in [|1; 1; 3; -2; -1; 0|]
- 7 |   and _ = 2 to -2
- 8 |   and j = -1 to 1
- 9 |   and a = 2 downto -3
-10 |   and q = -1 downto 2|]..
-Warning 26 [unused-var]: unused variable a.
+ 2 |
 - : (int * int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable a.
+10 |   and q = -1 downto 2|]..
+ 9 |   and a = 2 downto -3
+ 8 |   and j = -1 to 1
+ 7 |   and _ = 2 to -2 for v in [|1; 1; 3; -2; -1; 0|]
+ 6 |
+ 5 |   and h in [|-2; q; 2; 2; -1; v; 2|]
+ 4 |   and c in [|0; -3; 2; -3; 1; 2|]
+ 3 |   and a in [|1; 1; -1|] for o = 1 downto 1
 |}];;
 
 [(h, u, v)
-  when abs v mod 2 = 1
-  for h = -1 downto 1 and v in [-2; -1; -1] and u in [-1; 3; 1; 3; -3; 1]];;
+  for h = -1 downto 1 and v in [-2; -1; -1] and u in [-1; 3; 1; 3; -3; 1]
+  when abs v mod 2 = 1];;
 [%%expect{|
 - : (int * int * int) list = []
 |}];;
 
 [|(h, u, v)
-  when abs v mod 2 = 1
   for h = -1 downto 1
   and v in [|-2; -1; -1|]
-  and u in [|-1; 3; 1; 3; -3; 1|]|];;
+  and u in [|-1; 3; 1; 3; -3; 1|]
+  when abs v mod 2 = 1|];;
 [%%expect{|
 - : (int * int * int) array = [||]
 |}];;
 
 [(h, i, v, w, y, z)
-  for h = 3 to h and _ = 2 to 0 and z = -2 downto 1
-  for i = -1 to -2 and h = -3 downto 0 and v = 2 to -2
+  for h = -2 downto -3 and z = -3 to 2
   for i = 1 to 3 and w = -1 to 0 and y = -1 to 0
-  for h = -2 downto -3 and z = -3 to 2];;
+  for i = -1 to -2 and h = -3 downto 0 and v = 2 to -2
+  for h = 3 to h and _ = 2 to 0 and z = -2 downto 1];;
 [%%expect{|
 Lines 1-5, characters 0-39:
 1 | [(h, i, v, w, y, z)
-2 |   for h = 3 to h and _ = 2 to 0 and z = -2 downto 1
-3 |   for i = -1 to -2 and h = -3 downto 0 and v = 2 to -2
-4 |   for i = 1 to 3 and w = -1 to 0 and y = -1 to 0
-5 |   for h = -2 downto -3 and z = -3 to 2]..
-Warning 26 [unused-var]: unused variable z.
-Lines 1-5, characters 0-39:
-1 | [(h, i, v, w, y, z)
-2 |   for h = 3 to h and _ = 2 to 0 and z = -2 downto 1
-3 |   for i = -1 to -2 and h = -3 downto 0 and v = 2 to -2
-4 |   for i = 1 to 3 and w = -1 to 0 and y = -1 to 0
-5 |   for h = -2 downto -3 and z = -3 to 2]..
-Warning 26 [unused-var]: unused variable h.
-Lines 1-5, characters 0-39:
-1 | [(h, i, v, w, y, z)
-2 |   for h = 3 to h and _ = 2 to 0 and z = -2 downto 1
-3 |   for i = -1 to -2 and h = -3 downto 0 and v = 2 to -2
-4 |   for i = 1 to 3 and w = -1 to 0 and y = -1 to 0
-5 |   for h = -2 downto -3 and z = -3 to 2]..
-Warning 26 [unused-var]: unused variable i.
+2 |
 - : (int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable i. for h = -2 downto -3 and z = -3 to 2]..
+5 | for i = 1 to 3 and w = -1 to 0 and y = -1 to 0
+4 | for i = -1 to -2 and h = -3 downto 0 and v = 2 to -2
+3 | for h = 3 to h and _ = 2 to 0 and z = -2 downto 1
+2 |
+1 | [(h, i, v, w, y, z)
+Lines 1-5, characters 0-39:
+Warning 26 [unused-var]: unused variable h. for h = -2 downto -3 and z = -3 to 2]..
+5 | for i = 1 to 3 and w = -1 to 0 and y = -1 to 0
+4 | for i = -1 to -2 and h = -3 downto 0 and v = 2 to -2
+3 | for h = 3 to h and _ = 2 to 0 and z = -2 downto 1
+2 |
+1 | [(h, i, v, w, y, z)
+Lines 1-5, characters 0-39:
+Warning 26 [unused-var]: unused variable z. for h = -2 downto -3 and z = -3 to 2]..
+5 | for i = 1 to 3 and w = -1 to 0 and y = -1 to 0
+4 | for i = -1 to -2 and h = -3 downto 0 and v = 2 to -2
+3 | for h = 3 to h and _ = 2 to 0 and z = -2 downto 1
 |}];;
 
 [|(h, i, v, w, y, z)
-  for h = 3 to h and _ = 2 to 0 and z = -2 downto 1
-  for i = -1 to -2 and h = -3 downto 0 and v = 2 to -2
+  for h = -2 downto -3 and z = -3 to 2
   for i = 1 to 3 and w = -1 to 0 and y = -1 to 0
-  for h = -2 downto -3 and z = -3 to 2|];;
+  for i = -1 to -2 and h = -3 downto 0 and v = 2 to -2
+  for h = 3 to h and _ = 2 to 0 and z = -2 downto 1|];;
 [%%expect{|
 Lines 1-5, characters 0-40:
 1 | [|(h, i, v, w, y, z)
-2 |   for h = 3 to h and _ = 2 to 0 and z = -2 downto 1
-3 |   for i = -1 to -2 and h = -3 downto 0 and v = 2 to -2
-4 |   for i = 1 to 3 and w = -1 to 0 and y = -1 to 0
-5 |   for h = -2 downto -3 and z = -3 to 2|]..
-Warning 26 [unused-var]: unused variable z.
-Lines 1-5, characters 0-40:
-1 | [|(h, i, v, w, y, z)
-2 |   for h = 3 to h and _ = 2 to 0 and z = -2 downto 1
-3 |   for i = -1 to -2 and h = -3 downto 0 and v = 2 to -2
-4 |   for i = 1 to 3 and w = -1 to 0 and y = -1 to 0
-5 |   for h = -2 downto -3 and z = -3 to 2|]..
-Warning 26 [unused-var]: unused variable h.
-Lines 1-5, characters 0-40:
-1 | [|(h, i, v, w, y, z)
-2 |   for h = 3 to h and _ = 2 to 0 and z = -2 downto 1
-3 |   for i = -1 to -2 and h = -3 downto 0 and v = 2 to -2
-4 |   for i = 1 to 3 and w = -1 to 0 and y = -1 to 0
-5 |   for h = -2 downto -3 and z = -3 to 2|]..
-Warning 26 [unused-var]: unused variable i.
+2 |
 - : (int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable i. for h = -2 downto -3 and z = -3 to 2|]..
+5 | for i = 1 to 3 and w = -1 to 0 and y = -1 to 0
+4 | for i = -1 to -2 and h = -3 downto 0 and v = 2 to -2
+3 | for h = 3 to h and _ = 2 to 0 and z = -2 downto 1
+2 |
+1 | [|(h, i, v, w, y, z)
+Lines 1-5, characters 0-40:
+Warning 26 [unused-var]: unused variable h. for h = -2 downto -3 and z = -3 to 2|]..
+5 | for i = 1 to 3 and w = -1 to 0 and y = -1 to 0
+4 | for i = -1 to -2 and h = -3 downto 0 and v = 2 to -2
+3 | for h = 3 to h and _ = 2 to 0 and z = -2 downto 1
+2 |
+1 | [|(h, i, v, w, y, z)
+Lines 1-5, characters 0-40:
+Warning 26 [unused-var]: unused variable z. for h = -2 downto -3 and z = -3 to 2|]..
+5 | for i = 1 to 3 and w = -1 to 0 and y = -1 to 0
+4 | for i = -1 to -2 and h = -3 downto 0 and v = 2 to -2
+3 | for h = 3 to h and _ = 2 to 0 and z = -2 downto 1
 |}];;
 
 [(i, n, z) for i in [-2] and z = 3 to -3 and n = -1 downto 2];;
@@ -15369,260 +15370,260 @@ Warning 26 [unused-var]: unused variable i.
 - : (int * int * int) array = [||]
 |}];;
 
-[(n, r) when abs r mod 2 = 0 when n < 0 for n in [3] and r in []];;
+[(n, r) for n in [3] and r in [] when n < 0 when abs r mod 2 = 0];;
 [%%expect{|
 - : (int * int) list = []
 |}];;
 
-[|(n, r) when abs r mod 2 = 0 when n < 0 for n in [|3|] and r in [||]|];;
+[|(n, r) for n in [|3|] and r in [||] when n < 0 when abs r mod 2 = 0|];;
 [%%expect{|
 - : (int * int) array = [||]
 |}];;
 
 [(o, r, s)
-  for r in [-1; 2; 0]
-  when abs o mod 2 = 1
-  for o = 2 downto 1
+  for s in []
   for _ = 0 downto 2
-  for s in []];;
+  for o = 2 downto 1
+  when abs o mod 2 = 1
+  for r in [-1; 2; 0]];;
 [%%expect{|
 - : (int * int * 'a) list = []
 |}];;
 
 [|(o, r, s)
-  for r in [|-1; 2; 0|]
-  when abs o mod 2 = 1
-  for o = 2 downto 1
+  for s in [||]
   for _ = 0 downto 2
-  for s in [||]|];;
+  for o = 2 downto 1
+  when abs o mod 2 = 1
+  for r in [|-1; 2; 0|]|];;
 [%%expect{|
 - : (int * int * '_weak198) array = [||]
 |}];;
 
 [(b, q, v)
-  for v in [3; -3; 1]
-  when abs b mod 2 = 1
-  when b > 0
+  for q = 1 downto 2
   for b in [-1; -1] and _ in [2; 0; 1; 1]
-  for q = 1 downto 2];;
+  when b > 0
+  when abs b mod 2 = 1
+  for v in [3; -3; 1]];;
 [%%expect{|
 - : (int * int * int) list = []
 |}];;
 
 [|(b, q, v)
-  for v in [|3; -3; 1|]
-  when abs b mod 2 = 1
-  when b > 0
+  for q = 1 downto 2
   for b in [|-1; -1|] and _ in [|2; 0; 1; 1|]
-  for q = 1 downto 2|];;
+  when b > 0
+  when abs b mod 2 = 1
+  for v in [|3; -3; 1|]|];;
 [%%expect{|
 - : (int * int * int) array = [||]
 |}];;
 
 [(g, k, m, n, s, v, y)
-  for s in [-2; -2] and _ = 1 to 1
+  for k = -1 downto -1 and v = 3 downto 3 and g in [-3; -3; -1; 3; 3; -2; 2]
   for m in [] and y in [-1; 3; 0; 2; 1; -3; -3] and n = 1 to -1
-  for k = -1 downto -1 and v = 3 downto 3 and g in [-3; -3; -1; 3; 3; -2; 2]];;
+  for s in [-2; -2] and _ = 1 to 1];;
 [%%expect{|
 - : (int * int * 'a * int * int * int * int) list = []
 |}];;
 
 [|(g, k, m, n, s, v, y)
-  for s in [|-2; -2|] and _ = 1 to 1
-  for m in [||] and y in [|-1; 3; 0; 2; 1; -3; -3|] and n = 1 to -1
   for k = -1 downto -1
   and v = 3 downto 3
-  and g in [|-3; -3; -1; 3; 3; -2; 2|]|];;
+  and g in [|-3; -3; -1; 3; 3; -2; 2|]
+  for m in [||] and y in [|-1; 3; 0; 2; 1; -3; -3|] and n = 1 to -1
+  for s in [|-2; -2|] and _ = 1 to 1|];;
 [%%expect{|
 - : (int * int * '_weak199 * int * int * int * int) array = [||]
 |}];;
 
 [(b, o, t, y)
-  for t = -1 to 1 and b = -2 downto 1 and o = -3 to -1
-  for y in [3; 2; 3; 1] and b in []];;
+  for y in [3; 2; 3; 1] and b in []
+  for t = -1 to 1 and b = -2 downto 1 and o = -3 to -1];;
 [%%expect{|
 Line 3, characters 28-29:
-3 |   for y in [3; 2; 3; 1] and b in []];;
+3 | for y in [3; 2; 3; 1] and b in []];;
                                 ^
 Warning 26 [unused-var]: unused variable b.
 - : (int * int * int * int) list = []
 |}];;
 
 [|(b, o, t, y)
-  for t = -1 to 1 and b = -2 downto 1 and o = -3 to -1
-  for y in [|3; 2; 3; 1|] and b in [||]|];;
+  for y in [|3; 2; 3; 1|] and b in [||]
+  for t = -1 to 1 and b = -2 downto 1 and o = -3 to -1|];;
 [%%expect{|
 Line 3, characters 30-31:
-3 |   for y in [|3; 2; 3; 1|] and b in [||]|];;
+3 | for y in [|3; 2; 3; 1|] and b in [||]|];;
                                   ^
 Warning 26 [unused-var]: unused variable b.
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(e, f, i, w)
-  for i in [w; -1; 1; w; 0; -3]
-  for e = -2 to 2 and f in [3; -3; 0; -1]
+  for w = 2 to -1 and f = 2 to 3
   when w > 0
-  for w = 2 to -1 and f = 2 to 3];;
+  for e = -2 to 2 and f in [3; -3; 0; -1]
+  for i in [w; -1; 1; w; 0; -3]];;
 [%%expect{|
 Lines 1-5, characters 0-33:
 1 | [(e, f, i, w)
-2 |   for i in [w; -1; 1; w; 0; -3]
-3 |   for e = -2 to 2 and f in [3; -3; 0; -1]
-4 |   when w > 0
-5 |   for w = 2 to -1 and f = 2 to 3]..
-Warning 26 [unused-var]: unused variable f.
+2 |
 - : (int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable f. for w = 2 to -1 and f = 2 to 3]..
+5 | when w > 0
+4 | for e = -2 to 2 and f in [3; -3; 0; -1]
+3 | for i in [w; -1; 1; w; 0; -3]
 |}];;
 
 [|(e, f, i, w)
-  for i in [|w; -1; 1; w; 0; -3|]
-  for e = -2 to 2 and f in [|3; -3; 0; -1|]
+  for w = 2 to -1 and f = 2 to 3
   when w > 0
-  for w = 2 to -1 and f = 2 to 3|];;
+  for e = -2 to 2 and f in [|3; -3; 0; -1|]
+  for i in [|w; -1; 1; w; 0; -3|]|];;
 [%%expect{|
 Lines 1-5, characters 0-34:
 1 | [|(e, f, i, w)
-2 |   for i in [|w; -1; 1; w; 0; -3|]
-3 |   for e = -2 to 2 and f in [|3; -3; 0; -1|]
-4 |   when w > 0
-5 |   for w = 2 to -1 and f = 2 to 3|]..
-Warning 26 [unused-var]: unused variable f.
+2 |
 - : (int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable f. for w = 2 to -1 and f = 2 to 3|]..
+5 | when w > 0
+4 | for e = -2 to 2 and f in [|3; -3; 0; -1|]
+3 | for i in [|w; -1; 1; w; 0; -3|]
 |}];;
 
 [(a, b, e, f, j, k, l, y, z)
-  for b in [a] and l in [0; -3; -1; 0] and z = -3 to 3
+  for e = -1 downto 2 and j = 0 downto 1
   for y = 1 downto -1 and f = 0 to 0 and a = 0 downto 3 and k in [3; e; 1; -1]
-  for e = -1 downto 2 and j = 0 downto 1];;
+  for b in [a] and l in [0; -3; -1; 0] and z = -3 to 3];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, b, e, f, j, k, l, y, z)
-  for b in [|a|] and l in [|0; -3; -1; 0|] and z = -3 to 3
+  for e = -1 downto 2 and j = 0 downto 1
   for y = 1 downto -1 and f = 0 to 0 and a = 0 downto 3 and k in [|3; e; 1; -1|]
-  for e = -1 downto 2 and j = 0 downto 1|];;
+  for b in [|a|] and l in [|0; -3; -1; 0|] and z = -3 to 3|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(b, c, g, h, i, j, n, o, t, w)
-  for w in [1; 0; -3] and j in [-2; -3; -2; 2]
-  for i in [0] and o = 3 to -3 and g = 2 to -2 and h in [b; 0; 0; 2; 2; -2]
   for n in [-2; 1; 1; -1; 0; -3; -1]
   and c in [3; 0; -2; -1]
   and t in [-1]
-  and b in []];;
+  and b in []
+  for i in [0] and o = 3 to -3 and g = 2 to -2 and h in [b; 0; 0; 2; 2; -2]
+  for w in [1; 0; -3] and j in [-2; -3; -2; 2]];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(b, c, g, h, i, j, n, o, t, w)
-  for w in [|1; 0; -3|] and j in [|-2; -3; -2; 2|]
-  for i in [|0|] and o = 3 to -3 and g = 2 to -2 and h in [|b; 0; 0; 2; 2; -2|]
   for n in [|-2; 1; 1; -1; 0; -3; -1|]
   and c in [|3; 0; -2; -1|]
   and t in [|-1|]
-  and b in [||]|];;
+  and b in [||]
+  for i in [|0|] and o = 3 to -3 and g = 2 to -2 and h in [|b; 0; 0; 2; 2; -2|]
+  for w in [|1; 0; -3|] and j in [|-2; -3; -2; 2|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(a, g, o, p, v)
-  for a = 3 to 0 and o = v to -2
+  for p in [] and g = 1 downto 0
   for v in [-1; -3; -2; 0; -3; p]
-  for p in [] and g = 1 downto 0];;
+  for a = 3 to 0 and o = v to -2];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(a, g, o, p, v)
-  for a = 3 to 0 and o = v to -2
+  for p in [||] and g = 1 downto 0
   for v in [|-1; -3; -2; 0; -3; p|]
-  for p in [||] and g = 1 downto 0|];;
+  for a = 3 to 0 and o = v to -2|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(e, g, o, r, z)
-  for g = 0 downto -2 and r = o downto 3 and e = -3 downto o
+  for z = 1 to -1
   for g in [] and o in [-2; z; -3; 0; 0; 2; 1]
-  for z = 1 to -1];;
+  for g = 0 downto -2 and r = o downto 3 and e = -3 downto o];;
 [%%expect{|
 Line 3, characters 6-7:
-3 |   for g in [] and o in [-2; z; -3; 0; 0; 2; 1]
-          ^
-Warning 26 [unused-var]: unused variable g.
+3 |
 - : (int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable g.
+          ^ for g in [] and o in [-2; z; -3; 0; 0; 2; 1]
 |}];;
 
 [|(e, g, o, r, z)
-  for g = 0 downto -2 and r = o downto 3 and e = -3 downto o
+  for z = 1 to -1
   for g in [||] and o in [|-2; z; -3; 0; 0; 2; 1|]
-  for z = 1 to -1|];;
+  for g = 0 downto -2 and r = o downto 3 and e = -3 downto o|];;
 [%%expect{|
 Line 3, characters 6-7:
-3 |   for g in [||] and o in [|-2; z; -3; 0; 0; 2; 1|]
-          ^
-Warning 26 [unused-var]: unused variable g.
+3 |
 - : (int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable g.
+          ^ for g in [||] and o in [|-2; z; -3; 0; 0; 2; 1|]
 |}];;
 
 [(b, j, l, n, q)
-  for q in [] and j in [n]
-  for l = 1 downto -1 and n = -2 downto -2 and b in [-2]];;
+  for l = 1 downto -1 and n = -2 downto -2 and b in [-2]
+  for q in [] and j in [n]];;
 [%%expect{|
 - : (int * int * int * int * 'a) list = []
 |}];;
 
 [|(b, j, l, n, q)
-  for q in [||] and j in [|n|]
-  for l = 1 downto -1 and n = -2 downto -2 and b in [|-2|]|];;
+  for l = 1 downto -1 and n = -2 downto -2 and b in [|-2|]
+  for q in [||] and j in [|n|]|];;
 [%%expect{|
 - : (int * int * int * int * '_weak200) array = [||]
 |}];;
 
 [(a, d, e, s, t)
-  for e = -1 downto 0 and s = 1 to 1 and d in []
-  when abs a mod 2 = 0
+  for a = 0 downto 1 and t in [3; -1] and _ = 2 downto -1
   when t <> 0
-  for a = 0 downto 1 and t in [3; -1] and _ = 2 downto -1];;
+  when abs a mod 2 = 0
+  for e = -1 downto 0 and s = 1 to 1 and d in []];;
 [%%expect{|
 - : (int * 'a * int * int * int) list = []
 |}];;
 
 [|(a, d, e, s, t)
-  for e = -1 downto 0 and s = 1 to 1 and d in [||]
-  when abs a mod 2 = 0
+  for a = 0 downto 1 and t in [|3; -1|] and _ = 2 downto -1
   when t <> 0
-  for a = 0 downto 1 and t in [|3; -1|] and _ = 2 downto -1|];;
+  when abs a mod 2 = 0
+  for e = -1 downto 0 and s = 1 to 1 and d in [||]|];;
 [%%expect{|
 - : (int * '_weak201 * int * int * int) array = [||]
 |}];;
 
 [(g, j, k)
-  when abs k mod 2 = 0
-  when g <> 0
+  for g in [] and j in [-2]
   for k = g to -1 and _ in [2]
-  for g in [] and j in [-2]];;
+  when g <> 0
+  when abs k mod 2 = 0];;
 [%%expect{|
 - : (int * int * int) list = []
 |}];;
 
 [|(g, j, k)
-  when abs k mod 2 = 0
-  when g <> 0
+  for g in [||] and j in [|-2|]
   for k = g to -1 and _ in [|2|]
-  for g in [||] and j in [|-2|]|];;
+  when g <> 0
+  when abs k mod 2 = 0|];;
 [%%expect{|
 - : (int * int * int) array = [||]
 |}];;
 
 [(d, f, g, w)
-  for g in [-3; 1; -3; -1]
+  for w in [2] and f = -1 to 0
   for d in [0]
-  for w in [2] and f = -1 to 0];;
+  for g in [-3; 1; -3; -1]];;
 [%%expect{|
 - : (int * int * int * int) list =
 [(0, -1, -3, 2); (0, -1, 1, 2); (0, -1, -3, 2); (0, -1, -1, 2);
@@ -15630,9 +15631,9 @@ Warning 26 [unused-var]: unused variable g.
 |}];;
 
 [|(d, f, g, w)
-  for g in [|-3; 1; -3; -1|]
+  for w in [|2|] and f = -1 to 0
   for d in [|0|]
-  for w in [|2|] and f = -1 to 0|];;
+  for g in [|-3; 1; -3; -1|]|];;
 [%%expect{|
 - : (int * int * int * int) array =
 [|(0, -1, -3, 2); (0, -1, 1, 2); (0, -1, -3, 2); (0, -1, -1, 2);
@@ -15662,41 +15663,41 @@ Warning 26 [unused-var]: unused variable g.
 |}];;
 
 [(a, f, j, m, n, p, s, t)
-  for a in [2; -1; 0] and f in [2] and j in [3; -1]
-  for j in [0; 3; 2; 0; 1] and s in [2; 3; 0; -1; 1] and n in []
   for t = 0 downto 2
   and p in [-3; 2; -2; -1; 0; 1]
   and m in [3]
-  and a in [1; -2; -3; 0; 2; -1; -2]];;
+  and a in [1; -2; -3; 0; 2; -1; -2]
+  for j in [0; 3; 2; 0; 1] and s in [2; 3; 0; -1; 1] and n in []
+  for a in [2; -1; 0] and f in [2] and j in [3; -1]];;
 [%%expect{|
 Line 7, characters 6-7:
 7 |   and a in [1; -2; -3; 0; 2; -1; -2]];;
           ^
 Warning 26 [unused-var]: unused variable a.
 Line 3, characters 6-7:
-3 |   for j in [0; 3; 2; 0; 1] and s in [2; 3; 0; -1; 1] and n in []
-          ^
-Warning 26 [unused-var]: unused variable j.
+3 |
 - : (int * int * int * int * 'a * int * int * int) list = []
+Warning 26 [unused-var]: unused variable j.
+          ^ for j in [0; 3; 2; 0; 1] and s in [2; 3; 0; -1; 1] and n in []
 |}];;
 
 [|(a, f, j, m, n, p, s, t)
-  for a in [|2; -1; 0|] and f in [|2|] and j in [|3; -1|]
-  for j in [|0; 3; 2; 0; 1|] and s in [|2; 3; 0; -1; 1|] and n in [||]
   for t = 0 downto 2
   and p in [|-3; 2; -2; -1; 0; 1|]
   and m in [|3|]
-  and a in [|1; -2; -3; 0; 2; -1; -2|]|];;
+  and a in [|1; -2; -3; 0; 2; -1; -2|]
+  for j in [|0; 3; 2; 0; 1|] and s in [|2; 3; 0; -1; 1|] and n in [||]
+  for a in [|2; -1; 0|] and f in [|2|] and j in [|3; -1|]|];;
 [%%expect{|
 Line 7, characters 6-7:
 7 |   and a in [|1; -2; -3; 0; 2; -1; -2|]|];;
           ^
 Warning 26 [unused-var]: unused variable a.
 Line 3, characters 6-7:
-3 |   for j in [|0; 3; 2; 0; 1|] and s in [|2; 3; 0; -1; 1|] and n in [||]
-          ^
-Warning 26 [unused-var]: unused variable j.
+3 |
 - : (int * int * int * int * '_weak202 * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable j.
+          ^ for j in [|0; 3; 2; 0; 1|] and s in [|2; 3; 0; -1; 1|] and n in [||]
 |}];;
 
 [(j, n, r, s, v)
@@ -15720,41 +15721,41 @@ Warning 26 [unused-var]: unused variable j.
 |}];;
 
 [(a, h, k, l, s, u, v)
-  for u = k to -1 and l in [2; -1; -1]
-  for s = 2 to 1 and h in [-2; -1; k; 0; -1; k; 2]
+  for v = -2 to 2 and a = 3 to 1 and k = -3 to 0
   when abs v mod 2 = 0
-  for v = -2 to 2 and a = 3 to 1 and k = -3 to 0];;
+  for s = 2 to 1 and h in [-2; -1; k; 0; -1; k; 2]
+  for u = k to -1 and l in [2; -1; -1]];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, h, k, l, s, u, v)
-  for u = k to -1 and l in [|2; -1; -1|]
-  for s = 2 to 1 and h in [|-2; -1; k; 0; -1; k; 2|]
+  for v = -2 to 2 and a = 3 to 1 and k = -3 to 0
   when abs v mod 2 = 0
-  for v = -2 to 2 and a = 3 to 1 and k = -3 to 0|];;
+  for s = 2 to 1 and h in [|-2; -1; k; 0; -1; k; 2|]
+  for u = k to -1 and l in [|2; -1; -1|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(e, m, p, u)
-  when abs u mod 2 = 0
   for e = 2 downto -2
   and u in [-1]
   and _ = 1 to -1
   and m = -1 downto -3
-  and p = -3 to -1];;
+  and p = -3 to -1
+  when abs u mod 2 = 0];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(e, m, p, u)
-  when abs u mod 2 = 0
   for e = 2 downto -2
   and u in [|-1|]
   and _ = 1 to -1
   and m = -1 downto -3
-  and p = -3 to -1|];;
+  and p = -3 to -1
+  when abs u mod 2 = 0|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
@@ -15772,197 +15773,197 @@ Warning 26 [unused-var]: unused variable j.
 |}];;
 
 [(c, f, j, k, r)
-  for c in []
-  for r = 2 to 0 and k in [2; 0; -3; f] and j in []
+  for f = -3 downto -2
   for f in [-1; -2; f; f; -2; f; -3]
-  for f = -3 downto -2];;
+  for r = 2 to 0 and k in [2; 0; -3; f] and j in []
+  for c in []];;
 [%%expect{|
 - : ('a * int * 'b * int * int) list = []
 |}];;
 
 [|(c, f, j, k, r)
-  for c in [||]
-  for r = 2 to 0 and k in [|2; 0; -3; f|] and j in [||]
+  for f = -3 downto -2
   for f in [|-1; -2; f; f; -2; f; -3|]
-  for f = -3 downto -2|];;
+  for r = 2 to 0 and k in [|2; 0; -3; f|] and j in [||]
+  for c in [||]|];;
 [%%expect{|
 - : ('_weak204 * int * '_weak205 * int * int) array = [||]
 |}];;
 
 [(b, o, x, z)
-  for o in [x; -3; -2; 0; -3; 2]
-  when z > 0
+  for z = 0 downto 0 and b = 1 to 0
   for x in [-1; 0; 1; z; -2; -3; 0] and z = 0 downto 2
-  for z = 0 downto 0 and b = 1 to 0];;
+  when z > 0
+  for o in [x; -3; -2; 0; -3; 2]];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(b, o, x, z)
-  for o in [|x; -3; -2; 0; -3; 2|]
-  when z > 0
+  for z = 0 downto 0 and b = 1 to 0
   for x in [|-1; 0; 1; z; -2; -3; 0|] and z = 0 downto 2
-  for z = 0 downto 0 and b = 1 to 0|];;
+  when z > 0
+  for o in [|x; -3; -2; 0; -3; 2|]|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(d, i, o, r, v, w, y)
-  when d > 0
-  for w in [3; 0; 3; 3; 2; -2; 1] and i in [-3; 2; 2; -3] and o = -1 to 0
+  for y = 3 to -2
   for v = 2 downto 3 and d = y to -2 and r = y to 2
-  for y = 3 to -2];;
+  for w in [3; 0; 3; 3; 2; -2; 1] and i in [-3; 2; 2; -3] and o = -1 to 0
+  when d > 0];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(d, i, o, r, v, w, y)
-  when d > 0
-  for w in [|3; 0; 3; 3; 2; -2; 1|] and i in [|-3; 2; 2; -3|] and o = -1 to 0
+  for y = 3 to -2
   for v = 2 downto 3 and d = y to -2 and r = y to 2
-  for y = 3 to -2|];;
+  for w in [|3; 0; 3; 3; 2; -2; 1|] and i in [|-3; 2; 2; -3|] and o = -1 to 0
+  when d > 0|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(d, f, h, k, m, v)
-  for h = v downto 1 and m = 2 downto -1
-  for h in [-1; -2; v; 3; 2] and d in [] and f in [2; 3; -1; v; 0; -2; -1]
+  for v in [-3; -1; 2] and k = 0 to 0
   when k <> 0
-  for v in [-3; -1; 2] and k = 0 to 0];;
+  for h in [-1; -2; v; 3; 2] and d in [] and f in [2; 3; -1; v; 0; -2; -1]
+  for h = v downto 1 and m = 2 downto -1];;
 [%%expect{|
 Line 3, characters 6-7:
-3 |   for h in [-1; -2; v; 3; 2] and d in [] and f in [2; 3; -1; v; 0; -2; -1]
-          ^
-Warning 26 [unused-var]: unused variable h.
+3 |
 - : ('a * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable h.
+          ^ for h in [-1; -2; v; 3; 2] and d in [] and f in [2; 3; -1; v; 0; -2; -1]
 |}];;
 
 [|(d, f, h, k, m, v)
-  for h = v downto 1 and m = 2 downto -1
-  for h in [|-1; -2; v; 3; 2|] and d in [||] and f in [|2; 3; -1; v; 0; -2; -1|]
+  for v in [|-3; -1; 2|] and k = 0 to 0
   when k <> 0
-  for v in [|-3; -1; 2|] and k = 0 to 0|];;
+  for h in [|-1; -2; v; 3; 2|] and d in [||] and f in [|2; 3; -1; v; 0; -2; -1|]
+  for h = v downto 1 and m = 2 downto -1|];;
 [%%expect{|
 Line 3, characters 6-7:
-3 |   for h in [|-1; -2; v; 3; 2|] and d in [||] and f in [|2; 3; -1; v; 0; -2; -1|]
-          ^
-Warning 26 [unused-var]: unused variable h.
+3 |
 - : ('_weak206 * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable h.
+          ^ for h in [|-1; -2; v; 3; 2|] and d in [||] and f in [|2; 3; -1; v; 0; -2; -1|]
 |}];;
 
 [(h, n, p, u)
-  when abs h mod 2 = 0
   for h in [-1; 2; -3; 1; 0]
   and p = -2 to 0
   and u = 0 downto 1
-  and n in [1; -3; 2; 3; -1; -3; 3]];;
+  and n in [1; -3; 2; 3; -1; -3; 3]
+  when abs h mod 2 = 0];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(h, n, p, u)
-  when abs h mod 2 = 0
   for h in [|-1; 2; -3; 1; 0|]
   and p = -2 to 0
   and u = 0 downto 1
-  and n in [|1; -3; 2; 3; -1; -3; 3|]|];;
+  and n in [|1; -3; 2; 3; -1; -3; 3|]
+  when abs h mod 2 = 0|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(f, u, x, y)
-  when abs f mod 2 = 1
+  for x = 3 to -1 and y in [-2; 2; 3; 2; 0; 2; -1] and f = -2 to 3
   for u = -2 downto y
-  for x = 3 to -1 and y in [-2; 2; 3; 2; 0; 2; -1] and f = -2 to 3];;
+  when abs f mod 2 = 1];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(f, u, x, y)
-  when abs f mod 2 = 1
+  for x = 3 to -1 and y in [|-2; 2; 3; 2; 0; 2; -1|] and f = -2 to 3
   for u = -2 downto y
-  for x = 3 to -1 and y in [|-2; 2; 3; 2; 0; 2; -1|] and f = -2 to 3|];;
+  when abs f mod 2 = 1|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(a, b, d, e, h, s, t, y)
-  for a = -1 downto -2
-  and t = -2 to 3
-  and d in [-1; -2; s; -3]
-  and e = h to -2
-  and y = 0 to 0
   for s in [1; 0; -2; 2]
   and e in [-1; -3; -1; 0; -1; -3; 2]
   and b in [1; -2; 2; -1; -1]
   and h in [3; 2; -1; 3; 1]
-  and a = 1 to 1];;
+  and a = 1 to 1
+  for a = -1 downto -2
+  and t = -2 to 3
+  and d in [-1; -2; s; -3]
+  and e = h to -2
+  and y = 0 to 0];;
 [%%expect{|
 Lines 1-11, characters 0-17:
  1 | [(a, b, d, e, h, s, t, y)
- 2 |   for a = -1 downto -2
- 3 |   and t = -2 to 3
- 4 |   and d in [-1; -2; s; -3]
- 5 |   and e = h to -2
-...
- 8 |   and e in [-1; -3; -1; 0; -1; -3; 2]
- 9 |   and b in [1; -2; 2; -1; -1]
-10 |   and h in [3; 2; -1; 3; 1]
-11 |   and a = 1 to 1]..
-Warning 26 [unused-var]: unused variable a.
-Line 8, characters 6-7:
-8 |   and e in [-1; -3; -1; 0; -1; -3; 2]
-          ^
-Warning 26 [unused-var]: unused variable e.
+ 2 |
 - : (int * int * int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable e.
+          ^
+8 |   and e in [-1; -3; -1; 0; -1; -3; 2]
+Line 8, characters 6-7:
+Warning 26 [unused-var]: unused variable a.
+11 |   and a = 1 to 1]..
+10 |   and h in [3; 2; -1; 3; 1]
+ 9 |   and b in [1; -2; 2; -1; -1]
+ 8 |   and e in [-1; -3; -1; 0; -1; -3; 2]
+...
+ 5 |   and e = h to -2
+ 4 |   and d in [-1; -2; s; -3]
+ 3 |   and t = -2 to 3 for a = -1 downto -2
 |}];;
 
 [|(a, b, d, e, h, s, t, y)
-  for a = -1 downto -2
-  and t = -2 to 3
-  and d in [|-1; -2; s; -3|]
-  and e = h to -2
-  and y = 0 to 0
   for s in [|1; 0; -2; 2|]
   and e in [|-1; -3; -1; 0; -1; -3; 2|]
   and b in [|1; -2; 2; -1; -1|]
   and h in [|3; 2; -1; 3; 1|]
-  and a = 1 to 1|];;
+  and a = 1 to 1
+  for a = -1 downto -2
+  and t = -2 to 3
+  and d in [|-1; -2; s; -3|]
+  and e = h to -2
+  and y = 0 to 0|];;
 [%%expect{|
 Lines 1-11, characters 0-18:
  1 | [|(a, b, d, e, h, s, t, y)
- 2 |   for a = -1 downto -2
- 3 |   and t = -2 to 3
- 4 |   and d in [|-1; -2; s; -3|]
- 5 |   and e = h to -2
-...
- 8 |   and e in [|-1; -3; -1; 0; -1; -3; 2|]
- 9 |   and b in [|1; -2; 2; -1; -1|]
-10 |   and h in [|3; 2; -1; 3; 1|]
-11 |   and a = 1 to 1|]..
-Warning 26 [unused-var]: unused variable a.
-Line 8, characters 6-7:
-8 |   and e in [|-1; -3; -1; 0; -1; -3; 2|]
-          ^
-Warning 26 [unused-var]: unused variable e.
+ 2 |
 - : (int * int * int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable e.
+          ^
+8 |   and e in [|-1; -3; -1; 0; -1; -3; 2|]
+Line 8, characters 6-7:
+Warning 26 [unused-var]: unused variable a.
+11 |   and a = 1 to 1|]..
+10 |   and h in [|3; 2; -1; 3; 1|]
+ 9 |   and b in [|1; -2; 2; -1; -1|]
+ 8 |   and e in [|-1; -3; -1; 0; -1; -3; 2|]
+...
+ 5 |   and e = h to -2
+ 4 |   and d in [|-1; -2; s; -3|]
+ 3 |   and t = -2 to 3 for a = -1 downto -2
 |}];;
 
 [(c, g, i, n, s, z)
-  for i = -2 downto -1
-  for g = 3 downto 3 and s in [2]
+  for n in [2; -2; 1; 3; -2; 3; 0]
   for c = n downto -2 and z in [n; -3; -2; 0; 3; 2; 1]
-  for n in [2; -2; 1; 3; -2; 3; 0]];;
+  for g = 3 downto 3 and s in [2]
+  for i = -2 downto -1];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(c, g, i, n, s, z)
-  for i = -2 downto -1
-  for g = 3 downto 3 and s in [|2|]
+  for n in [|2; -2; 1; 3; -2; 3; 0|]
   for c = n downto -2 and z in [|n; -3; -2; 0; 3; 2; 1|]
-  for n in [|2; -2; 1; 3; -2; 3; 0|]|];;
+  for g = 3 downto 3 and s in [|2|]
+  for i = -2 downto -1|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
@@ -15990,107 +15991,107 @@ Warning 26 [unused-var]: unused variable e.
 |}];;
 
 [(k, o, p, v)
-  when p > 0
-  for v in [0; -3; -3; -2; -1; -3; -3] and k = p to 1
+  for o = 1 to -2
   for p = -1 to 0
-  for o = 1 to -2];;
+  for v in [0; -3; -3; -2; -1; -3; -3] and k = p to 1
+  when p > 0];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(k, o, p, v)
-  when p > 0
-  for v in [|0; -3; -3; -2; -1; -3; -3|] and k = p to 1
+  for o = 1 to -2
   for p = -1 to 0
-  for o = 1 to -2|];;
+  for v in [|0; -3; -3; -2; -1; -3; -3|] and k = p to 1
+  when p > 0|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(a, d, f, j, o, s, w)
-  for j in [1; -3] and d in []
-  for d = -3 downto 3 and j = -1 downto 3
-  for a in [2; 3; -3; 0; -1; 3] and s in []
+  for f = -2 to -3
   for o = 0 downto -2 and w = 0 downto 3
-  for f = -2 to -3];;
+  for a in [2; 3; -3; 0; -1; 3] and s in []
+  for d = -3 downto 3 and j = -1 downto 3
+  for j in [1; -3] and d in []];;
 [%%expect{|
 Lines 1-6, characters 0-19:
 1 | [(a, d, f, j, o, s, w)
-2 |   for j in [1; -3] and d in []
-3 |   for d = -3 downto 3 and j = -1 downto 3
-4 |   for a in [2; 3; -3; 0; -1; 3] and s in []
-5 |   for o = 0 downto -2 and w = 0 downto 3
-6 |   for f = -2 to -3]..
-Warning 26 [unused-var]: unused variable j.
-Lines 1-6, characters 0-19:
-1 | [(a, d, f, j, o, s, w)
-2 |   for j in [1; -3] and d in []
-3 |   for d = -3 downto 3 and j = -1 downto 3
-4 |   for a in [2; 3; -3; 0; -1; 3] and s in []
-5 |   for o = 0 downto -2 and w = 0 downto 3
-6 |   for f = -2 to -3]..
-Warning 26 [unused-var]: unused variable d.
+2 |
 - : (int * 'a * int * int * int * 'b * int) list = []
+Warning 26 [unused-var]: unused variable d. for f = -2 to -3]..
+6 | for o = 0 downto -2 and w = 0 downto 3
+5 | for a in [2; 3; -3; 0; -1; 3] and s in []
+4 | for d = -3 downto 3 and j = -1 downto 3
+3 | for j in [1; -3] and d in []
+2 |
+1 | [(a, d, f, j, o, s, w)
+Lines 1-6, characters 0-19:
+Warning 26 [unused-var]: unused variable j. for f = -2 to -3]..
+6 | for o = 0 downto -2 and w = 0 downto 3
+5 | for a in [2; 3; -3; 0; -1; 3] and s in []
+4 | for d = -3 downto 3 and j = -1 downto 3
+3 | for j in [1; -3] and d in []
 |}];;
 
 [|(a, d, f, j, o, s, w)
-  for j in [|1; -3|] and d in [||]
-  for d = -3 downto 3 and j = -1 downto 3
-  for a in [|2; 3; -3; 0; -1; 3|] and s in [||]
+  for f = -2 to -3
   for o = 0 downto -2 and w = 0 downto 3
-  for f = -2 to -3|];;
+  for a in [|2; 3; -3; 0; -1; 3|] and s in [||]
+  for d = -3 downto 3 and j = -1 downto 3
+  for j in [|1; -3|] and d in [||]|];;
 [%%expect{|
 Lines 1-6, characters 0-20:
 1 | [|(a, d, f, j, o, s, w)
-2 |   for j in [|1; -3|] and d in [||]
-3 |   for d = -3 downto 3 and j = -1 downto 3
-4 |   for a in [|2; 3; -3; 0; -1; 3|] and s in [||]
-5 |   for o = 0 downto -2 and w = 0 downto 3
-6 |   for f = -2 to -3|]..
-Warning 26 [unused-var]: unused variable j.
-Lines 1-6, characters 0-20:
-1 | [|(a, d, f, j, o, s, w)
-2 |   for j in [|1; -3|] and d in [||]
-3 |   for d = -3 downto 3 and j = -1 downto 3
-4 |   for a in [|2; 3; -3; 0; -1; 3|] and s in [||]
-5 |   for o = 0 downto -2 and w = 0 downto 3
-6 |   for f = -2 to -3|]..
-Warning 26 [unused-var]: unused variable d.
+2 |
 - : (int * '_weak208 * int * int * int * '_weak209 * int) array = [||]
+Warning 26 [unused-var]: unused variable d. for f = -2 to -3|]..
+6 | for o = 0 downto -2 and w = 0 downto 3
+5 | for a in [|2; 3; -3; 0; -1; 3|] and s in [||]
+4 | for d = -3 downto 3 and j = -1 downto 3
+3 | for j in [|1; -3|] and d in [||]
+2 |
+1 | [|(a, d, f, j, o, s, w)
+Lines 1-6, characters 0-20:
+Warning 26 [unused-var]: unused variable j. for f = -2 to -3|]..
+6 | for o = 0 downto -2 and w = 0 downto 3
+5 | for a in [|2; 3; -3; 0; -1; 3|] and s in [||]
+4 | for d = -3 downto 3 and j = -1 downto 3
+3 | for j in [|1; -3|] and d in [||]
 |}];;
 
 [(h, i, s, t, u)
-  for h in [-2; 1; 2; 1; t; 1; -2]
-  for i = 1 to -1
-  for u in [2; 1; 1; -2] and t = -2 downto 3
+  for s in [-1; 0; 2; 1] and i in [-2; -1; -3; 1]
   when i > 0
-  for s in [-1; 0; 2; 1] and i in [-2; -1; -3; 1]];;
+  for u in [2; 1; 1; -2] and t = -2 downto 3
+  for i = 1 to -1
+  for h in [-2; 1; 2; 1; t; 1; -2]];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(h, i, s, t, u)
-  for h in [|-2; 1; 2; 1; t; 1; -2|]
-  for i = 1 to -1
-  for u in [|2; 1; 1; -2|] and t = -2 downto 3
+  for s in [|-1; 0; 2; 1|] and i in [|-2; -1; -3; 1|]
   when i > 0
-  for s in [|-1; 0; 2; 1|] and i in [|-2; -1; -3; 1|]|];;
+  for u in [|2; 1; 1; -2|] and t = -2 downto 3
+  for i = 1 to -1
+  for h in [|-2; 1; 2; 1; t; 1; -2|]|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(e, l, p, q, y)
-  when abs l mod 2 = 1
+  for e = 1 downto 2 and l = -2 to 3 and p = 0 to 2
   for y in [-2] and q in [-3; e]
-  for e = 1 downto 2 and l = -2 to 3 and p = 0 to 2];;
+  when abs l mod 2 = 1];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(e, l, p, q, y)
-  when abs l mod 2 = 1
+  for e = 1 downto 2 and l = -2 to 3 and p = 0 to 2
   for y in [|-2|] and q in [|-3; e|]
-  for e = 1 downto 2 and l = -2 to 3 and p = 0 to 2|];;
+  when abs l mod 2 = 1|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
@@ -16106,54 +16107,54 @@ Warning 26 [unused-var]: unused variable d.
 |}];;
 
 [(d, k, n, p, s)
-  when n < 0
-  for n = -3 downto -2 and p in []
+  for s = 1 downto 0 and k = 1 downto -2 and d in [2; -2; -2; 1; 1; 3]
   when k < 0
-  for s = 1 downto 0 and k = 1 downto -2 and d in [2; -2; -2; 1; 1; 3]];;
+  for n = -3 downto -2 and p in []
+  when n < 0];;
 [%%expect{|
 - : (int * int * int * 'a * int) list = []
 |}];;
 
 [|(d, k, n, p, s)
-  when n < 0
-  for n = -3 downto -2 and p in [||]
+  for s = 1 downto 0 and k = 1 downto -2 and d in [|2; -2; -2; 1; 1; 3|]
   when k < 0
-  for s = 1 downto 0 and k = 1 downto -2 and d in [|2; -2; -2; 1; 1; 3|]|];;
+  for n = -3 downto -2 and p in [||]
+  when n < 0|];;
 [%%expect{|
 - : (int * int * int * '_weak210 * int) array = [||]
 |}];;
 
 [(c, e, g, j, o, q, t, w)
-  for e = 0 to -2 and o in []
-  for q in [-2; -1; 1; -2; -2] and j = -3 downto 1 and w = -3 to -1
+  for g in [] and c in [] and t = 3 downto 0
   for q = -3 to 3
-  for g in [] and c in [] and t = 3 downto 0];;
+  for q in [-2; -1; 1; -2; -2] and j = -3 downto 1 and w = -3 to -1
+  for e = 0 to -2 and o in []];;
 [%%expect{|
 Lines 1-5, characters 0-45:
 1 | [(c, e, g, j, o, q, t, w)
-2 |   for e = 0 to -2 and o in []
-3 |   for q in [-2; -1; 1; -2; -2] and j = -3 downto 1 and w = -3 to -1
-4 |   for q = -3 to 3
-5 |   for g in [] and c in [] and t = 3 downto 0]..
-Warning 26 [unused-var]: unused variable q.
+2 |
 - : ('a * int * 'b * int * 'c * int * int * int) list = []
+Warning 26 [unused-var]: unused variable q. for g in [] and c in [] and t = 3 downto 0]..
+5 | for q = -3 to 3
+4 | for q in [-2; -1; 1; -2; -2] and j = -3 downto 1 and w = -3 to -1
+3 | for e = 0 to -2 and o in []
 |}];;
 
 [|(c, e, g, j, o, q, t, w)
-  for e = 0 to -2 and o in [||]
-  for q in [|-2; -1; 1; -2; -2|] and j = -3 downto 1 and w = -3 to -1
+  for g in [||] and c in [||] and t = 3 downto 0
   for q = -3 to 3
-  for g in [||] and c in [||] and t = 3 downto 0|];;
+  for q in [|-2; -1; 1; -2; -2|] and j = -3 downto 1 and w = -3 to -1
+  for e = 0 to -2 and o in [||]|];;
 [%%expect{|
 Lines 1-5, characters 0-50:
 1 | [|(c, e, g, j, o, q, t, w)
-2 |   for e = 0 to -2 and o in [||]
-3 |   for q in [|-2; -1; 1; -2; -2|] and j = -3 downto 1 and w = -3 to -1
-4 |   for q = -3 to 3
-5 |   for g in [||] and c in [||] and t = 3 downto 0|]..
-Warning 26 [unused-var]: unused variable q.
-- : ('_weak211 * int * '_weak212 * int * '_weak213 * int * int * int) array =
+2 |
 [||]
+- : ('_weak211 * int * '_weak212 * int * '_weak213 * int * int * int) array =
+Warning 26 [unused-var]: unused variable q. for g in [||] and c in [||] and t = 3 downto 0|]..
+5 | for q = -3 to 3
+4 | for q in [|-2; -1; 1; -2; -2|] and j = -3 downto 1 and w = -3 to -1
+3 | for e = 0 to -2 and o in [||]
 |}];;
 
 [(e, f) for f in [0] and e = 0 to -2];;
@@ -16167,55 +16168,55 @@ Warning 26 [unused-var]: unused variable q.
 |}];;
 
 [(b, d, f, h, k, p)
-  for k = 2 to -1
-  for h = 0 to -1 and f in [1; -2]
-  for h in [1; 3; 2]
+  for p in [1; 1; 1]
   for d in [] and b in [2; 0]
-  for p in [1; 1; 1]];;
+  for h in [1; 3; 2]
+  for h = 0 to -1 and f in [1; -2]
+  for k = 2 to -1];;
 [%%expect{|
 Line 4, characters 6-7:
-4 |   for h in [1; 3; 2]
-          ^
-Warning 26 [unused-var]: unused variable h.
+4 |
 - : (int * 'a * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable h.
+          ^ for h in [1; 3; 2]
 |}];;
 
 [|(b, d, f, h, k, p)
-  for k = 2 to -1
-  for h = 0 to -1 and f in [|1; -2|]
-  for h in [|1; 3; 2|]
+  for p in [|1; 1; 1|]
   for d in [||] and b in [|2; 0|]
-  for p in [|1; 1; 1|]|];;
+  for h in [|1; 3; 2|]
+  for h = 0 to -1 and f in [|1; -2|]
+  for k = 2 to -1|];;
 [%%expect{|
 Line 4, characters 6-7:
-4 |   for h in [|1; 3; 2|]
-          ^
-Warning 26 [unused-var]: unused variable h.
+4 |
 - : (int * '_weak214 * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable h.
+          ^ for h in [|1; 3; 2|]
 |}];;
 
 [(f, g, s, v, y)
-  for v = -3 to -2
+  for g in [-3; 2] and f = -2 downto 1 and s in [2; -1; 2; -1; -3]
   for v in [3; 2; 0; 0; -1; 2] and y in [0; -3]
-  for g in [-3; 2] and f = -2 downto 1 and s in [2; -1; 2; -1; -3]];;
+  for v = -3 to -2];;
 [%%expect{|
 Line 3, characters 6-7:
-3 |   for v in [3; 2; 0; 0; -1; 2] and y in [0; -3]
-          ^
-Warning 26 [unused-var]: unused variable v.
+3 |
 - : (int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable v.
+          ^ for v in [3; 2; 0; 0; -1; 2] and y in [0; -3]
 |}];;
 
 [|(f, g, s, v, y)
-  for v = -3 to -2
+  for g in [|-3; 2|] and f = -2 downto 1 and s in [|2; -1; 2; -1; -3|]
   for v in [|3; 2; 0; 0; -1; 2|] and y in [|0; -3|]
-  for g in [|-3; 2|] and f = -2 downto 1 and s in [|2; -1; 2; -1; -3|]|];;
+  for v = -3 to -2|];;
 [%%expect{|
 Line 3, characters 6-7:
-3 |   for v in [|3; 2; 0; 0; -1; 2|] and y in [|0; -3|]
-          ^
-Warning 26 [unused-var]: unused variable v.
+3 |
 - : (int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable v.
+          ^ for v in [|3; 2; 0; 0; -1; 2|] and y in [|0; -3|]
 |}];;
 
 [o for o in [-1]];;
@@ -16229,10 +16230,10 @@ Warning 26 [unused-var]: unused variable v.
 |}];;
 
 [(e, h, m, p, t, w)
-  when w > 0
-  for h = 1 downto 0 and p in [-3] and t = -1 to 0
+  for w in [3; 0] and e = -1 downto -3 and m in [-3; -3; -2; 3]
   when abs e mod 2 = 0
-  for w in [3; 0] and e = -1 downto -3 and m in [-3; -3; -2; 3]];;
+  for h = 1 downto 0 and p in [-3] and t = -1 to 0
+  when w > 0];;
 [%%expect{|
 - : (int * int * int * int * int * int) list =
 [(-2, 1, -3, -3, -1, 3); (-2, 1, -3, -3, 0, 3); (-2, 0, -3, -3, -1, 3);
@@ -16244,10 +16245,10 @@ Warning 26 [unused-var]: unused variable v.
 |}];;
 
 [|(e, h, m, p, t, w)
-  when w > 0
-  for h = 1 downto 0 and p in [|-3|] and t = -1 to 0
+  for w in [|3; 0|] and e = -1 downto -3 and m in [|-3; -3; -2; 3|]
   when abs e mod 2 = 0
-  for w in [|3; 0|] and e = -1 downto -3 and m in [|-3; -3; -2; 3|]|];;
+  for h = 1 downto 0 and p in [|-3|] and t = -1 to 0
+  when w > 0|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array =
 [|(-2, 1, -3, -3, -1, 3); (-2, 1, -3, -3, 0, 3); (-2, 0, -3, -3, -1, 3);
@@ -16259,167 +16260,167 @@ Warning 26 [unused-var]: unused variable v.
 |}];;
 
 [(c, f, j, p, w)
-  when abs c mod 2 = 1
-  for j in [-3; 3; -1; 0; 3; -2] and f = 0 to 1
-  for w = -1 downto 2
+  for c in [2; 0; -3; 3; -1; 2] and f in [-2; -1; 0; -3; 3; -1; 1]
   for p = -1 downto -2
-  for c in [2; 0; -3; 3; -1; 2] and f in [-2; -1; 0; -3; 3; -1; 1]];;
+  for w = -1 downto 2
+  for j in [-3; 3; -1; 0; 3; -2] and f = 0 to 1
+  when abs c mod 2 = 1];;
 [%%expect{|
 Line 6, characters 36-37:
-6 |   for c in [2; 0; -3; 3; -1; 2] and f in [-2; -1; 0; -3; 3; -1; 1]];;
+6 | for c in [2; 0; -3; 3; -1; 2] and f in [-2; -1; 0; -3; 3; -1; 1]];;
                                         ^
 Warning 26 [unused-var]: unused variable f.
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(c, f, j, p, w)
-  when abs c mod 2 = 1
-  for j in [|-3; 3; -1; 0; 3; -2|] and f = 0 to 1
-  for w = -1 downto 2
+  for c in [|2; 0; -3; 3; -1; 2|] and f in [|-2; -1; 0; -3; 3; -1; 1|]
   for p = -1 downto -2
-  for c in [|2; 0; -3; 3; -1; 2|] and f in [|-2; -1; 0; -3; 3; -1; 1|]|];;
+  for w = -1 downto 2
+  for j in [|-3; 3; -1; 0; 3; -2|] and f = 0 to 1
+  when abs c mod 2 = 1|];;
 [%%expect{|
 Line 6, characters 38-39:
-6 |   for c in [|2; 0; -3; 3; -1; 2|] and f in [|-2; -1; 0; -3; 3; -1; 1|]|];;
+6 | for c in [|2; 0; -3; 3; -1; 2|] and f in [|-2; -1; 0; -3; 3; -1; 1|]|];;
                                           ^
 Warning 26 [unused-var]: unused variable f.
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(a, d, e, j, l, p, s, v)
-  for v in [0] and e = -3 downto -2 and d in [0; -3; 0; 0; -3; 3]
-  for s = p to 2 and j in [-1; 0; 0; -2; -3; p] and v = 3 to 0
+  for a in [3; 2; 2]
   for l = 1 to 3 and a = -1 downto 3 and p in [3; -2; 3; 1; -1]
-  for a in [3; 2; 2]];;
+  for s = p to 2 and j in [-1; 0; 0; -2; -3; p] and v = 3 to 0
+  for v in [0] and e = -3 downto -2 and d in [0; -3; 0; 0; -3; 3]];;
 [%%expect{|
 Line 5, characters 6-7:
-5 |   for a in [3; 2; 2]];;
+5 | for a in [3; 2; 2]];;
           ^
 Warning 26 [unused-var]: unused variable a.
 Lines 1-5, characters 0-21:
 1 | [(a, d, e, j, l, p, s, v)
-2 |   for v in [0] and e = -3 downto -2 and d in [0; -3; 0; 0; -3; 3]
-3 |   for s = p to 2 and j in [-1; 0; 0; -2; -3; p] and v = 3 to 0
-4 |   for l = 1 to 3 and a = -1 downto 3 and p in [3; -2; 3; 1; -1]
-5 |   for a in [3; 2; 2]]..
-Warning 26 [unused-var]: unused variable v.
+2 |
 - : (int * int * int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable v. for a in [3; 2; 2]]..
+5 | for l = 1 to 3 and a = -1 downto 3 and p in [3; -2; 3; 1; -1]
+4 | for s = p to 2 and j in [-1; 0; 0; -2; -3; p] and v = 3 to 0
+3 | for v in [0] and e = -3 downto -2 and d in [0; -3; 0; 0; -3; 3]
 |}];;
 
 [|(a, d, e, j, l, p, s, v)
-  for v in [|0|] and e = -3 downto -2 and d in [|0; -3; 0; 0; -3; 3|]
-  for s = p to 2 and j in [|-1; 0; 0; -2; -3; p|] and v = 3 to 0
+  for a in [|3; 2; 2|]
   for l = 1 to 3 and a = -1 downto 3 and p in [|3; -2; 3; 1; -1|]
-  for a in [|3; 2; 2|]|];;
+  for s = p to 2 and j in [|-1; 0; 0; -2; -3; p|] and v = 3 to 0
+  for v in [|0|] and e = -3 downto -2 and d in [|0; -3; 0; 0; -3; 3|]|];;
 [%%expect{|
 Line 5, characters 6-7:
-5 |   for a in [|3; 2; 2|]|];;
+5 | for a in [|3; 2; 2|]|];;
           ^
 Warning 26 [unused-var]: unused variable a.
 Lines 1-5, characters 0-24:
 1 | [|(a, d, e, j, l, p, s, v)
-2 |   for v in [|0|] and e = -3 downto -2 and d in [|0; -3; 0; 0; -3; 3|]
-3 |   for s = p to 2 and j in [|-1; 0; 0; -2; -3; p|] and v = 3 to 0
-4 |   for l = 1 to 3 and a = -1 downto 3 and p in [|3; -2; 3; 1; -1|]
-5 |   for a in [|3; 2; 2|]|]..
-Warning 26 [unused-var]: unused variable v.
+2 |
 - : (int * int * int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable v. for a in [|3; 2; 2|]|]..
+5 | for l = 1 to 3 and a = -1 downto 3 and p in [|3; -2; 3; 1; -1|]
+4 | for s = p to 2 and j in [|-1; 0; 0; -2; -3; p|] and v = 3 to 0
+3 | for v in [|0|] and e = -3 downto -2 and d in [|0; -3; 0; 0; -3; 3|]
 |}];;
 
 [(c, h, s, t)
-  for _ = 0 downto -1
   for s = -2 downto -2
   and t = 0 downto -1
   and c in [0; 1; 3]
   and _ = -1 downto 2
-  and h in [-2; -2; -1; -3; -3; 3; 3]];;
+  and h in [-2; -2; -1; -3; -3; 3; 3]
+  for _ = 0 downto -1];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(c, h, s, t)
-  for _ = 0 downto -1
   for s = -2 downto -2
   and t = 0 downto -1
   and c in [|0; 1; 3|]
   and _ = -1 downto 2
-  and h in [|-2; -2; -1; -3; -3; 3; 3|]|];;
+  and h in [|-2; -2; -1; -3; -3; 3; 3|]
+  for _ = 0 downto -1|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
-[k when k < 0 for k = -2 downto 3];;
+[k for k = -2 downto 3 when k < 0];;
 [%%expect{|
 - : int list = []
 |}];;
 
-[|k when k < 0 for k = -2 downto 3|];;
+[|k for k = -2 downto 3 when k < 0|];;
 [%%expect{|
 - : int array = [||]
 |}];;
 
 [(a, h, p, s, u)
-  for s = 1 to -3
-  for p in [u; a; -2]
-  for u = -2 to -1
+  for a in [-3; 0; 0; -3]
   for h in [0; 3; a; -3; -1; -1]
-  for a in [-3; 0; 0; -3]];;
+  for u = -2 to -1
+  for p in [u; a; -2]
+  for s = 1 to -3];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(a, h, p, s, u)
-  for s = 1 to -3
-  for p in [|u; a; -2|]
-  for u = -2 to -1
+  for a in [|-3; 0; 0; -3|]
   for h in [|0; 3; a; -3; -1; -1|]
-  for a in [|-3; 0; 0; -3|]|];;
+  for u = -2 to -1
+  for p in [|u; a; -2|]
+  for s = 1 to -3|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
-[(f, r) for f = -3 to 2 for r = 3 to -1];;
+[(f, r) for r = 3 to -1 for f = -3 to 2];;
 [%%expect{|
 - : (int * int) list = []
 |}];;
 
-[|(f, r) for f = -3 to 2 for r = 3 to -1|];;
+[|(f, r) for r = 3 to -1 for f = -3 to 2|];;
 [%%expect{|
 - : (int * int) array = [||]
 |}];;
 
 [(b, g, k, p, r, s, t, u, x)
-  for r in [-2; -2; 1] and x in [-3; 0; -2; 2; -3; p]
-  for g = 2 downto b and u = -2 to 1 and k = s to -2
+  for _ in [2; -1; -1; -3; 1; 2] and t = -2 downto 2 and p in [1; 0; -3; -1]
   for b = -3 to -2 and s in [-2; 1; 0; -3; -3; -2]
-  for _ in [2; -1; -1; -3; 1; 2] and t = -2 downto 2 and p in [1; 0; -3; -1]];;
+  for g = 2 downto b and u = -2 to 1 and k = s to -2
+  for r in [-2; -2; 1] and x in [-3; 0; -2; 2; -3; p]];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(b, g, k, p, r, s, t, u, x)
-  for r in [|-2; -2; 1|] and x in [|-3; 0; -2; 2; -3; p|]
-  for g = 2 downto b and u = -2 to 1 and k = s to -2
-  for b = -3 to -2 and s in [|-2; 1; 0; -3; -3; -2|]
   for _ in [|2; -1; -1; -3; 1; 2|]
   and t = -2 downto 2
-  and p in [|1; 0; -3; -1|]|];;
+  and p in [|1; 0; -3; -1|]
+  for b = -3 to -2 and s in [|-2; 1; 0; -3; -3; -2|]
+  for g = 2 downto b and u = -2 to 1 and k = s to -2
+  for r in [|-2; -2; 1|] and x in [|-3; 0; -2; 2; -3; p|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(c, e, s, x)
-  for _ = 3 to -2 and e in [1; -1]
+  for x = -2 downto 3
   for s = x to 2 and c = 2 to -2
-  for x = -2 downto 3];;
+  for _ = 3 to -2 and e in [1; -1]];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(c, e, s, x)
-  for _ = 3 to -2 and e in [|1; -1|]
+  for x = -2 downto 3
   for s = x to 2 and c = 2 to -2
-  for x = -2 downto 3|];;
+  for _ = 3 to -2 and e in [|1; -1|]|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
@@ -16434,7 +16435,7 @@ Warning 26 [unused-var]: unused variable v.
 - : (int * int) array = [||]
 |}];;
 
-[(a, b, l) for b = 2 downto 0 for l in [3; 1; -3] and a = -1 downto -2];;
+[(a, b, l) for l in [3; 1; -3] and a = -1 downto -2 for b = 2 downto 0];;
 [%%expect{|
 - : (int * int * int) list =
 [(-1, 2, 3); (-1, 1, 3); (-1, 0, 3); (-2, 2, 3); (-2, 1, 3); (-2, 0, 3);
@@ -16443,7 +16444,7 @@ Warning 26 [unused-var]: unused variable v.
  (-2, 0, -3)]
 |}];;
 
-[|(a, b, l) for b = 2 downto 0 for l in [|3; 1; -3|] and a = -1 downto -2|];;
+[|(a, b, l) for l in [|3; 1; -3|] and a = -1 downto -2 for b = 2 downto 0|];;
 [%%expect{|
 - : (int * int * int) array =
 [|(-1, 2, 3); (-1, 1, 3); (-1, 0, 3); (-2, 2, 3); (-2, 1, 3); (-2, 0, 3);
@@ -16453,356 +16454,356 @@ Warning 26 [unused-var]: unused variable v.
 |}];;
 
 [(d, n, x, y)
-  for x = -1 to -1 and y = -3 downto 3 and d = 1 to 0
+  for n in [-3; 1]
   for n in [-2; 2; -3]
-  for n in [-3; 1]];;
+  for x = -1 to -1 and y = -3 downto 3 and d = 1 to 0];;
 [%%expect{|
 Line 4, characters 6-7:
-4 |   for n in [-3; 1]];;
+4 | for n in [-3; 1]];;
           ^
 Warning 26 [unused-var]: unused variable n.
 - : (int * int * int * int) list = []
 |}];;
 
 [|(d, n, x, y)
-  for x = -1 to -1 and y = -3 downto 3 and d = 1 to 0
+  for n in [|-3; 1|]
   for n in [|-2; 2; -3|]
-  for n in [|-3; 1|]|];;
+  for x = -1 to -1 and y = -3 downto 3 and d = 1 to 0|];;
 [%%expect{|
 Line 4, characters 6-7:
-4 |   for n in [|-3; 1|]|];;
+4 | for n in [|-3; 1|]|];;
           ^
 Warning 26 [unused-var]: unused variable n.
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(c, o, q)
-  for o in [1; 0]
+  for o in [3] and q in [3; -1] and c in [2; -1; 1; 1; 1; -1; -3]
   when abs o mod 2 = 0
-  for o in [3] and q in [3; -1] and c in [2; -1; 1; 1; 1; -1; -3]];;
+  for o in [1; 0]];;
 [%%expect{|
 - : (int * int * int) list = []
 |}];;
 
 [|(c, o, q)
-  for o in [|1; 0|]
+  for o in [|3|] and q in [|3; -1|] and c in [|2; -1; 1; 1; 1; -1; -3|]
   when abs o mod 2 = 0
-  for o in [|3|] and q in [|3; -1|] and c in [|2; -1; 1; 1; 1; -1; -3|]|];;
+  for o in [|1; 0|]|];;
 [%%expect{|
 - : (int * int * int) array = [||]
 |}];;
 
 [(g, l, n, y)
-  for n in [-3] and _ = 0 downto -2 and l = 1 downto 2 and g = -3 to 3
-  for y in [3; 2; 2]];;
+  for y in [3; 2; 2]
+  for n in [-3] and _ = 0 downto -2 and l = 1 downto 2 and g = -3 to 3];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(g, l, n, y)
-  for n in [|-3|] and _ = 0 downto -2 and l = 1 downto 2 and g = -3 to 3
-  for y in [|3; 2; 2|]|];;
+  for y in [|3; 2; 2|]
+  for n in [|-3|] and _ = 0 downto -2 and l = 1 downto 2 and g = -3 to 3|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(d, m, x)
-  when abs m mod 2 = 0
-  for d = x to x and m = 1 downto 1
-  when x > 0
+  for _ = 0 downto -2 and x = -3 downto 1
   when abs x mod 2 = 1
-  for _ = 0 downto -2 and x = -3 downto 1];;
+  when x > 0
+  for d = x to x and m = 1 downto 1
+  when abs m mod 2 = 0];;
 [%%expect{|
 - : (int * int * int) list = []
 |}];;
 
 [|(d, m, x)
-  when abs m mod 2 = 0
-  for d = x to x and m = 1 downto 1
-  when x > 0
+  for _ = 0 downto -2 and x = -3 downto 1
   when abs x mod 2 = 1
-  for _ = 0 downto -2 and x = -3 downto 1|];;
+  when x > 0
+  for d = x to x and m = 1 downto 1
+  when abs m mod 2 = 0|];;
 [%%expect{|
 - : (int * int * int) array = [||]
 |}];;
 
 [(l, q, u, v, z)
-  for l = -2 to 1
-  for u in [] and z in []
+  for q in [-3; -2; -2; -1; -2; -1] and v = 2 to 0
   when v < 0
-  for q in [-3; -2; -2; -1; -2; -1] and v = 2 to 0];;
+  for u in [] and z in []
+  for l = -2 to 1];;
 [%%expect{|
 - : (int * int * 'a * int * 'b) list = []
 |}];;
 
 [|(l, q, u, v, z)
-  for l = -2 to 1
-  for u in [||] and z in [||]
+  for q in [|-3; -2; -2; -1; -2; -1|] and v = 2 to 0
   when v < 0
-  for q in [|-3; -2; -2; -1; -2; -1|] and v = 2 to 0|];;
+  for u in [||] and z in [||]
+  for l = -2 to 1|];;
 [%%expect{|
 - : (int * int * '_weak215 * int * '_weak216) array = [||]
 |}];;
 
 [(h, k, l, m, q, t)
-  for l = -1 downto 2
-  for h = -1 downto 2 and t = -1 to -1 and k in [-1; -1; 1; 0]
+  for m in [1; 2; 0] and q in [-2; -2; 3; -2; -3; 0; 3]
   for l in [-1; -2; 0; m; q; -2; -1]
-  for m in [1; 2; 0] and q in [-2; -2; 3; -2; -3; 0; 3]];;
+  for h = -1 downto 2 and t = -1 to -1 and k in [-1; -1; 1; 0]
+  for l = -1 downto 2];;
 [%%expect{|
 Line 4, characters 6-7:
-4 |   for l in [-1; -2; 0; m; q; -2; -1]
-          ^
-Warning 26 [unused-var]: unused variable l.
+4 |
 - : (int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable l.
+          ^ for l in [-1; -2; 0; m; q; -2; -1]
 |}];;
 
 [|(h, k, l, m, q, t)
-  for l = -1 downto 2
-  for h = -1 downto 2 and t = -1 to -1 and k in [|-1; -1; 1; 0|]
+  for m in [|1; 2; 0|] and q in [|-2; -2; 3; -2; -3; 0; 3|]
   for l in [|-1; -2; 0; m; q; -2; -1|]
-  for m in [|1; 2; 0|] and q in [|-2; -2; 3; -2; -3; 0; 3|]|];;
+  for h = -1 downto 2 and t = -1 to -1 and k in [|-1; -1; 1; 0|]
+  for l = -1 downto 2|];;
 [%%expect{|
 Line 4, characters 6-7:
-4 |   for l in [|-1; -2; 0; m; q; -2; -1|]
-          ^
-Warning 26 [unused-var]: unused variable l.
+4 |
 - : (int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable l.
+          ^ for l in [|-1; -2; 0; m; q; -2; -1|]
 |}];;
 
 [(i, n, s, t, v, y)
-  for _ = -2 downto 3 and v = 2 downto 1
-  for y = -2 to 3 and n in [v; -1; 1; 3; -2; 0] and s = 2 downto 0
-  for v = -1 to -3
   for n = -2 to 3
   and i in [2; -1; -2; 1; -1; 3; -3]
-  and t in [3; 3; 0; -1; -3]];;
+  and t in [3; 3; 0; -1; -3]
+  for v = -1 to -3
+  for y = -2 to 3 and n in [v; -1; 1; 3; -2; 0] and s = 2 downto 0
+  for _ = -2 downto 3 and v = 2 downto 1];;
 [%%expect{|
 Lines 1-7, characters 0-29:
 1 | [(i, n, s, t, v, y)
-2 |   for _ = -2 downto 3 and v = 2 downto 1
-3 |   for y = -2 to 3 and n in [v; -1; 1; 3; -2; 0] and s = 2 downto 0
-4 |   for v = -1 to -3
-5 |   for n = -2 to 3
-6 |   and i in [2; -1; -2; 1; -1; 3; -3]
-7 |   and t in [3; 3; 0; -1; -3]]..
-Warning 26 [unused-var]: unused variable n.
+2 |
 - : (int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable n.
+7 |   and t in [3; 3; 0; -1; -3]]..
+6 |   and i in [2; -1; -2; 1; -1; 3; -3] for n = -2 to 3
+5 | for v = -1 to -3
+4 | for y = -2 to 3 and n in [v; -1; 1; 3; -2; 0] and s = 2 downto 0
+3 | for _ = -2 downto 3 and v = 2 downto 1
 |}];;
 
 [|(i, n, s, t, v, y)
-  for _ = -2 downto 3 and v = 2 downto 1
-  for y = -2 to 3 and n in [|v; -1; 1; 3; -2; 0|] and s = 2 downto 0
-  for v = -1 to -3
   for n = -2 to 3
   and i in [|2; -1; -2; 1; -1; 3; -3|]
-  and t in [|3; 3; 0; -1; -3|]|];;
+  and t in [|3; 3; 0; -1; -3|]
+  for v = -1 to -3
+  for y = -2 to 3 and n in [|v; -1; 1; 3; -2; 0|] and s = 2 downto 0
+  for _ = -2 downto 3 and v = 2 downto 1|];;
 [%%expect{|
 Lines 1-7, characters 0-32:
 1 | [|(i, n, s, t, v, y)
-2 |   for _ = -2 downto 3 and v = 2 downto 1
-3 |   for y = -2 to 3 and n in [|v; -1; 1; 3; -2; 0|] and s = 2 downto 0
-4 |   for v = -1 to -3
-5 |   for n = -2 to 3
-6 |   and i in [|2; -1; -2; 1; -1; 3; -3|]
-7 |   and t in [|3; 3; 0; -1; -3|]|]..
-Warning 26 [unused-var]: unused variable n.
+2 |
 - : (int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable n.
+7 |   and t in [|3; 3; 0; -1; -3|]|]..
+6 |   and i in [|2; -1; -2; 1; -1; 3; -3|] for n = -2 to 3
+5 | for v = -1 to -3
+4 | for y = -2 to 3 and n in [|v; -1; 1; 3; -2; 0|] and s = 2 downto 0
+3 | for _ = -2 downto 3 and v = 2 downto 1
 |}];;
 
 [(o, p, t, v)
-  when v < 0
-  for o in [1; 3; 2; 0; 2; -2]
-  for t = v downto 3
+  for v in [0; -2; -3; -2; 1]
   for p in [3; -2; -1]
-  for v in [0; -2; -3; -2; 1]];;
+  for t = v downto 3
+  for o in [1; 3; 2; 0; 2; -2]
+  when v < 0];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(o, p, t, v)
-  when v < 0
-  for o in [|1; 3; 2; 0; 2; -2|]
-  for t = v downto 3
+  for v in [|0; -2; -3; -2; 1|]
   for p in [|3; -2; -1|]
-  for v in [|0; -2; -3; -2; 1|]|];;
+  for t = v downto 3
+  for o in [|1; 3; 2; 0; 2; -2|]
+  when v < 0|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(b, f, r)
-  for b = 3 to 0 and _ in [f; -3; -3]
-  for b in [0; -1; 0; -2; 1; 2]
-  for r = -2 to 1
+  for f in [-1; -2; 3; -2]
   when abs f mod 2 = 0
-  for f in [-1; -2; 3; -2]];;
+  for r = -2 to 1
+  for b in [0; -1; 0; -2; 1; 2]
+  for b = 3 to 0 and _ in [f; -3; -3]];;
 [%%expect{|
 Line 3, characters 6-7:
-3 |   for b in [0; -1; 0; -2; 1; 2]
-          ^
-Warning 26 [unused-var]: unused variable b.
+3 |
 - : (int * int * int) list = []
+Warning 26 [unused-var]: unused variable b.
+          ^ for b in [0; -1; 0; -2; 1; 2]
 |}];;
 
 [|(b, f, r)
-  for b = 3 to 0 and _ in [|f; -3; -3|]
-  for b in [|0; -1; 0; -2; 1; 2|]
-  for r = -2 to 1
+  for f in [|-1; -2; 3; -2|]
   when abs f mod 2 = 0
-  for f in [|-1; -2; 3; -2|]|];;
+  for r = -2 to 1
+  for b in [|0; -1; 0; -2; 1; 2|]
+  for b = 3 to 0 and _ in [|f; -3; -3|]|];;
 [%%expect{|
 Line 3, characters 6-7:
-3 |   for b in [|0; -1; 0; -2; 1; 2|]
-          ^
-Warning 26 [unused-var]: unused variable b.
+3 |
 - : (int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable b.
+          ^ for b in [|0; -1; 0; -2; 1; 2|]
 |}];;
 
 [(a, i, j, k, l, r)
-  for j in [0; 3; 0] and k in [-3; -3; 1; i; 3; 1; 0] and l = 1 downto -2
-  when i > 0
+  for i = 0 downto -3 and r in [-1] and a in [3; 3; -1; -1]
   for a in [-2; 0; 2; 3]
-  for i = 0 downto -3 and r in [-1] and a in [3; 3; -1; -1]];;
+  when i > 0
+  for j in [0; 3; 0] and k in [-3; -3; 1; i; 3; 1; 0] and l = 1 downto -2];;
 [%%expect{|
 Line 5, characters 40-41:
-5 |   for i = 0 downto -3 and r in [-1] and a in [3; 3; -1; -1]];;
+5 | for i = 0 downto -3 and r in [-1] and a in [3; 3; -1; -1]];;
                                             ^
 Warning 26 [unused-var]: unused variable a.
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, i, j, k, l, r)
-  for j in [|0; 3; 0|] and k in [|-3; -3; 1; i; 3; 1; 0|] and l = 1 downto -2
-  when i > 0
+  for i = 0 downto -3 and r in [|-1|] and a in [|3; 3; -1; -1|]
   for a in [|-2; 0; 2; 3|]
-  for i = 0 downto -3 and r in [|-1|] and a in [|3; 3; -1; -1|]|];;
+  when i > 0
+  for j in [|0; 3; 0|] and k in [|-3; -3; 1; i; 3; 1; 0|] and l = 1 downto -2|];;
 [%%expect{|
 Line 5, characters 42-43:
-5 |   for i = 0 downto -3 and r in [|-1|] and a in [|3; 3; -1; -1|]|];;
+5 | for i = 0 downto -3 and r in [|-1|] and a in [|3; 3; -1; -1|]|];;
                                               ^
 Warning 26 [unused-var]: unused variable a.
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(i, m, v, w, z)
-  for m in [-3; 0; -2; -1; 0] and i in [] and v in [0; -1; 3] and w in [1; 3; z]
-  for z in [-3; 0; -3; -1; 0; -1]];;
+  for z in [-3; 0; -3; -1; 0; -1]
+  for m in [-3; 0; -2; -1; 0] and i in [] and v in [0; -1; 3] and w in [1; 3; z]];;
 [%%expect{|
 - : ('a * int * int * int * int) list = []
 |}];;
 
 [|(i, m, v, w, z)
+  for z in [|-3; 0; -3; -1; 0; -1|]
   for m in [|-3; 0; -2; -1; 0|]
   and i in [||]
   and v in [|0; -1; 3|]
-  and w in [|1; 3; z|]
-  for z in [|-3; 0; -3; -1; 0; -1|]|];;
+  and w in [|1; 3; z|]|];;
 [%%expect{|
 - : ('_weak217 * int * int * int * int) array = [||]
 |}];;
 
 [(d, g, l, s, w, y)
-  for l in [0; -3; 3; 0; -3] and y = 0 downto -1
+  for d = -1 to -2 and s in [0; -3; -2; 0; -1; 1; 0] and g in [0; 1; -1]
   for w in [3; -1; 3]
-  for d = -1 to -2 and s in [0; -3; -2; 0; -1; 1; 0] and g in [0; 1; -1]];;
+  for l in [0; -3; 3; 0; -3] and y = 0 downto -1];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(d, g, l, s, w, y)
-  for l in [|0; -3; 3; 0; -3|] and y = 0 downto -1
+  for d = -1 to -2 and s in [|0; -3; -2; 0; -1; 1; 0|] and g in [|0; 1; -1|]
   for w in [|3; -1; 3|]
-  for d = -1 to -2 and s in [|0; -3; -2; 0; -1; 1; 0|] and g in [|0; 1; -1|]|];;
+  for l in [|0; -3; 3; 0; -3|] and y = 0 downto -1|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(b, g, n, s, w, x, z)
-  for b in [-1; 0; 0]
-  for s = -1 downto 3 and _ = 2 downto 0
-  for z in [] and w = -3 downto 2
+  for n in [1; 1; -1]
   for x in [-2; -2] and g = 0 downto -3
-  for n in [1; 1; -1]];;
+  for z in [] and w = -3 downto 2
+  for s = -1 downto 3 and _ = 2 downto 0
+  for b in [-1; 0; 0]];;
 [%%expect{|
 - : (int * int * int * int * int * int * 'a) list = []
 |}];;
 
 [|(b, g, n, s, w, x, z)
-  for b in [|-1; 0; 0|]
-  for s = -1 downto 3 and _ = 2 downto 0
-  for z in [||] and w = -3 downto 2
+  for n in [|1; 1; -1|]
   for x in [|-2; -2|] and g = 0 downto -3
-  for n in [|1; 1; -1|]|];;
+  for z in [||] and w = -3 downto 2
+  for s = -1 downto 3 and _ = 2 downto 0
+  for b in [|-1; 0; 0|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int * '_weak218) array = [||]
 |}];;
 
 [(k, m, n, s, u, v)
-  for s = -3 downto -1 and m = -1 to 3 and v = k downto n
-  when k <> 0
+  for u = -2 to 3
   for n in [-1; -2; 0; u; 3]
   and u in [3; -3; -1; -1; 2; -1]
   and k in [-2; 1; -3]
-  for u = -2 to 3];;
+  when k <> 0
+  for s = -3 downto -1 and m = -1 to 3 and v = k downto n];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(k, m, n, s, u, v)
-  for s = -3 downto -1 and m = -1 to 3 and v = k downto n
-  when k <> 0
+  for u = -2 to 3
   for n in [|-1; -2; 0; u; 3|]
   and u in [|3; -3; -1; -1; 2; -1|]
   and k in [|-2; 1; -3|]
-  for u = -2 to 3|];;
+  when k <> 0
+  for s = -3 downto -1 and m = -1 to 3 and v = k downto n|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
-[(f, y) for f in [-3; -2; 3; 3; 2; 2] and y in [1; 2] for f = -3 downto 1];;
+[(f, y) for f = -3 downto 1 for f in [-3; -2; 3; 3; 2; 2] and y in [1; 2]];;
 [%%expect{|
 Line 1, characters 0-74:
-1 | [(f, y) for f in [-3; -2; 3; 3; 2; 2] and y in [1; 2] for f = -3 downto 1];;
+1 | [(f, y) for f = -3 downto 1 for f in [-3; -2; 3; 3; 2; 2] and y in [1; 2]];;
     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Warning 26 [unused-var]: unused variable f.
 - : (int * int) list = []
 |}];;
 
 [|(f, y)
-  for f in [|-3; -2; 3; 3; 2; 2|] and y in [|1; 2|]
-  for f = -3 downto 1|];;
+  for f = -3 downto 1
+  for f in [|-3; -2; 3; 3; 2; 2|] and y in [|1; 2|]|];;
 [%%expect{|
 Lines 1-3, characters 0-23:
 1 | [|(f, y)
-2 |   for f in [|-3; -2; 3; 3; 2; 2|] and y in [|1; 2|]
-3 |   for f = -3 downto 1|]..
-Warning 26 [unused-var]: unused variable f.
+2 |
 - : (int * int) array = [||]
+Warning 26 [unused-var]: unused variable f. for f = -3 downto 1|]..
+3 | for f in [|-3; -2; 3; 3; 2; 2|] and y in [|1; 2|]
 |}];;
 
 [(a, g, j, o, t, u, v)
-  for v = 3 downto 2 and a in [j; 3; -1; 2; -2; 0] and g = 3 to -2
-  for t = a downto j
+  for j = 3 downto 3 and a = -3 to -3
   for o = 0 to 1 and u = j to -2
-  for j = 3 downto 3 and a = -3 to -3];;
+  for t = a downto j
+  for v = 3 downto 2 and a in [j; 3; -1; 2; -2; 0] and g = 3 to -2];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, g, j, o, t, u, v)
-  for v = 3 downto 2 and a in [|j; 3; -1; 2; -2; 0|] and g = 3 to -2
-  for t = a downto j
+  for j = 3 downto 3 and a = -3 to -3
   for o = 0 to 1 and u = j to -2
-  for j = 3 downto 3 and a = -3 to -3|];;
+  for t = a downto j
+  for v = 3 downto 2 and a in [|j; 3; -1; 2; -2; 0|] and g = 3 to -2|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(c, f, p)
-  when p <> 0
-  for f = 3 downto -2
+  for p in [2; 1] and c in [1; -2; 3; -1; -1; 3; 3]
   when abs c mod 2 = 1
-  for p in [2; 1] and c in [1; -2; 3; -1; -1; 3; 3]];;
+  for f = 3 downto -2
+  when p <> 0];;
 [%%expect{|
 - : (int * int * int) list =
 [(1, 3, 2); (1, 2, 2); (1, 1, 2); (1, 0, 2); (1, -1, 2); (1, -2, 2);
@@ -16820,10 +16821,10 @@ Warning 26 [unused-var]: unused variable f.
 |}];;
 
 [|(c, f, p)
-  when p <> 0
-  for f = 3 downto -2
+  for p in [|2; 1|] and c in [|1; -2; 3; -1; -1; 3; 3|]
   when abs c mod 2 = 1
-  for p in [|2; 1|] and c in [|1; -2; 3; -1; -1; 3; 3|]|];;
+  for f = 3 downto -2
+  when p <> 0|];;
 [%%expect{|
 - : (int * int * int) array =
 [|(1, 3, 2); (1, 2, 2); (1, 1, 2); (1, 0, 2); (1, -1, 2); (1, -2, 2);
@@ -16841,95 +16842,95 @@ Warning 26 [unused-var]: unused variable f.
 |}];;
 
 [(f, h, o, s, w)
-  for o in [0; -3]
-  for f = 2 downto -3
-  for s = 3 to 2 and w = 2 to -2
+  for w = -3 to 3 and h = -3 to 0
   for h in [-1; h; 2; 3]
-  for w = -3 to 3 and h = -3 to 0];;
+  for s = 3 to 2 and w = 2 to -2
+  for f = 2 downto -3
+  for o in [0; -3]];;
 [%%expect{|
 Lines 1-6, characters 0-34:
 1 | [(f, h, o, s, w)
-2 |   for o in [0; -3]
-3 |   for f = 2 downto -3
-4 |   for s = 3 to 2 and w = 2 to -2
-5 |   for h in [-1; h; 2; 3]
-6 |   for w = -3 to 3 and h = -3 to 0]..
-Warning 26 [unused-var]: unused variable w.
+2 |
 - : (int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable w. for w = -3 to 3 and h = -3 to 0]..
+6 | for h in [-1; h; 2; 3]
+5 | for s = 3 to 2 and w = 2 to -2
+4 | for f = 2 downto -3
+3 | for o in [0; -3]
 |}];;
 
 [|(f, h, o, s, w)
-  for o in [|0; -3|]
-  for f = 2 downto -3
-  for s = 3 to 2 and w = 2 to -2
+  for w = -3 to 3 and h = -3 to 0
   for h in [|-1; h; 2; 3|]
-  for w = -3 to 3 and h = -3 to 0|];;
+  for s = 3 to 2 and w = 2 to -2
+  for f = 2 downto -3
+  for o in [|0; -3|]|];;
 [%%expect{|
 Lines 1-6, characters 0-35:
 1 | [|(f, h, o, s, w)
-2 |   for o in [|0; -3|]
-3 |   for f = 2 downto -3
-4 |   for s = 3 to 2 and w = 2 to -2
-5 |   for h in [|-1; h; 2; 3|]
-6 |   for w = -3 to 3 and h = -3 to 0|]..
-Warning 26 [unused-var]: unused variable w.
+2 |
 - : (int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable w. for w = -3 to 3 and h = -3 to 0|]..
+6 | for h in [|-1; h; 2; 3|]
+5 | for s = 3 to 2 and w = 2 to -2
+4 | for f = 2 downto -3
+3 | for o in [|0; -3|]
 |}];;
 
 [(a, d, h, q, s, y)
-  for a = -2 to -3
-  for s in [1; -1]
-  for h = -3 to -1
+  for y in [-1; -1] and d in [-1; 3; -1; 1; -3]
   for q in [3; -3; -1; 0; 1; 0]
-  for y in [-1; -1] and d in [-1; 3; -1; 1; -3]];;
+  for h = -3 to -1
+  for s in [1; -1]
+  for a = -2 to -3];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, d, h, q, s, y)
-  for a = -2 to -3
-  for s in [|1; -1|]
-  for h = -3 to -1
+  for y in [|-1; -1|] and d in [|-1; 3; -1; 1; -3|]
   for q in [|3; -3; -1; 0; 1; 0|]
-  for y in [|-1; -1|] and d in [|-1; 3; -1; 1; -3|]|];;
+  for h = -3 to -1
+  for s in [|1; -1|]
+  for a = -2 to -3|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(a, h, o, r, y)
-  for o = -3 to -3 and r in [-3]
-  when a > 0
-  for a = h downto -1
+  for h = 1 downto 3
   for y in [1; h; 0]
-  for h = 1 downto 3];;
+  for a = h downto -1
+  when a > 0
+  for o = -3 to -3 and r in [-3]];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(a, h, o, r, y)
-  for o = -3 to -3 and r in [|-3|]
-  when a > 0
-  for a = h downto -1
+  for h = 1 downto 3
   for y in [|1; h; 0|]
-  for h = 1 downto 3|];;
+  for a = h downto -1
+  when a > 0
+  for o = -3 to -3 and r in [|-3|]|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(k, t, y)
-  for y in [-1; 3; -2; 0] and t in [-3; -2; -1; 2; k; -2; 2]
-  when abs y mod 2 = 0
+  for y = 3 to -2
   for k in [-2; -1; 3; 0; y; 2]
-  for y = 3 to -2];;
+  when abs y mod 2 = 0
+  for y in [-1; 3; -2; 0] and t in [-3; -2; -1; 2; k; -2; 2]];;
 [%%expect{|
 - : (int * int * int) list = []
 |}];;
 
 [|(k, t, y)
-  for y in [|-1; 3; -2; 0|] and t in [|-3; -2; -1; 2; k; -2; 2|]
-  when abs y mod 2 = 0
+  for y = 3 to -2
   for k in [|-2; -1; 3; 0; y; 2|]
-  for y = 3 to -2|];;
+  when abs y mod 2 = 0
+  for y in [|-1; 3; -2; 0|] and t in [|-3; -2; -1; 2; k; -2; 2|]|];;
 [%%expect{|
 - : (int * int * int) array = [||]
 |}];;
@@ -16957,41 +16958,41 @@ Warning 26 [unused-var]: unused variable w.
 |}];;
 
 [(e, f, g, i, u)
+  for e = -3 to 3
+  for f = 1 downto 2
   for g = 2 downto -2
   and i in [1]
   and e in [-2; -3; e; 2; -1; 1]
-  and u = -2 downto 0
-  for f = 1 downto 2
-  for e = -3 to 3];;
+  and u = -2 downto 0];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(e, f, g, i, u)
+  for e = -3 to 3
+  for f = 1 downto 2
   for g = 2 downto -2
   and i in [|1|]
   and e in [|-2; -3; e; 2; -1; 1|]
-  and u = -2 downto 0
-  for f = 1 downto 2
-  for e = -3 to 3|];;
+  and u = -2 downto 0|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(b, j, l, p, r, v)
-  for b in [2; 2; -3] and p = 0 to 0
-  when v < 0
+  for j = 0 to -2 and r = -1 to 0
   for v in [r; 1] and l in [1; -1] and _ = 3 to j
-  for j = 0 to -2 and r = -1 to 0];;
+  when v < 0
+  for b in [2; 2; -3] and p = 0 to 0];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(b, j, l, p, r, v)
-  for b in [|2; 2; -3|] and p = 0 to 0
-  when v < 0
+  for j = 0 to -2 and r = -1 to 0
   for v in [|r; 1|] and l in [|1; -1|] and _ = 3 to j
-  for j = 0 to -2 and r = -1 to 0|];;
+  when v < 0
+  for b in [|2; 2; -3|] and p = 0 to 0|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
@@ -17012,125 +17013,125 @@ Warning 26 [unused-var]: unused variable w.
 |}];;
 
 [(n, o, q, u, y)
-  when abs q mod 2 = 1
-  when q < 0
+  for u = 3 to 0 and n = -2 downto -2
   for q = 3 to -3 and y in [n; 1; -3; u; 2] and o in []
-  for u = 3 to 0 and n = -2 downto -2];;
+  when q < 0
+  when abs q mod 2 = 1];;
 [%%expect{|
 - : (int * 'a * int * int * int) list = []
 |}];;
 
 [|(n, o, q, u, y)
-  when abs q mod 2 = 1
-  when q < 0
+  for u = 3 to 0 and n = -2 downto -2
   for q = 3 to -3 and y in [|n; 1; -3; u; 2|] and o in [||]
-  for u = 3 to 0 and n = -2 downto -2|];;
+  when q < 0
+  when abs q mod 2 = 1|];;
 [%%expect{|
 - : (int * '_weak219 * int * int * int) array = [||]
 |}];;
 
 [(e, i, r, t, x)
-  for r in [3] and e in [0; -2; 3; 3; 1]
-  when abs t mod 2 = 0
-  for t in [-3; -1] and i = -3 downto -1
+  for x = 2 to -3 and t in [-1; 0; -3; 3; -2; -2; -3]
   for x in []
-  for x = 2 to -3 and t in [-1; 0; -3; 3; -2; -2; -3]];;
+  for t in [-3; -1] and i = -3 downto -1
+  when abs t mod 2 = 0
+  for r in [3] and e in [0; -2; 3; 3; 1]];;
 [%%expect{|
 Line 6, characters 22-23:
-6 |   for x = 2 to -3 and t in [-1; 0; -3; 3; -2; -2; -3]];;
+6 | for x = 2 to -3 and t in [-1; 0; -3; 3; -2; -2; -3]];;
                           ^
 Warning 26 [unused-var]: unused variable t.
 Lines 1-6, characters 0-54:
 1 | [(e, i, r, t, x)
-2 |   for r in [3] and e in [0; -2; 3; 3; 1]
-3 |   when abs t mod 2 = 0
-4 |   for t in [-3; -1] and i = -3 downto -1
-5 |   for x in []
-6 |   for x = 2 to -3 and t in [-1; 0; -3; 3; -2; -2; -3]]..
-Warning 26 [unused-var]: unused variable x.
+2 |
 - : (int * int * int * int * 'a) list = []
+Warning 26 [unused-var]: unused variable x. for x = 2 to -3 and t in [-1; 0; -3; 3; -2; -2; -3]]..
+6 | for x in []
+5 | for t in [-3; -1] and i = -3 downto -1
+4 | when abs t mod 2 = 0
+3 | for r in [3] and e in [0; -2; 3; 3; 1]
 |}];;
 
 [|(e, i, r, t, x)
-  for r in [|3|] and e in [|0; -2; 3; 3; 1|]
-  when abs t mod 2 = 0
-  for t in [|-3; -1|] and i = -3 downto -1
+  for x = 2 to -3 and t in [|-1; 0; -3; 3; -2; -2; -3|]
   for x in [||]
-  for x = 2 to -3 and t in [|-1; 0; -3; 3; -2; -2; -3|]|];;
+  for t in [|-3; -1|] and i = -3 downto -1
+  when abs t mod 2 = 0
+  for r in [|3|] and e in [|0; -2; 3; 3; 1|]|];;
 [%%expect{|
 Line 6, characters 22-23:
-6 |   for x = 2 to -3 and t in [|-1; 0; -3; 3; -2; -2; -3|]|];;
+6 | for x = 2 to -3 and t in [|-1; 0; -3; 3; -2; -2; -3|]|];;
                           ^
 Warning 26 [unused-var]: unused variable t.
 Lines 1-6, characters 0-57:
 1 | [|(e, i, r, t, x)
-2 |   for r in [|3|] and e in [|0; -2; 3; 3; 1|]
-3 |   when abs t mod 2 = 0
-4 |   for t in [|-3; -1|] and i = -3 downto -1
-5 |   for x in [||]
-6 |   for x = 2 to -3 and t in [|-1; 0; -3; 3; -2; -2; -3|]|]..
-Warning 26 [unused-var]: unused variable x.
+2 |
 - : (int * int * int * int * '_weak220) array = [||]
+Warning 26 [unused-var]: unused variable x. for x = 2 to -3 and t in [|-1; 0; -3; 3; -2; -2; -3|]|]..
+6 | for x in [||]
+5 | for t in [|-3; -1|] and i = -3 downto -1
+4 | when abs t mod 2 = 0
+3 | for r in [|3|] and e in [|0; -2; 3; 3; 1|]
 |}];;
 
 [(v, y)
-  for v = 1 downto -3
-  for y = -2 to -2];;
+  for y = -2 to -2
+  for v = 1 downto -3];;
 [%%expect{|
 - : (int * int) list = [(1, -2); (0, -2); (-1, -2); (-2, -2); (-3, -2)]
 |}];;
 
-[|(v, y) for v = 1 downto -3 for y = -2 to -2|];;
+[|(v, y) for y = -2 to -2 for v = 1 downto -3|];;
 [%%expect{|
 - : (int * int) array = [|(1, -2); (0, -2); (-1, -2); (-2, -2); (-3, -2)|]
 |}];;
 
 [(a, g, s, w)
-  for s = -1 downto 0 and w in [1; 1; 2; -2; -2; a]
-  when g < 0
-  for a in [1]
+  for a in [2; 1; 2; -1] and g = -3 to 0
   for _ in [-3; 0]
-  for a in [2; 1; 2; -1] and g = -3 to 0];;
+  for a in [1]
+  when g < 0
+  for s = -1 downto 0 and w in [1; 1; 2; -2; -2; a]];;
 [%%expect{|
 Line 6, characters 6-7:
-6 |   for a in [2; 1; 2; -1] and g = -3 to 0];;
+6 | for a in [2; 1; 2; -1] and g = -3 to 0];;
           ^
 Warning 26 [unused-var]: unused variable a.
 - : (int * int * int * int) list = []
 |}];;
 
 [|(a, g, s, w)
-  for s = -1 downto 0 and w in [|1; 1; 2; -2; -2; a|]
-  when g < 0
-  for a in [|1|]
+  for a in [|2; 1; 2; -1|] and g = -3 to 0
   for _ in [|-3; 0|]
-  for a in [|2; 1; 2; -1|] and g = -3 to 0|];;
+  for a in [|1|]
+  when g < 0
+  for s = -1 downto 0 and w in [|1; 1; 2; -2; -2; a|]|];;
 [%%expect{|
 Line 6, characters 6-7:
-6 |   for a in [|2; 1; 2; -1|] and g = -3 to 0|];;
+6 | for a in [|2; 1; 2; -1|] and g = -3 to 0|];;
           ^
 Warning 26 [unused-var]: unused variable a.
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(a, e, h, o)
-  when a <> 0
-  when o > 0
   for h in [-3; 1]
   and e in [-1; -2; -2; 1]
   and a = 3 to 2
-  and o = 0 downto -3];;
+  and o = 0 downto -3
+  when o > 0
+  when a <> 0];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(a, e, h, o)
-  when a <> 0
-  when o > 0
   for h in [|-3; 1|]
   and e in [|-1; -2; -2; 1|]
   and a = 3 to 2
-  and o = 0 downto -3|];;
+  and o = 0 downto -3
+  when o > 0
+  when a <> 0|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
@@ -17154,145 +17155,145 @@ Warning 26 [unused-var]: unused variable a.
 |}];;
 
 [(h, j, l, n, t, v)
-  for h = -1 downto 0
-  for n = 0 to -2
-  for j in [t; t; 3; -2; 3; -1]
+  for v in [2; -3; -2; 2; 3]
   for l in [3; 3; -1; -3; -2; -1; 0] and t = -2 downto -2
-  for v in [2; -3; -2; 2; 3]];;
+  for j in [t; t; 3; -2; 3; -1]
+  for n = 0 to -2
+  for h = -1 downto 0];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(h, j, l, n, t, v)
-  for h = -1 downto 0
-  for n = 0 to -2
-  for j in [|t; t; 3; -2; 3; -1|]
+  for v in [|2; -3; -2; 2; 3|]
   for l in [|3; 3; -1; -3; -2; -1; 0|] and t = -2 downto -2
-  for v in [|2; -3; -2; 2; 3|]|];;
+  for j in [|t; t; 3; -2; 3; -1|]
+  for n = 0 to -2
+  for h = -1 downto 0|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(a, b, e, h, n, v, w)
+  for h in [] and v in [-1; 1] and _ in [-1; -2; -3]
   for b = -1 to -3
   and n = -2 to 3
   and w = 3 downto v
   and e = -1 downto 1
-  and a = 2 to -2
-  for h in [] and v in [-1; 1] and _ in [-1; -2; -3]];;
+  and a = 2 to -2];;
 [%%expect{|
 - : (int * int * int * 'a * int * int * int) list = []
 |}];;
 
 [|(a, b, e, h, n, v, w)
+  for h in [||] and v in [|-1; 1|] and _ in [|-1; -2; -3|]
   for b = -1 to -3
   and n = -2 to 3
   and w = 3 downto v
   and e = -1 downto 1
-  and a = 2 to -2
-  for h in [||] and v in [|-1; 1|] and _ in [|-1; -2; -3|]|];;
+  and a = 2 to -2|];;
 [%%expect{|
 - : (int * int * int * '_weak221 * int * int * int) array = [||]
 |}];;
 
 [(f, s, x)
-  when abs s mod 2 = 1
-  for x in [f]
-  for s in []
+  for f in [-1; 0; -1]
   for s in [2] and x = 3 downto -1
-  for f in [-1; 0; -1]];;
+  for s in []
+  for x in [f]
+  when abs s mod 2 = 1];;
 [%%expect{|
 Lines 1-6, characters 0-23:
 1 | [(f, s, x)
-2 |   when abs s mod 2 = 1
-3 |   for x in [f]
-4 |   for s in []
-5 |   for s in [2] and x = 3 downto -1
-6 |   for f in [-1; 0; -1]]..
-Warning 26 [unused-var]: unused variable x.
-Line 5, characters 6-7:
-5 |   for s in [2] and x = 3 downto -1
-          ^
-Warning 26 [unused-var]: unused variable s.
+2 |
 - : (int * int * int) list = []
+Warning 26 [unused-var]: unused variable s.
+          ^ for s in [2] and x = 3 downto -1
+5 |
+Line 5, characters 6-7:
+Warning 26 [unused-var]: unused variable x. for f in [-1; 0; -1]]..
+6 | for s in [2] and x = 3 downto -1
+5 | for s in []
+4 | for x in [f]
+3 | when abs s mod 2 = 1
 |}];;
 
 [|(f, s, x)
-  when abs s mod 2 = 1
-  for x in [|f|]
-  for s in [||]
+  for f in [|-1; 0; -1|]
   for s in [|2|] and x = 3 downto -1
-  for f in [|-1; 0; -1|]|];;
+  for s in [||]
+  for x in [|f|]
+  when abs s mod 2 = 1|];;
 [%%expect{|
 Lines 1-6, characters 0-26:
 1 | [|(f, s, x)
-2 |   when abs s mod 2 = 1
-3 |   for x in [|f|]
-4 |   for s in [||]
-5 |   for s in [|2|] and x = 3 downto -1
-6 |   for f in [|-1; 0; -1|]|]..
-Warning 26 [unused-var]: unused variable x.
-Line 5, characters 6-7:
-5 |   for s in [|2|] and x = 3 downto -1
-          ^
-Warning 26 [unused-var]: unused variable s.
+2 |
 - : (int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable s.
+          ^ for s in [|2|] and x = 3 downto -1
+5 |
+Line 5, characters 6-7:
+Warning 26 [unused-var]: unused variable x. for f in [|-1; 0; -1|]|]..
+6 | for s in [|2|] and x = 3 downto -1
+5 | for s in [||]
+4 | for x in [|f|]
+3 | when abs s mod 2 = 1
 |}];;
 
 [(a, e, n, q, u)
-  for q in [3; 1] and a = u downto -3
-  when u <> 0
-  for e in [-2; 1; n; 2; 2; 1; -3] and q = -3 downto -3
+  for n in [0]
   for u = -3 to -3
-  for n in [0]];;
+  for e in [-2; 1; n; 2; 2; 1; -3] and q = -3 downto -3
+  when u <> 0
+  for q in [3; 1] and a = u downto -3];;
 [%%expect{|
 Lines 1-6, characters 0-15:
 1 | [(a, e, n, q, u)
-2 |   for q in [3; 1] and a = u downto -3
-3 |   when u <> 0
-4 |   for e in [-2; 1; n; 2; 2; 1; -3] and q = -3 downto -3
-5 |   for u = -3 to -3
-6 |   for n in [0]]..
-Warning 26 [unused-var]: unused variable q.
-- : (int * int * int * int * int) list =
-[(-3, -2, 0, 3, -3); (-3, -2, 0, 1, -3); (-3, 1, 0, 3, -3);
- (-3, 1, 0, 1, -3); (-3, 0, 0, 3, -3); (-3, 0, 0, 1, -3); (-3, 2, 0, 3, -3);
- (-3, 2, 0, 1, -3); (-3, 2, 0, 3, -3); (-3, 2, 0, 1, -3); (-3, 1, 0, 3, -3);
+2 |
  (-3, 1, 0, 1, -3); (-3, -3, 0, 3, -3); (-3, -3, 0, 1, -3)]
+ (-3, 2, 0, 1, -3); (-3, 2, 0, 3, -3); (-3, 2, 0, 1, -3); (-3, 1, 0, 3, -3);
+ (-3, 1, 0, 1, -3); (-3, 0, 0, 3, -3); (-3, 0, 0, 1, -3); (-3, 2, 0, 3, -3);
+[(-3, -2, 0, 3, -3); (-3, -2, 0, 1, -3); (-3, 1, 0, 3, -3);
+- : (int * int * int * int * int) list =
+Warning 26 [unused-var]: unused variable q. for n in [0]]..
+6 | for u = -3 to -3
+5 | for e in [-2; 1; n; 2; 2; 1; -3] and q = -3 downto -3
+4 | when u <> 0
+3 | for q in [3; 1] and a = u downto -3
 |}];;
 
 [|(a, e, n, q, u)
-  for q in [|3; 1|] and a = u downto -3
-  when u <> 0
-  for e in [|-2; 1; n; 2; 2; 1; -3|] and q = -3 downto -3
+  for n in [|0|]
   for u = -3 to -3
-  for n in [|0|]|];;
+  for e in [|-2; 1; n; 2; 2; 1; -3|] and q = -3 downto -3
+  when u <> 0
+  for q in [|3; 1|] and a = u downto -3|];;
 [%%expect{|
 Lines 1-6, characters 0-18:
 1 | [|(a, e, n, q, u)
-2 |   for q in [|3; 1|] and a = u downto -3
-3 |   when u <> 0
-4 |   for e in [|-2; 1; n; 2; 2; 1; -3|] and q = -3 downto -3
-5 |   for u = -3 to -3
-6 |   for n in [|0|]|]..
-Warning 26 [unused-var]: unused variable q.
-- : (int * int * int * int * int) array =
-[|(-3, -2, 0, 3, -3); (-3, -2, 0, 1, -3); (-3, 1, 0, 3, -3);
-  (-3, 1, 0, 1, -3); (-3, 0, 0, 3, -3); (-3, 0, 0, 1, -3); (-3, 2, 0, 3, -3);
-  (-3, 2, 0, 1, -3); (-3, 2, 0, 3, -3); (-3, 2, 0, 1, -3); (-3, 1, 0, 3, -3);
+2 |
   (-3, 1, 0, 1, -3); (-3, -3, 0, 3, -3); (-3, -3, 0, 1, -3)|]
+  (-3, 2, 0, 1, -3); (-3, 2, 0, 3, -3); (-3, 2, 0, 1, -3); (-3, 1, 0, 3, -3);
+  (-3, 1, 0, 1, -3); (-3, 0, 0, 3, -3); (-3, 0, 0, 1, -3); (-3, 2, 0, 3, -3);
+[|(-3, -2, 0, 3, -3); (-3, -2, 0, 1, -3); (-3, 1, 0, 3, -3);
+- : (int * int * int * int * int) array =
+Warning 26 [unused-var]: unused variable q. for n in [|0|]|]..
+6 | for u = -3 to -3
+5 | for e in [|-2; 1; n; 2; 2; 1; -3|] and q = -3 downto -3
+4 | when u <> 0
+3 | for q in [|3; 1|] and a = u downto -3
 |}];;
 
 [(b, c, g, r, v)
-  for r in [-1; -2] and g = -3 to 1 and v in []
-  for c = 3 downto -3 and b in [-2; -3; 0; 3; -2; -1]];;
+  for c = 3 downto -3 and b in [-2; -3; 0; 3; -2; -1]
+  for r in [-1; -2] and g = -3 to 1 and v in []];;
 [%%expect{|
 - : (int * int * int * int * 'a) list = []
 |}];;
 
 [|(b, c, g, r, v)
-  for r in [|-1; -2|] and g = -3 to 1 and v in [||]
-  for c = 3 downto -3 and b in [|-2; -3; 0; 3; -2; -1|]|];;
+  for c = 3 downto -3 and b in [|-2; -3; 0; 3; -2; -1|]
+  for r in [|-1; -2|] and g = -3 to 1 and v in [||]|];;
 [%%expect{|
 - : (int * int * int * int * '_weak222) array = [||]
 |}];;
@@ -17308,10 +17309,10 @@ Warning 26 [unused-var]: unused variable q.
 |}];;
 
 [(b, p, q, v)
-  when q > 0
-  when abs b mod 2 = 0
+  for v in [3; -3; 0; 1; 3; 2; -1]
   for b = 1 downto v and q in [3; 0; -1; 3; 1; -2; -2] and p in [0; -1; -1]
-  for v in [3; -3; 0; 1; 3; 2; -1]];;
+  when abs b mod 2 = 0
+  when q > 0];;
 [%%expect{|
 - : (int * int * int * int) list =
 [(0, 0, 3, -3); (0, -1, 3, -3); (0, -1, 3, -3); (0, 0, 3, -3);
@@ -17326,10 +17327,10 @@ Warning 26 [unused-var]: unused variable q.
 |}];;
 
 [|(b, p, q, v)
-  when q > 0
-  when abs b mod 2 = 0
+  for v in [|3; -3; 0; 1; 3; 2; -1|]
   for b = 1 downto v and q in [|3; 0; -1; 3; 1; -2; -2|] and p in [|0; -1; -1|]
-  for v in [|3; -3; 0; 1; 3; 2; -1|]|];;
+  when abs b mod 2 = 0
+  when q > 0|];;
 [%%expect{|
 - : (int * int * int * int) array =
 [|(0, 0, 3, -3); (0, -1, 3, -3); (0, -1, 3, -3); (0, 0, 3, -3);
@@ -17344,21 +17345,21 @@ Warning 26 [unused-var]: unused variable q.
 |}];;
 
 [(e, m, n, v)
-  for e in [3; v; 1; -1; m]
-  when m <> 0
-  for v in [m; -3; 2; -1; -1; 3; -1]
+  for n = -1 downto -2 and m in []
   when abs n mod 2 = 0
-  for n = -1 downto -2 and m in []];;
+  for v in [m; -3; 2; -1; -1; 3; -1]
+  when m <> 0
+  for e in [3; v; 1; -1; m]];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(e, m, n, v)
-  for e in [|3; v; 1; -1; m|]
-  when m <> 0
-  for v in [|m; -3; 2; -1; -1; 3; -1|]
+  for n = -1 downto -2 and m in [||]
   when abs n mod 2 = 0
-  for n = -1 downto -2 and m in [||]|];;
+  for v in [|m; -3; 2; -1; -1; 3; -1|]
+  when m <> 0
+  for e in [|3; v; 1; -1; m|]|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
@@ -17374,43 +17375,43 @@ Warning 26 [unused-var]: unused variable q.
 |}];;
 
 [(g, k, q, s, x)
-  for x in [g; -1; 1] and _ in [0; 1; 1; 0; -3] and k = -1 downto s
+  for s = -1 to -3 and g = -2 to 2 and q = -3 downto -1
   for s = -2 downto -3
-  for s = -1 to -3 and g = -2 to 2 and q = -3 downto -1];;
+  for x in [g; -1; 1] and _ in [0; 1; 1; 0; -3] and k = -1 downto s];;
 [%%expect{|
 Lines 1-4, characters 0-56:
 1 | [(g, k, q, s, x)
-2 |   for x in [g; -1; 1] and _ in [0; 1; 1; 0; -3] and k = -1 downto s
-3 |   for s = -2 downto -3
-4 |   for s = -1 to -3 and g = -2 to 2 and q = -3 downto -1]..
-Warning 26 [unused-var]: unused variable s.
+2 |
 - : (int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable s. for s = -1 to -3 and g = -2 to 2 and q = -3 downto -1]..
+4 | for s = -2 downto -3
+3 | for x in [g; -1; 1] and _ in [0; 1; 1; 0; -3] and k = -1 downto s
 |}];;
 
 [|(g, k, q, s, x)
-  for x in [|g; -1; 1|] and _ in [|0; 1; 1; 0; -3|] and k = -1 downto s
+  for s = -1 to -3 and g = -2 to 2 and q = -3 downto -1
   for s = -2 downto -3
-  for s = -1 to -3 and g = -2 to 2 and q = -3 downto -1|];;
+  for x in [|g; -1; 1|] and _ in [|0; 1; 1; 0; -3|] and k = -1 downto s|];;
 [%%expect{|
 Lines 1-4, characters 0-57:
 1 | [|(g, k, q, s, x)
-2 |   for x in [|g; -1; 1|] and _ in [|0; 1; 1; 0; -3|] and k = -1 downto s
-3 |   for s = -2 downto -3
-4 |   for s = -1 to -3 and g = -2 to 2 and q = -3 downto -1|]..
-Warning 26 [unused-var]: unused variable s.
+2 |
 - : (int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable s. for s = -1 to -3 and g = -2 to 2 and q = -3 downto -1|]..
+4 | for s = -2 downto -3
+3 | for x in [|g; -1; 1|] and _ in [|0; 1; 1; 0; -3|] and k = -1 downto s
 |}];;
 
 [(i, u, w, x)
-  for w = -1 downto -3
-  for i = 1 to 2 and u in [-3; 3] and x in []];;
+  for i = 1 to 2 and u in [-3; 3] and x in []
+  for w = -1 downto -3];;
 [%%expect{|
 - : (int * int * int * 'a) list = []
 |}];;
 
 [|(i, u, w, x)
-  for w = -1 downto -3
-  for i = 1 to 2 and u in [|-3; 3|] and x in [||]|];;
+  for i = 1 to 2 and u in [|-3; 3|] and x in [||]
+  for w = -1 downto -3|];;
 [%%expect{|
 - : (int * int * int * '_weak223) array = [||]
 |}];;
@@ -17426,21 +17427,21 @@ Warning 26 [unused-var]: unused variable s.
 |}];;
 
 [(f, g, m, q, r, x)
-  for _ in [3; 3; -2; -2; 1] and r = -3 downto 1
-  for f in [] and m in [-3; 1; -2]
-  for g = q to 1
+  for x in [0; -2; 1; -2; 2; 1]
   for q = x to -3
-  for x in [0; -2; 1; -2; 2; 1]];;
+  for g = q to 1
+  for f in [] and m in [-3; 1; -2]
+  for _ in [3; 3; -2; -2; 1] and r = -3 downto 1];;
 [%%expect{|
 - : ('a * int * int * int * int * int) list = []
 |}];;
 
 [|(f, g, m, q, r, x)
-  for _ in [|3; 3; -2; -2; 1|] and r = -3 downto 1
-  for f in [||] and m in [|-3; 1; -2|]
-  for g = q to 1
+  for x in [|0; -2; 1; -2; 2; 1|]
   for q = x to -3
-  for x in [|0; -2; 1; -2; 2; 1|]|];;
+  for g = q to 1
+  for f in [||] and m in [|-3; 1; -2|]
+  for _ in [|3; 3; -2; -2; 1|] and r = -3 downto 1|];;
 [%%expect{|
 - : ('_weak224 * int * int * int * int * int) array = [||]
 |}];;
@@ -17456,75 +17457,75 @@ Warning 26 [unused-var]: unused variable s.
 |}];;
 
 [(a, f, i, p, q, u, w, z)
-  for a in [-3; 1] and f = -1 downto 1
-  for z = 0 to 1
-  for i = 0 downto 2 and p in [-1; 0; -1; -3; -3; -3; -2]
+  for u in [0; 1; 3; 1; -1] and w in [1; 0; -1]
   for f = -3 downto 1 and q = 3 to -1
-  for u in [0; 1; 3; 1; -1] and w in [1; 0; -1]];;
+  for i = 0 downto 2 and p in [-1; 0; -1; -3; -3; -3; -2]
+  for z = 0 to 1
+  for a in [-3; 1] and f = -1 downto 1];;
 [%%expect{|
 Lines 1-6, characters 0-48:
 1 | [(a, f, i, p, q, u, w, z)
-2 |   for a in [-3; 1] and f = -1 downto 1
-3 |   for z = 0 to 1
-4 |   for i = 0 downto 2 and p in [-1; 0; -1; -3; -3; -3; -2]
-5 |   for f = -3 downto 1 and q = 3 to -1
-6 |   for u in [0; 1; 3; 1; -1] and w in [1; 0; -1]]..
-Warning 26 [unused-var]: unused variable f.
+2 |
 - : (int * int * int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable f. for u in [0; 1; 3; 1; -1] and w in [1; 0; -1]]..
+6 | for f = -3 downto 1 and q = 3 to -1
+5 | for i = 0 downto 2 and p in [-1; 0; -1; -3; -3; -3; -2]
+4 | for z = 0 to 1
+3 | for a in [-3; 1] and f = -1 downto 1
 |}];;
 
 [|(a, f, i, p, q, u, w, z)
-  for a in [|-3; 1|] and f = -1 downto 1
-  for z = 0 to 1
-  for i = 0 downto 2 and p in [|-1; 0; -1; -3; -3; -3; -2|]
+  for u in [|0; 1; 3; 1; -1|] and w in [|1; 0; -1|]
   for f = -3 downto 1 and q = 3 to -1
-  for u in [|0; 1; 3; 1; -1|] and w in [|1; 0; -1|]|];;
+  for i = 0 downto 2 and p in [|-1; 0; -1; -3; -3; -3; -2|]
+  for z = 0 to 1
+  for a in [|-3; 1|] and f = -1 downto 1|];;
 [%%expect{|
 Lines 1-6, characters 0-53:
 1 | [|(a, f, i, p, q, u, w, z)
-2 |   for a in [|-3; 1|] and f = -1 downto 1
-3 |   for z = 0 to 1
-4 |   for i = 0 downto 2 and p in [|-1; 0; -1; -3; -3; -3; -2|]
-5 |   for f = -3 downto 1 and q = 3 to -1
-6 |   for u in [|0; 1; 3; 1; -1|] and w in [|1; 0; -1|]|]..
-Warning 26 [unused-var]: unused variable f.
+2 |
 - : (int * int * int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable f. for u in [|0; 1; 3; 1; -1|] and w in [|1; 0; -1|]|]..
+6 | for f = -3 downto 1 and q = 3 to -1
+5 | for i = 0 downto 2 and p in [|-1; 0; -1; -3; -3; -3; -2|]
+4 | for z = 0 to 1
+3 | for a in [|-3; 1|] and f = -1 downto 1
 |}];;
 
-[(n, z) for _ = 0 to 2 for z in [-2; 2; -1; 0; 1; 3; 1] and n = 2 to 0];;
+[(n, z) for z in [-2; 2; -1; 0; 1; 3; 1] and n = 2 to 0 for _ = 0 to 2];;
 [%%expect{|
 - : (int * int) list = []
 |}];;
 
-[|(n, z) for _ = 0 to 2 for z in [|-2; 2; -1; 0; 1; 3; 1|] and n = 2 to 0|];;
+[|(n, z) for z in [|-2; 2; -1; 0; 1; 3; 1|] and n = 2 to 0 for _ = 0 to 2|];;
 [%%expect{|
 - : (int * int) array = [||]
 |}];;
 
 [(b, c, k, m, s, u, v, w, y)
+  for y in [3; -1]
+  and w = -1 downto -2
+  and m in [3; 2; -1; 0; 2; -1; 2]
+  and v = -1 downto -3
   for b = 0 to -1
   and u in [0; 1; m; w; 2; 0; 3]
   and s = 2 to -1
   and c in [2; v; -2; 0]
-  and k = 3 downto -1
-  for y in [3; -1]
-  and w = -1 downto -2
-  and m in [3; 2; -1; 0; 2; -1; 2]
-  and v = -1 downto -3];;
+  and k = 3 downto -1];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(b, c, k, m, s, u, v, w, y)
+  for y in [|3; -1|]
+  and w = -1 downto -2
+  and m in [|3; 2; -1; 0; 2; -1; 2|]
+  and v = -1 downto -3
   for b = 0 to -1
   and u in [|0; 1; m; w; 2; 0; 3|]
   and s = 2 to -1
   and c in [|2; v; -2; 0|]
-  and k = 3 downto -1
-  for y in [|3; -1|]
-  and w = -1 downto -2
-  and m in [|3; 2; -1; 0; 2; -1; 2|]
-  and v = -1 downto -3|];;
+  and k = 3 downto -1|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int * int) array = [||]
 |}];;
@@ -17550,12 +17551,12 @@ Warning 26 [unused-var]: unused variable f.
 |}];;
 
 [(g, h, l, o)
-  when abs l mod 2 = 0
-  when abs h mod 2 = 0
   for g in [2; 0; 3; -3; 2; 3]
   and o = -2 downto -3
   and h in [-2; -3]
-  and l in [-2; 0; -1; 2; -2; 3; -3]];;
+  and l in [-2; 0; -1; 2; -2; 3; -3]
+  when abs h mod 2 = 0
+  when abs l mod 2 = 0];;
 [%%expect{|
 - : (int * int * int * int) list =
 [(2, -2, -2, -2); (2, -2, 0, -2); (2, -2, 2, -2); (2, -2, -2, -2);
@@ -17573,12 +17574,12 @@ Warning 26 [unused-var]: unused variable f.
 |}];;
 
 [|(g, h, l, o)
-  when abs l mod 2 = 0
-  when abs h mod 2 = 0
   for g in [|2; 0; 3; -3; 2; 3|]
   and o = -2 downto -3
   and h in [|-2; -3|]
-  and l in [|-2; 0; -1; 2; -2; 3; -3|]|];;
+  and l in [|-2; 0; -1; 2; -2; 3; -3|]
+  when abs h mod 2 = 0
+  when abs l mod 2 = 0|];;
 [%%expect{|
 - : (int * int * int * int) array =
 [|(2, -2, -2, -2); (2, -2, 0, -2); (2, -2, 2, -2); (2, -2, -2, -2);
@@ -17596,79 +17597,79 @@ Warning 26 [unused-var]: unused variable f.
 |}];;
 
 [(a, d, m, n, t, x, y)
-  for t = -3 downto 1
-  for a in [2; 2; -1; 0; -1; 1; -3]
+  for n = 2 downto 2 and m = -1 downto 1
   for d in [-3; -1] and x in [] and y in [0; 0; 2; 2; 1; -1]
-  for n = 2 downto 2 and m = -1 downto 1];;
+  for a in [2; 2; -1; 0; -1; 1; -3]
+  for t = -3 downto 1];;
 [%%expect{|
 - : (int * int * int * int * int * 'a * int) list = []
 |}];;
 
 [|(a, d, m, n, t, x, y)
-  for t = -3 downto 1
-  for a in [|2; 2; -1; 0; -1; 1; -3|]
+  for n = 2 downto 2 and m = -1 downto 1
   for d in [|-3; -1|] and x in [||] and y in [|0; 0; 2; 2; 1; -1|]
-  for n = 2 downto 2 and m = -1 downto 1|];;
+  for a in [|2; 2; -1; 0; -1; 1; -3|]
+  for t = -3 downto 1|];;
 [%%expect{|
 - : (int * int * int * int * int * '_weak226 * int) array = [||]
 |}];;
 
 [(c, o, u, y)
-  when o < 0
-  for u = -3 to -2
-  when abs y mod 2 = 0
+  for o = 2 to 0 and c = -1 downto 3
   for y in [-1; c]
-  for o = 2 to 0 and c = -1 downto 3];;
+  when abs y mod 2 = 0
+  for u = -3 to -2
+  when o < 0];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(c, o, u, y)
-  when o < 0
-  for u = -3 to -2
-  when abs y mod 2 = 0
+  for o = 2 to 0 and c = -1 downto 3
   for y in [|-1; c|]
-  for o = 2 to 0 and c = -1 downto 3|];;
+  when abs y mod 2 = 0
+  for u = -3 to -2
+  when o < 0|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(d, f, j, q, t, u, x)
-  when u <> 0
-  for q = 0 to 1 and u = -2 to -1
+  for t = -2 downto 1 and d in [] and j in [1; -3; 3; -1; -1]
   for f = d to 2 and x = 0 to 0
-  for t = -2 downto 1 and d in [] and j in [1; -3; 3; -1; -1]];;
+  for q = 0 to 1 and u = -2 to -1
+  when u <> 0];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(d, f, j, q, t, u, x)
-  when u <> 0
-  for q = 0 to 1 and u = -2 to -1
+  for t = -2 downto 1 and d in [||] and j in [|1; -3; 3; -1; -1|]
   for f = d to 2 and x = 0 to 0
-  for t = -2 downto 1 and d in [||] and j in [|1; -3; 3; -1; -1|]|];;
+  for q = 0 to 1 and u = -2 to -1
+  when u <> 0|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(a, b, c, e, g, v)
-  for c in [1; 3; 0]
   for a in [0; 1; -1; -2; 0]
   and e = 1 to 2
   and b = -2 to 2
   and v = 0 to -3
-  and g in [-3; -2; -1]];;
+  and g in [-3; -2; -1]
+  for c in [1; 3; 0]];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, b, c, e, g, v)
-  for c in [|1; 3; 0|]
   for a in [|0; 1; -1; -2; 0|]
   and e = 1 to 2
   and b = -2 to 2
   and v = 0 to -3
-  and g in [|-3; -2; -1|]|];;
+  and g in [|-3; -2; -1|]
+  for c in [|1; 3; 0|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
@@ -17692,27 +17693,27 @@ Warning 26 [unused-var]: unused variable f.
 |}];;
 
 [(k, l, s, t)
-  for t in [3; 2; 3; 3; -2; 1; -2] and k = 2 to 0 and l in [0; -1; -1; -1; 2; 2]
-  for s = 2 to -3];;
+  for s = 2 to -3
+  for t in [3; 2; 3; 3; -2; 1; -2] and k = 2 to 0 and l in [0; -1; -1; -1; 2; 2]];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(k, l, s, t)
+  for s = 2 to -3
   for t in [|3; 2; 3; 3; -2; 1; -2|]
   and k = 2 to 0
-  and l in [|0; -1; -1; -1; 2; 2|]
-  for s = 2 to -3|];;
+  and l in [|0; -1; -1; -1; 2; 2|]|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(b, g, p)
-  for g = -3 to 1
-  when b < 0
-  for b in [-3; p; -3; 3; -3; 1]
+  for p in [-3; 1; 3]
   when p > 0
-  for p in [-3; 1; 3]];;
+  for b in [-3; p; -3; 3; -3; 1]
+  when b < 0
+  for g = -3 to 1];;
 [%%expect{|
 - : (int * int * int) list =
 [(-3, -3, 1); (-3, -2, 1); (-3, -1, 1); (-3, 0, 1); (-3, 1, 1); (-3, -3, 1);
@@ -17723,11 +17724,11 @@ Warning 26 [unused-var]: unused variable f.
 |}];;
 
 [|(b, g, p)
-  for g = -3 to 1
-  when b < 0
-  for b in [|-3; p; -3; 3; -3; 1|]
+  for p in [|-3; 1; 3|]
   when p > 0
-  for p in [|-3; 1; 3|]|];;
+  for b in [|-3; p; -3; 3; -3; 1|]
+  when b < 0
+  for g = -3 to 1|];;
 [%%expect{|
 - : (int * int * int) array =
 [|(-3, -3, 1); (-3, -2, 1); (-3, -1, 1); (-3, 0, 1); (-3, 1, 1); (-3, -3, 1);
@@ -17738,43 +17739,43 @@ Warning 26 [unused-var]: unused variable f.
 |}];;
 
 [(f, k, o, s, v, x, z)
-  for f in [2; 1; -1; -3; -3; 0] and o = 0 downto k and v in [-1; 2; 3; s; 2]
+  for _ in [3; -1] and k in [2; 2] and z in [] and o = -1 downto 2
   for s in [0; -1; -2; -1; o] and x in [0; 0] and o = 3 to -1
-  for _ in [3; -1] and k in [2; 2] and z in [] and o = -1 downto 2];;
+  for f in [2; 1; -1; -3; -3; 0] and o = 0 downto k and v in [-1; 2; 3; s; 2]];;
 [%%expect{|
 Lines 1-4, characters 0-67:
 1 | [(f, k, o, s, v, x, z)
-2 |   for f in [2; 1; -1; -3; -3; 0] and o = 0 downto k and v in [-1; 2; 3; s; 2]
-3 |   for s in [0; -1; -2; -1; o] and x in [0; 0] and o = 3 to -1
-4 |   for _ in [3; -1] and k in [2; 2] and z in [] and o = -1 downto 2]..
-Warning 26 [unused-var]: unused variable o.
+2 |
 - : (int * int * int * int * int * int * 'a) list = []
+Warning 26 [unused-var]: unused variable o. for _ in [3; -1] and k in [2; 2] and z in [] and o = -1 downto 2]..
+4 | for s in [0; -1; -2; -1; o] and x in [0; 0] and o = 3 to -1
+3 | for f in [2; 1; -1; -3; -3; 0] and o = 0 downto k and v in [-1; 2; 3; s; 2]
 |}];;
 
 [|(f, k, o, s, v, x, z)
+  for _ in [|3; -1|] and k in [|2; 2|] and z in [||] and o = -1 downto 2
+  for s in [|0; -1; -2; -1; o|] and x in [|0; 0|] and o = 3 to -1
   for f in [|2; 1; -1; -3; -3; 0|]
   and o = 0 downto k
-  and v in [|-1; 2; 3; s; 2|]
-  for s in [|0; -1; -2; -1; o|] and x in [|0; 0|] and o = 3 to -1
-  for _ in [|3; -1|] and k in [|2; 2|] and z in [||] and o = -1 downto 2|];;
+  and v in [|-1; 2; 3; s; 2|]|];;
 [%%expect{|
 Lines 1-6, characters 0-74:
 1 | [|(f, k, o, s, v, x, z)
-2 |   for f in [|2; 1; -1; -3; -3; 0|]
-3 |   and o = 0 downto k
-4 |   and v in [|-1; 2; 3; s; 2|]
-5 |   for s in [|0; -1; -2; -1; o|] and x in [|0; 0|] and o = 3 to -1
-6 |   for _ in [|3; -1|] and k in [|2; 2|] and z in [||] and o = -1 downto 2|]..
-Warning 26 [unused-var]: unused variable o.
+2 |
 - : (int * int * int * int * int * int * '_weak228) array = [||]
+Warning 26 [unused-var]: unused variable o. for _ in [|3; -1|] and k in [|2; 2|] and z in [||] and o = -1 downto 2|]..
+6 | for s in [|0; -1; -2; -1; o|] and x in [|0; 0|] and o = 3 to -1
+5 |
+4 |   and v in [|-1; 2; 3; s; 2|]
+3 |   and o = 0 downto k for f in [|2; 1; -1; -3; -3; 0|]
 |}];;
 
 [(f, h, n, s)
-  for f in [-1; 3; h; 1]
-  when n > 0
-  for h = -1 downto -2 and n = 2 downto 1
+  for s in [1]
   when s > 0
-  for s in [1]];;
+  for h = -1 downto -2 and n = 2 downto 1
+  when n > 0
+  for f in [-1; 3; h; 1]];;
 [%%expect{|
 - : (int * int * int * int) list =
 [(-1, -1, 2, 1); (3, -1, 2, 1); (-1, -1, 2, 1); (1, -1, 2, 1);
@@ -17784,11 +17785,11 @@ Warning 26 [unused-var]: unused variable o.
 |}];;
 
 [|(f, h, n, s)
-  for f in [|-1; 3; h; 1|]
-  when n > 0
-  for h = -1 downto -2 and n = 2 downto 1
+  for s in [|1|]
   when s > 0
-  for s in [|1|]|];;
+  for h = -1 downto -2 and n = 2 downto 1
+  when n > 0
+  for f in [|-1; 3; h; 1|]|];;
 [%%expect{|
 - : (int * int * int * int) array =
 [|(-1, -1, 2, 1); (3, -1, 2, 1); (-1, -1, 2, 1); (1, -1, 2, 1);
@@ -17798,161 +17799,161 @@ Warning 26 [unused-var]: unused variable o.
 |}];;
 
 [(a, e, p, v, y, z)
-  for z in [-1; -1; 1; -1] and y = 3 to -3 and a = 3 to 2 and p in [-2; 0; 2; 2]
-  for v in [-2; -3] and e = 3 to -3];;
+  for v in [-2; -3] and e = 3 to -3
+  for z in [-1; -1; 1; -1] and y = 3 to -3 and a = 3 to 2 and p in [-2; 0; 2; 2]];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, e, p, v, y, z)
+  for v in [|-2; -3|] and e = 3 to -3
   for z in [|-1; -1; 1; -1|]
   and y = 3 to -3
   and a = 3 to 2
-  and p in [|-2; 0; 2; 2|]
-  for v in [|-2; -3|] and e = 3 to -3|];;
+  and p in [|-2; 0; 2; 2|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(f, q, r)
-  for q in [-2; 0; 1] and r in [q]
-  for f = 0 to -2 and q = 1 downto 3];;
+  for f = 0 to -2 and q = 1 downto 3
+  for q in [-2; 0; 1] and r in [q]];;
 [%%expect{|
 - : (int * int * int) list = []
 |}];;
 
 [|(f, q, r)
-  for q in [|-2; 0; 1|] and r in [|q|]
-  for f = 0 to -2 and q = 1 downto 3|];;
+  for f = 0 to -2 and q = 1 downto 3
+  for q in [|-2; 0; 1|] and r in [|q|]|];;
 [%%expect{|
 - : (int * int * int) array = [||]
 |}];;
 
 [(o, p, v, z)
-  for z in [-3; 3; -3]
   for z in [-2; -1; -2]
   and o in [1; 2; 3; -2; 2; -3; -2]
   and p = 3 to 0
-  and v = -3 to -3];;
+  and v = -3 to -3
+  for z in [-3; 3; -3]];;
 [%%expect{|
 Line 3, characters 6-7:
-3 |   for z in [-2; -1; -2]
-          ^
-Warning 26 [unused-var]: unused variable z.
+3 |
 - : (int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable z.
+          ^ for z in [-2; -1; -2]
 |}];;
 
 [|(o, p, v, z)
-  for z in [|-3; 3; -3|]
   for z in [|-2; -1; -2|]
   and o in [|1; 2; 3; -2; 2; -3; -2|]
   and p = 3 to 0
-  and v = -3 to -3|];;
+  and v = -3 to -3
+  for z in [|-3; 3; -3|]|];;
 [%%expect{|
 Line 3, characters 6-7:
-3 |   for z in [|-2; -1; -2|]
-          ^
-Warning 26 [unused-var]: unused variable z.
+3 |
 - : (int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable z.
+          ^ for z in [|-2; -1; -2|]
 |}];;
 
 [(d, f, g, j, k, y)
-  for g = 2 downto -3
+  for y = 0 downto 1 and d = 1 to -2 and f = 3 downto 0 and g = -1 downto 3
   for j in [-2; 0; 0; -2; 3]
   and f = -1 downto -1
   and k = -3 downto 0
   and d = 3 downto 1
-  for y = 0 downto 1 and d = 1 to -2 and f = 3 downto 0 and g = -1 downto 3];;
+  for g = 2 downto -3];;
 [%%expect{|
 Lines 1-7, characters 0-76:
 1 | [(d, f, g, j, k, y)
-2 |   for g = 2 downto -3
-3 |   for j in [-2; 0; 0; -2; 3]
-4 |   and f = -1 downto -1
-5 |   and k = -3 downto 0
-6 |   and d = 3 downto 1
-7 |   for y = 0 downto 1 and d = 1 to -2 and f = 3 downto 0 and g = -1 downto 3]..
-Warning 26 [unused-var]: unused variable g.
-Lines 1-7, characters 0-76:
-1 | [(d, f, g, j, k, y)
-2 |   for g = 2 downto -3
-3 |   for j in [-2; 0; 0; -2; 3]
-4 |   and f = -1 downto -1
-5 |   and k = -3 downto 0
-6 |   and d = 3 downto 1
-7 |   for y = 0 downto 1 and d = 1 to -2 and f = 3 downto 0 and g = -1 downto 3]..
-Warning 26 [unused-var]: unused variable f.
-Lines 1-7, characters 0-76:
-1 | [(d, f, g, j, k, y)
-2 |   for g = 2 downto -3
-3 |   for j in [-2; 0; 0; -2; 3]
-4 |   and f = -1 downto -1
-5 |   and k = -3 downto 0
-6 |   and d = 3 downto 1
-7 |   for y = 0 downto 1 and d = 1 to -2 and f = 3 downto 0 and g = -1 downto 3]..
-Warning 26 [unused-var]: unused variable d.
+2 |
 - : (int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable d. for y = 0 downto 1 and d = 1 to -2 and f = 3 downto 0 and g = -1 downto 3]..
+7 |
+6 |   and d = 3 downto 1
+5 |   and k = -3 downto 0
+4 |   and f = -1 downto -1 for j in [-2; 0; 0; -2; 3]
+3 | for g = 2 downto -3
+2 |
+1 | [(d, f, g, j, k, y)
+Lines 1-7, characters 0-76:
+Warning 26 [unused-var]: unused variable f. for y = 0 downto 1 and d = 1 to -2 and f = 3 downto 0 and g = -1 downto 3]..
+7 |
+6 |   and d = 3 downto 1
+5 |   and k = -3 downto 0
+4 |   and f = -1 downto -1 for j in [-2; 0; 0; -2; 3]
+3 | for g = 2 downto -3
+2 |
+1 | [(d, f, g, j, k, y)
+Lines 1-7, characters 0-76:
+Warning 26 [unused-var]: unused variable g. for y = 0 downto 1 and d = 1 to -2 and f = 3 downto 0 and g = -1 downto 3]..
+7 |
+6 |   and d = 3 downto 1
+5 |   and k = -3 downto 0
+4 |   and f = -1 downto -1 for j in [-2; 0; 0; -2; 3]
+3 | for g = 2 downto -3
 |}];;
 
 [|(d, f, g, j, k, y)
-  for g = 2 downto -3
+  for y = 0 downto 1 and d = 1 to -2 and f = 3 downto 0 and g = -1 downto 3
   for j in [|-2; 0; 0; -2; 3|]
   and f = -1 downto -1
   and k = -3 downto 0
   and d = 3 downto 1
-  for y = 0 downto 1 and d = 1 to -2 and f = 3 downto 0 and g = -1 downto 3|];;
+  for g = 2 downto -3|];;
 [%%expect{|
 Lines 1-7, characters 0-77:
 1 | [|(d, f, g, j, k, y)
-2 |   for g = 2 downto -3
-3 |   for j in [|-2; 0; 0; -2; 3|]
-4 |   and f = -1 downto -1
-5 |   and k = -3 downto 0
-6 |   and d = 3 downto 1
-7 |   for y = 0 downto 1 and d = 1 to -2 and f = 3 downto 0 and g = -1 downto 3|]..
-Warning 26 [unused-var]: unused variable g.
-Lines 1-7, characters 0-77:
-1 | [|(d, f, g, j, k, y)
-2 |   for g = 2 downto -3
-3 |   for j in [|-2; 0; 0; -2; 3|]
-4 |   and f = -1 downto -1
-5 |   and k = -3 downto 0
-6 |   and d = 3 downto 1
-7 |   for y = 0 downto 1 and d = 1 to -2 and f = 3 downto 0 and g = -1 downto 3|]..
-Warning 26 [unused-var]: unused variable f.
-Lines 1-7, characters 0-77:
-1 | [|(d, f, g, j, k, y)
-2 |   for g = 2 downto -3
-3 |   for j in [|-2; 0; 0; -2; 3|]
-4 |   and f = -1 downto -1
-5 |   and k = -3 downto 0
-6 |   and d = 3 downto 1
-7 |   for y = 0 downto 1 and d = 1 to -2 and f = 3 downto 0 and g = -1 downto 3|]..
-Warning 26 [unused-var]: unused variable d.
+2 |
 - : (int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable d. for y = 0 downto 1 and d = 1 to -2 and f = 3 downto 0 and g = -1 downto 3|]..
+7 |
+6 |   and d = 3 downto 1
+5 |   and k = -3 downto 0
+4 |   and f = -1 downto -1 for j in [|-2; 0; 0; -2; 3|]
+3 | for g = 2 downto -3
+2 |
+1 | [|(d, f, g, j, k, y)
+Lines 1-7, characters 0-77:
+Warning 26 [unused-var]: unused variable f. for y = 0 downto 1 and d = 1 to -2 and f = 3 downto 0 and g = -1 downto 3|]..
+7 |
+6 |   and d = 3 downto 1
+5 |   and k = -3 downto 0
+4 |   and f = -1 downto -1 for j in [|-2; 0; 0; -2; 3|]
+3 | for g = 2 downto -3
+2 |
+1 | [|(d, f, g, j, k, y)
+Lines 1-7, characters 0-77:
+Warning 26 [unused-var]: unused variable g. for y = 0 downto 1 and d = 1 to -2 and f = 3 downto 0 and g = -1 downto 3|]..
+7 |
+6 |   and d = 3 downto 1
+5 |   and k = -3 downto 0
+4 |   and f = -1 downto -1 for j in [|-2; 0; 0; -2; 3|]
+3 | for g = 2 downto -3
 |}];;
 
 [(d, e, f, i, q, s, t, y)
-  for q = 3 downto -1 and y = 2 to 2 and s in [0] and t in [-3; 2; -3; 2; 1; q]
   for i in []
   and q = -2 downto 2
   and e = 3 downto 1
   and f in [-2; 2]
-  and d in [-2; 3; -2; -2; 1; -1; -3]];;
+  and d in [-2; 3; -2; -2; 1; -1; -3]
+  for q = 3 downto -1 and y = 2 to 2 and s in [0] and t in [-3; 2; -3; 2; 1; q]];;
 [%%expect{|
 - : (int * int * int * 'a * int * int * int * int) list = []
 |}];;
 
 [|(d, e, f, i, q, s, t, y)
-  for q = 3 downto -1
-  and y = 2 to 2
-  and s in [|0|]
-  and t in [|-3; 2; -3; 2; 1; q|]
   for i in [||]
   and q = -2 downto 2
   and e = 3 downto 1
   and f in [|-2; 2|]
-  and d in [|-2; 3; -2; -2; 1; -1; -3|]|];;
+  and d in [|-2; 3; -2; -2; 1; -1; -3|]
+  for q = 3 downto -1
+  and y = 2 to 2
+  and s in [|0|]
+  and t in [|-3; 2; -3; 2; 1; q|]|];;
 [%%expect{|
 - : (int * int * int * '_weak229 * int * int * int * int) array = [||]
 |}];;
@@ -17968,29 +17969,29 @@ Warning 26 [unused-var]: unused variable d.
 |}];;
 
 [(h, i, u, x)
-  when i < 0
-  for u = 0 to 0
-  for _ = 2 downto -3 and x in [2; -2; -3; -1]
+  for i in []
   for h = -2 downto 1
-  for i in []];;
+  for _ = 2 downto -3 and x in [2; -2; -3; -1]
+  for u = 0 to 0
+  when i < 0];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(h, i, u, x)
-  when i < 0
-  for u = 0 to 0
-  for _ = 2 downto -3 and x in [|2; -2; -3; -1|]
+  for i in [||]
   for h = -2 downto 1
-  for i in [||]|];;
+  for _ = 2 downto -3 and x in [|2; -2; -3; -1|]
+  for u = 0 to 0
+  when i < 0|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(e, t, u)
-  for t = 3 downto 2 and u = 2 downto -3
+  for e in [-3]
   when abs e mod 2 = 1
-  for e in [-3]];;
+  for t = 3 downto 2 and u = 2 downto -3];;
 [%%expect{|
 - : (int * int * int) list =
 [(-3, 3, 2); (-3, 3, 1); (-3, 3, 0); (-3, 3, -1); (-3, 3, -2); (-3, 3, -3);
@@ -17998,9 +17999,9 @@ Warning 26 [unused-var]: unused variable d.
 |}];;
 
 [|(e, t, u)
-  for t = 3 downto 2 and u = 2 downto -3
+  for e in [|-3|]
   when abs e mod 2 = 1
-  for e in [|-3|]|];;
+  for t = 3 downto 2 and u = 2 downto -3|];;
 [%%expect{|
 - : (int * int * int) array =
 [|(-3, 3, 2); (-3, 3, 1); (-3, 3, 0); (-3, 3, -1); (-3, 3, -2); (-3, 3, -3);
@@ -18024,155 +18025,155 @@ Warning 26 [unused-var]: unused variable d.
 |}];;
 
 [(h, j, y)
-  when abs h mod 2 = 0
+  for j in [-2; 2; 3; -1] and y = -1 to 2 and h in [1; -1; 2; 1]
   when abs h mod 2 = 1
   when abs h mod 2 = 1
-  for j in [-2; 2; 3; -1] and y = -1 to 2 and h in [1; -1; 2; 1]];;
+  when abs h mod 2 = 0];;
 [%%expect{|
 - : (int * int * int) list = []
 |}];;
 
 [|(h, j, y)
-  when abs h mod 2 = 0
+  for j in [|-2; 2; 3; -1|] and y = -1 to 2 and h in [|1; -1; 2; 1|]
   when abs h mod 2 = 1
   when abs h mod 2 = 1
-  for j in [|-2; 2; 3; -1|] and y = -1 to 2 and h in [|1; -1; 2; 1|]|];;
+  when abs h mod 2 = 0|];;
 [%%expect{|
 - : (int * int * int) array = [||]
 |}];;
 
 [(d, m, p, r, w)
-  when abs r mod 2 = 0
-  when abs d mod 2 = 0
-  for w in [-2; m; 0; 1] and r = -1 downto -1
+  for p in [1; -1]
   for m = 1 to 0 and d = 3 to -2
-  for p in [1; -1]];;
+  for w in [-2; m; 0; 1] and r = -1 downto -1
+  when abs d mod 2 = 0
+  when abs r mod 2 = 0];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(d, m, p, r, w)
-  when abs r mod 2 = 0
-  when abs d mod 2 = 0
-  for w in [|-2; m; 0; 1|] and r = -1 downto -1
+  for p in [|1; -1|]
   for m = 1 to 0 and d = 3 to -2
-  for p in [|1; -1|]|];;
+  for w in [|-2; m; 0; 1|] and r = -1 downto -1
+  when abs d mod 2 = 0
+  when abs r mod 2 = 0|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(a, b, o, r, z)
-  when abs z mod 2 = 0
-  for o = 1 downto -2
-  for r in [-1; -1; -2]
+  for a = -2 to 3 and o in [3; 1; -1; 2; -1]
   for b = 0 downto -1 and z in [-3; -1; -1]
-  for a = -2 to 3 and o in [3; 1; -1; 2; -1]];;
+  for r in [-1; -1; -2]
+  for o = 1 downto -2
+  when abs z mod 2 = 0];;
 [%%expect{|
 Line 6, characters 22-23:
-6 |   for a = -2 to 3 and o in [3; 1; -1; 2; -1]];;
+6 | for a = -2 to 3 and o in [3; 1; -1; 2; -1]];;
                           ^
 Warning 26 [unused-var]: unused variable o.
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(a, b, o, r, z)
-  when abs z mod 2 = 0
-  for o = 1 downto -2
-  for r in [|-1; -1; -2|]
+  for a = -2 to 3 and o in [|3; 1; -1; 2; -1|]
   for b = 0 downto -1 and z in [|-3; -1; -1|]
-  for a = -2 to 3 and o in [|3; 1; -1; 2; -1|]|];;
+  for r in [|-1; -1; -2|]
+  for o = 1 downto -2
+  when abs z mod 2 = 0|];;
 [%%expect{|
 Line 6, characters 22-23:
-6 |   for a = -2 to 3 and o in [|3; 1; -1; 2; -1|]|];;
+6 | for a = -2 to 3 and o in [|3; 1; -1; 2; -1|]|];;
                           ^
 Warning 26 [unused-var]: unused variable o.
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(e, i, m, q, u, z)
+  for i = 3 downto 0 and u = 3 downto 2
   for e = -2 downto 2
   and q in [1; 1; 3]
   and _ = -1 downto 1
   and m in [1; 0; -3; 3; -1; 0; i]
-  and z in [i; 0; 0; 3; -2; 3]
-  for i = 3 downto 0 and u = 3 downto 2];;
+  and z in [i; 0; 0; 3; -2; 3]];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(e, i, m, q, u, z)
+  for i = 3 downto 0 and u = 3 downto 2
   for e = -2 downto 2
   and q in [|1; 1; 3|]
   and _ = -1 downto 1
   and m in [|1; 0; -3; 3; -1; 0; i|]
-  and z in [|i; 0; 0; 3; -2; 3|]
-  for i = 3 downto 0 and u = 3 downto 2|];;
+  and z in [|i; 0; 0; 3; -2; 3|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(d, e, i, t, v, w, x, y)
-  for v = -3 downto -2 and e in [-3; 3; -3] and t = -3 downto 0
-  for x = i downto -3 and i in [-3; 1; w] and _ in [1; 2; -1; -1]
+  for i = 0 downto 2 and d in []
   for t = 0 downto -3 and w = 0 downto 2 and y in [-3]
-  for i = 0 downto 2 and d in []];;
+  for x = i downto -3 and i in [-3; 1; w] and _ in [1; 2; -1; -1]
+  for v = -3 downto -2 and e in [-3; 3; -3] and t = -3 downto 0];;
 [%%expect{|
 Lines 1-5, characters 0-33:
 1 | [(d, e, i, t, v, w, x, y)
-2 |   for v = -3 downto -2 and e in [-3; 3; -3] and t = -3 downto 0
-3 |   for x = i downto -3 and i in [-3; 1; w] and _ in [1; 2; -1; -1]
-4 |   for t = 0 downto -3 and w = 0 downto 2 and y in [-3]
-5 |   for i = 0 downto 2 and d in []]..
-Warning 26 [unused-var]: unused variable t.
+2 |
 - : ('a * int * int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable t. for i = 0 downto 2 and d in []]..
+5 | for t = 0 downto -3 and w = 0 downto 2 and y in [-3]
+4 | for x = i downto -3 and i in [-3; 1; w] and _ in [1; 2; -1; -1]
+3 | for v = -3 downto -2 and e in [-3; 3; -3] and t = -3 downto 0
 |}];;
 
 [|(d, e, i, t, v, w, x, y)
-  for v = -3 downto -2 and e in [|-3; 3; -3|] and t = -3 downto 0
-  for x = i downto -3 and i in [|-3; 1; w|] and _ in [|1; 2; -1; -1|]
+  for i = 0 downto 2 and d in [||]
   for t = 0 downto -3 and w = 0 downto 2 and y in [|-3|]
-  for i = 0 downto 2 and d in [||]|];;
+  for x = i downto -3 and i in [|-3; 1; w|] and _ in [|1; 2; -1; -1|]
+  for v = -3 downto -2 and e in [|-3; 3; -3|] and t = -3 downto 0|];;
 [%%expect{|
 Lines 1-5, characters 0-36:
 1 | [|(d, e, i, t, v, w, x, y)
-2 |   for v = -3 downto -2 and e in [|-3; 3; -3|] and t = -3 downto 0
-3 |   for x = i downto -3 and i in [|-3; 1; w|] and _ in [|1; 2; -1; -1|]
-4 |   for t = 0 downto -3 and w = 0 downto 2 and y in [|-3|]
-5 |   for i = 0 downto 2 and d in [||]|]..
-Warning 26 [unused-var]: unused variable t.
+2 |
 - : ('_weak231 * int * int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable t. for i = 0 downto 2 and d in [||]|]..
+5 | for t = 0 downto -3 and w = 0 downto 2 and y in [|-3|]
+4 | for x = i downto -3 and i in [|-3; 1; w|] and _ in [|1; 2; -1; -1|]
+3 | for v = -3 downto -2 and e in [|-3; 3; -3|] and t = -3 downto 0
 |}];;
 
 [(d, g, r, s)
-  for d in [1; 3; 3]
-  for g in [] and r = 3 downto -2 and s = 3 to 2];;
+  for g in [] and r = 3 downto -2 and s = 3 to 2
+  for d in [1; 3; 3]];;
 [%%expect{|
 - : (int * 'a * int * int) list = []
 |}];;
 
 [|(d, g, r, s)
-  for d in [|1; 3; 3|]
-  for g in [||] and r = 3 downto -2 and s = 3 to 2|];;
+  for g in [||] and r = 3 downto -2 and s = 3 to 2
+  for d in [|1; 3; 3|]|];;
 [%%expect{|
 - : (int * '_weak232 * int * int) array = [||]
 |}];;
 
 [(b, q, u)
-  for b = -1 downto -3
-  for q = 2 to 2
-  when u < 0
+  for u = 0 downto 1
   when u > 0
-  for u = 0 downto 1];;
+  when u < 0
+  for q = 2 to 2
+  for b = -1 downto -3];;
 [%%expect{|
 - : (int * int * int) list = []
 |}];;
 
 [|(b, q, u)
-  for b = -1 downto -3
-  for q = 2 to 2
-  when u < 0
+  for u = 0 downto 1
   when u > 0
-  for u = 0 downto 1|];;
+  when u < 0
+  for q = 2 to 2
+  for b = -1 downto -3|];;
 [%%expect{|
 - : (int * int * int) array = [||]
 |}];;
@@ -18194,61 +18195,61 @@ Warning 26 [unused-var]: unused variable t.
 |}];;
 
 [(b, d, h, k, l, z)
-  when abs b mod 2 = 0
-  for z in [d; 3] and _ = 0 downto 2
+  for l in [-3; 2; -1; 0; 3; 2] and h = 3 downto 2
   for k in [-3; -3; 3; -1] and b = 3 to -3 and d = 0 downto 3
-  for l in [-3; 2; -1; 0; 3; 2] and h = 3 downto 2];;
+  for z in [d; 3] and _ = 0 downto 2
+  when abs b mod 2 = 0];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(b, d, h, k, l, z)
-  when abs b mod 2 = 0
-  for z in [|d; 3|] and _ = 0 downto 2
+  for l in [|-3; 2; -1; 0; 3; 2|] and h = 3 downto 2
   for k in [|-3; -3; 3; -1|] and b = 3 to -3 and d = 0 downto 3
-  for l in [|-3; 2; -1; 0; 3; 2|] and h = 3 downto 2|];;
+  for z in [|d; 3|] and _ = 0 downto 2
+  when abs b mod 2 = 0|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(c, d, e, h, k, t, w)
-  for h = -3 to -1 and w = 0 downto 2 and d = -1 to 3
-  for k = -3 to 3 and h = 3 to 3
   for e = 1 downto 3
   and t = 1 to -2
   and c in [2; -1; 2; -3]
-  and _ in [3; -3; 2]];;
+  and _ in [3; -3; 2]
+  for k = -3 to 3 and h = 3 to 3
+  for h = -3 to -1 and w = 0 downto 2 and d = -1 to 3];;
 [%%expect{|
 Lines 1-7, characters 0-22:
 1 | [(c, d, e, h, k, t, w)
-2 |   for h = -3 to -1 and w = 0 downto 2 and d = -1 to 3
-3 |   for k = -3 to 3 and h = 3 to 3
-4 |   for e = 1 downto 3
-5 |   and t = 1 to -2
-6 |   and c in [2; -1; 2; -3]
-7 |   and _ in [3; -3; 2]]..
-Warning 26 [unused-var]: unused variable h.
+2 |
 - : (int * int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable h.
+7 |   and _ in [3; -3; 2]]..
+6 |   and c in [2; -1; 2; -3]
+5 |   and t = 1 to -2 for e = 1 downto 3
+4 | for k = -3 to 3 and h = 3 to 3
+3 | for h = -3 to -1 and w = 0 downto 2 and d = -1 to 3
 |}];;
 
 [|(c, d, e, h, k, t, w)
-  for h = -3 to -1 and w = 0 downto 2 and d = -1 to 3
-  for k = -3 to 3 and h = 3 to 3
   for e = 1 downto 3
   and t = 1 to -2
   and c in [|2; -1; 2; -3|]
-  and _ in [|3; -3; 2|]|];;
+  and _ in [|3; -3; 2|]
+  for k = -3 to 3 and h = 3 to 3
+  for h = -3 to -1 and w = 0 downto 2 and d = -1 to 3|];;
 [%%expect{|
 Lines 1-7, characters 0-25:
 1 | [|(c, d, e, h, k, t, w)
-2 |   for h = -3 to -1 and w = 0 downto 2 and d = -1 to 3
-3 |   for k = -3 to 3 and h = 3 to 3
-4 |   for e = 1 downto 3
-5 |   and t = 1 to -2
-6 |   and c in [|2; -1; 2; -3|]
-7 |   and _ in [|3; -3; 2|]|]..
-Warning 26 [unused-var]: unused variable h.
+2 |
 - : (int * int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable h.
+7 |   and _ in [|3; -3; 2|]|]..
+6 |   and c in [|2; -1; 2; -3|]
+5 |   and t = 1 to -2 for e = 1 downto 3
+4 | for k = -3 to 3 and h = 3 to 3
+3 | for h = -3 to -1 and w = 0 downto 2 and d = -1 to 3
 |}];;
 
 [(l, o) for l = -2 to -1 and o in [-2; -1; 2; -1; -1; 3]];;
@@ -18284,260 +18285,260 @@ Warning 26 [unused-var]: unused variable h.
 |}];;
 
 [(e, j, o, p)
-  for e in [0; -3; -3]
+  for p = -3 downto 0 and j = -2 to 3 and o = -2 to -3
   for _ = 3 downto 2 and o = 1 downto -3
-  for p = -3 downto 0 and j = -2 to 3 and o = -2 to -3];;
+  for e in [0; -3; -3]];;
 [%%expect{|
 Lines 1-4, characters 0-55:
 1 | [(e, j, o, p)
-2 |   for e in [0; -3; -3]
-3 |   for _ = 3 downto 2 and o = 1 downto -3
-4 |   for p = -3 downto 0 and j = -2 to 3 and o = -2 to -3]..
-Warning 26 [unused-var]: unused variable o.
+2 |
 - : (int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable o. for p = -3 downto 0 and j = -2 to 3 and o = -2 to -3]..
+4 | for _ = 3 downto 2 and o = 1 downto -3
+3 | for e in [0; -3; -3]
 |}];;
 
 [|(e, j, o, p)
-  for e in [|0; -3; -3|]
+  for p = -3 downto 0 and j = -2 to 3 and o = -2 to -3
   for _ = 3 downto 2 and o = 1 downto -3
-  for p = -3 downto 0 and j = -2 to 3 and o = -2 to -3|];;
+  for e in [|0; -3; -3|]|];;
 [%%expect{|
 Lines 1-4, characters 0-56:
 1 | [|(e, j, o, p)
-2 |   for e in [|0; -3; -3|]
-3 |   for _ = 3 downto 2 and o = 1 downto -3
-4 |   for p = -3 downto 0 and j = -2 to 3 and o = -2 to -3|]..
-Warning 26 [unused-var]: unused variable o.
+2 |
 - : (int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable o. for p = -3 downto 0 and j = -2 to 3 and o = -2 to -3|]..
+4 | for _ = 3 downto 2 and o = 1 downto -3
+3 | for e in [|0; -3; -3|]
 |}];;
 
 [(b, e, h, n, o, z)
-  for o in [-3; 2; 3; 2; 1]
-  for n = 2 to 1 and e in [1; 1; 3; 2]
-  for b in [1; -3; 0; 0; -3; -3] and h = -2 downto -3
+  for z = -1 downto -2 and o = 0 to -3
   when z <> 0
-  for z = -1 downto -2 and o = 0 to -3];;
+  for b in [1; -3; 0; 0; -3; -3] and h = -2 downto -3
+  for n = 2 to 1 and e in [1; 1; 3; 2]
+  for o in [-3; 2; 3; 2; 1]];;
 [%%expect{|
 Lines 1-6, characters 0-39:
 1 | [(b, e, h, n, o, z)
-2 |   for o in [-3; 2; 3; 2; 1]
-3 |   for n = 2 to 1 and e in [1; 1; 3; 2]
-4 |   for b in [1; -3; 0; 0; -3; -3] and h = -2 downto -3
-5 |   when z <> 0
-6 |   for z = -1 downto -2 and o = 0 to -3]..
-Warning 26 [unused-var]: unused variable o.
+2 |
 - : (int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable o. for z = -1 downto -2 and o = 0 to -3]..
+6 | when z <> 0
+5 | for b in [1; -3; 0; 0; -3; -3] and h = -2 downto -3
+4 | for n = 2 to 1 and e in [1; 1; 3; 2]
+3 | for o in [-3; 2; 3; 2; 1]
 |}];;
 
 [|(b, e, h, n, o, z)
-  for o in [|-3; 2; 3; 2; 1|]
-  for n = 2 to 1 and e in [|1; 1; 3; 2|]
-  for b in [|1; -3; 0; 0; -3; -3|] and h = -2 downto -3
+  for z = -1 downto -2 and o = 0 to -3
   when z <> 0
-  for z = -1 downto -2 and o = 0 to -3|];;
+  for b in [|1; -3; 0; 0; -3; -3|] and h = -2 downto -3
+  for n = 2 to 1 and e in [|1; 1; 3; 2|]
+  for o in [|-3; 2; 3; 2; 1|]|];;
 [%%expect{|
 Lines 1-6, characters 0-40:
 1 | [|(b, e, h, n, o, z)
-2 |   for o in [|-3; 2; 3; 2; 1|]
-3 |   for n = 2 to 1 and e in [|1; 1; 3; 2|]
-4 |   for b in [|1; -3; 0; 0; -3; -3|] and h = -2 downto -3
-5 |   when z <> 0
-6 |   for z = -1 downto -2 and o = 0 to -3|]..
-Warning 26 [unused-var]: unused variable o.
+2 |
 - : (int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable o. for z = -1 downto -2 and o = 0 to -3|]..
+6 | when z <> 0
+5 | for b in [|1; -3; 0; 0; -3; -3|] and h = -2 downto -3
+4 | for n = 2 to 1 and e in [|1; 1; 3; 2|]
+3 | for o in [|-3; 2; 3; 2; 1|]
 |}];;
 
 [(c, f, g, j, m)
-  for f = -3 to 1
-  for m in [] and g = 3 downto c
+  for f in [-3; -2; 0; 2; 0] and c in [-1; 1; -1; 0; -2]
   for j = 3 to 2
-  for f in [-3; -2; 0; 2; 0] and c in [-1; 1; -1; 0; -2]];;
+  for m in [] and g = 3 downto c
+  for f = -3 to 1];;
 [%%expect{|
 Line 5, characters 6-7:
-5 |   for f in [-3; -2; 0; 2; 0] and c in [-1; 1; -1; 0; -2]];;
+5 | for f in [-3; -2; 0; 2; 0] and c in [-1; 1; -1; 0; -2]];;
           ^
 Warning 26 [unused-var]: unused variable f.
 - : (int * int * int * int * 'a) list = []
 |}];;
 
 [|(c, f, g, j, m)
-  for f = -3 to 1
-  for m in [||] and g = 3 downto c
+  for f in [|-3; -2; 0; 2; 0|] and c in [|-1; 1; -1; 0; -2|]
   for j = 3 to 2
-  for f in [|-3; -2; 0; 2; 0|] and c in [|-1; 1; -1; 0; -2|]|];;
+  for m in [||] and g = 3 downto c
+  for f = -3 to 1|];;
 [%%expect{|
 Line 5, characters 6-7:
-5 |   for f in [|-3; -2; 0; 2; 0|] and c in [|-1; 1; -1; 0; -2|]|];;
+5 | for f in [|-3; -2; 0; 2; 0|] and c in [|-1; 1; -1; 0; -2|]|];;
           ^
 Warning 26 [unused-var]: unused variable f.
 - : (int * int * int * int * '_weak233) array = [||]
 |}];;
 
 [(b, p)
-  when abs b mod 2 = 1
+  for p in [3; -1; -1; 1; 2; 0] and b = 1 downto 2
   when abs p mod 2 = 1
-  for p in [3; -1; -1; 1; 2; 0] and b = 1 downto 2];;
+  when abs b mod 2 = 1];;
 [%%expect{|
 - : (int * int) list = []
 |}];;
 
 [|(b, p)
-  when abs b mod 2 = 1
+  for p in [|3; -1; -1; 1; 2; 0|] and b = 1 downto 2
   when abs p mod 2 = 1
-  for p in [|3; -1; -1; 1; 2; 0|] and b = 1 downto 2|];;
+  when abs b mod 2 = 1|];;
 [%%expect{|
 - : (int * int) array = [||]
 |}];;
 
 [(g, l, y)
-  for y = 0 downto -2 and g = 0 to l
+  for _ = 3 downto 1 and l = -3 to -3
   when abs l mod 2 = 0
   when abs l mod 2 = 0
-  for _ = 3 downto 1 and l = -3 to -3];;
+  for y = 0 downto -2 and g = 0 to l];;
 [%%expect{|
 - : (int * int * int) list = []
 |}];;
 
 [|(g, l, y)
-  for y = 0 downto -2 and g = 0 to l
+  for _ = 3 downto 1 and l = -3 to -3
   when abs l mod 2 = 0
   when abs l mod 2 = 0
-  for _ = 3 downto 1 and l = -3 to -3|];;
+  for y = 0 downto -2 and g = 0 to l|];;
 [%%expect{|
 - : (int * int * int) array = [||]
 |}];;
 
 [(a, e, n)
-  when abs n mod 2 = 0
-  for n in [2; 1] and a = -3 downto -1 and e = -2 downto -1];;
+  for n in [2; 1] and a = -3 downto -1 and e = -2 downto -1
+  when abs n mod 2 = 0];;
 [%%expect{|
 - : (int * int * int) list = []
 |}];;
 
 [|(a, e, n)
-  when abs n mod 2 = 0
-  for n in [|2; 1|] and a = -3 downto -1 and e = -2 downto -1|];;
+  for n in [|2; 1|] and a = -3 downto -1 and e = -2 downto -1
+  when abs n mod 2 = 0|];;
 [%%expect{|
 - : (int * int * int) array = [||]
 |}];;
 
 [(d, k, q, y)
-  for k = 1 downto 2 and d in [-2]
-  when abs q mod 2 = 1
-  for q = y to -1
+  for q in []
   for y in [3; 3; 3]
-  for q in []];;
+  for q = y to -1
+  when abs q mod 2 = 1
+  for k = 1 downto 2 and d in [-2]];;
 [%%expect{|
 Line 6, characters 6-7:
-6 |   for q in []];;
+6 | for q in []];;
           ^
 Warning 26 [unused-var]: unused variable q.
 - : (int * int * int * int) list = []
 |}];;
 
 [|(d, k, q, y)
-  for k = 1 downto 2 and d in [|-2|]
-  when abs q mod 2 = 1
-  for q = y to -1
+  for q in [||]
   for y in [|3; 3; 3|]
-  for q in [||]|];;
+  for q = y to -1
+  when abs q mod 2 = 1
+  for k = 1 downto 2 and d in [|-2|]|];;
 [%%expect{|
 Line 6, characters 6-7:
-6 |   for q in [||]|];;
+6 | for q in [||]|];;
           ^
 Warning 26 [unused-var]: unused variable q.
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(a, b, e, m, t, w)
-  for m = 1 downto w and a = e downto 1 and b in [3] and t in []
+  for w = -3 to -2 and e in [3; 2; 2; -2]
   when abs e mod 2 = 1
-  for w = -3 to -2 and e in [3; 2; 2; -2]];;
+  for m = 1 downto w and a = e downto 1 and b in [3] and t in []];;
 [%%expect{|
 - : (int * int * int * int * 'a * int) list = []
 |}];;
 
 [|(a, b, e, m, t, w)
-  for m = 1 downto w and a = e downto 1 and b in [|3|] and t in [||]
+  for w = -3 to -2 and e in [|3; 2; 2; -2|]
   when abs e mod 2 = 1
-  for w = -3 to -2 and e in [|3; 2; 2; -2|]|];;
+  for m = 1 downto w and a = e downto 1 and b in [|3|] and t in [||]|];;
 [%%expect{|
 - : (int * int * int * int * '_weak234 * int) array = [||]
 |}];;
 
 [(f, h, o, q, w, y)
-  for q in [-3; w] and h in [-3]
-  for f in [-3; 3]
-  for y = -2 downto -1
+  for o in [3; -1; 2; -2; 0] and w = -1 to -1
   when abs o mod 2 = 0
-  for o in [3; -1; 2; -2; 0] and w = -1 to -1];;
+  for y = -2 downto -1
+  for f in [-3; 3]
+  for q in [-3; w] and h in [-3]];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(f, h, o, q, w, y)
-  for q in [|-3; w|] and h in [|-3|]
-  for f in [|-3; 3|]
-  for y = -2 downto -1
+  for o in [|3; -1; 2; -2; 0|] and w = -1 to -1
   when abs o mod 2 = 0
-  for o in [|3; -1; 2; -2; 0|] and w = -1 to -1|];;
+  for y = -2 downto -1
+  for f in [|-3; 3|]
+  for q in [|-3; w|] and h in [|-3|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(e, f, g, o, r, w, z)
-  for w = e to -2 and o in [0; 1; 0; 2] and z in [2]
-  for g = 0 downto -3 and r in [-2] and e = -3 to 1 and f = 2 to 0];;
+  for g = 0 downto -3 and r in [-2] and e = -3 to 1 and f = 2 to 0
+  for w = e to -2 and o in [0; 1; 0; 2] and z in [2]];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(e, f, g, o, r, w, z)
-  for w = e to -2 and o in [|0; 1; 0; 2|] and z in [|2|]
-  for g = 0 downto -3 and r in [|-2|] and e = -3 to 1 and f = 2 to 0|];;
+  for g = 0 downto -3 and r in [|-2|] and e = -3 to 1 and f = 2 to 0
+  for w = e to -2 and o in [|0; 1; 0; 2|] and z in [|2|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(a, h, i, l, m, n, r, t, w)
-  for t in [2; 1; 3; -3; 1; -1] and i in [1] and l in [1; 3] and m = -1 to -2
   for h in [-2; 3; -3]
   and r = 3 downto 0
   and w in [2; -2; -3; 0; 0]
   and n = 2 downto 2
-  and a in [0]];;
+  and a in [0]
+  for t in [2; 1; 3; -3; 1; -1] and i in [1] and l in [1; 3] and m = -1 to -2];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, h, i, l, m, n, r, t, w)
-  for t in [|2; 1; 3; -3; 1; -1|]
-  and i in [|1|]
-  and l in [|1; 3|]
-  and m = -1 to -2
   for h in [|-2; 3; -3|]
   and r = 3 downto 0
   and w in [|2; -2; -3; 0; 0|]
   and n = 2 downto 2
-  and a in [|0|]|];;
+  and a in [|0|]
+  for t in [|2; 1; 3; -3; 1; -1|]
+  and i in [|1|]
+  and l in [|1; 3|]
+  and m = -1 to -2|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(f, h, r, t, v, w)
-  for v in [0; -1]
-  for t in [-2; -3] and f in [-2; 3; 3]
+  for w in [1; 1; 0; -3] and r in [2; -2; 1; -1]
   for h = -1 to -3
-  for w in [1; 1; 0; -3] and r in [2; -2; 1; -1]];;
+  for t in [-2; -3] and f in [-2; 3; 3]
+  for v in [0; -1]];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(f, h, r, t, v, w)
-  for v in [|0; -1|]
-  for t in [|-2; -3|] and f in [|-2; 3; 3|]
+  for w in [|1; 1; 0; -3|] and r in [|2; -2; 1; -1|]
   for h = -1 to -3
-  for w in [|1; 1; 0; -3|] and r in [|2; -2; 1; -1|]|];;
+  for t in [|-2; -3|] and f in [|-2; 3; 3|]
+  for v in [|0; -1|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
@@ -18563,43 +18564,43 @@ Warning 26 [unused-var]: unused variable q.
 |}];;
 
 [(b, e, i, j, m, s)
+  for b = 3 to 3 and i = -1 to 1
   for e in [-2; 3; -1; 2; b]
   and m = 2 to 0
   and s in [1; 2; 2; 3; -3]
-  and j = 0 downto -2
-  for b = 3 to 3 and i = -1 to 1];;
+  and j = 0 downto -2];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(b, e, i, j, m, s)
+  for b = 3 to 3 and i = -1 to 1
   for e in [|-2; 3; -1; 2; b|]
   and m = 2 to 0
   and s in [|1; 2; 2; 3; -3|]
-  and j = 0 downto -2
-  for b = 3 to 3 and i = -1 to 1|];;
+  and j = 0 downto -2|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(b, e, p, q, r, u)
-  when q < 0
-  for u = -2 to -1 and q in [e; -1; 3; 0; -3; -3; -2]
   for r = -1 downto -2
   and e in []
   and p in [1; -3; 3; -1; 2]
-  and b in [-3; 2; -2; 3; 1; -1]];;
+  and b in [-3; 2; -2; 3; 1; -1]
+  for u = -2 to -1 and q in [e; -1; 3; 0; -3; -3; -2]
+  when q < 0];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(b, e, p, q, r, u)
-  when q < 0
-  for u = -2 to -1 and q in [|e; -1; 3; 0; -3; -3; -2|]
   for r = -1 downto -2
   and e in [||]
   and p in [|1; -3; 3; -1; 2|]
-  and b in [|-3; 2; -2; 3; 1; -1|]|];;
+  and b in [|-3; 2; -2; 3; 1; -1|]
+  for u = -2 to -1 and q in [|e; -1; 3; 0; -3; -3; -2|]
+  when q < 0|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
@@ -18627,67 +18628,67 @@ Warning 26 [unused-var]: unused variable q.
 |}];;
 
 [(d, k, u, w, x, y)
-  for d = -1 downto k and x in []
-  when u < 0
+  for u in [1] and k in [3; 2; -1; -3; -3; 1] and y in [2; 3]
   for _ = 0 downto 0 and w in []
-  for u in [1] and k in [3; 2; -1; -3; -3; 1] and y in [2; 3]];;
+  when u < 0
+  for d = -1 downto k and x in []];;
 [%%expect{|
 - : (int * int * int * 'a * 'b * int) list = []
 |}];;
 
 [|(d, k, u, w, x, y)
-  for d = -1 downto k and x in [||]
-  when u < 0
+  for u in [|1|] and k in [|3; 2; -1; -3; -3; 1|] and y in [|2; 3|]
   for _ = 0 downto 0 and w in [||]
-  for u in [|1|] and k in [|3; 2; -1; -3; -3; 1|] and y in [|2; 3|]|];;
+  when u < 0
+  for d = -1 downto k and x in [||]|];;
 [%%expect{|
 - : (int * int * int * '_weak235 * '_weak236 * int) array = [||]
 |}];;
 
 [(b, c, i, j, x)
-  for j = b downto 0 and c = 1 to -3
-  for i in [b]
-  for b = 2 to 3
+  for x = -2 downto -2 and b in [-2; 2]
   when abs x mod 2 = 0
-  for x = -2 downto -2 and b in [-2; 2]];;
+  for b = 2 to 3
+  for i in [b]
+  for j = b downto 0 and c = 1 to -3];;
 [%%expect{|
 Line 6, characters 27-28:
-6 |   for x = -2 downto -2 and b in [-2; 2]];;
+6 | for x = -2 downto -2 and b in [-2; 2]];;
                                ^
 Warning 26 [unused-var]: unused variable b.
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(b, c, i, j, x)
-  for j = b downto 0 and c = 1 to -3
-  for i in [|b|]
-  for b = 2 to 3
+  for x = -2 downto -2 and b in [|-2; 2|]
   when abs x mod 2 = 0
-  for x = -2 downto -2 and b in [|-2; 2|]|];;
+  for b = 2 to 3
+  for i in [|b|]
+  for j = b downto 0 and c = 1 to -3|];;
 [%%expect{|
 Line 6, characters 27-28:
-6 |   for x = -2 downto -2 and b in [|-2; 2|]|];;
+6 | for x = -2 downto -2 and b in [|-2; 2|]|];;
                                ^
 Warning 26 [unused-var]: unused variable b.
 - : (int * int * int * int * int) array = [||]
 |}];;
 
 [(k, r, u)
-  for k in [] and u in [-2; -2; r; 3; -1]
+  for r in []
   when r <> 0
   when abs r mod 2 = 0
   when r <> 0
-  for r in []];;
+  for k in [] and u in [-2; -2; r; 3; -1]];;
 [%%expect{|
 - : ('a * int * int) list = []
 |}];;
 
 [|(k, r, u)
-  for k in [||] and u in [|-2; -2; r; 3; -1|]
+  for r in [||]
   when r <> 0
   when abs r mod 2 = 0
   when r <> 0
-  for r in [||]|];;
+  for k in [||] and u in [|-2; -2; r; 3; -1|]|];;
 [%%expect{|
 - : ('_weak237 * int * int) array = [||]
 |}];;
@@ -18713,265 +18714,265 @@ Warning 26 [unused-var]: unused variable b.
 |}];;
 
 [(a, g, i, k, l, r, v)
-  for i in [3; -1; 0; 3; r; -2; -3] and l = 0 downto -2
-  for v in [-2; 1; 1; 3; 0; 1; -2]
-  for k in [0; 2] and a in [-1]
+  for r = -3 to -3 and g = 0 downto 0
   when g < 0
-  for r = -3 to -3 and g = 0 downto 0];;
+  for k in [0; 2] and a in [-1]
+  for v in [-2; 1; 1; 3; 0; 1; -2]
+  for i in [3; -1; 0; 3; r; -2; -3] and l = 0 downto -2];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, g, i, k, l, r, v)
-  for i in [|3; -1; 0; 3; r; -2; -3|] and l = 0 downto -2
-  for v in [|-2; 1; 1; 3; 0; 1; -2|]
-  for k in [|0; 2|] and a in [|-1|]
+  for r = -3 to -3 and g = 0 downto 0
   when g < 0
-  for r = -3 to -3 and g = 0 downto 0|];;
+  for k in [|0; 2|] and a in [|-1|]
+  for v in [|-2; 1; 1; 3; 0; 1; -2|]
+  for i in [|3; -1; 0; 3; r; -2; -3|] and l = 0 downto -2|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(a, b, h)
-  for a in [-2; 3; 0; -1; -1; 1; -2]
-  for b = -3 to -3 and h = -2 downto 3];;
+  for b = -3 to -3 and h = -2 downto 3
+  for a in [-2; 3; 0; -1; -1; 1; -2]];;
 [%%expect{|
 - : (int * int * int) list = []
 |}];;
 
 [|(a, b, h)
-  for a in [|-2; 3; 0; -1; -1; 1; -2|]
-  for b = -3 to -3 and h = -2 downto 3|];;
+  for b = -3 to -3 and h = -2 downto 3
+  for a in [|-2; 3; 0; -1; -1; 1; -2|]|];;
 [%%expect{|
 - : (int * int * int) array = [||]
 |}];;
 
 [(a, c, f, p, t, z)
-  for z in [3; -2]
-  for c = 0 to 3
-  for f in [-3]
+  for c = -2 downto 1 and p = 3 to 3
   for a = 3 to 0 and t in [-3; p; 1; 2]
-  for c = -2 downto 1 and p = 3 to 3];;
+  for f in [-3]
+  for c = 0 to 3
+  for z in [3; -2]];;
 [%%expect{|
 Lines 1-6, characters 0-37:
 1 | [(a, c, f, p, t, z)
-2 |   for z in [3; -2]
-3 |   for c = 0 to 3
-4 |   for f in [-3]
-5 |   for a = 3 to 0 and t in [-3; p; 1; 2]
-6 |   for c = -2 downto 1 and p = 3 to 3]..
-Warning 26 [unused-var]: unused variable c.
+2 |
 - : (int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable c. for c = -2 downto 1 and p = 3 to 3]..
+6 | for a = 3 to 0 and t in [-3; p; 1; 2]
+5 | for f in [-3]
+4 | for c = 0 to 3
+3 | for z in [3; -2]
 |}];;
 
 [|(a, c, f, p, t, z)
-  for z in [|3; -2|]
-  for c = 0 to 3
-  for f in [|-3|]
+  for c = -2 downto 1 and p = 3 to 3
   for a = 3 to 0 and t in [|-3; p; 1; 2|]
-  for c = -2 downto 1 and p = 3 to 3|];;
+  for f in [|-3|]
+  for c = 0 to 3
+  for z in [|3; -2|]|];;
 [%%expect{|
 Lines 1-6, characters 0-38:
 1 | [|(a, c, f, p, t, z)
-2 |   for z in [|3; -2|]
-3 |   for c = 0 to 3
-4 |   for f in [|-3|]
-5 |   for a = 3 to 0 and t in [|-3; p; 1; 2|]
-6 |   for c = -2 downto 1 and p = 3 to 3|]..
-Warning 26 [unused-var]: unused variable c.
+2 |
 - : (int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable c. for c = -2 downto 1 and p = 3 to 3|]..
+6 | for a = 3 to 0 and t in [|-3; p; 1; 2|]
+5 | for f in [|-3|]
+4 | for c = 0 to 3
+3 | for z in [|3; -2|]
 |}];;
 
 [(b, k, n, o)
-  for k in [-3; 2; 3; 3; 3; 3] and o in [3; -1; 2; b; 3]
-  for b in [0; 1; 3; 1] and n = 1 downto 2];;
+  for b in [0; 1; 3; 1] and n = 1 downto 2
+  for k in [-3; 2; 3; 3; 3; 3] and o in [3; -1; 2; b; 3]];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(b, k, n, o)
-  for k in [|-3; 2; 3; 3; 3; 3|] and o in [|3; -1; 2; b; 3|]
-  for b in [|0; 1; 3; 1|] and n = 1 downto 2|];;
+  for b in [|0; 1; 3; 1|] and n = 1 downto 2
+  for k in [|-3; 2; 3; 3; 3; 3|] and o in [|3; -1; 2; b; 3|]|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
-[(a, l, w) for w = a to -1 for a in [0; 1; 2; 1; 3] and l = -1 to 3];;
+[(a, l, w) for a in [0; 1; 2; 1; 3] and l = -1 to 3 for w = a to -1];;
 [%%expect{|
 - : (int * int * int) list = []
 |}];;
 
-[|(a, l, w) for w = a to -1 for a in [|0; 1; 2; 1; 3|] and l = -1 to 3|];;
+[|(a, l, w) for a in [|0; 1; 2; 1; 3|] and l = -1 to 3 for w = a to -1|];;
 [%%expect{|
 - : (int * int * int) array = [||]
 |}];;
 
 [(a, d, f, o, q, z)
-  for _ = 1 downto -1 and z = 3 downto 0 and d = 0 downto -1 and o in []
+  for f in [-3; 0; -1; -1; 1; 0] and a = -1 to -2
   for q in [2; -3; -1; -3; 1] and _ = 1 to 0
-  for f in [-3; 0; -1; -1; 1; 0] and a = -1 to -2];;
+  for _ = 1 downto -1 and z = 3 downto 0 and d = 0 downto -1 and o in []];;
 [%%expect{|
 - : (int * int * int * 'a * int * int) list = []
 |}];;
 
 [|(a, d, f, o, q, z)
-  for _ = 1 downto -1 and z = 3 downto 0 and d = 0 downto -1 and o in [||]
+  for f in [|-3; 0; -1; -1; 1; 0|] and a = -1 to -2
   for q in [|2; -3; -1; -3; 1|] and _ = 1 to 0
-  for f in [|-3; 0; -1; -1; 1; 0|] and a = -1 to -2|];;
+  for _ = 1 downto -1 and z = 3 downto 0 and d = 0 downto -1 and o in [||]|];;
 [%%expect{|
 - : (int * int * int * '_weak239 * int * int) array = [||]
 |}];;
 
 [(m, s, t, u, w, x)
-  when t < 0
-  when x < 0
-  for w in [0; -2; 3; -3; -1] and s = -1 downto 0
+  for m in [0; 3; 0; 1; -1] and x in []
   for t = 3 to -3 and u = 1 to 0
-  for m in [0; 3; 0; 1; -1] and x in []];;
+  for w in [0; -2; 3; -3; -1] and s = -1 downto 0
+  when x < 0
+  when t < 0];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(m, s, t, u, w, x)
-  when t < 0
-  when x < 0
-  for w in [|0; -2; 3; -3; -1|] and s = -1 downto 0
+  for m in [|0; 3; 0; 1; -1|] and x in [||]
   for t = 3 to -3 and u = 1 to 0
-  for m in [|0; 3; 0; 1; -1|] and x in [||]|];;
+  for w in [|0; -2; 3; -3; -1|] and s = -1 downto 0
+  when x < 0
+  when t < 0|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
 
 [(b, s, u, w)
-  for w = b to -3 and u = -3 downto 1 and b in [1; 0]
-  for u in [] and s in [2; 2; -2; 1; 2] and b in []];;
+  for u in [] and s in [2; 2; -2; 1; 2] and b in []
+  for w = b to -3 and u = -3 downto 1 and b in [1; 0]];;
 [%%expect{|
 Line 3, characters 6-7:
-3 |   for u in [] and s in [2; 2; -2; 1; 2] and b in []];;
+3 | for u in [] and s in [2; 2; -2; 1; 2] and b in []];;
           ^
 Warning 26 [unused-var]: unused variable u.
 - : (int * int * int * int) list = []
 |}];;
 
 [|(b, s, u, w)
-  for w = b to -3 and u = -3 downto 1 and b in [|1; 0|]
-  for u in [||] and s in [|2; 2; -2; 1; 2|] and b in [||]|];;
+  for u in [||] and s in [|2; 2; -2; 1; 2|] and b in [||]
+  for w = b to -3 and u = -3 downto 1 and b in [|1; 0|]|];;
 [%%expect{|
 Line 3, characters 6-7:
-3 |   for u in [||] and s in [|2; 2; -2; 1; 2|] and b in [||]|];;
+3 | for u in [||] and s in [|2; 2; -2; 1; 2|] and b in [||]|];;
           ^
 Warning 26 [unused-var]: unused variable u.
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(b, l, m, n, s, x)
-  for _ = 2 downto 1 and n in [-1; -3; -2]
-  for l in [-2; -3; -2]
-  for n = -3 downto 0 and s in [1; -2; -2; -3; -3; -1]
+  for x in [2] and m in [2; -3; 2; -1]
   for b in [3; 0; -3; 3; -1; -1; 1]
-  for x in [2] and m in [2; -3; 2; -1]];;
+  for n = -3 downto 0 and s in [1; -2; -2; -3; -3; -1]
+  for l in [-2; -3; -2]
+  for _ = 2 downto 1 and n in [-1; -3; -2]];;
 [%%expect{|
 Lines 1-6, characters 0-39:
 1 | [(b, l, m, n, s, x)
-2 |   for _ = 2 downto 1 and n in [-1; -3; -2]
-3 |   for l in [-2; -3; -2]
-4 |   for n = -3 downto 0 and s in [1; -2; -2; -3; -3; -1]
-5 |   for b in [3; 0; -3; 3; -1; -1; 1]
-6 |   for x in [2] and m in [2; -3; 2; -1]]..
-Warning 26 [unused-var]: unused variable n.
+2 |
 - : (int * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable n. for x in [2] and m in [2; -3; 2; -1]]..
+6 | for b in [3; 0; -3; 3; -1; -1; 1]
+5 | for n = -3 downto 0 and s in [1; -2; -2; -3; -3; -1]
+4 | for l in [-2; -3; -2]
+3 | for _ = 2 downto 1 and n in [-1; -3; -2]
 |}];;
 
 [|(b, l, m, n, s, x)
-  for _ = 2 downto 1 and n in [|-1; -3; -2|]
-  for l in [|-2; -3; -2|]
-  for n = -3 downto 0 and s in [|1; -2; -2; -3; -3; -1|]
+  for x in [|2|] and m in [|2; -3; 2; -1|]
   for b in [|3; 0; -3; 3; -1; -1; 1|]
-  for x in [|2|] and m in [|2; -3; 2; -1|]|];;
+  for n = -3 downto 0 and s in [|1; -2; -2; -3; -3; -1|]
+  for l in [|-2; -3; -2|]
+  for _ = 2 downto 1 and n in [|-1; -3; -2|]|];;
 [%%expect{|
 Lines 1-6, characters 0-44:
 1 | [|(b, l, m, n, s, x)
-2 |   for _ = 2 downto 1 and n in [|-1; -3; -2|]
-3 |   for l in [|-2; -3; -2|]
-4 |   for n = -3 downto 0 and s in [|1; -2; -2; -3; -3; -1|]
-5 |   for b in [|3; 0; -3; 3; -1; -1; 1|]
-6 |   for x in [|2|] and m in [|2; -3; 2; -1|]|]..
-Warning 26 [unused-var]: unused variable n.
+2 |
 - : (int * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable n. for x in [|2|] and m in [|2; -3; 2; -1|]|]..
+6 | for b in [|3; 0; -3; 3; -1; -1; 1|]
+5 | for n = -3 downto 0 and s in [|1; -2; -2; -3; -3; -1|]
+4 | for l in [|-2; -3; -2|]
+3 | for _ = 2 downto 1 and n in [|-1; -3; -2|]
 |}];;
 
 [(d, n, w, z)
-  when abs n mod 2 = 1
-  for d = -2 downto -2 and z = 2 to 3
-  when n <> 0
+  for w = -1 downto -1 and n = -3 to 2
   when abs w mod 2 = 0
-  for w = -1 downto -1 and n = -3 to 2];;
+  when n <> 0
+  for d = -2 downto -2 and z = 2 to 3
+  when abs n mod 2 = 1];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(d, n, w, z)
-  when abs n mod 2 = 1
-  for d = -2 downto -2 and z = 2 to 3
-  when n <> 0
+  for w = -1 downto -1 and n = -3 to 2
   when abs w mod 2 = 0
-  for w = -1 downto -1 and n = -3 to 2|];;
+  when n <> 0
+  for d = -2 downto -2 and z = 2 to 3
+  when abs n mod 2 = 1|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(b, l, m, q)
-  when m > 0
-  for l in [1; 3; m; -3] and b in []
+  for l = -2 downto 3
   for m = -2 downto l and q in [-2; 3; -2; 1; 2; 3] and _ in [-3; -1]
-  for l = -2 downto 3];;
+  for l in [1; 3; m; -3] and b in []
+  when m > 0];;
 [%%expect{|
 - : ('a * int * int * int) list = []
 |}];;
 
 [|(b, l, m, q)
-  when m > 0
-  for l in [|1; 3; m; -3|] and b in [||]
+  for l = -2 downto 3
   for m = -2 downto l and q in [|-2; 3; -2; 1; 2; 3|] and _ in [|-3; -1|]
-  for l = -2 downto 3|];;
+  for l in [|1; 3; m; -3|] and b in [||]
+  when m > 0|];;
 [%%expect{|
 - : ('_weak240 * int * int * int) array = [||]
 |}];;
 
 [(d, i, l, s, t, u, x)
-  for t in [1; -1] and s = 2 to -1
-  for x = -3 to 2 and t = x downto 3
-  for u = 3 to 1 and d = -1 to -1
+  for x in [-2; 0; -1; 1; -2; 1; 2] and l in [-3; 3; 2; 1; 1; 3]
   for i in []
-  for x in [-2; 0; -1; 1; -2; 1; 2] and l in [-3; 3; 2; 1; 1; 3]];;
+  for u = 3 to 1 and d = -1 to -1
+  for x = -3 to 2 and t = x downto 3
+  for t in [1; -1] and s = 2 to -1];;
 [%%expect{|
 Lines 1-6, characters 0-65:
 1 | [(d, i, l, s, t, u, x)
-2 |   for t in [1; -1] and s = 2 to -1
-3 |   for x = -3 to 2 and t = x downto 3
-4 |   for u = 3 to 1 and d = -1 to -1
-5 |   for i in []
-6 |   for x in [-2; 0; -1; 1; -2; 1; 2] and l in [-3; 3; 2; 1; 1; 3]]..
-Warning 26 [unused-var]: unused variable t.
+2 |
 - : (int * 'a * int * int * int * int * int) list = []
+Warning 26 [unused-var]: unused variable t. for x in [-2; 0; -1; 1; -2; 1; 2] and l in [-3; 3; 2; 1; 1; 3]]..
+6 | for i in []
+5 | for u = 3 to 1 and d = -1 to -1
+4 | for x = -3 to 2 and t = x downto 3
+3 | for t in [1; -1] and s = 2 to -1
 |}];;
 
 [|(d, i, l, s, t, u, x)
-  for t in [|1; -1|] and s = 2 to -1
-  for x = -3 to 2 and t = x downto 3
-  for u = 3 to 1 and d = -1 to -1
+  for x in [|-2; 0; -1; 1; -2; 1; 2|] and l in [|-3; 3; 2; 1; 1; 3|]
   for i in [||]
-  for x in [|-2; 0; -1; 1; -2; 1; 2|] and l in [|-3; 3; 2; 1; 1; 3|]|];;
+  for u = 3 to 1 and d = -1 to -1
+  for x = -3 to 2 and t = x downto 3
+  for t in [|1; -1|] and s = 2 to -1|];;
 [%%expect{|
 Lines 1-6, characters 0-70:
 1 | [|(d, i, l, s, t, u, x)
-2 |   for t in [|1; -1|] and s = 2 to -1
-3 |   for x = -3 to 2 and t = x downto 3
-4 |   for u = 3 to 1 and d = -1 to -1
-5 |   for i in [||]
-6 |   for x in [|-2; 0; -1; 1; -2; 1; 2|] and l in [|-3; 3; 2; 1; 1; 3|]|]..
-Warning 26 [unused-var]: unused variable t.
+2 |
 - : (int * '_weak241 * int * int * int * int * int) array = [||]
+Warning 26 [unused-var]: unused variable t. for x in [|-2; 0; -1; 1; -2; 1; 2|] and l in [|-3; 3; 2; 1; 1; 3|]|]..
+6 | for i in [||]
+5 | for u = 3 to 1 and d = -1 to -1
+4 | for x = -3 to 2 and t = x downto 3
+3 | for t in [|1; -1|] and s = 2 to -1
 |}];;
 
 [(a, h, y)
@@ -19022,12 +19023,12 @@ Warning 26 [unused-var]: unused variable t.
 |}];;
 
 [(a, b, h, k, n, t)
-  for b = 2 to -2 and k in [3] and t = 1 downto 2
+  for a = -3 to 1
+  when abs a mod 2 = 0
   for n = 2 downto -2
   and t in [-2; -1; a; -1; 2; 0; -3]
   and h in [1; 0; a; 3; -2]
-  when abs a mod 2 = 0
-  for a = -3 to 1];;
+  for b = 2 to -2 and k in [3] and t = 1 downto 2];;
 [%%expect{|
 Line 4, characters 6-7:
 4 |   and t in [-2; -1; a; -1; 2; 0; -3]
@@ -19037,12 +19038,12 @@ Warning 26 [unused-var]: unused variable t.
 |}];;
 
 [|(a, b, h, k, n, t)
-  for b = 2 to -2 and k in [|3|] and t = 1 downto 2
+  for a = -3 to 1
+  when abs a mod 2 = 0
   for n = 2 downto -2
   and t in [|-2; -1; a; -1; 2; 0; -3|]
   and h in [|1; 0; a; 3; -2|]
-  when abs a mod 2 = 0
-  for a = -3 to 1|];;
+  for b = 2 to -2 and k in [|3|] and t = 1 downto 2|];;
 [%%expect{|
 Line 4, characters 6-7:
 4 |   and t in [|-2; -1; a; -1; 2; 0; -3|]
@@ -19052,21 +19053,21 @@ Warning 26 [unused-var]: unused variable t.
 |}];;
 
 [(b, e, h, k, l, m, p, w)
-  for l = -2 downto 0 and w in []
-  for k in [0; -1; 0; 3; 3] and e = 0 to 3
-  for p = 3 to -2
+  for b = -2 to 3
   for h = 0 to b and m in [b; 0; -1]
-  for b = -2 to 3];;
+  for p = 3 to -2
+  for k in [0; -1; 0; 3; 3] and e = 0 to 3
+  for l = -2 downto 0 and w in []];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * 'a) list = []
 |}];;
 
 [|(b, e, h, k, l, m, p, w)
-  for l = -2 downto 0 and w in [||]
-  for k in [|0; -1; 0; 3; 3|] and e = 0 to 3
-  for p = 3 to -2
+  for b = -2 to 3
   for h = 0 to b and m in [|b; 0; -1|]
-  for b = -2 to 3|];;
+  for p = 3 to -2
+  for k in [|0; -1; 0; 3; 3|] and e = 0 to 3
+  for l = -2 downto 0 and w in [||]|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * '_weak242) array = [||]
 |}];;
@@ -19082,96 +19083,96 @@ Warning 26 [unused-var]: unused variable t.
 |}];;
 
 [(j, q, s, u)
-  for j = 3 to 3
-  when u < 0
+  for q = -3 to 1 and u = 3 to -1
   for s in [-3]
-  for q = -3 to 1 and u = 3 to -1];;
+  when u < 0
+  for j = 3 to 3];;
 [%%expect{|
 - : (int * int * int * int) list = []
 |}];;
 
 [|(j, q, s, u)
-  for j = 3 to 3
-  when u < 0
+  for q = -3 to 1 and u = 3 to -1
   for s in [|-3|]
-  for q = -3 to 1 and u = 3 to -1|];;
+  when u < 0
+  for j = 3 to 3|];;
 [%%expect{|
 - : (int * int * int * int) array = [||]
 |}];;
 
 [(a, b, f, l, s, x, y)
-  for x in [3; -1; 3; -2; 2; -1; -3]
-  for s in [-1; -2; -1; -1]
+  for l in [] and _ in [0; 0] and b in [1; 0; 2; -1; 2; -2]
   for a = -2 to 0 and y in [-3; -1; -2] and f in [1; l; -3; -2; 2; 1]
-  for l in [] and _ in [0; 0] and b in [1; 0; 2; -1; 2; -2]];;
+  for s in [-1; -2; -1; -1]
+  for x in [3; -1; 3; -2; 2; -1; -3]];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, b, f, l, s, x, y)
-  for x in [|3; -1; 3; -2; 2; -1; -3|]
-  for s in [|-1; -2; -1; -1|]
+  for l in [||] and _ in [|0; 0|] and b in [|1; 0; 2; -1; 2; -2|]
   for a = -2 to 0 and y in [|-3; -1; -2|] and f in [|1; l; -3; -2; 2; 1|]
-  for l in [||] and _ in [|0; 0|] and b in [|1; 0; 2; -1; 2; -2|]|];;
+  for s in [|-1; -2; -1; -1|]
+  for x in [|3; -1; 3; -2; 2; -1; -3|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(a, b, c, l, p, u)
-  for c in [] and a = 0 to b
-  for p = -1 to 2 and l in [1; 0; 2] and b = -1 downto 0 and u in []];;
+  for p = -1 to 2 and l in [1; 0; 2] and b = -1 downto 0 and u in []
+  for c in [] and a = 0 to b];;
 [%%expect{|
 - : (int * int * 'a * int * int * 'b) list = []
 |}];;
 
 [|(a, b, c, l, p, u)
-  for c in [||] and a = 0 to b
-  for p = -1 to 2 and l in [|1; 0; 2|] and b = -1 downto 0 and u in [||]|];;
+  for p = -1 to 2 and l in [|1; 0; 2|] and b = -1 downto 0 and u in [||]
+  for c in [||] and a = 0 to b|];;
 [%%expect{|
 - : (int * int * '_weak243 * int * int * '_weak244) array = [||]
 |}];;
 
 [(f, n, p)
-  when f > 0
-  when abs f mod 2 = 0
+  for f in []
   for p = -2 downto f and n in [-3; -3; 2; 3; 0; 3; 0]
-  for f in []];;
+  when abs f mod 2 = 0
+  when f > 0];;
 [%%expect{|
 - : (int * int * int) list = []
 |}];;
 
 [|(f, n, p)
-  when f > 0
-  when abs f mod 2 = 0
+  for f in [||]
   for p = -2 downto f and n in [|-3; -3; 2; 3; 0; 3; 0|]
-  for f in [||]|];;
+  when abs f mod 2 = 0
+  when f > 0|];;
 [%%expect{|
 - : (int * int * int) array = [||]
 |}];;
 
 [(b, c, j, m, q)
-  for j in [] and c = 0 to 0
-  for b = 3 to m
-  when abs q mod 2 = 1
+  for q in [3; -3; 3; 1; 1] and j in [0; -2; 2; -2]
   for m = -1 to 1
-  for q in [3; -3; 3; 1; 1] and j in [0; -2; 2; -2]];;
+  when abs q mod 2 = 1
+  for b = 3 to m
+  for j in [] and c = 0 to 0];;
 [%%expect{|
 Line 6, characters 32-33:
-6 |   for q in [3; -3; 3; 1; 1] and j in [0; -2; 2; -2]];;
+6 | for q in [3; -3; 3; 1; 1] and j in [0; -2; 2; -2]];;
                                     ^
 Warning 26 [unused-var]: unused variable j.
 - : (int * int * 'a * int * int) list = []
 |}];;
 
 [|(b, c, j, m, q)
-  for j in [||] and c = 0 to 0
-  for b = 3 to m
-  when abs q mod 2 = 1
+  for q in [|3; -3; 3; 1; 1|] and j in [|0; -2; 2; -2|]
   for m = -1 to 1
-  for q in [|3; -3; 3; 1; 1|] and j in [|0; -2; 2; -2|]|];;
+  when abs q mod 2 = 1
+  for b = 3 to m
+  for j in [||] and c = 0 to 0|];;
 [%%expect{|
 Line 6, characters 34-35:
-6 |   for q in [|3; -3; 3; 1; 1|] and j in [|0; -2; 2; -2|]|];;
+6 | for q in [|3; -3; 3; 1; 1|] and j in [|0; -2; 2; -2|]|];;
                                       ^
 Warning 26 [unused-var]: unused variable j.
 - : (int * int * '_weak245 * int * int) array = [||]
@@ -19188,35 +19189,35 @@ Warning 26 [unused-var]: unused variable j.
 |}];;
 
 [(a, h, k, o, p, r, u, w)
-  for h in [] and k in [-1; 0] and u in [] and a = 1 to o and r in [1]
-  for p = 2 to 1 and w = 1 to -2 and o = -3 to -2];;
+  for p = 2 to 1 and w = 1 to -2 and o = -3 to -2
+  for h in [] and k in [-1; 0] and u in [] and a = 1 to o and r in [1]];;
 [%%expect{|
 - : (int * 'a * int * int * int * int * 'b * int) list = []
 |}];;
 
 [|(a, h, k, o, p, r, u, w)
-  for h in [||] and k in [|-1; 0|] and u in [||] and a = 1 to o and r in [|1|]
-  for p = 2 to 1 and w = 1 to -2 and o = -3 to -2|];;
+  for p = 2 to 1 and w = 1 to -2 and o = -3 to -2
+  for h in [||] and k in [|-1; 0|] and u in [||] and a = 1 to o and r in [|1|]|];;
 [%%expect{|
 - : (int * '_weak246 * int * int * int * int * '_weak247 * int) array = [||]
 |}];;
 
 [(a, k, m, q, v)
-  when a <> 0
-  for a = 2 downto 0 and m in [0]
-  when v <> 0
+  for k = 2 to 3 and _ in []
   for v = 3 downto -2 and q in [1; 1]
-  for k = 2 to 3 and _ in []];;
+  when v <> 0
+  for a = 2 downto 0 and m in [0]
+  when a <> 0];;
 [%%expect{|
 - : (int * int * int * int * int) list = []
 |}];;
 
 [|(a, k, m, q, v)
-  when a <> 0
-  for a = 2 downto 0 and m in [|0|]
-  when v <> 0
+  for k = 2 to 3 and _ in [||]
   for v = 3 downto -2 and q in [|1; 1|]
-  for k = 2 to 3 and _ in [||]|];;
+  when v <> 0
+  for a = 2 downto 0 and m in [|0|]
+  when a <> 0|];;
 [%%expect{|
 - : (int * int * int * int * int) array = [||]
 |}];;
@@ -19239,69 +19240,69 @@ Warning 26 [unused-var]: unused variable j.
 |}];;
 
 [(a, f, g, j, m, p, r, t, w, y)
-  for r in [2; 1] and g = 1 downto 0 and f = f to -1 and p in [-3; -2; 2]
+  for m in [3] and t in [2; -2; 3; -1] and a in [-1]
   for j = 1 to 1 and w = t downto 2 and f = 3 downto 2 and y = 1 to 2
-  for m in [3] and t in [2; -2; 3; -1] and a in [-1]];;
+  for r in [2; 1] and g = 1 downto 0 and f = f to -1 and p in [-3; -2; 2]];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int * int * int) list = []
 |}];;
 
 [|(a, f, g, j, m, p, r, t, w, y)
-  for r in [|2; 1|] and g = 1 downto 0 and f = f to -1 and p in [|-3; -2; 2|]
+  for m in [|3|] and t in [|2; -2; 3; -1|] and a in [|-1|]
   for j = 1 to 1 and w = t downto 2 and f = 3 downto 2 and y = 1 to 2
-  for m in [|3|] and t in [|2; -2; 3; -1|] and a in [|-1|]|];;
+  for r in [|2; 1|] and g = 1 downto 0 and f = f to -1 and p in [|-3; -2; 2|]|];;
 [%%expect{|
 - : (int * int * int * int * int * int * int * int * int * int) array = [||]
 |}];;
 
 [(a, j, r, t, w)
-  for _ in [-2] and w in [] and a in [3; -2]
-  for j in [-3; 0; 3; 0; 0; 0; 0] and t = r to 1
+  for r = -1 downto 1
   when r <> 0
-  for r = -1 downto 1];;
+  for j in [-3; 0; 3; 0; 0; 0; 0] and t = r to 1
+  for _ in [-2] and w in [] and a in [3; -2]];;
 [%%expect{|
 - : (int * int * int * int * 'a) list = []
 |}];;
 
 [|(a, j, r, t, w)
-  for _ in [|-2|] and w in [||] and a in [|3; -2|]
-  for j in [|-3; 0; 3; 0; 0; 0; 0|] and t = r to 1
+  for r = -1 downto 1
   when r <> 0
-  for r = -1 downto 1|];;
+  for j in [|-3; 0; 3; 0; 0; 0; 0|] and t = r to 1
+  for _ in [|-2|] and w in [||] and a in [|3; -2|]|];;
 [%%expect{|
 - : (int * int * int * int * '_weak248) array = [||]
 |}];;
 
 [(h, k, l)
-  for _ in [-2] and l = -3 downto h and k in [-3; 2; -2; 1; 3; -1; h]
+  for h in [0; 1; 1; 3; -1; -1; 1]
   when h < 0
-  for h in [0; 1; 1; 3; -1; -1; 1]];;
+  for _ in [-2] and l = -3 downto h and k in [-3; 2; -2; 1; 3; -1; h]];;
 [%%expect{|
 - : (int * int * int) list = []
 |}];;
 
 [|(h, k, l)
-  for _ in [|-2|] and l = -3 downto h and k in [|-3; 2; -2; 1; 3; -1; h|]
+  for h in [|0; 1; 1; 3; -1; -1; 1|]
   when h < 0
-  for h in [|0; 1; 1; 3; -1; -1; 1|]|];;
+  for _ in [|-2|] and l = -3 downto h and k in [|-3; 2; -2; 1; 3; -1; h|]|];;
 [%%expect{|
 - : (int * int * int) array = [||]
 |}];;
 
 [(c, f, j, s, u, v)
-  for u = 0 to -2
-  for f in [-1; 1; 0] and s = 1 downto 1
+  for c = 3 to -2 and v in [3; 1; -1; -1; 1]
   for j = 3 to 3
-  for c = 3 to -2 and v in [3; 1; -1; -1; 1]];;
+  for f in [-1; 1; 0] and s = 1 downto 1
+  for u = 0 to -2];;
 [%%expect{|
 - : (int * int * int * int * int * int) list = []
 |}];;
 
 [|(c, f, j, s, u, v)
-  for u = 0 to -2
-  for f in [|-1; 1; 0|] and s = 1 downto 1
+  for c = 3 to -2 and v in [|3; 1; -1; -1; 1|]
   for j = 3 to 3
-  for c = 3 to -2 and v in [|3; 1; -1; -1; 1|]|];;
+  for f in [|-1; 1; 0|] and s = 1 downto 1
+  for u = 0 to -2|];;
 [%%expect{|
 - : (int * int * int * int * int * int) array = [||]
 |}];;
@@ -19367,24 +19368,24 @@ Warning 26 [unused-var]: unused variable j.
 |}];;
 
 [(c, g, j, n, v, z)
-  for v in [-2] and c = 2 to -2
+  for n in [] and j in [] and z = -3 to -3
   for g in [0]
-  for n in [] and j in [] and z = -3 to -3];;
+  for v in [-2] and c = 2 to -2];;
 [%%expect{|
 - : (int * int * 'a * 'b * int * int) list = []
 |}];;
 
 [|(c, g, j, n, v, z)
-  for v in [|-2|] and c = 2 to -2
+  for n in [||] and j in [||] and z = -3 to -3
   for g in [|0|]
-  for n in [||] and j in [||] and z = -3 to -3|];;
+  for v in [|-2|] and c = 2 to -2|];;
 [%%expect{|
 - : (int * int * '_weak250 * '_weak251 * int * int) array = [||]
 |}];;
 
 [(h, n, q)
-  for h in [3; -3; -1; 1; -2; -2; -1]
-  for q in [0; -1; 2; 2] and n in [-1; 3]];;
+  for q in [0; -1; 2; 2] and n in [-1; 3]
+  for h in [3; -3; -1; 1; -2; -2; -1]];;
 [%%expect{|
 - : (int * int * int) list =
 [(3, -1, 0); (-3, -1, 0); (-1, -1, 0); (1, -1, 0); (-2, -1, 0); (-2, -1, 0);
@@ -19400,8 +19401,8 @@ Warning 26 [unused-var]: unused variable j.
 |}];;
 
 [|(h, n, q)
-  for h in [|3; -3; -1; 1; -2; -2; -1|]
-  for q in [|0; -1; 2; 2|] and n in [|-1; 3|]|];;
+  for q in [|0; -1; 2; 2|] and n in [|-1; 3|]
+  for h in [|3; -3; -1; 1; -2; -2; -1|]|];;
 [%%expect{|
 - : (int * int * int) array =
 [|(3, -1, 0); (-3, -1, 0); (-1, -1, 0); (1, -1, 0); (-2, -1, 0); (-2, -1, 0);

@@ -196,10 +196,10 @@ module Comprehensions = struct
     comprehension_expr
       ~loc
       [type_]
-      (List.fold_left
-         (Fun.flip (expr_of_clause ~loc))
-         (comprehension_expr ~loc ["body"] body)
-         clauses)
+      (List.fold_right
+         (expr_of_clause ~loc)
+         clauses
+         (comprehension_expr ~loc ["body"] body))
 
   let expr_of_comprehension_expr ~loc eexpr =
     let ghost_loc = { loc with Location.loc_ghost = true } in

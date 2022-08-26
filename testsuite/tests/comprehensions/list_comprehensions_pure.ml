@@ -40,27 +40,27 @@
 [i,s for i = 0 to 3 for s in ['a'; 'b'; 'c']];;
 [%%expect{|
 - : (int * char) list =
-[(0, 'a'); (1, 'a'); (2, 'a'); (3, 'a'); (0, 'b'); (1, 'b'); (2, 'b');
- (3, 'b'); (0, 'c'); (1, 'c'); (2, 'c'); (3, 'c')]
+[(0, 'a'); (0, 'b'); (0, 'c'); (1, 'a'); (1, 'b'); (1, 'c'); (2, 'a');
+ (2, 'b'); (2, 'c'); (3, 'a'); (3, 'b'); (3, 'c')]
 |}];;
 
-[i,j for j in [i*10; i*100] for i = 1 to 3];;
+[i,j for i = 1 to 3 for j in [i*10; i*100]];;
 [%%expect{|
 - : (int * int) list =
 [(1, 10); (1, 100); (2, 20); (2, 200); (3, 30); (3, 300)]
 |}];;
 
-[x for x in xs
-   for xs in [["this"; "is"; "one"];
+[x for xs in [["this"; "is"; "one"];
               ["way"];
               ["to"; "flatten"];
-              ["a"; "nested"; "list"]]];;
+              ["a"; "nested"; "list"]]
+   for x in xs];;
 [%%expect{|
 - : string list =
 ["this"; "is"; "one"; "way"; "to"; "flatten"; "a"; "nested"; "list"]
 |}];;
 
-[i when i mod 2 = 0 for i = 0 to 10];;
+[i for i = 0 to 10 when i mod 2 = 0];;
 [%%expect{|
 - : int list = [0; 2; 4; 6; 8; 10]
 |}];;
@@ -74,7 +74,7 @@
 (**** More complex behavior ****)
 
 let pythagorean_triples n =
-  [a,b,c when a*a + b*b = c*c for c = b to n for b = a to n for a = 1 to n]
+  [a,b,c for a = 1 to n for b = a to n for c = b to n when a*a + b*b = c*c]
 in
 pythagorean_triples 10;;
 [%%expect{|
@@ -148,12 +148,11 @@ let xs = [2;7;18;28] in
 
 [x for x in ["one"; "two"; "three"] for x in [10; 20; 30]];;
 [%%expect{|
-Line 1, characters 40-41:
+Line 1, characters 7-8:
 1 | [x for x in ["one"; "two"; "three"] for x in [10; 20; 30]];;
-                                            ^
+           ^
 Warning 26 [unused-var]: unused variable x.
-- : string list =
-["one"; "two"; "three"; "one"; "two"; "three"; "one"; "two"; "three"]
+- : int list = [10; 20; 30; 10; 20; 30; 10; 20; 30]
 |}];;
 
 (******************************************************************************)
@@ -179,11 +178,11 @@ Error: The variable a is bound several times in this comprehension's for-and bin
 (* Python: {v
      [a for a in [0] for a in [1]] == [1]
    v} *)
-[a for a in [1] for a in [0]];;
+[a for a in [0] for a in [1]];;
 [%%expect{|
-Line 1, characters 20-21:
-1 | [a for a in [1] for a in [0]];;
-                        ^
+Line 1, characters 7-8:
+1 | [a for a in [0] for a in [1]];;
+           ^
 Warning 26 [unused-var]: unused variable a.
 - : int list = [1]
 |}];;
@@ -196,7 +195,7 @@ Warning 26 [unused-var]: unused variable a.
         for b in range(0, -2, -1)]
      == [(0, 0), (0, -1), (-1, 0), (-1, -1)]
    v} *)
-[(a, b) for a in [b] and b = 0 downto -1 for _ in [0; 0] for b in [0]];;
+[(a, b) for b in [0] for _ in [0; 0] for a in [b] and b = 0 downto -1];;
 [%%expect{|
 - : (int * int) list = [(0, 0); (0, -1); (0, 0); (0, -1)]
 |}];;
@@ -204,7 +203,7 @@ Warning 26 [unused-var]: unused variable a.
 (* Python: {v
      [(a, b) for b in [1] for b in [0] for a in []b]] == [(0, 0)
    v} *)
-[(a, b) for b in [0] and a in [b] for b in [1]];;
+[(a, b) for b in [1] for b in [0] and a in [b]];;
 [%%expect{|
 - : (int * int) list = [(1, 0)]
 |}];;
@@ -212,7 +211,7 @@ Warning 26 [unused-var]: unused variable a.
 (* Python: {v
      [a for a in [1] for _ in [0, 0] if a > 0 for a in [0]] == [0]
    v} *)
-[a for a in [0] when a > 0 for a in [1] and _ in [0; 0]];;
+[a for a in [1] and _ in [0; 0] when a > 0 for a in [0]];;
 [%%expect{|
 - : int list = [0; 0]
 |}];;
@@ -220,7 +219,7 @@ Warning 26 [unused-var]: unused variable a.
 (* Python: {v
      [a for a in [0] for _ in [0, 0] for a in [a, 1]] == [0, 1, 1, 1]
    v} *)
-[a for a in [a; 1] for a in [0] and _ in [0; 0]];;
+[a for a in [0] and _ in [0; 0] for a in [a; 1]];;
 [%%expect{|
 - : int list = [0; 1; 0; 1]
 |}];;

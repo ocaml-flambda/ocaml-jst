@@ -1013,9 +1013,8 @@ module Comprehension = struct
 
     let comprehension o {env; clauses} =
       let clauses = match o with
-        | OCaml_list | OCaml_array -> List.rev clauses
-        | Haskell                  -> clauses
-        | Python                   -> Make_all_variables_unique.clauses clauses
+        | OCaml_list | OCaml_array | Haskell -> clauses
+        | Python -> Make_all_variables_unique.clauses clauses
       in
       let body    = tuple (Environment.variables env) in
       let clauses = comprehension_clauses o (List.map (clause o) clauses) in
