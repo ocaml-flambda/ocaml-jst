@@ -716,5 +716,5 @@ let comprehension
              array_sub ~loc (Lvar array) ~offset:(int 0) ~length:index_var))
   in
   (* Wrap the core of the comprehension in any outside context necessary; this
-     helps handle the fixed-size array optimization *)
+     handles the fixed-size array optimization when it applies *)
   outside_context comprehension
