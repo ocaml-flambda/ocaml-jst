@@ -1,13 +1,14 @@
-reprint error:
-[(j,i) for j = 0 to i when (i >= 4) && (j >= 4) for i = 0 to 9 when (i mod 2 = 0)]
-  became
-[(j, i)
-  for j = 0 to i when (i >= 4) && (j >= 4) for i = 0 to 9 when (i mod 2) = 0]
+**** Test that we print list comprehensions correctly ****
 
------
+Parsing and printing round-tripped successfully!
 
-extensions found:
-  low
-  high
-  cond
-  expr
+[(i, j)
+  for i = 0 to 9 when (i mod 2) = 0 for j = 0 to i when (i > 4) && (j > 4)]
+
+**** Test that compiler-generated extension nodes start with "extension." ****
+
+User [%extension] nodes found:
+  [%low ...]
+  [%high ...]
+  [%cond ...]
+  [%expr ...]
