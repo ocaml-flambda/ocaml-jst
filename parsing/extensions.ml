@@ -151,11 +151,11 @@ module Comprehensions = struct
     | Cexp_array_comprehension of comprehension
         (** [|BODY ...CLAUSES...|] *)
 
+  let extension_name = Clflags.string_of_extension Comprehensions
+
   (* CR aspectorzabusky: new name? *)
   let comprehension_expr ~loc names =
-    extension_expr ~loc ("comprehensions" :: names)
-    (* CR aspectorzabusky: make sure this is linked to the name of the
-       [Clflags.extension] *)
+    extension_expr ~loc (extension_name :: names)
 
   let expr_of_iterator ~loc = function
     | Range { start; stop; direction } ->
@@ -212,7 +212,8 @@ module Comprehensions = struct
 
   let expand_comprehension_extension_expr expr =
     match expand_extension_expr expr with
-    | Some ("comprehensions" :: name, expr) ->
+    | Some (comprehensions :: name, expr)
+      when String.equal comprehensions extension_name ->
         name, expr
     | Some (name, _) ->
         failwith ("Tried to desugar the non-comprehension extension point \
