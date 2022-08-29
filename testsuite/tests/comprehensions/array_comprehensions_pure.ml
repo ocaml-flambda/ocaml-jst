@@ -249,7 +249,7 @@ Error: This expression has type int but an expression was expected of type
 
 (* No mixing arrays and lists *)
 
-(* CR aspectorzabusky: Why are these different based on principality? *)
+(* It's unclear why these are different based on principality *)
 [|x for x in []|];;
 [%%expect{|
 Line 1, characters 13-15:
@@ -261,6 +261,19 @@ Error: This expression has type 'a list
 Line 1, characters 13-15:
 1 | [|x for x in []|];;
                  ^^
+Error: This expression has type 'a list
+       but an expression was expected of type 'b array
+       because it is in a for-in iterator in an array comprehension
+|}];;
+
+(* As above, but don't trigger type-based disambiguation; this affects the error
+   message for array comprehensions, but is invisible for list comprehensions *)
+let empty = [] in
+[|x for x in empty|];;
+[%%expect{|
+Line 2, characters 13-18:
+2 | [|x for x in empty|];;
+                 ^^^^^
 Error: This expression has type 'a list
        but an expression was expected of type 'b array
        because it is in a for-in iterator in an array comprehension

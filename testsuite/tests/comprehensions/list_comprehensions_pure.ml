@@ -258,6 +258,19 @@ Error: This expression has type 'a array
        because it is in a for-in iterator in a list comprehension
 |}];;
 
+(* As above, but don't trigger type-based disambiguation; this is invisible for
+   list comprehensions but affects the error message for array comprehensions *)
+let empty = [||] in
+[x for x in empty];;
+[%%expect{|
+Line 2, characters 12-17:
+2 | [x for x in empty];;
+                ^^^^^
+Error: This expression has type 'a array
+       but an expression was expected of type 'b list
+       because it is in a for-in iterator in a list comprehension
+|}];;
+
 Array.length [i for i = 0 to 3];;
 [%%expect{|
 Line 1, characters 13-31:
