@@ -14,13 +14,13 @@ val dup : unique_ 'a -> 'a * 'a = <fun>
 
 let dup x = unique_ (x, x)
 [%%expect{|
-Line 1, characters 24-25:
-1 | let dup x = unique_ (x, x)
-                            ^
-Error: x is used uniquely so cannot be used twice. It was seen previously at:
 Line 1, characters 21-22:
 1 | let dup x = unique_ (x, x)
                          ^
+Error: x is used uniquely here so cannot be used twice. It will be used again at:
+Line 1, characters 24-25:
+1 | let dup x = unique_ (x, x)
+                            ^
 
 |}]
 
@@ -45,19 +45,19 @@ val branching : unique_ float -> float = <fun>
 
 let sequence (unique_ x : float) = unique_ let y = x in (x, y)
 [%%expect{|
-Line 1, characters 60-61:
-1 | let sequence (unique_ x : float) = unique_ let y = x in (x, y)
-                                                                ^
-Error: x is used uniquely so cannot be used twice. It was seen previously at:
 Line 1, characters 57-58:
 1 | let sequence (unique_ x : float) = unique_ let y = x in (x, y)
                                                              ^
-
+Error: x is used uniquely here so cannot be used twice. It will be used again at:
+Line 1, characters 60-61:
+1 | let sequence (unique_ x : float) = unique_ let y = x in (x, y)
+                                                                ^
+  x was used because y is an alias of x.
 |}]
 
-let children_unique (unique_ xs : float list) = unique_ match xs with
+let children_unique (unique_ xs : float list) = match xs with
   | [] -> (0., [])
-  | x :: xx -> (x, xx)
+  | x :: xx -> unique_ (x, xx)
 [%%expect{|
 val children_unique : unique_ float list -> float * float list = <fun>
 |}]
@@ -80,14 +80,14 @@ let dup_child (unique_ fs : 'a list) = unique_ match fs with
   | [] -> ([], [])
   | x :: xs as gs -> (gs, xs)
 [%%expect{|
-Line 3, characters 26-28:
-3 |   | x :: xs as gs -> (gs, xs)
-                              ^^
-Error: xs is used uniquely so cannot be used twice. It was seen previously at:
 Line 3, characters 22-24:
 3 |   | x :: xs as gs -> (gs, xs)
                           ^^
-   It was seen previously because gs is a parent or alias of xs.
+Error: gs is used uniquely here so cannot be used twice. It will be used again at:
+Line 3, characters 26-28:
+3 |   | x :: xs as gs -> (gs, xs)
+                              ^^
+  gs was used because xs is a child of gs.
 |}]
 
 let unique_id : 'a. unique_ 'a -> unique_ 'a = fun x -> x
@@ -189,22 +189,17 @@ let inf4 (b : bool) (y : float) (unique_ x : float) =
 Line 2, characters 58-59:
 2 |   let _ = shared_id y in let unique_ z = if b then x else y in z
                                                               ^
-Error: y is used uniquely so cannot be used twice. It was seen previously at:
-Line 2, characters 20-21:
-2 |   let _ = shared_id y in let unique_ z = if b then x else y in z
-                        ^
-
+Error: Found a shared value where a unique value was expected
 |}]
 
 
 let inf5 (b : bool) (y : float) (unique_ x : float) =
   let z = if b then x else y in unique_ z
 [%%expect{|
-Line 2, characters 27-28:
+Line 2, characters 40-41:
 2 |   let z = if b then x else y in unique_ z
-                               ^
-Error: The identifier y was inferred to be unique and thus can not be
-       used in a context where unique use is not guaranteed.
+                                            ^
+Error: Found a shared value where a unique value was expected
 |}]
 
 let inf6 (unique_ x) = let f x = x in higher_order f x
@@ -236,14 +231,14 @@ let record_mode_vars (p : point) =
   let y = (p.x, p.y) in
   (x, y, unique_ p.z)
 [%%expect{|
-Line 3, characters 11-14:
-3 |   let y = (p.x, p.y) in
-               ^^^
-Error: p.x is used uniquely so cannot be used twice. It was seen previously at:
 Line 2, characters 20-23:
 2 |   let x = unique_id p.x in
                         ^^^
-
+Error: p.x is used uniquely here so cannot be used twice. It will be used again at:
+Line 3, characters 11-14:
+3 |   let y = (p.x, p.y) in
+               ^^^
+  p.x was used because y refers to a tuple containing it.
 |}]
 
 let record_mode_vars (p : point) =
@@ -254,11 +249,11 @@ let record_mode_vars (p : point) =
 Line 3, characters 20-23:
 3 |   let x = unique_id p.x in
                         ^^^
-Error: p.x is used uniquely so cannot be used twice. It was seen previously at:
-Line 2, characters 10-20:
+Error: p.x is used uniquely here so cannot be used twice. It was used previously at:
+Line 2, characters 11-14:
 2 |   let y = (p.x, p.y) in
-              ^^^^^^^^^^
-   It was seen previously because y refers to a tuple containing p.x.
+               ^^^
+  p.x was used because y refers to a tuple containing it.
 |}]
 
 
@@ -299,14 +294,14 @@ let or_patterns3 p =
   match p, x, y with
   | true, z, _ | false, _, z -> let _ = unique_id z in unique_id y
 [%%expect{|
-Line 4, characters 65-66:
-4 |   | true, z, _ | false, _, z -> let _ = unique_id z in unique_id y
-                                                                     ^
-Error: y is used uniquely so cannot be used twice. It was seen previously at:
 Line 4, characters 50-51:
 4 |   | true, z, _ | false, _, z -> let _ = unique_id z in unique_id y
                                                       ^
-   It was seen previously because z is a parent or alias of y.
+Error: z is used uniquely here so cannot be used twice. It will be used again at:
+Line 4, characters 65-66:
+4 |   | true, z, _ | false, _, z -> let _ = unique_id z in unique_id y
+                                                                     ^
+  z was used because y is an alias of z.
 |}]
 
 let or_patterns4 p =
@@ -322,7 +317,14 @@ let or_patterns5 p =
   match p, x, y with
   | true, z, _ | false, _, z -> let _ = unique_id z in unique_id x
 [%%expect{|
-val or_patterns5 : bool -> int = <fun>
+Line 4, characters 50-51:
+4 |   | true, z, _ | false, _, z -> let _ = unique_id z in unique_id x
+                                                      ^
+Error: z is used uniquely here so cannot be used twice. It will be used again at:
+Line 4, characters 65-66:
+4 |   | true, z, _ | false, _, z -> let _ = unique_id z in unique_id x
+                                                                     ^
+  z was used because x is an alias of z.
 |}]
 
 let mark_top_shared =
@@ -333,14 +335,11 @@ let mark_top_shared =
       unique_ xx
   | [] -> []
 [%%expect{|
-Line 6, characters 6-16:
-6 |       unique_ xx
-          ^^^^^^^^^^
-Error: xx is used uniquely so cannot be used twice. It was seen previously at:
 Line 5, characters 24-26:
 5 |       let _ = unique_id xs in
                             ^^
-   It was seen previously because xs is a parent or alias of xx.
+Error: xs is used uniquely here so cannot be used twice. It will be used again at:
+  xs was used because xx is a child of xs.
 |}]
 
 let mark_top_shared =
@@ -350,13 +349,13 @@ let mark_top_shared =
   | x :: xx -> unique_ xx
   | [] -> []
 [%%expect{|
-Line 4, characters 8-10:
-4 |   match xs with
-            ^^
-Error: xs is used uniquely so cannot be used twice. It was seen previously at:
 Line 3, characters 20-22:
 3 |   let _ = unique_id xs in
                         ^^
+Error: xs is used uniquely here so cannot be used twice. It will be used again at:
+Line 4, characters 8-10:
+4 |   match xs with
+            ^^
 
 |}]
 
@@ -374,6 +373,120 @@ let mark_shared_in_one_branch b x =
 [%%expect{|
 val mark_shared_in_one_branch : bool -> unique_ float -> float * float =
   <fun>
+|}]
+
+let expr_tuple_match f x y =
+  match f x, y with
+  | (a, b), c -> unique_ (a, c)
+[%%expect{|
+val expr_tuple_match : ('a -> unique_ 'b * 'c) -> 'a -> unique_ 'd -> 'b * 'd =
+  <fun>
+|}]
+
+let expr_tuple_match f x y =
+  match f x, y with
+  | (a, b) as t, c -> let d = unique_id t in unique_ (c, d)
+[%%expect{|
+val expr_tuple_match :
+  ('a -> unique_ 'b * 'c) -> 'a -> unique_ 'd -> 'd * ('b * 'c) = <fun>
+|}]
+
+let expr_tuple_match f x y =
+  match f x, y with
+  | (a, b) as t, c -> let d = unique_id t in unique_ (a, d)
+[%%expect{|
+Line 3, characters 40-41:
+3 |   | (a, b) as t, c -> let d = unique_id t in unique_ (a, d)
+                                            ^
+Error: t is used uniquely here so cannot be used twice. It will be used again at:
+Line 3, characters 54-55:
+3 |   | (a, b) as t, c -> let d = unique_id t in unique_ (a, d)
+                                                          ^
+  t was used because a is a child of t.
+|}]
+
+let tuple_parent_marked a b =
+  match (a, b) with
+  | (true, b) -> unique_id b
+  | (false, b) as t -> shared_id b
+[%%expect{|
+Uncaught exception: Uniqueness_analysis.Error(_)
+
+|}]
+
+let tuple_parent_marked a b =
+  match (a, b) with
+  | (false, b) as t -> shared_id b
+  | (true, b) -> unique_id b
+[%%expect{|
+Uncaught exception: Uniqueness_analysis.Error(_)
+
+|}]
+
+(* CR-someday anlorenzen: This one shouldn't fail in a more clever analysis. *)
+let or_patterns6 f x y =
+  match f x, y with
+  | a, (_, b) | b, (_, a) -> (unique_id a, unique_id b)
+[%%expect{|
+Line 3, characters 16-25:
+3 |   | a, (_, b) | b, (_, a) -> (unique_id a, unique_id b)
+                    ^^^^^^^^^
+Warning 12 [redundant-subpat]: this sub-pattern is unused.
+Line 3, characters 40-41:
+3 |   | a, (_, b) | b, (_, a) -> (unique_id a, unique_id b)
+                                            ^
+Error: a is used uniquely here so cannot be used twice. It will be used again at:
+Line 3, characters 53-54:
+3 |   | a, (_, b) | b, (_, a) -> (unique_id a, unique_id b)
+                                                         ^
+  a was used because b is an alias of a.
+|}]
+
+type point = { x : float; y : float }
+[%%expect{|
+type point = { x : float; y : float; }
+|}]
+
+let overwrite_point t =
+  unique_ ({t with y = 0.5}, {t with x = 0.5})
+[%%expect{|
+val overwrite_point : unique_ point -> point * point = <fun>
+|}]
+
+let gc_soundness_bug (local_ unique_ p) (local_ f) =
+  local_ { unique_ p with x = f }
+[%%expect{|
+Line 2, characters 19-20:
+2 |   local_ { unique_ p with x = f }
+                       ^
+Error: Found a shared value where a unique value was expected
+|}]
+
+let gc_soundness_nobug (local_ unique_ p) f =
+  local_ { unique_ p with x = f }
+[%%expect{|
+Line 2, characters 19-20:
+2 |   local_ { unique_ p with x = f }
+                       ^
+Error: Found a shared value where a unique value was expected
+|}]
+
+let gc_soundness_nobug (local_ unique_ p) f =
+  { unique_ p with x = f }
+[%%expect{|
+Line 2, characters 12-13:
+2 |   { unique_ p with x = f }
+                ^
+Error: This value escapes its region
+|}]
+
+let gc_soundness_nobug (local_ unique_ p) f =
+  { p with x = f }
+[%%expect{|
+Line 2, characters 4-5:
+2 |   { p with x = f }
+        ^
+Error: This value escapes its region
 |}]
 
 (* ------------------------------------------------------------------------------------ *)

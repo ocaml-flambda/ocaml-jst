@@ -30,12 +30,12 @@ let sequence =
   let t = update r in
   (s, t)
 [%%expect{|
-Line 4, characters 17-18:
-4 |   let t = update r in
-                     ^
-Error: r is used uniquely so cannot be used twice. It was seen previously at:
 Line 3, characters 17-18:
 3 |   let s = update r in
+                     ^
+Error: r is used uniquely here so cannot be used twice. It will be used again at:
+Line 4, characters 17-18:
+4 |   let t = update r in
                      ^
 
 |}]
@@ -60,6 +60,11 @@ let curry : 'a. unique_ box -> (unique_ box -> unique_ box) = fun b1 b2 -> b1
 Line 1, characters 75-77:
 1 | let curry : 'a. unique_ box -> (unique_ box -> unique_ box) = fun b1 b2 -> b1
                                                                                ^^
-Error: The identifier b1 was inferred to be unique and thus can not be
-       used in a context where unique use is not guaranteed.
+Error: Found a shared value where a unique value was expected
+|}, Principal{|
+Line 1, characters 69-77:
+1 | let curry : 'a. unique_ box -> (unique_ box -> unique_ box) = fun b1 b2 -> b1
+                                                                         ^^^^^^^^
+Error: This expression has type unique_ 'a -> box
+       but an expression was expected of type unique_ box -> unique_ box
 |}]

@@ -221,7 +221,8 @@ type escaping_context =
   | Partial_application
 
 type value_lock =
-  | Lock of { mode : Mode.Value.t; escaping_context : escaping_context option }
+  | Locality_lock of { mode : locality mode; escaping_context : escaping_context option }
+  | Uniqueness_lock of { mode : uniqueness mode }
   | Region_lock
 
 module IdTbl =
@@ -2015,8 +2016,12 @@ let enter_cltype ~scope name desc env =
 let enter_module ~scope ?arg s presence mty env =
   enter_module_declaration ~scope ?arg s presence (md mty) env
 
-let add_lock ?escaping_context mode env =
-  let lock = Lock { mode; escaping_context } in
+let add_locality_lock ?escaping_context mode env =
+  let lock = Locality_lock { mode; escaping_context } in
+  { env with values = IdTbl.add_lock lock env.values }
+
+let add_uniqueness_lock mode env =
+  let lock = Uniqueness_lock { mode } in
   { env with values = IdTbl.add_lock lock env.values }
 
 let add_region_lock env =
@@ -2443,13 +2448,15 @@ let lock_mode ~errors ~loc env id vmode locks =
     (fun vmode lock ->
       match lock with
       | Region_lock -> Mode.Value.local_to_regional vmode
-      | Lock {mode; escaping_context} ->
-          match Mode.Value.submode vmode mode with
+      | Locality_lock {mode; escaping_context} -> begin
+          match Mode.Value.submode vmode (Mode.Value.of_locality_max mode) with
           | Ok () -> vmode
           | Error _ ->
               may_lookup_error errors loc env
-                (Local_value_used_in_closure (id, escaping_context)))
-    vmode locks
+                (Local_value_used_in_closure (id, escaping_context)) end
+      | Uniqueness_lock {mode} ->
+          Mode.Value.join [Mode.Value.of_uniqueness_min mode; vmode])
+            vmode locks
 
 let lookup_ident_value ~errors ~use ~loc name env =
   match IdTbl.find_name_and_modes wrap_value ~mark:use name env.values with

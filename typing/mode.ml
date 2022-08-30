@@ -289,6 +289,8 @@ module Locality = struct
   include T
   include Solver(T)
 
+  type t = Types.locality Types.mode
+
   let global = Amode Global
   let local = Amode Local
 
@@ -549,6 +551,18 @@ module Value = struct
     let uniqueness = Uniqueness.min_mode in
     { r_as_l; r_as_g; uniqueness }
 
+  let of_uniqueness_min u =
+    { min_mode with uniqueness = u }
+
+  let of_uniqueness_max u =
+    { max_mode with uniqueness = u }
+
+  let of_locality_min l =
+    { min_mode with r_as_l = l; r_as_g = l }
+
+  let of_locality_max l =
+    { max_mode with r_as_l = l; r_as_g = l }
+
   let to_local t = { t with r_as_l = Locality.local; r_as_g = Locality.local }
   let to_global t = { t with r_as_l = Locality.global; r_as_g = Locality.global }
   let to_unique t = { t with uniqueness = Uniqueness.unique }
@@ -570,6 +584,10 @@ module Value = struct
   let regional_to_global_alloc t = { locality = t.r_as_g; uniqueness = t.uniqueness }
 
   let regional_to_local_alloc t = { locality = t.r_as_l; uniqueness = t.uniqueness }
+
+  let regional_to_global_locality t = t.r_as_g
+
+  let regional_to_local_locality t = t.r_as_l
 
   type error = [`Regionality | `Locality | `Uniqueness]
 

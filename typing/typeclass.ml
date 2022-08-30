@@ -821,8 +821,10 @@ and class_field_aux self_loc cl_num self_type meths vars
 and class_structure cl_num final val_env met_env loc
   { pcstr_self = spat; pcstr_fields = str } =
   (* Environment for substructures *)
-  let val_env = Env.add_lock Mode.Value.global val_env in
-  let met_env = Env.add_lock Mode.Value.global met_env in
+  let val_env = Env.add_locality_lock Mode.Locality.global val_env in
+  let val_env = Env.add_uniqueness_lock Mode.Uniqueness.shared val_env in
+  let met_env = Env.add_locality_lock Mode.Locality.global met_env in
+  let met_env = Env.add_uniqueness_lock Mode.Uniqueness.shared met_env in
   let par_env = met_env in
 
   (* Location of self. Used for locations of self arguments *)
@@ -1070,7 +1072,8 @@ and class_expr_aux cl_num val_env met_env scl =
         Typecore.check_partial val_env pat.pat_type pat.pat_loc
           [{c_lhs = pat; c_guard = None; c_rhs = dummy}]
       in
-      let val_env' = Env.add_lock Mode.Value.global val_env' in
+      let val_env' = Env.add_locality_lock Mode.Locality.global val_env' in
+      let val_env' = Env.add_uniqueness_lock Mode.Uniqueness.shared val_env' in
       Ctype.raise_nongen_level ();
       let cl = class_expr cl_num val_env' met_env scl' in
       Ctype.end_def ();

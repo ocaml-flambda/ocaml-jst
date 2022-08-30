@@ -17,6 +17,30 @@
 
 open Types
 
+module Locality : sig
+  type const = Types.locality = Global | Local
+  val min_const : const
+  val max_const : const
+  val le_const : const -> const -> bool
+  val join_const : const -> const -> const
+  val meet_const : const -> const -> const
+  val print_const : Format.formatter -> const -> unit
+  val of_const : const -> locality mode
+
+  type t = Types.locality Types.mode
+  val global : t
+  val local : t
+  val submode : t -> t -> (unit, unit) result
+  val equate : t -> t -> (unit, unit) result
+  val join : t list -> t
+  val constrain_upper : t -> const
+  val constrain_lower : t -> const
+  val newvar : unit -> t
+  val newvar_below : t -> t * bool
+  val newvar_above : t -> t * bool
+  val print : Format.formatter -> t -> unit
+end
+
 module Uniqueness : sig
   type const = Types.uniqueness = Unique | Shared
   val min_const : const
@@ -130,6 +154,15 @@ module Value : sig
 
   val min_mode : t
 
+  (** Injections from Locality and Uniqueness into [Value_mode.t] *)
+
+  (* The 'of_*_min' functions extend the min_mode,
+     the 'of_*_max' functions extend the max_mode *)
+  val of_uniqueness_min : Types.uniqueness Types.mode -> t
+  val of_uniqueness_max : Types.uniqueness Types.mode -> t
+  val of_locality_min : Types.locality Types.mode -> t
+  val of_locality_max : Types.locality Types.mode -> t
+
   (** Injections from [Alloc.t] into [Value_mode.t] *)
 
   (** [of_alloc] maps [Global] to [Global] and [Local] to [Local] *)
@@ -193,6 +226,12 @@ module Value : sig
 
   (** Maps [Regional] to [Local] and leaves the others unchanged. *)
   val regional_to_local_alloc : t -> Alloc.t
+
+  (** Maps [Regional] to [Global] *)
+  val regional_to_global_locality : t -> Types.locality Types.mode
+
+  (** Maps [Regional] to [Local] *)
+  val regional_to_local_locality : t -> Types.locality Types.mode
 
   type error = [`Regionality | `Locality | `Uniqueness]
 

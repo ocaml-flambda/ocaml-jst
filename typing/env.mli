@@ -364,7 +364,8 @@ val enter_unbound_module : string -> module_unbound_reason -> t -> t
 
 (* Lock the environment *)
 
-val add_lock : ?escaping_context:escaping_context -> Types.value_mode -> t -> t
+val add_locality_lock : ?escaping_context:escaping_context -> locality mode -> t -> t
+val add_uniqueness_lock : uniqueness mode -> t -> t
 val add_region_lock : t -> t
 
 (* Initialize the cache of in-core module interfaces. *)

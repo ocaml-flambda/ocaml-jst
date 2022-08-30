@@ -271,6 +271,12 @@ let mode_unique mode =
     mode = Mode.Value.to_unique mode;
     tuple_modes = [] }
 
+let mode_shared expected_mode =
+  { position = Nontail;
+    escaping_context = None;
+    mode = Mode.Value.to_shared expected_mode.mode;
+    tuple_modes = [] }
+
 let mode_global_shared =
   { position = Nontail;
     escaping_context = None;
@@ -2035,7 +2041,7 @@ and type_pat_aux
         let alloc_mode =
           match label.lbl_global with
           | Global -> Mode.Value.global
-          | Nonlocal -> Mode.Value.local_to_regional alloc_mode.mode
+          | Nonlocal -> Mode.Value.to_shared (Mode.Value.local_to_regional alloc_mode.mode)
           | Unrestricted -> alloc_mode.mode
         in
         let alloc_mode = simple_pat_mode alloc_mode in
@@ -2075,7 +2081,7 @@ and type_pat_aux
         pat_desc = Tpat_array pl;
         pat_loc = loc; pat_extra=[];
         pat_type = instance expected_ty;
-        pat_mode = alloc_mode.mode;
+        pat_mode = Mode.Value.to_shared (alloc_mode.mode);
         pat_attributes = sp.ppat_attributes;
         pat_env = !env })
   | Ppat_or(sp1, sp2) ->
@@ -3921,7 +3927,7 @@ and type_expect_
       let mode =
         match label.lbl_global with
         | Global -> Mode.Value.global (* lbl_global==Global also implies Shared *)
-        | Nonlocal -> Mode.Value.local_to_regional rmode
+        | Nonlocal -> Mode.Value.to_shared (Mode.Value.local_to_regional rmode)
         | Unrestricted -> rmode
       in
       let mode, _ = Mode.Value.newvar_above mode in
@@ -3958,7 +3964,7 @@ and type_expect_
       let to_unify = Predef.type_array ty in
       with_explanation (fun () ->
         unify_exp_types loc env to_unify (generic_instance ty_expected));
-      let argument_mode = mode_subcomponent expected_mode in
+      let argument_mode = mode_shared (mode_subcomponent expected_mode) in
       let argl =
         List.map
           (fun sarg -> type_expect env argument_mode sarg (mk_expected ty))
@@ -4017,12 +4023,14 @@ and type_expect_
         exp_attributes = sexp.pexp_attributes;
         exp_env = env }
   | Pexp_while(scond, sbody) ->
+      let env = Env.add_region_lock env in
+      let env = Env.add_uniqueness_lock Mode.Uniqueness.shared env in
       let cond =
-        type_expect (Env.add_region_lock env) (mode_var ()) scond
+        type_expect env (mode_var ()) scond
           (mk_expected ~explanation:While_loop_conditional Predef.type_bool)
       in
       let body =
-        type_statement ~explanation:While_loop_body (Env.add_region_lock env) sbody
+        type_statement ~explanation:While_loop_body env sbody
       in
       rue {
         exp_desc = Texp_while(cond, body);
@@ -4040,6 +4048,7 @@ and type_expect_
         type_expect env (mode_var ()) shigh
           (mk_expected ~explanation:For_loop_stop_index Predef.type_int)
       in
+      let env = Env.add_uniqueness_lock Mode.Uniqueness.shared env in
       let id, new_env =
         type_for_loop_index ~loc ~env ~param Predef.type_int
       in
@@ -4446,7 +4455,7 @@ and type_expect_
       let to_unify = Predef.type_lazy_t ty in
       with_explanation (fun () ->
         unify_exp_types loc env to_unify (generic_instance ty_expected));
-      let env = Env.add_lock Mode.Value.global env in
+      let env = Env.add_locality_lock Mode.Locality.global env in
       let arg = type_expect env mode_lazy e (mk_expected ty) in
       re {
         exp_desc = Texp_lazy arg;
@@ -4647,7 +4656,8 @@ and type_expect_
       let exp, ands =
         type_andops env slet.pbop_exp sands ty_andops
       in
-      let body_env = Env.add_lock Mode.Value.global env in
+      let body_env = Env.add_locality_lock Mode.Locality.global env in
+      let body_env = Env.add_uniqueness_lock Mode.Uniqueness.shared body_env in
       let scase = Ast_helper.Exp.case spat_params sbody in
       let cases, partial =
         type_cases Value body_env
@@ -4721,7 +4731,7 @@ and type_expect_
                    ; _ }
                   , _)}]) ->
         check_probe_name name name_loc env;
-        let env = Env.add_lock Mode.Value.global env in
+        let env = Env.add_locality_lock Mode.Locality.global env in
         Env.add_probe name;
         let exp = type_expect env mode_global_shared arg
                     (mk_expected Predef.type_unit) in
@@ -4892,15 +4902,16 @@ and type_function ?in_function loc attrs env (expected_mode : expected_mode)
     generalize_structure ty_arg;
     generalize_structure ty_res
   end;
+  let env = Env.add_uniqueness_lock Mode.Uniqueness.shared env in (* TODO: use marr *)
   let env, region_locked =
     match in_function with
     | Some (_, _, region_locked) -> env, region_locked
     | None ->
       let region_locked = not (is_local_returning_function caselist) in
       let env =
-        Env.add_lock
+        Env.add_locality_lock
           ?escaping_context:expected_mode.escaping_context
-          (Mode.Value.regional_to_global expected_mode.mode)
+          (Mode.Value.regional_to_global_locality expected_mode.mode)
           env
       in
       let env =
@@ -6246,7 +6257,7 @@ and type_andops env sarg sands expected_ty =
       ~sexp ~sbody ~comp_typell
       ~container_type:Predef.type_list ~build:(fun body comp_type ->
           Texp_list_comprehension (body, comp_type))
-| Extensions.Eexp_arr_comprehension (sbody, comp_typell) ->
+  | Extensions.Eexp_arr_comprehension (sbody, comp_typell) ->
     type_comprehension ~loc ~env ~ty_expected ~expected_mode
       ~sexp ~sbody ~comp_typell
       ~container_type:Predef.type_array ~build:(fun body comp_type ->
@@ -6263,7 +6274,8 @@ and type_andops env sarg sands expected_ty =
       end_def();
       generalize_structure without_arr_ty;
     end;
-    let env = Env.add_lock Mode.Value.global env in
+    let env = Env.add_locality_lock Mode.Locality.global env in
+    let env = Env.add_uniqueness_lock Mode.Uniqueness.shared env in
     let comp_type, new_env =
       type_comprehension_list ~loc ~env ~container_type ~comp_typell
     in
