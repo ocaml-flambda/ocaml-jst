@@ -339,6 +339,9 @@ Line 5, characters 24-26:
 5 |       let _ = unique_id xs in
                             ^^
 Error: xs is used uniquely here so cannot be used twice. It will be used again at:
+Line 6, characters 14-16:
+6 |       unique_ xx
+                  ^^
   xs was used because xx is a child of xs.
 |}]
 
@@ -407,19 +410,52 @@ Line 3, characters 54-55:
 
 let tuple_parent_marked a b =
   match (a, b) with
-  | (true, b) -> unique_id b
-  | (false, b) as t -> shared_id b
+  | (_, b) as _t -> shared_id b
 [%%expect{|
-Uncaught exception: Uniqueness_analysis.Error(_)
-
+val tuple_parent_marked : 'a -> 'b -> 'b = <fun>
 |}]
 
 let tuple_parent_marked a b =
   match (a, b) with
-  | (false, b) as t -> shared_id b
+  | (true, b') -> unique_id b'
+  | (false, b') as _t -> shared_id b'
+[%%expect{|
+Line 2, characters 12-13:
+2 |   match (a, b) with
+                ^
+Error: b is used uniquely here so cannot be used twice (_t refers to a tuple containing it). It will be used again at:
+Line 3, characters 28-30:
+3 |   | (true, b') -> unique_id b'
+                                ^^
+  b was used because b' is an alias of b.
+|}]
+
+let tuple_parent_marked a b =
+  match (a, b) with
+  | (false, b) as _t -> shared_id b
   | (true, b) -> unique_id b
 [%%expect{|
-Uncaught exception: Uniqueness_analysis.Error(_)
+Line 2, characters 12-13:
+2 |   match (a, b) with
+                ^
+Error: b is used uniquely here so cannot be used twice (_t refers to a tuple containing it). It will be used again at:
+Line 4, characters 27-28:
+4 |   | (true, b) -> unique_id b
+                               ^
+
+|}]
+
+let unique_match_on b =
+  let a = [] in
+  let unique_ t = (a, b) in unique_id a
+[%%expect{|
+Line 3, characters 19-20:
+3 |   let unique_ t = (a, b) in unique_id a
+                       ^
+Error: a is used uniquely here so cannot be used twice (t refers to a tuple containing it). It will be used again at:
+Line 3, characters 38-39:
+3 |   let unique_ t = (a, b) in unique_id a
+                                          ^
 
 |}]
 
@@ -487,6 +523,32 @@ Line 2, characters 4-5:
 2 |   { p with x = f }
         ^
 Error: This value escapes its region
+|}]
+
+(* Principal bug *)
+type box = { x : int }
+
+let curry : unique_ box -> (unique_ box -> unique_ box) = fun b1 b2 -> b1
+[%%expect{|
+type box = { x : int; }
+Line 3, characters 71-73:
+3 | let curry : unique_ box -> (unique_ box -> unique_ box) = fun b1 b2 -> b1
+                                                                           ^^
+Error: Found a shared value where a unique value was expected
+|}]
+
+let curry : 'a. unique_ box -> (unique_ box -> unique_ box) = fun b1 b2 -> b1
+[%%expect{|
+Line 1, characters 75-77:
+1 | let curry : 'a. unique_ box -> (unique_ box -> unique_ box) = fun b1 b2 -> b1
+                                                                               ^^
+Error: Found a shared value where a unique value was expected
+|}, Principal{|
+Line 1, characters 69-77:
+1 | let curry : 'a. unique_ box -> (unique_ box -> unique_ box) = fun b1 b2 -> b1
+                                                                         ^^^^^^^^
+Error: This expression has type unique_ 'a -> box
+       but an expression was expected of type unique_ box -> unique_ box
 |}]
 
 (* ------------------------------------------------------------------------------------ *)

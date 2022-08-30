@@ -587,17 +587,11 @@ let rec check_uniqueness_exp_ exp ienv uenv =
   | Texp_lazy e -> check_uniqueness_exp_ e ienv uenv
   | Texp_object _ -> uenv (* TODO *)
   | Texp_pack _ -> uenv (* TODO *)
-  | Texp_letop {let_;ands;param;body} ->
-      (* CR-soon anlorenzen for lwhite: Is it necessary to mark param as seen?
-         Do we need a mode for it? *)
-      let occ = Occurrence.fresh exp.exp_loc
-          (Seen_as (Ident param)) None in
-      let uenv = mark_seen param occ ienv uenv in
+  | Texp_letop {let_;ands;body} ->
       let uenv = check_uniqueness_binding_op let_ exp ienv uenv in
       let uenv = List.fold_left (fun uenv bop ->
           check_uniqueness_binding_op bop exp ienv uenv) uenv ands in
-      let ps = Ident.Map.find param ienv.aliases in
-      check_uniqueness_cases (OneParent (ps, None)) [body] ienv uenv
+      check_uniqueness_cases (OneParent ([Uqid.fresh "letop"], None)) [body] ienv uenv
   | Texp_unreachable -> uenv
   | Texp_extension_constructor _ -> uenv
   | Texp_open _ -> uenv (* TODO *)
@@ -692,7 +686,7 @@ and check_uniqueness_binding_op bo exp ienv uenv =
   let uenv = match ident_option_from_path bo.bop_op_path with
     | Some id ->
         let occ = Occurrence.fresh exp.exp_loc
-            (Seen_as (Ident id)) None in (* TODO: Does this need a mode var? *)
+            (Seen_as (Ident id)) (Some Mode.Uniqueness.shared) in (* TODO: Does this need a mode var? *)
         mark_seen id occ ienv uenv
     | None -> uenv in
   check_uniqueness_exp_ bo.bop_exp ienv uenv
@@ -726,29 +720,33 @@ let report_error = function
       let temporal = match err.temporal with
         | HereBeforeThere -> "It will be used again at:"
         | ThereBeforeHere -> "It was used previously at:" in
+      let there_explanation id = match err.there_reason with
+        | Seen_as eid' ->
+            let id' = print_err_id eid' in
+            if id = id' then Format.dprintf "" else
+              Format.dprintf
+                "%s was used because %s is %s of %s." id id' (print_relationship err.there_is_of_here) id
+        | Tuple_match_on_aliased_as(eid', alias') ->
+            let id' = print_err_id eid' in
+            if id = id'
+            then Format.dprintf
+                "%s was used because %s refers to a tuple containing it."
+                id (Ident.name alias')
+            else Format.dprintf
+                "%s was used because %s refers to a tuple@ \
+                 containing %s, which is %s of %s."
+                id (Ident.name alias') id' (print_relationship err.there_is_of_here) id in
       match err.here_reason with
       | Seen_as eid ->
         let id = print_err_id eid in
-        let there_explanation = match err.there_reason with
-          | Seen_as eid' ->
-              let id' = print_err_id eid' in
-              if id = id' then Format.dprintf "" else
-                Format.dprintf
-                  "%s was used because %s is %s of %s." id id' (print_relationship err.there_is_of_here) id
-          | Tuple_match_on_aliased_as(eid', alias) ->
-              let id' = print_err_id eid' in
-              if id = id'
-              then Format.dprintf
-                  "%s was used because %s refers to a tuple containing it."
-                  id (Ident.name alias)
-              else Format.dprintf
-                  "%s was used because %s refers to a tuple@ \
-                   containing %s, which is %s of %s."
-                  id (Ident.name alias) id' (print_relationship err.there_is_of_here) id in
         Location.errorf ~loc:err.here
-          ~sub:[Location.msg ~loc:err.there "@[%t @]" there_explanation]
+          ~sub:[Location.msg ~loc:err.there "@[%t @]" (there_explanation id)]
           "@[%s is used uniquely here so cannot be used twice. %s@]" id temporal
-      | Tuple_match_on_aliased_as _ -> assert false
+      | Tuple_match_on_aliased_as(eid, alias) ->
+        let id = print_err_id eid in
+        Location.errorf ~loc:err.here
+          ~sub:[Location.msg ~loc:err.there "@[%t @]" (there_explanation id)]
+          "@[%s is used uniquely here so cannot be used twice (%s refers to a tuple containing it). %s@]" id (Ident.name alias) temporal
 
 let report_error err =
   Printtyp.wrap_printing_env ~error:true Env.empty

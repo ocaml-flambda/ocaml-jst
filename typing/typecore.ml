@@ -271,12 +271,6 @@ let mode_unique mode =
     mode = Mode.Value.to_unique mode;
     tuple_modes = [] }
 
-let mode_shared expected_mode =
-  { position = Nontail;
-    escaping_context = None;
-    mode = Mode.Value.to_shared expected_mode.mode;
-    tuple_modes = [] }
-
 let mode_global_shared =
   { position = Nontail;
     escaping_context = None;
@@ -2076,12 +2070,12 @@ and type_pat_aux
       let expected_ty = generic_instance expected_ty in
       unify_pat_types ~refine
         loc env (Predef.type_array ty_elt) expected_ty;
-      map_fold_cont (fun p -> type_pat Value p ty_elt) spl (fun pl ->
+      map_fold_cont (fun p -> type_pat ~alloc_mode:(simple_pat_mode Mode.Value.global) Value p ty_elt) spl (fun pl ->
         rvp k {
         pat_desc = Tpat_array pl;
         pat_loc = loc; pat_extra=[];
         pat_type = instance expected_ty;
-        pat_mode = Mode.Value.to_shared (alloc_mode.mode);
+        pat_mode = alloc_mode.mode;
         pat_attributes = sp.ppat_attributes;
         pat_env = !env })
   | Ppat_or(sp1, sp2) ->
@@ -3540,47 +3534,32 @@ and type_expect_
        [Nolabel, sbody]) ->
     if not (Clflags.Extension.is_enabled Unique) then
       raise (Typetexp.Error (loc, Env.empty, Unique_not_enabled));
-    let exp =
-      type_expect ?in_function ~recarg env (mode_unique expected_mode.mode) sbody
-        ty_expected_explained
-    in
-    { exp with exp_loc = loc }
+    type_expect ?in_function ~recarg env (mode_unique expected_mode.mode) sbody
+      ty_expected_explained
   | Pexp_apply
       ({ pexp_desc = Pexp_extension({txt = ("ocaml.unique" | "unique")}, PStr []) },
        [Nolabel, sbody]) ->
-    let exp =
       type_expect ?in_function ~recarg env (mode_unique expected_mode.mode) sbody
         ty_expected_explained
-    in
-    { exp with exp_loc = loc }
   | Pexp_apply
       ({ pexp_desc = Pexp_extension({txt = "extension.local"}, PStr []) },
        [Nolabel, sbody]) ->
       if not (Clflags.Extension.is_enabled Local) then
         raise (Typetexp.Error (loc, Env.empty, Local_not_enabled));
       submode ~loc ~env Mode.Value.local_unique expected_mode;
-      let exp =
-        type_expect ?in_function ~recarg env (mode_local expected_mode.mode) sbody
-          ty_expected_explained
-      in
-      { exp with exp_loc = loc }
+      type_expect ?in_function ~recarg env (mode_local expected_mode.mode) sbody
+        ty_expected_explained
   | Pexp_apply
       ({ pexp_desc = Pexp_extension({txt = ("ocaml.local" | "local")}, PStr []) },
        [Nolabel, sbody]) ->
       submode ~loc ~env Mode.Value.local_unique expected_mode;
-      let exp =
-        type_expect ?in_function ~recarg env (mode_local expected_mode.mode) sbody
-          ty_expected_explained
-      in
-      { exp with exp_loc = loc }
+      type_expect ?in_function ~recarg env (mode_local expected_mode.mode) sbody
+        ty_expected_explained
   | Pexp_apply
       ({ pexp_desc = Pexp_extension({txt = "extension.escape"}, PStr []) },
        [Nolabel, sbody]) ->
-      let exp =
-        type_expect ?in_function ~recarg env (mode_global expected_mode.mode) sbody
-          ty_expected_explained
-      in
-      { exp with exp_loc = loc }
+      type_expect ?in_function ~recarg env (mode_global expected_mode.mode) sbody
+        ty_expected_explained
   | Pexp_apply(sfunct, sargs) ->
       assert (sargs <> []);
       let funct_mode, funct_expected_mode =
@@ -3964,10 +3943,9 @@ and type_expect_
       let to_unify = Predef.type_array ty in
       with_explanation (fun () ->
         unify_exp_types loc env to_unify (generic_instance ty_expected));
-      let argument_mode = mode_shared (mode_subcomponent expected_mode) in
       let argl =
         List.map
-          (fun sarg -> type_expect env argument_mode sarg (mk_expected ty))
+          (fun sarg -> type_expect env mode_global_shared sarg (mk_expected ty))
           sargl
       in
       re {

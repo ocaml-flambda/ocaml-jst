@@ -55,16 +55,10 @@ let tail_unique : 'a. unique_ 'a list -> unique_ 'a list = function
 val tail_unique : unique_ 'a list -> unique_ 'a list = <fun>
 |}]
 
-let curry : 'a. unique_ box -> (unique_ box -> unique_ box) = fun b1 b2 -> b1
+let curry : unique_ box -> (unique_ box -> unique_ box) = fun b1 b2 -> b1
 [%%expect{|
-Line 1, characters 75-77:
-1 | let curry : 'a. unique_ box -> (unique_ box -> unique_ box) = fun b1 b2 -> b1
-                                                                               ^^
+Line 1, characters 71-73:
+1 | let curry : unique_ box -> (unique_ box -> unique_ box) = fun b1 b2 -> b1
+                                                                           ^^
 Error: Found a shared value where a unique value was expected
-|}, Principal{|
-Line 1, characters 69-77:
-1 | let curry : 'a. unique_ box -> (unique_ box -> unique_ box) = fun b1 b2 -> b1
-                                                                         ^^^^^^^^
-Error: This expression has type unique_ 'a -> box
-       but an expression was expected of type unique_ box -> unique_ box
 |}]
