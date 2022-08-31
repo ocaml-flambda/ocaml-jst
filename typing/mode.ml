@@ -423,14 +423,20 @@ module Alloc = struct
       uniqueness = Uniqueness.newvar () }
 
   let newvar_below { locality; uniqueness } =
-    let l = Locality.newvar_below locality in
-    let u = Uniqueness.newvar_below uniqueness in
-    { locality = fst l; uniqueness = fst u }, snd l || snd u
+    let locality, changed_locality = Locality.newvar_below locality in
+    let uniqueness, changed_uniqueness = Uniqueness.newvar_below uniqueness in
+    { locality; uniqueness }, changed_locality || changed_uniqueness
 
   let newvar_above { locality; uniqueness } =
-    let l = Locality.newvar_above locality in
-    let u = Uniqueness.newvar_above uniqueness in
-    { locality = fst l; uniqueness = fst u }, snd l || snd u
+    let locality, changed_locality = Locality.newvar_above locality in
+    let uniqueness, changed_uniqueness = Uniqueness.newvar_above uniqueness in
+    { locality; uniqueness }, changed_locality || changed_uniqueness
+
+  let of_uniqueness uniqueness =
+    { locality = Locality.newvar (); uniqueness }
+
+  let of_locality locality =
+    { locality; uniqueness = Uniqueness.newvar () }
 
   let check_const { locality; uniqueness } =
     Locality.check_const locality, Uniqueness.check_const uniqueness

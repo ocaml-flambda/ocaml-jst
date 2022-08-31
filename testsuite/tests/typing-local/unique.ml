@@ -551,6 +551,24 @@ Error: This expression has type unique_ 'a -> box
        but an expression was expected of type unique_ box -> unique_ box
 |}]
 
+let rec foo =
+  fun (local_ o) ->
+  match (unique_ o) with
+  | Some () -> foo None
+  | None -> ()
+[%%expect{|
+val foo : local_ unique_ unit option -> unit = <fun>
+|}]
+
+let rec bar =
+  fun (unique_ o) ->
+  match o with
+  | Some () -> ()
+  | None -> bar (local_ Some ()) [@nontail]
+[%%expect{|
+val bar : local_ unique_ unit option -> unit = <fun>
+|}]
+
 (* ------------------------------------------------------------------------------------ *)
 (* Tests for locals, adapted to uniqueness *)
 (* ------------------------------------------------------------------------------------ *)

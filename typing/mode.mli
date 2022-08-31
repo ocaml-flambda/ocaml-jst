@@ -115,6 +115,10 @@ module Alloc : sig
 
   val newvar_above : t -> t * bool
 
+  val of_uniqueness : Uniqueness.t -> t
+
+  val of_locality : Locality.t -> t
+
   val check_const : t -> locality option * uniqueness option
 
   val print : Format.formatter -> t -> unit

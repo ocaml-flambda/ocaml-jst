@@ -2997,8 +2997,8 @@ let rec type_approx env sexp =
   | Pexp_fun (p, _, spat, e) ->
       let marg = match has_local_attr_pat spat, has_unique_attr_pat spat with
         | true, true -> Mode.Alloc.local_unique
-        | true, false -> Mode.Alloc.local
-        | false, true -> Mode.Alloc.unique
+        | true, false -> Mode.Alloc.of_locality Mode.Locality.local
+        | false, true -> Mode.Alloc.of_uniqueness Mode.Uniqueness.unique
         | false, false -> Mode.Alloc.newvar ()
       in
       let mret = Mode.Alloc.newvar () in
@@ -4848,8 +4848,8 @@ and type_function ?in_function loc attrs env (expected_mode : expected_mode)
   if has_local || has_unique then begin
     let mode = match has_local, has_unique with
       | true, true -> Mode.Alloc.local_unique
-      | true, false -> Mode.Alloc.local
-      | false, true -> Mode.Alloc.unique
+      | true, false -> Mode.Alloc.of_locality Mode.Locality.local
+      | false, true -> Mode.Alloc.of_uniqueness Mode.Uniqueness.unique
       | false, false -> assert false in
     eqmode ~loc ~env arg_mode mode
       (fun mkind -> Param_mode_mismatch(ty_expected', mkind)) end;
