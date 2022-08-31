@@ -277,8 +277,9 @@ val unify_var: Env.t -> type_expr -> type_expr -> unit
         (* Same as [unify], but allow free univars when first type
            is a variable. *)
 val unify_alloc_mode: alloc_mode -> alloc_mode -> unit
+val unify_uniqueness_mode: uniqueness mode -> uniqueness mode -> unit
 val filter_arrow: Env.t -> type_expr -> arg_label ->
-                  alloc_mode * type_expr * alloc_mode * type_expr
+                  alloc_mode * type_expr * uniqueness mode * alloc_mode * type_expr
         (* A special case of unification (with l:'a -> 'b). *)
 val filter_method: Env.t -> string -> private_flag -> type_expr -> type_expr
         (* A special case of unification (with {m : 'a; 'b}). *)

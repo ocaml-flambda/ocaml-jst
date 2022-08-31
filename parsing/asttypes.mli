@@ -56,6 +56,10 @@ type 'a loc = 'a Location.loc = {
   loc : Location.t;
 }
 
+(* Functions that close over unique values can only be called once. *)
+type call_count =
+  | Call_once (* !-> *)
+  | Call_many (* -> *)
 
 type variance =
   | Covariant

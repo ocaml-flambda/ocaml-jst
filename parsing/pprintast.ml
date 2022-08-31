@@ -304,6 +304,10 @@ let maybe_local_type pty ctxt f c =
   else
     pty ctxt f c
 
+let call_count f = function
+  | Call_once -> pp f "!"
+  | Call_many -> pp f ""
+
 (* c ['a,'b] *)
 let rec class_params_def ctxt f =  function
   | [] -> ()
@@ -324,9 +328,9 @@ and core_type ctxt f x =
       (attributes ctxt) filtered_attrs
   end
   else match x.ptyp_desc with
-    | Ptyp_arrow (l, ct1, ct2) ->
-        pp f "@[<2>%a@;->@;%a@]" (* FIXME remove parens later *)
-          (type_with_label ctxt) (l,ct1) (return_type ctxt) ct2
+    | Ptyp_arrow (l, arr, ct1, ct2) ->
+        pp f "@[<2>%a@;%a->@;%a@]" (* FIXME remove parens later *)
+          (type_with_label ctxt) (l,ct1) call_count arr (return_type ctxt) ct2
     | Ptyp_alias (ct, s) ->
         pp f "@[<2>%a@;as@;%a@]" (core_type1 ctxt) ct tyvar s
     | Ptyp_poly ([], ct) ->

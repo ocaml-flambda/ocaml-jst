@@ -62,6 +62,7 @@ module Uniqueness : sig
   val newvar : unit -> t
   val newvar_below : t -> t * bool
   val newvar_above : t -> t * bool
+  val check_const : t -> uniqueness option
   val print : Format.formatter -> t -> unit
 end
 

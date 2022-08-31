@@ -189,17 +189,18 @@ let inf4 (b : bool) (y : float) (unique_ x : float) =
 Line 2, characters 58-59:
 2 |   let _ = shared_id y in let unique_ z = if b then x else y in z
                                                               ^
-Error: Found a shared value where a unique value was expected
+Error: y is used uniquely here so cannot be used twice. It was used previously at:
+Line 2, characters 20-21:
+2 |   let _ = shared_id y in let unique_ z = if b then x else y in z
+                        ^
+
 |}]
 
 
 let inf5 (b : bool) (y : float) (unique_ x : float) =
   let z = if b then x else y in unique_ z
 [%%expect{|
-Line 2, characters 40-41:
-2 |   let z = if b then x else y in unique_ z
-                                            ^
-Error: Found a shared value where a unique value was expected
+val inf5 : bool -> unique_ float !-> (unique_ float -> float) = <fun>
 |}]
 
 let inf6 (unique_ x) = let f x = x in higher_order f x
@@ -209,7 +210,7 @@ val inf6 : unique_ 'a -> 'a = <fun>
 
 let unique_default_args ?(unique_ x = 1.0) () = x
 [%%expect{|
-val unique_default_args : ?x:unique_ float -> (unit -> float) = <fun>
+val unique_default_args : ?x:unique_ float !-> (unit -> float) = <fun>
 |}]
 
 type point = { dim : int; x : float; y : float; z : float }
@@ -269,14 +270,16 @@ let ul_ret x = unique_ local_ x
 val ul_ret : unique_ 'a -> local_ 'a = <fun>
 |}]
 
-let or_patterns1 : unique_ float list -> float list -> float = fun x y -> match x, y with
+let or_patterns1 : unique_ float list -> float list !-> float = fun x y -> match x, y with
   | z :: _, _ | _, z :: _ -> unique_ z
   | _, _ -> 42.0
 [%%expect{|
-Line 2, characters 37-38:
+Lines 1-3, characters 64-16:
+1 | ................................................................fun x y -> match x, y with
 2 |   | z :: _, _ | _, z :: _ -> unique_ z
-                                         ^
-Error: Found a shared value where a unique value was expected
+3 |   | _, _ -> 42.0
+Error: This function captures a unique value and so its type needs
+       to use the !-> arrow. This ensures that the function is only called once.
 |}]
 
 let or_patterns2 : float list -> unique_ float list -> float = fun x y -> match x, y with
@@ -492,19 +495,15 @@ val overwrite_point : unique_ point -> point * point = <fun>
 let gc_soundness_bug (local_ unique_ p) (local_ f) =
   local_ { unique_ p with x = f }
 [%%expect{|
-Line 2, characters 19-20:
-2 |   local_ { unique_ p with x = f }
-                       ^
-Error: Found a shared value where a unique value was expected
+val gc_soundness_bug :
+  local_ unique_ point !-> local_ (local_ float -> local_ point) = <fun>
 |}]
 
 let gc_soundness_nobug (local_ unique_ p) f =
   local_ { unique_ p with x = f }
 [%%expect{|
-Line 2, characters 19-20:
-2 |   local_ { unique_ p with x = f }
-                       ^
-Error: Found a shared value where a unique value was expected
+val gc_soundness_nobug :
+  local_ unique_ point !-> local_ (float -> local_ point) = <fun>
 |}]
 
 let gc_soundness_nobug (local_ unique_ p) f =
@@ -523,32 +522,6 @@ Line 2, characters 4-5:
 2 |   { p with x = f }
         ^
 Error: This value escapes its region
-|}]
-
-(* Principal bug *)
-type box = { x : int }
-
-let curry : unique_ box -> (unique_ box -> unique_ box) = fun b1 b2 -> b1
-[%%expect{|
-type box = { x : int; }
-Line 3, characters 71-73:
-3 | let curry : unique_ box -> (unique_ box -> unique_ box) = fun b1 b2 -> b1
-                                                                           ^^
-Error: Found a shared value where a unique value was expected
-|}]
-
-let curry : 'a. unique_ box -> (unique_ box -> unique_ box) = fun b1 b2 -> b1
-[%%expect{|
-Line 1, characters 75-77:
-1 | let curry : 'a. unique_ box -> (unique_ box -> unique_ box) = fun b1 b2 -> b1
-                                                                               ^^
-Error: Found a shared value where a unique value was expected
-|}, Principal{|
-Line 1, characters 69-77:
-1 | let curry : 'a. unique_ box -> (unique_ box -> unique_ box) = fun b1 b2 -> b1
-                                                                         ^^^^^^^^
-Error: This expression has type unique_ 'a -> box
-       but an expression was expected of type unique_ box -> unique_ box
 |}]
 
 let rec foo =
@@ -595,16 +568,9 @@ Error: This expression has type int but an expression was expected of type
 type equ_fn = unit
   constraint
     'a -> unique_ 'b -> 'c -> 'd -> 'e
-    = 'a -> unique_ 'b -> unique_ ('c -> unique_ ('d -> 'e)) (* TODO: Add !-> *)
+    = 'a -> unique_ 'b -> unique_ ('c !-> unique_ ('d !-> 'e)) (* TODO: Add !-> *)
 [%%expect{|
-Lines 3-4, characters 4-60:
-3 | ....'a -> unique_ 'b -> 'c -> 'd -> 'e
-4 |     = 'a -> unique_ 'b -> unique_ ('c -> unique_ ('d -> 'e))....................
-Error: The type constraints are not consistent.
-Type 'a -> unique_ 'b -> ('c -> 'd -> 'e) is not compatible with type
-  'a -> unique_ 'b -> 'c -> 'd -> 'e
-Type unique_ 'b -> ('c -> 'd -> 'e) is not compatible with type
-  unique_ 'b -> 'c -> 'd -> 'e
+type equ_fn = unit
 |}]
 
 type distinct_sarg = unit constraint unique_ int -> int = int -> int
@@ -635,12 +601,8 @@ Type unique_ int -> int is not compatible with type
 
 let foo () =
   let unique_ _bar : int -> int -> int =
-    ((fun y z -> z) : int -> unique_ (int -> int)) in (* TODO: is that correct? *)
+    ((fun y z -> z) : int -> unique_ (int -> int)) in
   ()
 [%%expect{|
-Line 3, characters 5-19:
-3 |     ((fun y z -> z) : int -> unique_ (int -> int)) in (* TODO: is that correct? *)
-         ^^^^^^^^^^^^^^
-Error: This function or one of its parameters escape their region
-       when it is partially applied
+val foo : unit -> unit = <fun>
 |}]

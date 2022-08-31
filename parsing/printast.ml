@@ -146,6 +146,10 @@ let arg_label i ppf = function
   | Optional s -> line i ppf "Optional \"%s\"\n" s
   | Labelled s -> line i ppf "Labelled \"%s\"\n" s
 ;;
+let call_count i ppf = function
+  | Call_once -> line i ppf "Call_once\n"
+  | Call_many -> line i ppf "Call_many\n"
+;;
 
 let rec core_type i ppf x =
   line i ppf "core_type %a\n" fmt_location x.ptyp_loc;
@@ -154,9 +158,10 @@ let rec core_type i ppf x =
   match x.ptyp_desc with
   | Ptyp_any -> line i ppf "Ptyp_any\n";
   | Ptyp_var (s) -> line i ppf "Ptyp_var %s\n" s;
-  | Ptyp_arrow (l, ct1, ct2) ->
+  | Ptyp_arrow (l, arr, ct1, ct2) ->
       line i ppf "Ptyp_arrow\n";
       arg_label i ppf l;
+      call_count i ppf arr;
       core_type i ppf ct1;
       core_type i ppf ct2;
   | Ptyp_tuple l ->

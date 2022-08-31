@@ -92,7 +92,7 @@ and core_type_desc =
         (*  _ *)
   | Ptyp_var of string
         (* 'a *)
-  | Ptyp_arrow of arg_label * core_type * core_type
+  | Ptyp_arrow of arg_label * call_count * core_type * core_type
         (* T1 -> T2       Simple
            ~l:T1 -> T2    Labelled
            ?l:T1 -> T2    Optional

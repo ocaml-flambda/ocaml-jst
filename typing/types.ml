@@ -41,7 +41,7 @@ and type_desc =
   | Tpackage of Path.t * Longident.t list * type_expr list
 
 and arrow_desc =
-  arg_label * alloc_mode * alloc_mode
+  arg_label * alloc_mode * uniqueness mode * alloc_mode
 
 and locality = Global | Local
 

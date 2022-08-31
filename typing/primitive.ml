@@ -199,10 +199,10 @@ let add_attribute_list ty attrs =
 
 let rec add_native_repr_attributes ty attrs =
   match ty, attrs with
-  | Otyp_arrow (label, am, a, rm, r), attr_l :: rest ->
+  | Otyp_arrow (label, am, a, arrm, rm, r), attr_l :: rest ->
     let r = add_native_repr_attributes r rest in
     let a = add_attribute_list a attr_l in
-    Otyp_arrow (label, am, a, rm, r)
+    Otyp_arrow (label, am, a, arrm, rm, r)
   | _, [attr_l] -> add_attribute_list ty attr_l
   | _ ->
     assert (List.for_all (fun x -> x = []) attrs);

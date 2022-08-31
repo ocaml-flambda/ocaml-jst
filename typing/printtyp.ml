@@ -496,9 +496,9 @@ let rec raw_type ppf ty =
 and raw_type_list tl = raw_list raw_type tl
 and raw_type_desc ppf = function
     Tvar name -> fprintf ppf "Tvar %a" print_name name
-  | Tarrow((l,arg,ret),t1,t2,c) ->
-      fprintf ppf "@[<hov1>Tarrow((\"%s\",%a,%a),@,%a,@,%a,@,%s)@]"
-        (string_of_label l) Mode.Alloc.print arg Mode.Alloc.print ret
+  | Tarrow((l,arg,arr,ret),t1,t2,c) ->
+      fprintf ppf "@[<hov1>Tarrow((\"%s\",%a,%a,%a),@,%a,@,%a,@,%s)@]"
+        (string_of_label l) Mode.Alloc.print arg Mode.Uniqueness.print arr Mode.Alloc.print ret
         raw_type t1 raw_type t2
         (safe_commu_repr [] c)
   | Ttuple tl ->
@@ -946,17 +946,24 @@ let reset_and_mark_loops_list tyl =
 (* Disabled in classic mode when printing an unification error *)
 let print_labels = ref true
 
+let tree_of_uniqueness mode =
+  let uniqueness = Mode.Uniqueness.check_const mode in
+  match uniqueness with
+    | Some Unique -> Oum_unique
+    | Some Shared -> Oum_shared
+    | None -> Oum_unknown
+
 let tree_of_mode mode =
   let locality, uniqueness = Mode.Alloc.check_const mode in
   let locality = match locality with
     | Some Global -> Olm_global
     | Some Local -> Olm_local
-    | None -> Olm_unknown
-  and uniqueness = match uniqueness with
+    | None -> Olm_unknown in
+  let uniqueness = match uniqueness with
     | Some Unique -> Oum_unique
     | Some Shared -> Oum_shared
-    | None -> Oum_unknown
-  in locality, uniqueness
+    | None -> Oum_unknown in
+  locality, uniqueness
 
 let rec tree_of_typexp sch ty =
   let ty = repr ty in
@@ -974,7 +981,7 @@ let rec tree_of_typexp sch ty =
         let non_gen = is_non_gen sch ty in
         let name_gen = if non_gen then new_weak_name ty else new_name in
         Otyp_var (non_gen, name_of_type name_gen ty)
-    | Tarrow ((l, marg, mret), ty1, ty2, _) ->
+    | Tarrow ((l, marg, marr, mret), ty1, ty2, _) ->
         let lab =
           if !print_labels || is_optional l then string_of_label l else ""
         in
@@ -987,9 +994,10 @@ let rec tree_of_typexp sch ty =
             | _ -> Otyp_stuff "<hidden>"
           else tree_of_typexp sch ty1 in
         let am = tree_of_mode marg in
+        let arrm = tree_of_uniqueness marr in
         let t2 = tree_of_typexp sch ty2 in
         let rm = tree_of_mode mret in
-        Otyp_arrow (lab, am, t1, rm, t2)
+        Otyp_arrow (lab, am, t1, arrm, rm, t2)
     | Ttuple tyl ->
         Otyp_tuple (tree_of_typlist sch tyl)
     | Tconstr(p, tyl, _abbrev) ->

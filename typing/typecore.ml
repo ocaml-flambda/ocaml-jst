@@ -140,6 +140,7 @@ type error =
   | Submode_failed of Mode.Value.error * Env.escaping_context option
   | Param_mode_mismatch of type_expr * Mode.Alloc.error
   | Uncurried_function_escapes
+  | Captures_unique_value
   | Local_return_annotation_mismatch of Location.t
   | Bad_tail_annotation of [`Conflict|`Not_a_tailcall]
 
@@ -2489,7 +2490,7 @@ let rec list_labels_aux env visited ls ty_fun =
   if List.memq ty visited then
     List.rev ls, false
   else match ty.desc with
-    Tarrow ((l,_,_), _, ty_res, _) ->
+    Tarrow ((l,_,_,_), _, ty_res, _) ->
       list_labels_aux env (ty::visited) (l::ls) ty_res
   | _ ->
       List.rev ls, is_Tvar ty
@@ -2505,21 +2506,25 @@ type untyped_apply_arg =
         ty_arg : type_expr;
         ty_arg0 : type_expr;
         mode_arg : Mode.Alloc.t;
+        mode_arr : Mode.Uniqueness.t;
         wrapped_in_some : bool; }
   | Unknown_arg of
       { sarg : Parsetree.expression;
         ty_arg : type_expr;
-        mode_arg : Mode.Alloc.t; }
+        mode_arg : Mode.Alloc.t;
+        mode_arr : Mode.Uniqueness.t }
   | Eliminated_optional_arg of
       { mode_fun: Mode.Alloc.t;
         ty_arg : type_expr;
         mode_arg : Mode.Alloc.t;
+        mode_arr : Mode.Uniqueness.t;
         level: int;}
 
 type untyped_omitted_param =
   { mode_fun: Mode.Alloc.t;
     ty_arg : type_expr;
     mode_arg : Mode.Alloc.t;
+    mode_arr : Mode.Uniqueness.t;
     level: int; }
 
 let is_partial_apply args =
@@ -2538,11 +2543,12 @@ let remaining_function_type ty_ret mode_ret rev_args =
          | Arg (Unknown_arg { mode_arg; _ } | Known_arg { mode_arg; _ }) ->
              let closed_args = mode_arg :: closed_args in
              (ty_ret, mode_ret, closed_args)
-         | Arg (Eliminated_optional_arg { mode_fun; ty_arg; mode_arg; level })
-         | Omitted { mode_fun; ty_arg; mode_arg; level } ->
+         | Arg (Eliminated_optional_arg { mode_fun; ty_arg; mode_arg; mode_arr; level })
+         | Omitted { mode_fun; ty_arg; mode_arg; mode_arr; level } ->
              let ty_ret =
                newty2 level
-                 (Tarrow ((lbl, mode_arg, mode_ret), ty_arg, ty_ret, Cok))
+                 (* TODO bang arrow *)
+                 (Tarrow ((lbl, mode_arg, mode_arr, mode_ret), ty_arg, ty_ret, Cok))
              in
              let mode_ret =
                Mode.Alloc.join (mode_fun :: closed_args)
@@ -2565,7 +2571,7 @@ let collect_unknown_apply_args env funct ty_fun mode_fun rev_args sargs =
     match sargs with
     | [] -> ty_fun, mode_fun, List.rev rev_args
     | (lbl, sarg) :: rest ->
-        let (mode_arg, ty_arg, mode_res, ty_res) =
+        let (mode_arg, ty_arg, mode_arr, mode_res, ty_res) =
           let ty_fun = expand_head env ty_fun in
           match ty_fun.desc with
           | Tvar _ ->
@@ -2577,14 +2583,15 @@ let collect_unknown_apply_args env funct ty_fun mode_fun rev_args sargs =
                 Location.prerr_warning sarg.pexp_loc
                   Warnings.Ignored_extra_argument;
               let mode_arg = Mode.Alloc.newvar () in
+              let mode_arr = Mode.Uniqueness.newvar () in
               let mode_res = Mode.Alloc.newvar () in
-              let kind = (lbl, mode_arg, mode_res) in
+              let kind = (lbl, mode_arg, mode_arr, mode_res) in
               unify env ty_fun
                 (newty (Tarrow(kind,ty_arg,ty_res,Clink(ref Cunknown))));
-              (mode_arg, ty_arg, mode_res, ty_res)
-        | Tarrow ((l, mode_arg, mode_res), ty_arg, ty_res, _)
+              (mode_arg, ty_arg, mode_arr, mode_res, ty_res)
+        | Tarrow ((l, mode_arg, mode_arr, mode_res), ty_arg, ty_res, _)
           when labels_match ~param:l ~arg:lbl ->
-            (mode_arg, ty_arg, mode_res, ty_res)
+            (mode_arg, ty_arg, mode_arr, mode_res, ty_res)
         | td ->
             let ty_fun = match td with Tarrow _ -> newty td | _ -> ty_fun in
             let ty_res = remaining_function_type ty_fun mode_fun rev_args in
@@ -2599,7 +2606,7 @@ let collect_unknown_apply_args env funct ty_fun mode_fun rev_args sargs =
                 raise(Error(funct.exp_loc, env, Apply_non_function
                               (expand_head env funct.exp_type)))
     in
-    let arg = Unknown_arg { sarg; ty_arg; mode_arg } in
+    let arg = Unknown_arg { sarg; ty_arg; mode_arg; mode_arr } in
     loop ty_res mode_res ((lbl, Arg arg) :: rev_args) rest
   in
   loop ty_fun mode_fun rev_args sargs
@@ -2611,7 +2618,7 @@ let collect_apply_args env funct ignore_labels ty_fun ty_fun0 mode_fun sargs =
     | {desc=Tarrow (ad, ty_arg, ty_ret, com); level=lv} as ty_fun',
       {desc=Tarrow (_, ty_arg0, ty_ret0, _)}
       when sargs <> [] && commu_repr com = Cok ->
-        let (l, mode_arg, mode_ret) = ad in
+        let (l, mode_arg, mode_arr, mode_ret) = ad in
         let may_warn loc w =
           if not !warned && !Clflags.principal && lv <> generic_level
           then begin
@@ -2626,14 +2633,14 @@ let collect_apply_args env funct ignore_labels ty_fun ty_fun0 mode_fun sargs =
           if wrapped_in_some then
             may_warn sarg.pexp_loc
               (Warnings.Not_principal "using an optional argument here");
-          Arg (Known_arg { sarg; ty_arg; ty_arg0; mode_arg; wrapped_in_some })
+          Arg (Known_arg { sarg; ty_arg; ty_arg0; mode_arg; mode_arr; wrapped_in_some })
         in
         let eliminate_optional_arg () =
           may_warn funct.exp_loc
             (Warnings.Non_principal_labels "eliminated optional argument");
           Arg
             (Eliminated_optional_arg
-               { mode_fun; ty_arg; mode_arg; level = lv })
+               { mode_fun; ty_arg; mode_arg; mode_arr; level = lv })
         in
         let remaining_sargs, arg =
           if ignore_labels then begin
@@ -2676,7 +2683,7 @@ let collect_apply_args env funct ignore_labels ty_fun ty_fun0 mode_fun sargs =
                      it. *)
                   may_warn funct.exp_loc
                     (Warnings.Non_principal_labels "commuted an argument");
-                  Omitted { mode_fun; ty_arg; mode_arg; level = lv }
+                  Omitted { mode_fun; ty_arg; mode_arg; mode_arr; level = lv }
                 end
         in
         loop ty_ret ty_ret0 mode_ret ((l, arg) :: rev_args) remaining_sargs
@@ -2696,10 +2703,10 @@ let type_omitted_parameters expected_mode env ty_ret mode_ret args =
              let open_args = (exp.exp_mode, exp) :: open_args in
              let args = (lbl, arg) :: args in
              (ty_ret, mode_ret, open_args, closed_args, args)
-         | Omitted { mode_fun; ty_arg; mode_arg; level } ->
+         | Omitted { mode_fun; ty_arg; mode_arg; mode_arr; level } ->
              let ty_ret =
                newty2 level
-                 (Tarrow ((lbl, mode_arg, mode_ret), ty_arg, ty_ret, Cok))
+                 (Tarrow ((lbl, mode_arg, mode_arr, mode_ret), ty_arg, ty_ret, Cok))
              in
              let new_closed_args =
                List.map
@@ -2973,11 +2980,13 @@ let is_local_returning_function cases =
 
 let rec approx_type env sty =
   match sty.ptyp_desc with
-    Ptyp_arrow (p, _, sty) ->
+    Ptyp_arrow (p, _, _, sty) ->
       let ty1 = if is_optional p then type_option (newvar ()) else newvar () in
       let ret = approx_type env sty in
-      let marg = Mode.Alloc.newvar () and mret = Mode.Alloc.newvar () in
-      newty (Tarrow ((p,marg,mret), ty1, ret, Cok))
+      let marg = Mode.Alloc.newvar () in
+      let marr = Mode.Uniqueness.newvar () in
+      let mret = Mode.Alloc.newvar () in
+      newty (Tarrow ((p,marg,marr,mret), ty1, ret, Cok))
   | Ptyp_tuple args ->
       newty (Ttuple (List.map (approx_type env) args))
   | Ptyp_constr (lid, ctl) ->
@@ -3001,14 +3010,17 @@ let rec type_approx env sexp =
         | false, true -> Mode.Alloc.of_uniqueness Mode.Uniqueness.unique
         | false, false -> Mode.Alloc.newvar ()
       in
+      let marr = Mode.Uniqueness.newvar () in
       let mret = Mode.Alloc.newvar () in
       let ty = if is_optional p then type_option (newvar ()) else newvar () in
       let ret = type_approx env e in
-      newty (Tarrow((p,marg,mret), ty, ret, Cok))
+      newty (Tarrow((p,marg,marr,mret), ty, ret, Cok))
   | Pexp_function ({pc_rhs=e}::_) ->
       let ret = type_approx env e in
-      let marg = Mode.Alloc.newvar () and mret = Mode.Alloc.newvar () in
-      newty (Tarrow((Nolabel,marg,mret), newvar (), ret, Cok))
+      let marg = Mode.Alloc.newvar () in
+      let marr = Mode.Uniqueness.newvar () in
+      let mret = Mode.Alloc.newvar () in
+      newty (Tarrow((Nolabel,marg,marr,mret), newvar (), ret, Cok))
   | Pexp_match (_, {pc_rhs=e}::_) -> type_approx env e
   | Pexp_try (e, _) -> type_approx env e
   | Pexp_tuple l -> newty (Ttuple(List.map (type_approx env) l))
@@ -4180,10 +4192,11 @@ and type_expect_
                     filter_self_method env met Private meths privty
                   in
                   let method_type = newvar () in
-                  let (marg, obj_ty, mres, res_ty) =
+                  let (marg, obj_ty, marr, mres, res_ty) =
                     filter_arrow env method_type Nolabel
                   in
                   unify_alloc_mode marg Mode.Alloc.global;
+                  unify_uniqueness_mode marr Mode.Uniqueness.shared;
                   unify_alloc_mode mres Mode.Alloc.global;
                   unify env obj_ty desc.val_type;
                   unify env res_ty (instance typ);
@@ -4609,14 +4622,14 @@ and type_expect_
       let ty_func_result = newvar () in
       let ty_func =
         newty (Tarrow(
-          (Nolabel, Mode.Alloc.global, Mode.Alloc.global),
+          (Nolabel, Mode.Alloc.global, Mode.Uniqueness.shared, Mode.Alloc.global),
           ty_params, ty_func_result, Cok))
       in
       let ty_result = newvar () in
       let ty_andops = newvar () in
       let ty_op =
-        newty (Tarrow((Nolabel, Mode.Alloc.global, Mode.Alloc.global), ty_andops,
-          newty (Tarrow((Nolabel, Mode.Alloc.global, Mode.Alloc.global),
+        newty (Tarrow((Nolabel, Mode.Alloc.global, Mode.Uniqueness.shared, Mode.Alloc.global), ty_andops,
+          newty (Tarrow((Nolabel, Mode.Alloc.global, Mode.Uniqueness.shared, Mode.Alloc.global),
                         ty_func, ty_result, Cok)), Cok))
       in
       begin try
@@ -4821,7 +4834,7 @@ and type_function ?in_function loc attrs env (expected_mode : expected_mode)
   let alloc_mode = Mode.Value.regional_to_global_alloc expected_mode.mode in
   let (loc_fun, ty_fun) =
     match in_function with
-    | Some (loc_fun, ty_fun, _) -> (loc_fun, ty_fun)
+    | Some (loc_fun, ty_fun, _, _) -> (loc_fun, ty_fun)
     | None -> (loc, instance ty_expected)
   in
   let separate = !Clflags.principal || Env.has_local_constraints env in
@@ -4833,7 +4846,7 @@ and type_function ?in_function loc attrs env (expected_mode : expected_mode)
     | _ -> false
   in
   let ty_expected' = instance ty_expected in
-  let (arg_mode, ty_arg, ret_mode, ty_res) =
+  let (arg_mode, ty_arg, arr_mode, ret_mode, ty_res) =
     try filter_arrow env ty_expected' l
     with Unify _ ->
       match expand_head env ty_expected with
@@ -4853,18 +4866,6 @@ and type_function ?in_function loc attrs env (expected_mode : expected_mode)
       | false, false -> assert false in
     eqmode ~loc ~env arg_mode mode
       (fun mkind -> Param_mode_mismatch(ty_expected', mkind)) end;
-  if uncurried_function then begin
-    begin match Mode.Alloc.submode arg_mode ret_mode with
-    | Ok () -> ()
-    | Error _e ->
-      raise (Error(loc_fun, env, Uncurried_function_escapes))
-    end;
-    begin match Mode.Alloc.submode alloc_mode ret_mode with
-    | Ok () -> ()
-    | Error _e ->
-      raise (Error(loc_fun, env, Uncurried_function_escapes))
-    end
-  end;
   let ty_arg =
     if is_optional l then
       let tv = newvar() in
@@ -4880,24 +4881,47 @@ and type_function ?in_function loc attrs env (expected_mode : expected_mode)
     generalize_structure ty_arg;
     generalize_structure ty_res
   end;
-  let env = Env.add_uniqueness_lock Mode.Uniqueness.shared env in (* TODO: use marr *)
-  let env, region_locked =
+  let env, region_locked, lock_mode =
     match in_function with
-    | Some (_, _, region_locked) -> env, region_locked
+    | Some (_, _, region_locked, lock_mode) -> env, region_locked, lock_mode
     | None ->
-      let region_locked = not (is_local_returning_function caselist) in
+      let lock_mode = Mode.Uniqueness.newvar () in
+      let env = Env.add_uniqueness_lock lock_mode env in
       let env =
         Env.add_locality_lock
           ?escaping_context:expected_mode.escaping_context
           (Mode.Value.regional_to_global_locality expected_mode.mode)
           env
       in
+      let region_locked = not (is_local_returning_function caselist) in
       let env =
         if region_locked then Env.add_region_lock env
         else env
       in
-      env, region_locked
+      env, region_locked, lock_mode
   in
+  if uncurried_function then begin
+    begin match Mode.Locality.submode arg_mode.locality ret_mode.locality with
+    | Ok () -> ()
+    | Error _e ->
+        raise (Error(loc_fun, env, Uncurried_function_escapes))
+    end;
+    begin match Mode.Locality.submode alloc_mode.locality ret_mode.locality with
+    | Ok () -> ()
+    | Error _e ->
+        raise (Error(loc_fun, env, Uncurried_function_escapes))
+    end;
+    begin match Mode.Uniqueness.submode arr_mode arg_mode.uniqueness with
+    | Ok () -> ()
+    | Error _e ->
+        raise (Error(loc_fun, env, Captures_unique_value))
+    end;
+    begin match Mode.Uniqueness.submode arr_mode lock_mode with
+    | Ok () -> ()
+    | Error _e ->
+        raise (Error(loc_fun, env, Captures_unique_value))
+    end
+  end;
   let arg_value_mode = Mode.Value.of_alloc arg_mode in
   let arg_value_mode =
     if region_locked then Mode.Value.local_to_regional arg_value_mode
@@ -4917,7 +4941,7 @@ and type_function ?in_function loc attrs env (expected_mode : expected_mode)
   in
   let in_function =
     if uncurried_function then
-      Some (loc_fun, ty_fun, region_locked)
+      Some (loc_fun, ty_fun, region_locked, arr_mode)
     else
       None
   in
@@ -4940,7 +4964,7 @@ and type_function ?in_function loc attrs env (expected_mode : expected_mode)
         { arg_label = l; param; cases; partial; region; warnings };
     exp_loc = loc; exp_extra = [];
     exp_type =
-      instance (newgenty (Tarrow((l,arg_mode,ret_mode), ty_arg, ty_res, Cok)));
+      instance (newgenty (Tarrow((l,arg_mode,arr_mode,ret_mode), ty_arg, ty_res, Cok)));
     exp_mode = expected_mode.mode;
     exp_attributes = attrs;
     exp_env = env }
@@ -5291,14 +5315,14 @@ and type_argument ?explanation ?recarg env (mode : expected_mode) sarg
   let inferred = is_inferred sarg in
   let rec loosen_ret_modes ty' ty =
     match expand_head env ty', expand_head env ty with
-    | {desc = Tarrow((l', marg', mret'), ty_arg', ty_res', _); level = lv'},
-      {desc = Tarrow((l,  marg,  mret ), ty_arg,  ty_res,  _); level = lv }
+    | {desc = Tarrow((l', marg', marr', mret'), ty_arg', ty_res', _); level = lv'},
+      {desc = Tarrow((l,  marg,  marr, mret ), ty_arg,  ty_res,  _); level = lv }
       when lv' = generic_level || not !Clflags.principal ->
       let ty_res', ty_res = loosen_ret_modes ty_res' ty_res in
       let mret', _ = Mode.Alloc.newvar_below mret' in
       let mret,  _ = Mode.Alloc.newvar_below mret in
-      newty2 lv' (Tarrow((l', marg', mret'), ty_arg', ty_res', Cok)),
-      newty2 lv  (Tarrow((l,  marg,  mret),  ty_arg,  ty_res,  Cok))
+      newty2 lv' (Tarrow((l', marg', marr', mret'), ty_arg', ty_res', Cok)),
+      newty2 lv  (Tarrow((l,  marg, marr, mret),  ty_arg,  ty_res,  Cok))
     | _ ->
       ty', ty
   in
@@ -5307,7 +5331,7 @@ and type_argument ?explanation ?recarg env (mode : expected_mode) sarg
     else ty_expected', ty_expected
   in
   match expand_head env ty_expected' with
-    {desc = Tarrow((Nolabel,marg,mret),ty_arg,ty_res,_); level = lv}
+    {desc = Tarrow((Nolabel,marg,_marr,mret),ty_arg,ty_res,_); level = lv}
     when inferred ->
       (* apply optional arguments when expected type is "" *)
       (* we must be very careful about not breaking the semantics *)
@@ -5319,11 +5343,11 @@ and type_argument ?explanation ?recarg env (mode : expected_mode) sarg
       end;
       let rec make_args args ty_fun =
         match (expand_head env ty_fun).desc with
-        | Tarrow ((l,marg,_mret),ty_arg,ty_fun,_) when is_optional l ->
+        | Tarrow ((l,marg,_marr,_mret),ty_arg,ty_fun,_) when is_optional l ->
             let marg = Mode.Value.of_alloc marg in
             let ty = option_none env (instance ty_arg) marg sarg.pexp_loc in
             make_args ((l, Arg ty) :: args) ty_fun
-        | Tarrow ((l,_,_),_,ty_res',_) when l = Nolabel || !Clflags.classic ->
+        | Tarrow ((l,_,_,_),_,ty_res',_) when l = Nolabel || !Clflags.classic ->
             List.rev args, ty_fun, no_labels ty_res'
         | Tvar _ ->  List.rev args, ty_fun, false
         |  _ -> [], texp.exp_type, false
@@ -5440,7 +5464,7 @@ and type_application env app_loc (expected_mode : expected_mode) position funct 
   match sargs with
   | (* Special case for ignore: avoid discarding warning *)
     [Nolabel, sarg] when is_ignore funct ->
-      let marg, ty_arg, mres, ty_res =
+      let marg, ty_arg, _marr, mres, ty_res =
         filter_arrow env (instance funct.exp_type) Nolabel
       in
       submode ~loc:app_loc ~env
@@ -6189,11 +6213,11 @@ and type_andops env sarg sands expected_ty =
         let ty_rest = newvar () in
         let ty_result = newvar() in
         let ty_rest_fun =
-          newty (Tarrow((Nolabel,Mode.Alloc.global,Mode.Alloc.global),
+          newty (Tarrow((Nolabel,Mode.Alloc.global,Mode.Uniqueness.shared,Mode.Alloc.global),
                         ty_arg, ty_result, Cok))
         in
         let ty_op =
-          newty (Tarrow((Nolabel,Mode.Alloc.global,Mode.Alloc.global),
+          newty (Tarrow((Nolabel,Mode.Alloc.global,Mode.Uniqueness.shared,Mode.Alloc.global),
                         ty_rest, ty_rest_fun, Cok))
         in
         begin try
@@ -6901,6 +6925,10 @@ let report_error ~loc env = function
       Location.errorf ~loc
         "This function or one of its parameters escape their region@ \
          when it is partially applied"
+  | Captures_unique_value ->
+      Location.errorf ~loc
+        "This function captures a unique value and so its type needs@ \
+        to use the !-> arrow. This ensures that the function is only called once."
   | Local_return_annotation_mismatch _ ->
       Location.errorf ~loc
         "This function return is not annotated with \"local_\"@ \

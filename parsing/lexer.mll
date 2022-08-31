@@ -557,6 +557,7 @@ rule token = parse
   | "[%%"  { LBRACKETPERCENTPERCENT }
   | "!"  { BANG }
   | "!=" { INFIXOP0 "!=" }
+  | "!->" { BANGMINUSGREATER }
   | "+"  { PLUS }
   | "+." { PLUSDOT }
   | "+=" { PLUSEQ }

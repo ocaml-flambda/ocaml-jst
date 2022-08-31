@@ -177,7 +177,7 @@ let rec constructor_type constr cty =
   | Cty_signature _ ->
       constr
   | Cty_arrow (l, ty, cty) ->
-      Ctype.newty (Tarrow ((l, Mode.Alloc.global, Mode.Alloc.global),
+      Ctype.newty (Tarrow ((l, Mode.Alloc.global, Mode.Uniqueness.shared, Mode.Alloc.global),
                            ty, constructor_type constr cty, Cok))
 
 let rec class_body cty =
@@ -763,7 +763,7 @@ and class_field_aux self_loc cl_num self_type meths vars
              (* Read the generalized type *)
              let (_, ty) = Meths.find lab.txt !meths in
              let meth_type = mk_expected (
-               Btype.newgenty (Tarrow((Nolabel, Mode.Alloc.global, Mode.Alloc.global),
+               Btype.newgenty (Tarrow((Nolabel, Mode.Alloc.global, Mode.Uniqueness.shared, Mode.Alloc.global),
                                       self_type, ty, Cok))
              ) in
              Ctype.raise_nongen_level ();
@@ -791,7 +791,7 @@ and class_field_aux self_loc cl_num self_type meths vars
           Ctype.raise_nongen_level ();
           let meth_type = mk_expected (
             Ctype.newty
-              (Tarrow ((Nolabel, Mode.Alloc.global, Mode.Alloc.global), self_type,
+              (Tarrow ((Nolabel, Mode.Alloc.global, Mode.Uniqueness.shared, Mode.Alloc.global), self_type,
                        Ctype.instance Predef.type_unit, Cok))
           ) in
           vars := vars_local;
@@ -1308,7 +1308,7 @@ let rec approx_declaration cl =
       let arg =
         if Btype.is_optional l then Ctype.instance var_option
         else Ctype.newvar () in
-      Ctype.newty (Tarrow ((l, Mode.Alloc.global, Mode.Alloc.global),
+      Ctype.newty (Tarrow ((l, Mode.Alloc.global, Mode.Uniqueness.shared, Mode.Alloc.global),
                            arg, approx_declaration cl, Cok))
   | Pcl_let (_, _, cl) ->
       approx_declaration cl
@@ -1322,7 +1322,7 @@ let rec approx_description ct =
       let arg =
         if Btype.is_optional l then Ctype.instance var_option
         else Ctype.newvar () in
-      Ctype.newty (Tarrow ((l, Mode.Alloc.global, Mode.Alloc.global),
+      Ctype.newty (Tarrow ((l, Mode.Alloc.global, Mode.Uniqueness.shared, Mode.Alloc.global),
                            arg, approx_description ct, Cok))
   | _ -> Ctype.newvar ()
 
