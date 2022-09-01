@@ -200,7 +200,7 @@ Line 2, characters 20-21:
 let inf5 (b : bool) (y : float) (unique_ x : float) =
   let z = if b then x else y in unique_ z
 [%%expect{|
-val inf5 : bool -> unique_ float !-> (unique_ float -> float) = <fun>
+val inf5 : bool -> unique_ float -> (unique_ float -> float) = <fun>
 |}]
 
 let inf6 (unique_ x) = let f x = x in higher_order f x
@@ -210,7 +210,7 @@ val inf6 : unique_ 'a -> 'a = <fun>
 
 let unique_default_args ?(unique_ x = 1.0) () = x
 [%%expect{|
-val unique_default_args : ?x:unique_ float !-> (unit -> float) = <fun>
+val unique_default_args : ?x:unique_ float -> (unit -> float) = <fun>
 |}]
 
 type point = { dim : int; x : float; y : float; z : float }
@@ -274,12 +274,10 @@ let or_patterns1 : unique_ float list -> float list !-> float = fun x y -> match
   | z :: _, _ | _, z :: _ -> unique_ z
   | _, _ -> 42.0
 [%%expect{|
-Lines 1-3, characters 64-16:
-1 | ................................................................fun x y -> match x, y with
+Line 2, characters 37-38:
 2 |   | z :: _, _ | _, z :: _ -> unique_ z
-3 |   | _, _ -> 42.0
-Error: This function captures a unique value and so its type needs
-       to use the !-> arrow. This ensures that the function is only called once.
+                                         ^
+Error: Found a shared value where a unique value was expected
 |}]
 
 let or_patterns2 : float list -> unique_ float list -> float = fun x y -> match x, y with
@@ -496,14 +494,14 @@ let gc_soundness_bug (local_ unique_ p) (local_ f) =
   local_ { unique_ p with x = f }
 [%%expect{|
 val gc_soundness_bug :
-  local_ unique_ point !-> local_ (local_ float -> local_ point) = <fun>
+  local_ unique_ point -> local_ (local_ float -> local_ point) = <fun>
 |}]
 
 let gc_soundness_nobug (local_ unique_ p) f =
   local_ { unique_ p with x = f }
 [%%expect{|
 val gc_soundness_nobug :
-  local_ unique_ point !-> local_ (float -> local_ point) = <fun>
+  local_ unique_ point -> local_ (float -> local_ point) = <fun>
 |}]
 
 let gc_soundness_nobug (local_ unique_ p) f =

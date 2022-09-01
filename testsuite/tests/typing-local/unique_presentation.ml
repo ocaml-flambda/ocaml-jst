@@ -57,9 +57,5 @@ val tail_unique : unique_ 'a list -> unique_ 'a list = <fun>
 
 let curry : unique_ box -> (unique_ box !-> unique_ box) = fun b1 b2 -> b1
 [%%expect{|
-Line 1, characters 59-74:
-1 | let curry : unique_ box -> (unique_ box !-> unique_ box) = fun b1 b2 -> b1
-                                                               ^^^^^^^^^^^^^^^
-Error: This function captures a unique value and so its type needs
-       to use the !-> arrow. This ensures that the function is only called once.
+val curry : unique_ box -> (unique_ box !-> unique_ box) = <fun>
 |}]

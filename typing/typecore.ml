@@ -4834,7 +4834,7 @@ and type_function ?in_function loc attrs env (expected_mode : expected_mode)
   let alloc_mode = Mode.Value.regional_to_global_alloc expected_mode.mode in
   let (loc_fun, ty_fun) =
     match in_function with
-    | Some (loc_fun, ty_fun, _, _) -> (loc_fun, ty_fun)
+    | Some (loc_fun, ty_fun, _, _, _) -> (loc_fun, ty_fun)
     | None -> (loc, instance ty_expected)
   in
   let separate = !Clflags.principal || Env.has_local_constraints env in
@@ -4881,9 +4881,9 @@ and type_function ?in_function loc attrs env (expected_mode : expected_mode)
     generalize_structure ty_arg;
     generalize_structure ty_res
   end;
-  let env, region_locked, lock_mode =
+  let env, region_locked, lock_mode, last_arg_mode =
     match in_function with
-    | Some (_, _, region_locked, lock_mode) -> env, region_locked, lock_mode
+    | Some (_, _, region_locked, lock_mode, last_arg_mode) -> env, region_locked, lock_mode, last_arg_mode
     | None ->
       let lock_mode = Mode.Uniqueness.newvar () in
       let env = Env.add_uniqueness_lock lock_mode env in
@@ -4898,7 +4898,7 @@ and type_function ?in_function loc attrs env (expected_mode : expected_mode)
         if region_locked then Env.add_region_lock env
         else env
       in
-      env, region_locked, lock_mode
+      env, region_locked, lock_mode, Mode.Uniqueness.shared
   in
   if uncurried_function then begin
     begin match Mode.Locality.submode arg_mode.locality ret_mode.locality with
@@ -4911,7 +4911,7 @@ and type_function ?in_function loc attrs env (expected_mode : expected_mode)
     | Error _e ->
         raise (Error(loc_fun, env, Uncurried_function_escapes))
     end;
-    begin match Mode.Uniqueness.submode arr_mode arg_mode.uniqueness with
+    begin match Mode.Uniqueness.submode arr_mode last_arg_mode with
     | Ok () -> ()
     | Error _e ->
         raise (Error(loc_fun, env, Captures_unique_value))
@@ -4941,7 +4941,7 @@ and type_function ?in_function loc attrs env (expected_mode : expected_mode)
   in
   let in_function =
     if uncurried_function then
-      Some (loc_fun, ty_fun, region_locked, arr_mode)
+      Some (loc_fun, ty_fun, region_locked, arr_mode, arg_mode.uniqueness)
     else
       None
   in
