@@ -205,6 +205,7 @@ type error =
   | Param_mode_mismatch of type_expr * Mode.Alloc.error
   | Uncurried_function_escapes
   | Captures_unique_value
+  | Call_once_function_called_shared
   | Local_return_annotation_mismatch of Location.t
   | Bad_tail_annotation of [`Conflict|`Not_a_tailcall]
 

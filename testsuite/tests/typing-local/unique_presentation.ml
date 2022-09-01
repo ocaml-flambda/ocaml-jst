@@ -55,6 +55,11 @@ let tail_unique : 'a. unique_ 'a list -> unique_ 'a list = function
 val tail_unique : unique_ 'a list -> unique_ 'a list = <fun>
 |}]
 
+let curry (unique_ b1 : box) (unique_ b2 : box) = b1
+[%%expect{|
+val curry : unique_ box -> (unique_ box !-> box) = <fun>
+|}]
+
 let curry : unique_ box -> (unique_ box !-> unique_ box) = fun b1 b2 -> b1
 [%%expect{|
 val curry : unique_ box -> (unique_ box !-> unique_ box) = <fun>

@@ -141,6 +141,7 @@ type error =
   | Param_mode_mismatch of type_expr * Mode.Alloc.error
   | Uncurried_function_escapes
   | Captures_unique_value
+  | Call_once_function_called_shared
   | Local_return_annotation_mismatch of Location.t
   | Bad_tail_annotation of [`Conflict|`Not_a_tailcall]
 
@@ -355,6 +356,7 @@ let submode ~loc ~env mode expected_mode =
       raise (Error(loc, env, Submode_failed(reason, context)))
 
 let escape ~loc ~env m =
+  Mode.Uniqueness.submode_exn Mode.Uniqueness.shared m.uniqueness;
   submode ~loc ~env m mode_global_shared
 
 let eqmode ~loc ~env m1 m2 ferr =
@@ -2545,10 +2547,12 @@ let remaining_function_type ty_ret mode_ret rev_args =
              (ty_ret, mode_ret, closed_args)
          | Arg (Eliminated_optional_arg { mode_fun; ty_arg; mode_arg; mode_arr; level })
          | Omitted { mode_fun; ty_arg; mode_arg; mode_arr; level } ->
+             let mode_arr', _ = Mode.Uniqueness.newvar_below mode_arr in
+             List.iter (fun (marg : Mode.Alloc.t) ->
+                 Mode.Uniqueness.submode_exn mode_arr' marg.uniqueness) closed_args;
              let ty_ret =
                newty2 level
-                 (* TODO bang arrow *)
-                 (Tarrow ((lbl, mode_arg, mode_arr, mode_ret), ty_arg, ty_ret, Cok))
+                 (Tarrow ((lbl, mode_arg, mode_arr', mode_ret), ty_arg, ty_ret, Cok))
              in
              let mode_ret =
                Mode.Alloc.join (mode_fun :: closed_args)
@@ -2605,15 +2609,15 @@ let collect_unknown_apply_args env funct ty_fun mode_fun rev_args sargs =
             | _ ->
                 raise(Error(funct.exp_loc, env, Apply_non_function
                               (expand_head env funct.exp_type)))
-    in
-    let arg = Unknown_arg { sarg; ty_arg; mode_arg; mode_arr } in
-    loop ty_res mode_res ((lbl, Arg arg) :: rev_args) rest
+        in
+        let arg = Unknown_arg { sarg; ty_arg; mode_arg; mode_arr } in
+        loop ty_res mode_res ((lbl, Arg arg) :: rev_args) rest
   in
   loop ty_fun mode_fun rev_args sargs
 
-let collect_apply_args env funct ignore_labels ty_fun ty_fun0 mode_fun sargs =
+let collect_apply_args env app_loc funct ignore_labels ty_fun ty_fun0 mode_fun sargs =
   let warned = ref false in
-  let rec loop ty_fun ty_fun0 mode_fun rev_args sargs =
+  let rec loop ty_fun ty_fun0 (mode_fun : alloc_mode) rev_args sargs =
     match expand_head env ty_fun, expand_head env ty_fun0 with
     | {desc=Tarrow (ad, ty_arg, ty_ret, com); level=lv} as ty_fun',
       {desc=Tarrow (_, ty_arg0, ty_ret0, _)}
@@ -2628,7 +2632,14 @@ let collect_apply_args env funct ignore_labels ty_fun ty_fun0 mode_fun sargs =
         in
         let name = label_name l
         and optional = is_optional l in
+        let check_mode_arr () =
+          match Mode.Uniqueness.submode mode_fun.uniqueness mode_arr with
+          | Ok () -> ()
+          | Error _e ->
+              raise (Error(app_loc, env, Call_once_function_called_shared))
+        in
         let use_arg sarg l' =
+          check_mode_arr ();
           let wrapped_in_some = optional && not (is_optional l') in
           if wrapped_in_some then
             may_warn sarg.pexp_loc
@@ -2636,6 +2647,7 @@ let collect_apply_args env funct ignore_labels ty_fun ty_fun0 mode_fun sargs =
           Arg (Known_arg { sarg; ty_arg; ty_arg0; mode_arg; mode_arr; wrapped_in_some })
         in
         let eliminate_optional_arg () =
+          check_mode_arr ();
           may_warn funct.exp_loc
             (Warnings.Non_principal_labels "eliminated optional argument");
           Arg
@@ -2704,10 +2716,6 @@ let type_omitted_parameters expected_mode env ty_ret mode_ret args =
              let args = (lbl, arg) :: args in
              (ty_ret, mode_ret, open_args, closed_args, args)
          | Omitted { mode_fun; ty_arg; mode_arg; mode_arr; level } ->
-             let ty_ret =
-               newty2 level
-                 (Tarrow ((lbl, mode_arg, mode_arr, mode_ret), ty_arg, ty_ret, Cok))
-             in
              let new_closed_args =
                List.map
                  (fun (marg, exp) ->
@@ -2717,6 +2725,13 @@ let type_omitted_parameters expected_mode env ty_ret mode_ret args =
                  open_args
              in
              let closed_args = new_closed_args @ closed_args in
+             let mode_arr', _ = Mode.Uniqueness.newvar_below mode_arr in
+             List.iter (fun (marg : Mode.Alloc.t) ->
+                 Mode.Uniqueness.submode_exn mode_arr' marg.uniqueness) closed_args;
+             let ty_ret =
+               newty2 level
+                 (Tarrow ((lbl, mode_arg, mode_arr', mode_ret), ty_arg, ty_ret, Cok))
+             in
              let open_args = [] in
              let mode_closure = Mode.Alloc.join (mode_fun :: closed_args) in
              register_allocation_mode mode_closure;
@@ -4911,16 +4926,16 @@ and type_function ?in_function loc attrs env (expected_mode : expected_mode)
     | Error _e ->
         raise (Error(loc_fun, env, Uncurried_function_escapes))
     end;
-    begin match Mode.Uniqueness.submode arr_mode last_arg_mode with
-    | Ok () -> ()
-    | Error _e ->
-        raise (Error(loc_fun, env, Captures_unique_value))
-    end;
-    begin match Mode.Uniqueness.submode arr_mode lock_mode with
-    | Ok () -> ()
-    | Error _e ->
-        raise (Error(loc_fun, env, Captures_unique_value))
-    end
+  end;
+  begin match Mode.Uniqueness.submode arr_mode last_arg_mode with
+  | Ok () -> ()
+  | Error _e ->
+      raise (Error(loc_fun, env, Captures_unique_value))
+  end;
+  begin match Mode.Uniqueness.submode arr_mode lock_mode with
+  | Ok () -> ()
+  | Error _e ->
+      raise (Error(loc_fun, env, Captures_unique_value))
   end;
   let arg_value_mode = Mode.Value.of_alloc arg_mode in
   let arg_value_mode =
@@ -5495,7 +5510,7 @@ and type_application env app_loc (expected_mode : expected_mode) position funct 
         end
       in
       let ty_ret, mode_ret, args =
-        collect_apply_args env funct ignore_labels ty (instance ty)
+        collect_apply_args env app_loc funct ignore_labels ty (instance ty)
           (Mode.Value.regional_to_global_alloc funct_mode) sargs
       in
       let partial_app = is_partial_apply args in
@@ -6929,6 +6944,10 @@ let report_error ~loc env = function
       Location.errorf ~loc
         "This function captures a unique value and so its type needs@ \
         to use the !-> arrow. This ensures that the function is only called once."
+  | Call_once_function_called_shared ->
+      Location.errorf ~loc
+        "This function may only be called once, so you may only call it when@ \
+         you have the unique reference to it."
   | Local_return_annotation_mismatch _ ->
       Location.errorf ~loc
         "This function return is not annotated with \"local_\"@ \

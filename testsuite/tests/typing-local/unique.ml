@@ -200,7 +200,7 @@ Line 2, characters 20-21:
 let inf5 (b : bool) (y : float) (unique_ x : float) =
   let z = if b then x else y in unique_ z
 [%%expect{|
-val inf5 : bool -> unique_ float -> (unique_ float -> float) = <fun>
+val inf5 : bool -> unique_ float -> (unique_ float !-> float) = <fun>
 |}]
 
 let inf6 (unique_ x) = let f x = x in higher_order f x
@@ -210,7 +210,7 @@ val inf6 : unique_ 'a -> 'a = <fun>
 
 let unique_default_args ?(unique_ x = 1.0) () = x
 [%%expect{|
-val unique_default_args : ?x:unique_ float -> (unit -> float) = <fun>
+val unique_default_args : ?x:unique_ float -> (unit !-> float) = <fun>
 |}]
 
 type point = { dim : int; x : float; y : float; z : float }
@@ -494,14 +494,14 @@ let gc_soundness_bug (local_ unique_ p) (local_ f) =
   local_ { unique_ p with x = f }
 [%%expect{|
 val gc_soundness_bug :
-  local_ unique_ point -> local_ (local_ float -> local_ point) = <fun>
+  local_ unique_ point -> local_ (local_ float !-> local_ point) = <fun>
 |}]
 
 let gc_soundness_nobug (local_ unique_ p) f =
   local_ { unique_ p with x = f }
 [%%expect{|
 val gc_soundness_nobug :
-  local_ unique_ point -> local_ (float -> local_ point) = <fun>
+  local_ unique_ point -> local_ (float !-> local_ point) = <fun>
 |}]
 
 let gc_soundness_nobug (local_ unique_ p) f =
@@ -538,6 +538,71 @@ let rec bar =
   | None -> bar (local_ Some ()) [@nontail]
 [%%expect{|
 val bar : local_ unique_ unit option -> unit = <fun>
+|}]
+
+
+(* Currying *)
+
+let curry =
+  let foo ~a ~b ~c ~d = (a, b, c, (unique_ d)) in
+  foo ~a:3 ~c:4
+[%%expect{|
+val curry : b:'_weak1 -> d:unique_ '_weak2 -> int * '_weak1 * int * '_weak2 =
+  <fun>
+|}]
+
+let curry =
+  let foo ~a ~b ~c ~d = (a, b, (unique_ c), (unique_ d)) in
+  foo ~a:3 ~c:4
+[%%expect{|
+val curry : b:'_weak3 !-> d:unique_ '_weak4 !-> int * '_weak3 * int * '_weak4 =
+  <fun>
+|}]
+
+let curry =
+  let foo ~a ~b ~c ~d = ((unique_ a), b, c, d) in
+  foo ~a:3 ~c:4
+[%%expect{|
+val curry : b:'_weak5 !-> d:'_weak6 !-> int * '_weak5 * int * '_weak6 = <fun>
+|}]
+
+let curry =
+  let foo ~a ~b ~c ~d = (a, (unique_ b), c, unique_ d) in
+  foo ~a:3 ~c:4
+[%%expect{|
+val curry :
+  b:unique_ '_weak7 -> (d:unique_ '_weak8 !-> int * '_weak7 * int * '_weak8) =
+  <fun>
+|}]
+
+let curry =
+  let foo ~a ~b ~c ~d = (a, b, (unique_ c), unique_ d) in
+  let bar = foo ~a:3 ~b:2 ~c:4 in
+  (bar ~d:3, bar ~d:5)
+[%%expect{|
+Line 4, characters 3-6:
+4 |   (bar ~d:3, bar ~d:5)
+       ^^^
+Error: bar is used uniquely here so cannot be used twice. It will be used again at:
+Line 4, characters 13-16:
+4 |   (bar ~d:3, bar ~d:5)
+                 ^^^
+
+|}]
+
+let curry =
+  let foo ~a ~b ~c ~d = (a, b, (unique_ c), unique_ d) in
+  let bar = foo ~a:3 ~c:4 in
+  let baz = bar ~b:4 in (baz ~d:3, baz ~d:5)
+[%%expect{|
+Line 4, characters 25-28:
+4 |   let baz = bar ~b:4 in (baz ~d:3, baz ~d:5)
+                             ^^^
+Error: baz is used uniquely here so cannot be used twice. It will be used again at:
+Line 4, characters 35-38:
+4 |   let baz = bar ~b:4 in (baz ~d:3, baz ~d:5)
+                                       ^^^
+
 |}]
 
 (* ------------------------------------------------------------------------------------ *)

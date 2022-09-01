@@ -16,8 +16,6 @@ let rec fold f b t =
       fold f (f key value (fold f b left)) right
   | Leaf -> b
 
-let empty = Leaf
-
 let work ~insert ~fold ~empty =
   let rec loop n t =
     if n <= 0 then t
@@ -197,8 +195,6 @@ let rec tagged_fold : 'k 'v 'kind 'a. ('k -> 'v -> 'a -> 'a) -> 'a -> ('k, 'v, '
   | Node { left; key; value; right } ->
       tagged_fold f (f key value (tagged_fold f a left)) right
   | Leaf -> a
-
-let tagged_empty : ('k, 'v, tree_tag) tagged_tree = Leaf
 
 let unique_work ~insert ~fold ~empty =
   let rec loop n (unique_ t) =
@@ -407,7 +403,7 @@ let () =
   let module M2 = Make_Unique_Okasaki(Ord) in
   let module M3 = Make_Tagged_Okasaki(Ord) in
   let module M4 = Make_Tagged_Bottom_Up(Ord) in
-  Printf.printf "%d\n" (work ~insert:M1.insert ~fold ~empty);
-  Printf.printf "%d\n" (unique_work ~insert:M2.insert ~fold ~empty);
-  Printf.printf "%d\n" (unique_work ~insert:M3.insert ~fold:tagged_fold ~empty:tagged_empty);
-  (* Printf.printf "%d\n" (unique_work ~insert:M4.insert ~fold:tagged_fold ~empty:tagged_empty); *)
+  Printf.printf "%d\n" (work ~insert:M1.insert ~fold ~empty:Leaf);
+  Printf.printf "%d\n" (unique_work ~insert:M2.insert ~fold ~empty:Leaf);
+  Printf.printf "%d\n" (unique_work ~insert:M3.insert ~fold:tagged_fold ~empty:Leaf);
+  (* Printf.printf "%d\n" (unique_work ~insert:M4.insert ~fold:tagged_fold ~empty:Leaf); *)
