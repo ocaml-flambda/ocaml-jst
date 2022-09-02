@@ -170,7 +170,7 @@ and exp_extra =
 
 and expression_desc =
     Texp_ident of
-      Path.t * Longident.t loc * Types.value_description * ident_kind * Types.value_mode
+      Path.t * Longident.t loc * Types.value_description * ident_kind * Mode.Uniqueness.t
         (** x
             M.x
          *)
@@ -232,10 +232,11 @@ and expression_desc =
   | Texp_record of {
       fields : ( Types.label_description * record_label_definition ) array;
       representation : Types.record_representation;
-      extended_expression : expression option;
+      extended_expression : (update_kind * expression) option;
     }
-        (** { l1=P1; ...; ln=Pn }           (extended_expression = None)
-            { E0 with l1=P1; ...; ln=Pn }   (extended_expression = Some E0)
+        (** { l1=P1; ...; ln=Pn }                   (extended_expression = None)
+            { E0 with l1=P1; ...; ln=Pn }           (extended_expression = Some (Create_new, E0))
+            { unique_ E0 with l1=P1; ...; ln=Pn }   (extended_expression = Some (In_place, E0))
 
             Invariant: n > 0
 
@@ -245,16 +246,16 @@ and expression_desc =
               { fields = [| l1, Kept t1; l2 Override P2 |]; representation;
                 extended_expression = Some E0 }
         *)
-  | Texp_field of expression * Longident.t loc * Types.label_description * Types.value_mode
+  | Texp_field of expression * Longident.t loc * Types.label_description * Mode.Uniqueness.t
   | Texp_setfield of
       expression * Longident.t loc * Types.label_description * expression
   | Texp_array of expression list
   | Texp_ifthenelse of expression * expression * expression option
   | Texp_sequence of expression * expression
   | Texp_while of expression * expression
-  | Texp_list_comprehension of 
+  | Texp_list_comprehension of
       expression * comprehension list
-  | Texp_arr_comprehension of 
+  | Texp_arr_comprehension of
       expression * comprehension list
   | Texp_for of
       Ident.t * Parsetree.pattern * expression * expression * direction_flag *
@@ -294,17 +295,17 @@ and meth =
     Tmeth_name of string
   | Tmeth_val of Ident.t
 
-  and comprehension =
-  { 
-     clauses: comprehension_clause list;
-     guard : expression option 
-  }
+and comprehension =
+{
+    clauses: comprehension_clause list;
+    guard : expression option
+}
 
-and comprehension_clause = 
- | From_to of Ident.t * Parsetree.pattern * 
+and comprehension_clause =
+ | From_to of Ident.t * Parsetree.pattern *
      expression * expression * direction_flag
  | In of pattern * expression
- 
+
 and 'k case =
     {
      c_lhs: 'k general_pattern;
@@ -315,6 +316,10 @@ and 'k case =
 and record_label_definition =
   | Kept of Types.type_expr
   | Overridden of Longident.t loc * expression
+
+and update_kind =
+  | Create_new
+  | In_place
 
 and binding_op =
   {

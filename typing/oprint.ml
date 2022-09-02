@@ -329,7 +329,7 @@ and print_out_type_1 mode ppf =
       pp_open_box ppf 0;
       if lab <> "" then (pp_print_string ppf lab; pp_print_char ppf ':');
       print_out_arg am ppf ty1;
-      if arrm = Oum_unique && snd mode != Oum_unique then
+      if arrm = Oum_unique && snd mode <> Oum_unique then
         pp_print_string ppf " !->"
       else pp_print_string ppf " ->";
       pp_print_space ppf ();

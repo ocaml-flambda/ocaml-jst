@@ -133,14 +133,14 @@ module Solver (L : Lattice) = struct
   let newvar () = Amodevar (fresh ())
 
   let newvar_below = function
-    | Amode c when L.eq_const c L.min_const -> Amode L.min_const, false
+    | Amode c when L.eq_const c L.min_const -> min_mode, false
     | m ->
         let v = newvar () in
         submode_exn v m;
         v, true
 
   let newvar_above = function
-    | Amode c when L.eq_const c L.max_const -> Amode L.max_const, false
+    | Amode c when L.eq_const c L.max_const -> max_mode, false
     | m ->
         let v = newvar () in
         submode_exn m v;
@@ -154,7 +154,7 @@ module Solver (L : Lattice) = struct
 
   let joinvars vars =
     match vars with
-    | [] -> Amode L.min_const
+    | [] -> min_mode
     | v :: rest ->
       let v =
         if all_equal v rest then v
@@ -367,7 +367,14 @@ module Alloc = struct
   type const = locality * uniqueness
   type t = Types.alloc_mode
 
-  let of_const (l, u) = { locality = Locality.of_const l; uniqueness = Uniqueness.of_const u }
+  let of_const (l, u) =
+    { locality = Locality.of_const l;
+      uniqueness = Uniqueness.of_const u }
+
+  let is_const (mode : t) =
+    match mode.locality, mode.uniqueness with
+    | Amodevar _, _ | _, Amodevar _ -> false
+    | Amode _, Amode _ -> true
 
   let global = { locality = Locality.global; uniqueness = Uniqueness.shared }
   let local = { locality = Locality.local; uniqueness = Uniqueness.shared }
@@ -423,14 +430,14 @@ module Alloc = struct
       uniqueness = Uniqueness.newvar () }
 
   let newvar_below { locality; uniqueness } =
-    let locality, changed_locality = Locality.newvar_below locality in
-    let uniqueness, changed_uniqueness = Uniqueness.newvar_below uniqueness in
-    { locality; uniqueness }, changed_locality || changed_uniqueness
+    let locality, changed1 = Locality.newvar_below locality in
+    let uniqueness, changed2 = Uniqueness.newvar_below uniqueness in
+    { locality; uniqueness }, changed1 || changed2
 
   let newvar_above { locality; uniqueness } =
-    let locality, changed_locality = Locality.newvar_above locality in
-    let uniqueness, changed_uniqueness = Uniqueness.newvar_above uniqueness in
-    { locality; uniqueness }, changed_locality || changed_uniqueness
+    let locality, changed1 = Locality.newvar_above locality in
+    let uniqueness, changed2 = Uniqueness.newvar_above uniqueness in
+    { locality; uniqueness }, changed1 || changed2
 
   let of_uniqueness uniqueness =
     { locality = Locality.newvar (); uniqueness }
@@ -569,6 +576,9 @@ module Value = struct
   let of_locality_max l =
     { max_mode with r_as_l = l; r_as_g = l }
 
+  let set_uniqueness uniqueness t =
+    { t with uniqueness }
+
   let to_local t = { t with r_as_l = Locality.local; r_as_g = Locality.local }
   let to_global t = { t with r_as_l = Locality.global; r_as_g = Locality.global }
   let to_unique t = { t with uniqueness = Uniqueness.unique }
@@ -647,18 +657,18 @@ module Value = struct
     { r_as_l; r_as_g; uniqueness }
 
   let newvar_below { r_as_l; r_as_g; uniqueness } =
-    let r_as_l, b1 = Locality.newvar_below r_as_l in
-    let r_as_g, b2 = Locality.newvar_below r_as_g in
-    let uniqueness, b3 = Uniqueness.newvar_below uniqueness in
+    let r_as_l, changed1 = Locality.newvar_below r_as_l in
+    let r_as_g, changed2 = Locality.newvar_below r_as_g in
+    let uniqueness, changed3 = Uniqueness.newvar_below uniqueness in
     Locality.submode_exn r_as_g r_as_l;
-    { r_as_l; r_as_g; uniqueness }, b1 || b2 || b3
+    { r_as_l; r_as_g; uniqueness }, changed1 || changed2 || changed3
 
   let newvar_above { r_as_l; r_as_g; uniqueness } =
-    let r_as_l, b1 = Locality.newvar_above r_as_l in
-    let r_as_g, b2 = Locality.newvar_above r_as_g in
-    let uniqueness, b3 = Uniqueness.newvar_above uniqueness in
+    let r_as_l, changed1 = Locality.newvar_above r_as_l in
+    let r_as_g, changed2 = Locality.newvar_above r_as_g in
+    let uniqueness, changed3 = Uniqueness.newvar_above uniqueness in
     Locality.submode_exn r_as_g r_as_l;
-    { r_as_l; r_as_g; uniqueness }, b1 || b2 || b3
+    { r_as_l; r_as_g; uniqueness }, changed1 || changed2 || changed3
 
   let check_const t =
     let locality = match Locality.check_const t.r_as_l with

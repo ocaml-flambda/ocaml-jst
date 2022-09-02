@@ -99,7 +99,7 @@ and exp_extra =
 
 and expression_desc =
     Texp_ident of
-      Path.t * Longident.t loc * Types.value_description * ident_kind * Types.value_mode
+      Path.t * Longident.t loc * Types.value_description * ident_kind * Mode.Uniqueness.t
   | Texp_constant of constant
   | Texp_let of rec_flag * value_binding list * expression
   | Texp_function of { arg_label : arg_label; param : Ident.t;
@@ -115,9 +115,9 @@ and expression_desc =
   | Texp_record of {
       fields : ( Types.label_description * record_label_definition ) array;
       representation : Types.record_representation;
-      extended_expression : expression option;
+      extended_expression : (update_kind * expression) option;
     }
-  | Texp_field of expression * Longident.t loc * label_description * Types.value_mode
+  | Texp_field of expression * Longident.t loc * label_description * Mode.Uniqueness.t
   | Texp_setfield of
       expression * Longident.t loc * label_description * expression
   | Texp_array of expression list
@@ -186,6 +186,10 @@ and 'k case =
 and record_label_definition =
   | Kept of Types.type_expr
   | Overridden of Longident.t loc * expression
+
+and update_kind =
+  | Create_new
+  | In_place
 
 and binding_op =
   {

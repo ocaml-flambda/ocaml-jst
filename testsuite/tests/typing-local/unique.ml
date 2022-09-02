@@ -493,8 +493,10 @@ val overwrite_point : unique_ point -> point * point = <fun>
 let gc_soundness_bug (local_ unique_ p) (local_ f) =
   local_ { unique_ p with x = f }
 [%%expect{|
-val gc_soundness_bug :
-  local_ unique_ point -> local_ (local_ float !-> local_ point) = <fun>
+Line 2, characters 30-31:
+2 |   local_ { unique_ p with x = f }
+                                  ^
+Error: This value escapes its region
 |}]
 
 let gc_soundness_nobug (local_ unique_ p) f =
@@ -504,22 +506,11 @@ val gc_soundness_nobug :
   local_ unique_ point -> local_ (float !-> local_ point) = <fun>
 |}]
 
-let gc_soundness_nobug (local_ unique_ p) f =
-  { unique_ p with x = f }
+let gc_soundness_nobug (local_ unique_ p) (local_ f) =
+  local_ { p with x = f }
 [%%expect{|
-Line 2, characters 12-13:
-2 |   { unique_ p with x = f }
-                ^
-Error: This value escapes its region
-|}]
-
-let gc_soundness_nobug (local_ unique_ p) f =
-  { p with x = f }
-[%%expect{|
-Line 2, characters 4-5:
-2 |   { p with x = f }
-        ^
-Error: This value escapes its region
+val gc_soundness_nobug :
+  local_ unique_ point -> local_ (local_ float !-> local_ point) = <fun>
 |}]
 
 let rec foo =
@@ -540,6 +531,15 @@ let rec bar =
 val bar : local_ unique_ unit option -> unit = <fun>
 |}]
 
+let foo : local_ unique_ string -> unit = fun (local_ s) -> ()
+[%%expect{|
+val foo : local_ unique_ string -> unit = <fun>
+|}]
+
+let bar : local_ unique_ string -> unit = fun (unique_ s) -> ()
+[%%expect{|
+val bar : local_ unique_ string -> unit = <fun>
+|}]
 
 (* Currying *)
 

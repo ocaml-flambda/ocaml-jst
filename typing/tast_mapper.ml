@@ -298,7 +298,7 @@ let expr sub x =
         in
         Texp_record {
           fields; representation;
-          extended_expression = Option.map (sub.expr sub) extended_expression;
+          extended_expression = Option.map (fun (u, e) -> (u, sub.expr sub e)) extended_expression;
         }
     | Texp_field (exp, lid, ld, mode) ->
         Texp_field (sub.expr sub exp, lid, ld, mode)

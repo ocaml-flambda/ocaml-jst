@@ -86,6 +86,8 @@ module Alloc : sig
 
   val of_const : const -> t
 
+  val is_const : t -> bool
+
   val min_mode : t
 
   val max_mode : t
@@ -164,10 +166,11 @@ module Value : sig
 
   (* The 'of_*_min' functions extend the min_mode,
      the 'of_*_max' functions extend the max_mode *)
-  val of_uniqueness_min : Types.uniqueness Types.mode -> t
-  val of_uniqueness_max : Types.uniqueness Types.mode -> t
-  val of_locality_min : Types.locality Types.mode -> t
-  val of_locality_max : Types.locality Types.mode -> t
+  val of_uniqueness_min : Uniqueness.t -> t
+  val of_uniqueness_max : Uniqueness.t -> t
+  val of_locality_min : Locality.t -> t
+  val of_locality_max : Locality.t -> t
+  val set_uniqueness : Uniqueness.t -> t -> t
 
   (** Injections from [Alloc.t] into [Value_mode.t] *)
 

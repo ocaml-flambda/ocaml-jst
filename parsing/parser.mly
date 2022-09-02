@@ -166,7 +166,7 @@ let local_attr =
 let local_extension =
   Exp.mk ~loc:Location.none (Pexp_extension(local_ext_loc, PStr []))
 
-let mkexp_stack  ~loc exp =
+let mkexp_stack ~loc exp =
   ghexp ~loc (Pexp_apply(local_extension, [Nolabel, exp]))
 
 let mkpat_stack pat =

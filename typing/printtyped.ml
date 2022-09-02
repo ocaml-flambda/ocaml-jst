@@ -391,7 +391,7 @@ and expression i ppf x =
   | Texp_variant (l, eo) ->
       line i ppf "Texp_variant \"%s\"\n" l;
       option i expression ppf eo;
-  | Texp_record { fields; representation; extended_expression } ->
+  | Texp_record { fields; representation; extended_expression = ext_expr } ->
       line i ppf "Texp_record\n";
       let i = i+1 in
       line i ppf "fields =\n";
@@ -399,7 +399,7 @@ and expression i ppf x =
       line i ppf "representation =\n";
       record_representation (i+1) ppf representation;
       line i ppf "extended_expression =\n";
-      option (i+1) expression ppf extended_expression;
+      option (i+1) extended_expression ppf ext_expr;
   | Texp_field (e, li, _, _) ->
       line i ppf "Texp_field\n";
       expression i ppf e;
@@ -974,6 +974,13 @@ and record_field i ppf = function
       expression (i+1) ppf e;
   | _, Kept _ ->
       line i ppf "<kept>"
+
+and extended_expression i ppf = function
+  | (Create_new, e) ->
+      expression i ppf e;
+  | (In_place, e) ->
+      line i ppf "<in-place>\n";
+      expression (i+1) ppf e;
 
 and label_x_apply_arg i ppf (l, e) =
   line i ppf "<arg>\n";

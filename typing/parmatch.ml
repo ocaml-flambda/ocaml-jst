@@ -1271,7 +1271,7 @@ let print_pat pat =
     match pat.pat_desc with
         Tpat_var _ -> "v"
       | Tpat_any -> "_"
-      | Tpat_alias (p, x, _, _) -> Printf.sprintf "(%s) as ?"  (string_of_pat p)
+      | Tpat_alias (p, x) -> Printf.sprintf "(%s) as ?"  (string_of_pat p)
       | Tpat_constant n -> "0"
       | Tpat_construct (_, lid, _) ->
         Printf.sprintf "%s" (String.concat "." (Longident.flatten lid.txt))

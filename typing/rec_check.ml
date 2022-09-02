@@ -661,9 +661,10 @@ let rec expression : Typedtree.expression -> term_judg =
             Kept _ -> empty
           | Overridden (_, e) -> expression e
         in
+        let extended_expression (_, e) = expression e in
         join [
           array field es << field_mode;
-          option expression eo << Dereference
+          option extended_expression eo << Dereference
         ]
     | Texp_ifthenelse (cond, ifso, ifnot) ->
       (*

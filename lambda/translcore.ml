@@ -232,7 +232,7 @@ let rec push_defaults loc bindings cases partial warnings =
             ({exp with exp_type = pat.pat_type; exp_env = env; exp_desc =
               Texp_ident
                 (Path.Pident param, mknoloc (Longident.Lident name),
-                 desc, Id_value, Mode.Value.global)},
+                 desc, Id_value, Mode.Uniqueness.shared)},
              cases, partial) }
       in
       push_defaults loc bindings
@@ -1244,9 +1244,8 @@ and transl_record ~scopes loc env mode fields repres opt_init_expr =
   let maybe_unique_update_on =
     match opt_init_expr with
     | None -> None
-    | Some exp -> match Builtin_attributes.has_unique exp.exp_attributes with
-      | Ok false | Error _ -> None
-      | Ok true -> Some (transl_exp ~scopes exp) in
+    | Some (Create_new, _) -> None
+    | Some (In_place, exp) -> Some (transl_exp ~scopes exp) in
   let is_unique_update_on =
     match maybe_unique_update_on with | None -> false | Some _ -> true in
   let reuses =
@@ -1352,14 +1351,13 @@ and transl_record ~scopes loc env mode fields repres opt_init_expr =
             | Record_extension _ -> (* We add an Reuse_keep for the extension *)
                 Lprim(Preuseblock(0, mut, Reuse_keep :: reuses, mode), id :: set_ll, loc)
     in
-    begin match opt_init_expr, maybe_unique_update_on with
-    | None, _ | _, Some _ -> lam
-    | Some init_expr, None -> Llet(Strict, Pgenval, init_id,
-                             transl_exp ~scopes init_expr, lam)
-    end
+    match opt_init_expr with
+    | None | Some(In_place, _) -> lam
+    | Some (Create_new, init_expr) -> Llet(Strict, Pgenval, init_id,
+                                            transl_exp ~scopes init_expr, lam)
   end else match opt_init_expr with
-    | None -> assert false
-    | Some init_expr ->
+    | None | Some(In_place, _) -> assert false
+    | Some (Create_new, init_expr) ->
         assert (is_heap_mode mode); (* Pduprecord must be Alloc_heap *)
         (* Take a shallow copy of the init record, then mutate the fields
           of the copy *)

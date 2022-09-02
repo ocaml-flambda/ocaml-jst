@@ -451,15 +451,6 @@ and pat_proj : 'a. ?handle_tuple:_ -> extract_pat:('a -> _) -> mk_proj:(_ -> 'a 
         in ienv, uenv
     | TupleParent(ps') -> handle_tuple ps'
 
-let has_unique_attr loc attrs =
-  match Builtin_attributes.has_unique attrs with
-  | Ok l -> l
-  | Error () ->
-      raise(Typetexp.Error(loc, Env.empty, Unique_not_enabled))
-
-let has_unique_attr_texp (texp : Typedtree.expression) =
-  has_unique_attr texp.exp_loc texp.exp_attributes
-
 (* We ignore exceptions in uniqueness analysis. *)
 let comp_pat_to_map
       (pat : Typedtree.computation Typedtree.general_pattern) parent ienv uenv =
@@ -479,7 +470,7 @@ let rec check_uniqueness_exp_ exp ienv uenv =
       match ident_option_from_path p with
       | Some id ->
           let occ = Occurrence.fresh exp.exp_loc
-              (Seen_as (Ident id)) (Some mode.uniqueness) in
+              (Seen_as (Ident id)) (Some mode) in
           mark_seen id occ ienv uenv
       | None -> uenv
       end
@@ -514,9 +505,10 @@ let rec check_uniqueness_exp_ exp ienv uenv =
           | _, Overridden (_, e) -> check_uniqueness_exp_ e ienv uenv) uenv fields in
       match extended_expression with
       | None -> check_fields uenv
-      | Some exp ->
+      | Some (update_kind, exp) ->
         let parent, uenv = path_to_parent ~check:true exp ienv uenv in
         match parent with
+        | None -> check_fields uenv
         | Some (ps, (err_id, _), mode) ->
             let uenv = Array.fold_left (fun uenv field -> match field with
               | l, Kept _ ->
@@ -524,20 +516,19 @@ let rec check_uniqueness_exp_ exp ienv uenv =
                   if is_shared_field l.lbl_global then uenv else
                     let ps, uenv = add_child_many ps (Projection.Record_field l.lbl_name) uenv in
                     List.fold_left (fun uenv p -> mark_seen_ p occ uenv) uenv ps
-              | _, Overridden (_, e) -> check_uniqueness_exp_ e ienv uenv) uenv fields in
-            if has_unique_attr_texp exp
-            then
-              let occ = Occurrence.fresh exp.exp_loc (Seen_as err_id) (Some mode) in
-              let ps, uenv = add_child_many ps Memory_address uenv in
-              List.fold_left (fun uenv p -> mark_seen_ p occ uenv) uenv ps
-            else uenv
-        | None -> check_fields uenv
+              | _, Overridden (_, e) -> check_uniqueness_exp_ e ienv uenv) uenv fields
+            in match update_kind with
+            | In_place ->
+                let occ = Occurrence.fresh exp.exp_loc (Seen_as err_id) (Some mode) in
+                let ps, uenv = add_child_many ps Memory_address uenv in
+                List.fold_left (fun uenv p -> mark_seen_ p occ uenv) uenv ps
+            | Create_new -> uenv
       end
   | Texp_field(e, _, l, mode) -> begin
       match (path_to_parent ~check:true e ienv uenv : (Uqid.t list * path_parent * Mode.Uniqueness.t) option * unique_env) with
       | Some (ps, (err_id, _), _), uenv ->
           if is_shared_field l.lbl_global then uenv else
-            let occ = Occurrence.fresh exp.exp_loc (Seen_as (Field(err_id, l.lbl_name))) (Some mode.uniqueness) in
+            let occ = Occurrence.fresh exp.exp_loc (Seen_as (Field(err_id, l.lbl_name))) (Some mode) in
             let ps, uenv = add_child_many ps (Projection.Record_field l.lbl_name) uenv in
             List.fold_left (fun uenv p -> mark_seen_ p occ uenv) uenv ps
       | None, uenv -> uenv
@@ -608,15 +599,15 @@ and path_to_parent : check:bool -> Typedtree.expression -> id_env -> unique_env 
           | None -> None, uenv
           | Some ps ->
               let err_id = Ident id in
-              let occ = Occurrence.fresh exp.exp_loc (Seen_as err_id) (Some mode.uniqueness) in
-              Some(ps, (err_id, occ), mode.uniqueness), uenv end
+              let occ = Occurrence.fresh exp.exp_loc (Seen_as err_id) (Some mode) in
+              Some(ps, (err_id, occ), mode), uenv end
   | Texp_field(e, _, l, mode) -> begin
       match path_to_parent ~check e ienv uenv with
       | Some(ps, (err_id, _), _), uenv ->
           let err_id = Field(err_id, l.lbl_name) in
-          let occ = Occurrence.fresh exp.exp_loc (Seen_as err_id) (Some mode.uniqueness) in
+          let occ = Occurrence.fresh exp.exp_loc (Seen_as err_id) (Some mode) in
           let ps, uenv = add_child_many ps (Projection.Record_field l.lbl_name) uenv in
-          Some(ps, (err_id, occ), mode.uniqueness), uenv
+          Some(ps, (err_id, occ), mode), uenv
       | _, uenv -> None, uenv end
   (* CR-someday anlorenzen: This could also support let-bindings. *)
   | _ -> None, if check then check_uniqueness_exp_ exp ienv uenv else uenv

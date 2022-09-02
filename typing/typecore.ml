@@ -267,10 +267,10 @@ let mode_global mode =
     mode = Mode.Value.to_global mode;
     tuple_modes = [] }
 
-let mode_unique mode =
+let mode_unique expected_mode =
   { position = Nontail;
     escaping_context = None;
-    mode = Mode.Value.to_unique mode;
+    mode = Mode.Value.to_unique expected_mode.mode;
     tuple_modes = [] }
 
 let mode_global_shared =
@@ -379,9 +379,9 @@ let allocations : Mode.Alloc.t list ref = Local_store.s_ref []
 let reset_allocations () = allocations := []
 
 let register_allocation_mode (alloc_mode : Mode.Alloc.t) =
-  match alloc_mode.locality, alloc_mode.uniqueness with
-  | Amodevar _, _ | _, Amodevar _ -> allocations := alloc_mode :: !allocations
-  | Amode _c1, Amode _c2 -> ()
+  if Mode.Alloc.is_const alloc_mode
+  then allocations := alloc_mode :: !allocations
+  else ()
 
 let register_allocation_value_mode mode =
   register_allocation_mode
@@ -507,9 +507,6 @@ let has_unique_attr_pat ppat =
 
 let has_unique_attr_exp pexp =
   has_unique_attr pexp.pexp_loc pexp.pexp_attributes
-
-let has_unique_attr_texp (texp : Typedtree.expression) =
-  has_unique_attr texp.exp_loc texp.exp_attributes
 
 let type_mode_pat sp =
   let locality_mode =
@@ -1716,13 +1713,11 @@ and type_pat_aux
       end
   | Ppat_var name ->
       let ty = instance expected_ty in
-      let alloc_mode = alloc_mode in
-      let mode, _ = Mode.Value.newvar_above alloc_mode.mode in
       let id = (* PR#7330 *)
         if name.txt = "*extension*" then
           Ident.create_local name.txt
         else
-          enter_variable loc name mode ty sp.ppat_attributes
+          enter_variable loc name alloc_mode.mode ty sp.ppat_attributes
       in
       rvp k {
         pat_desc = Tpat_var (id, name);
@@ -1746,8 +1741,7 @@ and type_pat_aux
             pat_env = !env }
       | Some s ->
           let v = { name with txt = s } in
-          let mode, _ = Mode.Value.newvar_above alloc_mode.mode in
-          let id = enter_variable loc v mode
+          let id = enter_variable loc v alloc_mode.mode
                      t ~is_module:true sp.ppat_attributes in
           rvp k {
             pat_desc = Tpat_var (id, v);
@@ -1775,8 +1769,7 @@ and type_pat_aux
           init_def generic_level;
           let _, ty' = instance_poly ~keep_names:true false tyl body in
           end_def ();
-          let mode, _ = Mode.Value.newvar_above alloc_mode.mode in
-          let id = enter_variable lloc name mode ty' attrs in
+          let id = enter_variable lloc name alloc_mode.mode ty' attrs in
           rvp k {
             pat_desc = Tpat_var (id, name);
             pat_loc = lloc;
@@ -2787,7 +2780,9 @@ let rec is_nonexpansive exp =
                lbl.lbl_mut = Immutable && is_nonexpansive exp
            | Kept _ -> true)
         fields
-      && is_nonexpansive_opt extended_expression
+      && (match extended_expression with
+          | None -> true
+          | Some (_, exp) -> is_nonexpansive exp)
   | Texp_field(exp, _, _, _) -> is_nonexpansive exp
   | Texp_ifthenelse(_cond, ifso, ifnot) ->
       is_nonexpansive ifso && is_nonexpansive_opt ifnot
@@ -3403,7 +3398,11 @@ and type_expect_
   match sexp.pexp_desc with
   | Pexp_ident lid ->
       let path, mode, desc, kind = type_ident env ~recarg lid in
-      let mode, _ = Mode.Value.newvar_above mode in
+      let mode = match path with
+        | Path.Pident _ ->
+            let uniqueness, _ = Mode.Uniqueness.newvar_above mode.uniqueness in
+            Mode.Value.set_uniqueness uniqueness mode
+        | _ -> mode in
       let exp_desc =
         match desc.val_kind with
         | Val_ivar (_, cl_num) ->
@@ -3419,9 +3418,9 @@ and type_expect_
             let (path, _) =
               Env.find_value_by_name (Longident.Lident ("self-" ^ cl_num)) env
             in
-            Texp_ident(path, lid, desc, kind, mode)
+            Texp_ident(path, lid, desc, kind, mode.uniqueness)
         | _ ->
-            Texp_ident(path, lid, desc, kind, mode)
+            Texp_ident(path, lid, desc, kind, mode.uniqueness)
       in
       ruem ~mode ~expected_mode {
         exp_desc; exp_loc = loc; exp_extra = [];
@@ -3561,12 +3560,12 @@ and type_expect_
        [Nolabel, sbody]) ->
     if not (Clflags.Extension.is_enabled Unique) then
       raise (Typetexp.Error (loc, Env.empty, Unique_not_enabled));
-    type_expect ?in_function ~recarg env (mode_unique expected_mode.mode) sbody
+    type_expect ?in_function ~recarg env (mode_unique expected_mode) sbody
       ty_expected_explained
   | Pexp_apply
       ({ pexp_desc = Pexp_extension({txt = ("ocaml.unique" | "unique")}, PStr []) },
        [Nolabel, sbody]) ->
-      type_expect ?in_function ~recarg env (mode_unique expected_mode.mode) sbody
+      type_expect ?in_function ~recarg env (mode_unique expected_mode) sbody
         ty_expected_explained
   | Pexp_apply
       ({ pexp_desc = Pexp_extension({txt = "extension.local"}, PStr []) },
@@ -3781,18 +3780,18 @@ and type_expect_
           None -> None
         | Some sexp ->
             if !Clflags.principal then begin_def ();
-            (* TODO: mode can be more relaxed than this if fields are nonlocal
-               and the update is not unique *)
-            let is_unique_with = has_unique_attr_exp sexp in
-            let expected_mode = if is_unique_with
-              then mode_unique (mode_subcomponent expected_mode).mode
-              else mode_subcomponent expected_mode in
+            (* CR-someday lwhite: mode can be more relaxed than this if
+               fields are nonlocal and the update is not unique *)
+            let update_kind, expected_mode =
+              if has_unique_attr_exp sexp
+              then In_place, mode_unique expected_mode
+              else Create_new, mode_subcomponent expected_mode in
             let exp = type_exp ~recarg env expected_mode sexp in
             if !Clflags.principal then begin
               end_def ();
               generalize_structure exp.exp_type
             end;
-            Some exp
+            Some (update_kind, exp)
       in
       let ty_record, expected_type =
         let get_path ty =
@@ -3810,7 +3809,7 @@ and type_expect_
             let ty = if opath = None then newvar () else ty_expected in
             begin match opt_exp with
               None -> ty, opath
-            | Some exp ->
+            | Some (_, exp) ->
                 match get_path exp.exp_type with
                   None ->
                     ty, opath
@@ -3826,7 +3825,15 @@ and type_expect_
         | _ -> ty_expected, opath
       in
       let closed = (opt_sexp = None) in
-      let rmode = Mode.Value.regional_to_global expected_mode.mode in
+      let rmode =
+        match opt_exp with
+        | None | Some(Create_new, _) -> Mode.Value.regional_to_global expected_mode.mode
+        (* The garbage collector can not handle heap-to-stack pointers at the moment.
+           Here, the record might be in the heap (even if its local) while local
+           fields may be in the stack. As such, we ensure that fields are global
+           and thus in the heap. *)
+        | Some(In_place, _) -> Mode.Value.global
+      in
       let lbl_exp_list =
         wrap_disambiguate "This record expression is expected to have"
           (mk_expected ty_record)
@@ -3881,7 +3888,7 @@ and type_expect_
                 lbl.lbl_all
             in
             None, label_definitions
-        | Some exp ->
+        | Some (update_kind, exp) ->
             let ty_exp = instance exp.exp_type in
             let unify_kept lbl =
               let _, ty_arg1, ty_res1 = instance_label false lbl in
@@ -3899,16 +3906,15 @@ and type_expect_
                 end
             in
             let label_definitions = Array.map unify_kept lbl.lbl_all in
-            Some {exp with exp_type = ty_exp}, label_definitions
+            Some (update_kind, {exp with exp_type = ty_exp}), label_definitions
       in
       let num_fields =
         match lbl_exp_list with [] -> assert false
         | (_, lbl,_)::_ -> Array.length lbl.lbl_all in
-      let is_unique_with =
+      let is_pure_record_extension =
         match opt_exp with
-        | None -> false
-        | Some exp -> has_unique_attr_texp exp in
-      if opt_sexp <> None && List.length lid_sexp_list = num_fields && not is_unique_with then
+        | None -> false | Some (In_place, _) -> false | Some(Create_new, _) -> true in
+      if is_pure_record_extension && List.length lid_sexp_list = num_fields then
         Location.prerr_warning loc Warnings.Useless_record_with;
       let label_descriptions, representation =
         let (_, { lbl_all; lbl_repres }, _) = List.hd lbl_exp_list in
@@ -3934,14 +3940,15 @@ and type_expect_
         match label.lbl_global with
         | Global -> Mode.Value.global (* lbl_global==Global also implies Shared *)
         | Nonlocal -> Mode.Value.to_shared (Mode.Value.local_to_regional rmode)
-        | Unrestricted -> rmode
+        | Unrestricted ->
+            let uniqueness, _ = Mode.Uniqueness.newvar_above rmode.uniqueness in
+            Mode.Value.set_uniqueness uniqueness rmode
       in
-      let mode, _ = Mode.Value.newvar_above mode in
       submode ~loc ~env mode expected_mode;
       let (_, ty_arg, ty_res) = instance_label false label in
       unify_exp env record ty_res;
       rue {
-        exp_desc = Texp_field(record, lid, label, mode);
+        exp_desc = Texp_field(record, lid, label, mode.uniqueness);
         exp_loc = loc; exp_extra = [];
         exp_type = ty_arg;
         exp_mode = expected_mode.mode;
@@ -4227,14 +4234,14 @@ and type_expect_
                   let exp =
                     Texp_apply({exp_desc =
                                 Texp_ident(Path.Pident method_id,
-                                           lid, method_desc, Id_value, Mode.Value.global);
+                                           lid, method_desc, Id_value, Mode.Uniqueness.shared);
                                 exp_loc = loc; exp_extra = [];
                                 exp_type = method_type;
                                 exp_mode = Mode.Value.global;
                                 exp_attributes = []; (* check *)
                                 exp_env = exp_env},
                           [ Nolabel,
-                            Arg {exp_desc = Texp_ident(path, lid, desc, Id_value, Mode.Value.global);
+                            Arg {exp_desc = Texp_ident(path, lid, desc, Id_value, Mode.Uniqueness.shared);
                                   exp_loc = obj.exp_loc; exp_extra = [];
                                   exp_type = desc.val_type;
                                   exp_mode = Mode.Value.global;
@@ -5397,7 +5404,7 @@ and type_argument ?explanation ?recarg env (mode : expected_mode) sarg
          exp_extra = []; exp_attributes = [];
          exp_desc =
          Texp_ident(Path.Pident id, mknoloc (Longident.Lident name),
-                    desc, Id_value, mode)}
+                    desc, Id_value, mode.uniqueness)}
       in
       let eta_mode = Mode.Value.local_to_regional (Mode.Value.of_alloc marg) in
       let eta_pat, eta_var = var_pair ~mode:eta_mode "eta" ty_arg in
