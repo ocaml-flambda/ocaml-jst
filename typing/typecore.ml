@@ -137,7 +137,7 @@ type error =
   | Letop_type_clash of string * Ctype.Unification_trace.t
   | Andop_type_clash of string * Ctype.Unification_trace.t
   | Bindings_type_clash of Ctype.Unification_trace.t
-  | Submode_failed of Mode.Value.error * Env.escaping_context option
+  | Submode_failed of Mode.Value.error * Env.escaping_context option * Env.shared_context list
   | Param_mode_mismatch of type_expr * Mode.Alloc.error
   | Uncurried_function_escapes
   | Captures_unique_value
@@ -224,6 +224,7 @@ type mode_position = Tail | Nontail
 type expected_mode =
   { position : mode_position;
     escaping_context : Env.escaping_context option;
+    shared_context : Env.shared_context list;
     mode : Mode.Value.t;
     tuple_modes : Mode.Value.t list;
     (* for t in tuple_modes, t <= regional_to_global mode *)
@@ -246,60 +247,73 @@ let apply_position env (expected_mode : expected_mode) sexp : apply_position =
 let mode_return mode =
   { position = Tail;
     escaping_context = Some Return;
+    shared_context = [];
     mode;
     tuple_modes = []}
+
+let mode_with_shared_context shared_context expected_mode =
+  { expected_mode with shared_context }
 
 let mode_var () =
   { position = Nontail;
     escaping_context = None;
+    shared_context = [];
     mode = Mode.Value.newvar ();
     tuple_modes = [] }
 
 let mode_local mode =
   { position = Nontail;
     escaping_context = None;
+    shared_context = [];
     mode = Mode.Value.to_local mode;
     tuple_modes = [] }
 
 let mode_global mode =
   { position = Nontail;
     escaping_context = None;
+    shared_context = [];
     mode = Mode.Value.to_global mode;
     tuple_modes = [] }
 
 let mode_unique expected_mode =
   { position = Nontail;
     escaping_context = None;
+    shared_context = [];
     mode = Mode.Value.to_unique expected_mode.mode;
     tuple_modes = [] }
 
 let mode_global_shared =
   { position = Nontail;
     escaping_context = None;
+    shared_context = [];
     mode = Mode.Value.global;
     tuple_modes = [] }
 
 let mode_subcomponent expected_mode =
   { position = Nontail;
     escaping_context = None;
+    shared_context = [];
     mode = Mode.Value.regional_to_global expected_mode.mode;
     tuple_modes = [] }
 
 let mode_tailcall_function mode =
   { position = Nontail;
     escaping_context = Some Tailcall_function;
+    shared_context = [];
     mode;
     tuple_modes = [] }
 
 let mode_tailcall_argument mode =
   { position = Nontail;
     escaping_context = Some Tailcall_argument;
+    shared_context = [];
     mode;
     tuple_modes = [] }
 
 let mode_partial_application expected_mode =
   { position = Nontail;
     escaping_context = Some Partial_application;
+    shared_context = [];
     mode = Mode.Value.regional_to_global expected_mode.mode;
     tuple_modes = [] }
 
@@ -309,12 +323,14 @@ let mode_trywith expected_mode =
 let mode_nontail mode =
   { position = Nontail;
     escaping_context = None;
+    shared_context = [];
     mode;
     tuple_modes = [] }
 
 let mode_tuple mode tuple_modes =
   { position = Nontail;
     escaping_context = None;
+    shared_context = [];
     mode;
     tuple_modes }
 
@@ -337,11 +353,11 @@ let mode_argument ~funct ~index ~position ~partial_app alloc_mode =
      mode_tailcall_argument (Mode.Value.local_to_regional vmode)
 
 let mode_lazy =
-  let position = Tail in
-  let escaping_context = None in
-  let mode = Mode.Value.global in
-  let tuple_modes = [] in
-  { position; escaping_context; mode; tuple_modes }
+  { position = Tail;
+    escaping_context = None;
+    shared_context = [];
+    mode = Mode.Value.global;
+    tuple_modes = [] }
 
 let submode ~loc ~env mode expected_mode =
   let res =
@@ -352,8 +368,9 @@ let submode ~loc ~env mode expected_mode =
   match res with
   | Ok () -> ()
   | Error reason ->
-      let context = expected_mode.escaping_context in
-      raise (Error(loc, env, Submode_failed(reason, context)))
+      let escaping_context = expected_mode.escaping_context in
+      let shared_contexts = expected_mode.shared_context in
+      raise (Error(loc, env, Submode_failed(reason, escaping_context, shared_contexts)))
 
 let escape ~loc ~env m =
   Mode.Uniqueness.submode_exn Mode.Uniqueness.shared m.uniqueness;
@@ -3397,7 +3414,7 @@ and type_expect_
   in
   match sexp.pexp_desc with
   | Pexp_ident lid ->
-      let path, mode, desc, kind = type_ident env ~recarg lid in
+      let path, mode, shared_reasons, desc, kind = type_ident env ~recarg lid in
       let mode = match path with
         | Path.Pident _ ->
             let uniqueness, _ = Mode.Uniqueness.newvar_above mode.uniqueness in
@@ -3422,7 +3439,8 @@ and type_expect_
         | _ ->
             Texp_ident(path, lid, desc, kind, mode.uniqueness)
       in
-      ruem ~mode ~expected_mode {
+      ruem ~mode
+           ~expected_mode:(mode_with_shared_context shared_reasons expected_mode) {
         exp_desc; exp_loc = loc; exp_extra = [];
         exp_type = desc.val_type;
         exp_mode = expected_mode.mode;
@@ -4036,7 +4054,7 @@ and type_expect_
         exp_env = env }
   | Pexp_while(scond, sbody) ->
       let env = Env.add_region_lock env in
-      let env = Env.add_uniqueness_lock Mode.Uniqueness.shared env in
+      let env = Env.add_uniqueness_lock ~shared_context:While_loop Mode.Uniqueness.shared env in
       let cond =
         type_expect env (mode_var ()) scond
           (mk_expected ~explanation:While_loop_conditional Predef.type_bool)
@@ -4060,7 +4078,7 @@ and type_expect_
         type_expect env (mode_var ()) shigh
           (mk_expected ~explanation:For_loop_stop_index Predef.type_int)
       in
-      let env = Env.add_uniqueness_lock Mode.Uniqueness.shared env in
+      let env = Env.add_uniqueness_lock ~shared_context:For_loop Mode.Uniqueness.shared env in
       let id, new_env =
         type_for_loop_index ~loc ~env ~param Predef.type_int
       in
@@ -4670,7 +4688,7 @@ and type_expect_
         type_andops env slet.pbop_exp sands ty_andops
       in
       let body_env = Env.add_locality_lock Mode.Locality.global env in
-      let body_env = Env.add_uniqueness_lock Mode.Uniqueness.shared body_env in
+      let body_env = Env.add_uniqueness_lock ~shared_context:Letop Mode.Uniqueness.shared body_env in
       let scase = Ast_helper.Exp.case spat_params sbody in
       let cases, partial =
         type_cases Value body_env
@@ -4801,7 +4819,7 @@ and type_expect_
            exp_env = env }
 
 and type_ident env ?(recarg=Rejected) lid =
-  let (path, desc, mode) = Env.lookup_value ~loc:lid.loc lid.txt env in
+  let (path, desc, mode, reasons) = Env.lookup_value ~loc:lid.loc lid.txt env in
   let is_recarg =
     match (repr desc.val_type).desc with
     | Tconstr(p, _, _) -> Path.is_constructor_typath p
@@ -4827,12 +4845,12 @@ and type_ident env ?(recarg=Rejected) lid =
        ty, Id_prim mode
     | _ ->
        instance desc.val_type, Id_value in
-  path, mode, { desc with val_type }, kind
+  path, mode, reasons, { desc with val_type }, kind
 
 and type_binding_op_ident env s =
   let loc = s.loc in
   let lid = Location.mkloc (Longident.Lident s.txt) loc in
-  let path, mode, desc, kind = type_ident env lid in
+  let path, mode, _reasons, desc, kind = type_ident env lid in
   submode ~env ~loc:lid.loc mode mode_global_shared;
   let path =
     match desc.val_kind with
@@ -4908,7 +4926,7 @@ and type_function ?in_function loc attrs env (expected_mode : expected_mode)
     | Some (_, _, region_locked, lock_mode, last_arg_mode) -> env, region_locked, lock_mode, last_arg_mode
     | None ->
       let lock_mode = Mode.Uniqueness.newvar () in
-      let env = Env.add_uniqueness_lock lock_mode env in
+      let env = Env.add_uniqueness_lock ~shared_context:Closure lock_mode env in
       let env =
         Env.add_locality_lock
           ?escaping_context:expected_mode.escaping_context
@@ -6299,7 +6317,7 @@ and type_andops env sarg sands expected_ty =
       generalize_structure without_arr_ty;
     end;
     let env = Env.add_locality_lock Mode.Locality.global env in
-    let env = Env.add_uniqueness_lock Mode.Uniqueness.shared env in
+    let env = Env.add_uniqueness_lock ~shared_context:Comprehension Mode.Uniqueness.shared env in
     let comp_type, new_env =
       type_comprehension_list ~loc ~env ~container_type ~comp_typell
     in
@@ -6416,7 +6434,7 @@ let type_expression env sexp =
     Pexp_ident lid ->
       let loc = sexp.pexp_loc in
       (* Special case for keeping type variables when looking-up a variable *)
-      let (_path, desc, _mode) =
+      let (_path, desc, _mode, _reasons) =
         Env.lookup_value ~use:false ~loc lid.txt env
       in
       {exp with exp_type = desc.val_type}
@@ -6547,6 +6565,37 @@ let escaping_hint reason (context : Env.escaping_context option) =
       [ Location.msg
           "@[Hint: It is captured by a partial application@]" ]
   | _, _ -> []
+
+let sharedness_hint reason (context : Env.shared_context list) =
+  match reason with
+  | `Uniqueness ->
+      if List.mem Env.For_loop context then
+        [ Location.msg
+            "@[Hint: This identifier cannot be used uniquely,@ \
+             because it was defined outside of the for-loop.@]" ]
+      else if List.mem Env.While_loop context then
+          [ Location.msg
+              "@[Hint: This identifier cannot be used uniquely,@ \
+               because it was defined outside of the while-loop.@]" ]
+      else if List.mem Env.Comprehension context then
+        [ Location.msg
+            "@[Hint: This identifier cannot be used uniquely,@ \
+             because it was defined outside of the comprehension.@]" ]
+      else if List.mem Env.Letop context then
+        [ Location.msg
+            "@[Hint: This identifier cannot be used uniquely,@ \
+             because it was defined outside of the let-op.@]" ]
+      else if List.mem Env.Class context then
+        [ Location.msg
+            "@[Hint: This identifier cannot be used uniquely,@ \
+             because it is defined in a class.@]" ]
+      else if List.mem Env.Closure context then
+        [ Location.msg
+            "@[Hint: This identifier cannot be used uniquely,@ \
+             because it is defined outside of the current closure.@ \
+             Did you forget to use a !-> arrow in a function type?@]" ]
+      else []
+  | _ -> []
 
 let report_type_expected_explanation_opt expl ppf =
   match expl with
@@ -6928,9 +6977,10 @@ let report_error ~loc env = function
           fprintf ppf "These bindings have type")
         (function ppf ->
           fprintf ppf "but bindings were expected of type")
-  | Submode_failed(reason, context) ->
-      let sub = escaping_hint reason context in
-      Location.errorf ~loc ~sub begin
+  | Submode_failed(reason, escaping_context, shared_contexts) ->
+      let sub1 = escaping_hint reason escaping_context in
+      let sub2 = sharedness_hint reason shared_contexts in
+      Location.errorf ~loc ~sub:(sub1 @ sub2) begin
         match reason with
         | `Locality -> "This local value escapes its region"
         | `Regionality -> "This value escapes its region"

@@ -201,7 +201,7 @@ type error =
   | Letop_type_clash of string * Ctype.Unification_trace.t
   | Andop_type_clash of string * Ctype.Unification_trace.t
   | Bindings_type_clash of Ctype.Unification_trace.t
-  | Submode_failed of Mode.Value.error * Env.escaping_context option
+  | Submode_failed of Mode.Value.error * Env.escaping_context option * Env.shared_context list
   | Param_mode_mismatch of type_expr * Mode.Alloc.error
   | Uncurried_function_escapes
   | Captures_unique_value

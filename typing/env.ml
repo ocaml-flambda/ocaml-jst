@@ -220,9 +220,17 @@ type escaping_context =
   | Tailcall_function
   | Partial_application
 
+type shared_context =
+  | For_loop
+  | While_loop
+  | Letop
+  | Closure
+  | Comprehension
+  | Class
+
 type value_lock =
   | Locality_lock of { mode : locality mode; escaping_context : escaping_context option }
-  | Uniqueness_lock of { mode : uniqueness mode }
+  | Uniqueness_lock of { mode : uniqueness mode; shared_context : shared_context }
   | Region_lock
 
 module IdTbl =
@@ -2020,8 +2028,8 @@ let add_locality_lock ?escaping_context mode env =
   let lock = Locality_lock { mode; escaping_context } in
   { env with values = IdTbl.add_lock lock env.values }
 
-let add_uniqueness_lock mode env =
-  let lock = Uniqueness_lock { mode } in
+let add_uniqueness_lock ~shared_context mode env =
+  let lock = Uniqueness_lock { mode; shared_context } in
   { env with values = IdTbl.add_lock lock env.values }
 
 let add_region_lock env =
@@ -2445,25 +2453,26 @@ let lookup_ident_module (type a) (load : a load) ~errors ~use ~loc s env =
 
 let lock_mode ~errors ~loc env id vmode locks =
   List.fold_left
-    (fun vmode lock ->
+    (fun (vmode, reasons) lock ->
       match lock with
-      | Region_lock -> Mode.Value.local_to_regional vmode
-      | Locality_lock {mode; escaping_context} -> begin
+      | Region_lock -> (Mode.Value.local_to_regional vmode, reasons)
+      | Uniqueness_lock {mode;shared_context} ->
+          (Mode.Value.join [Mode.Value.of_uniqueness_min mode; vmode],
+           shared_context :: reasons)
+      | Locality_lock {mode; escaping_context} ->
           match Mode.Value.submode vmode (Mode.Value.of_locality_max mode) with
-          | Ok () -> vmode
+          | Ok () -> (vmode, reasons)
           | Error _ ->
-              may_lookup_error errors loc env
-                (Local_value_used_in_closure (id, escaping_context)) end
-      | Uniqueness_lock {mode} ->
-          Mode.Value.join [Mode.Value.of_uniqueness_min mode; vmode])
-            vmode locks
+            may_lookup_error errors loc env
+              (Local_value_used_in_closure (id, escaping_context)))
+            (vmode, []) locks
 
 let lookup_ident_value ~errors ~use ~loc name env =
   match IdTbl.find_name_and_modes wrap_value ~mark:use name env.values with
   | (path, locks, Val_bound vda) ->
-      let mode = lock_mode ~errors ~loc env (Lident name) vda.vda_mode locks in
+      let mode, reasons = lock_mode ~errors ~loc env (Lident name) vda.vda_mode locks in
       use_value ~use ~loc path vda;
-      path, vda.vda_description, mode
+      path, vda.vda_description, mode, reasons
   | (_, _, Val_unbound reason) ->
       report_value_unbound ~errors ~loc env reason (Lident name)
   | exception Not_found ->
@@ -2701,7 +2710,7 @@ let lookup_value ~errors ~use ~loc lid env =
   | Ldot(l, s) ->
     let path, desc = lookup_dot_value ~errors ~use ~loc l s env in
     let mode = Mode.Value.global in
-    path, desc, mode
+    path, desc, mode, []
   | Lapply _ -> assert false
 
 let lookup_type_full ~errors ~use ~loc lid env =
@@ -2790,7 +2799,7 @@ let find_module_by_name lid env =
 
 let find_value_by_name lid env =
   let loc = Location.(in_file !input_name) in
-  let path, desc, _ = lookup_value ~errors:false ~use:false ~loc lid env in
+  let path, desc, _, _ = lookup_value ~errors:false ~use:false ~loc lid env in
   path, desc
 
 let find_type_by_name lid env =

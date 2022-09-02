@@ -161,6 +161,14 @@ type escaping_context =
   | Tailcall_function
   | Partial_application
 
+type shared_context =
+  | For_loop
+  | While_loop
+  | Letop
+  | Closure
+  | Comprehension
+  | Class
+
 type lookup_error =
   | Unbound_value of Longident.t * unbound_value_hint
   | Unbound_type of Longident.t
@@ -200,7 +208,7 @@ val lookup_error: Location.t -> t -> lookup_error -> 'a
 
 val lookup_value:
   ?use:bool -> loc:Location.t -> Longident.t -> t ->
-  Path.t * value_description * Types.value_mode
+  Path.t * value_description * Types.value_mode * shared_context list
 val lookup_type:
   ?use:bool -> loc:Location.t -> Longident.t -> t ->
   Path.t * type_declaration
@@ -365,7 +373,7 @@ val enter_unbound_module : string -> module_unbound_reason -> t -> t
 (* Lock the environment *)
 
 val add_locality_lock : ?escaping_context:escaping_context -> locality mode -> t -> t
-val add_uniqueness_lock : uniqueness mode -> t -> t
+val add_uniqueness_lock : shared_context:shared_context -> uniqueness mode -> t -> t
 val add_region_lock : t -> t
 
 (* Initialize the cache of in-core module interfaces. *)
