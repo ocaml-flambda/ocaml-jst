@@ -135,7 +135,7 @@ let make_array ~loc ~kind ~size ~array =
       (* This array can be Immutable since it is empty and will later be
          replaced when an example value (to create the array) is known.
          That is also why the biding is a Variable. *)
-      let init = Lprim(Pmakearray(Pgenarray, Immutable, alloc_heap), [], loc) in
+      let init = Lprim(Pmakearray(Pgenarray, Immutable, alloc_heap_shared), [], loc) in
       binding Variable Pgenval array init
   | Pintarray | Paddrarray ->
       let init = make_array_prim ~loc size (int 0) in
@@ -473,7 +473,7 @@ let transl_list_comprehension ~transl_exp ~loc ~scopes body blocks =
   let value_kind = Typeopt.value_kind body.exp_env body.exp_type in
   let bdy =
     Lprim(
-      Pmakeblock(0, Immutable, None, alloc_heap),
+      Pmakeblock(0, Immutable, None, alloc_heap_shared),
       [(transl_exp ~scopes  body); Lvar(acc_var)], loc)
   in
   let res_list, res_var = List.fold_left

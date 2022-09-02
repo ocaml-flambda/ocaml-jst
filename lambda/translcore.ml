@@ -75,7 +75,7 @@ let transl_extension_constructor ~scopes env path ext =
       (* Extension constructors are currently always Alloc_heap.
          They could be Alloc_local, but that would require changes
          to pattern typing, as patterns can close over them. *)
-      Lprim (Pmakeblock (Obj.object_tag, Immutable, None, alloc_heap_unique),
+      Lprim (Pmakeblock (Obj.object_tag, Immutable_unique, None, alloc_heap_shared),
         [Lconst (Const_base (Const_string (name, ext.ext_loc, None)));
          Lprim (prim_fresh_oo_id, [Lconst (const_int 0)], loc)],
         loc)
@@ -98,8 +98,8 @@ let transl_alloc_mode alloc_mode =
   match Mode.Alloc.constrain_global_shared alloc_mode with
   | Global, Unique -> alloc_heap_unique
   | Local, Unique -> alloc_local_unique
-  | Global, Shared -> alloc_heap
-  | Local, Shared -> alloc_local
+  | Global, Shared -> alloc_heap_shared
+  | Local, Shared -> alloc_local_shared
 
 let transl_value_mode mode =
   let alloc_mode = Mode.Value.regional_to_global_alloc mode in
@@ -120,16 +120,16 @@ let may_allocate_in_region lam =
   let rec loop = function
     | Lvar _ | Lconst _ -> ()
 
-    | Lfunction {mode=Alloc_heap,_} -> ()
-    | Lfunction {mode=Alloc_local,_} -> raise Exit
+    | Lfunction {mode=Alloc_heap} -> ()
+    | Lfunction {mode=Alloc_local} -> raise Exit
 
-    | Lapply {ap_mode=Alloc_local,_}
-    | Lsend (_,_,_,_,_,(Alloc_local,_),_) -> raise Exit
+    | Lapply {ap_mode=Alloc_local}
+    | Lsend (_,_,_,_,_,Alloc_local,_) -> raise Exit
 
     | Lprim (prim, args, _) ->
        begin match Lambda.primitive_may_allocate prim with
-       | Some (Alloc_local, _) -> raise Exit
-       | None | Some (Alloc_heap, _) ->
+       | Some Alloc_local -> raise Exit
+       | None | Some Alloc_heap ->
           List.iter loop args
        end
     | Lregion _body ->
@@ -275,7 +275,7 @@ let assert_failed ~scopes exp =
   in
   let loc = of_location ~scopes exp.exp_loc in
   Lprim(Praise Raise_regular, [event_after ~scopes exp
-    (Lprim(Pmakeblock(0, Immutable, None, alloc_heap),
+    (Lprim(Pmakeblock(0, Immutable, None, alloc_heap_shared),
           [slot;
            Lconst(Const_block(0,
               [Const_base(Const_string (fname, exp.exp_loc, None));
@@ -322,7 +322,7 @@ let can_apply_primitive p pmode pos args =
     else if pos <> Typedtree.Tail then true
     else begin
       let return_mode = Ctype.prim_mode pmode p.prim_native_repr_res in
-      is_heap_mode (transl_alloc_mode return_mode)
+      is_heap_mode (fst (transl_alloc_mode return_mode))
     end
   end
 
@@ -397,7 +397,7 @@ and transl_exp0 ~in_new_scope ~scopes e =
         let position = transl_apply_position pos in
         let mode = transl_exp_mode e in
         event_after ~scopes e
-          (transl_apply ~scopes ~tailcall ~inlined ~specialised ~position ~mode
+          (transl_apply ~scopes ~tailcall ~inlined ~specialised ~position ~mode:(fst mode)
              lam extra_args (of_location ~scopes e.exp_loc))
       end
   | Texp_apply(funct, oargs, position) ->
@@ -412,7 +412,7 @@ and transl_exp0 ~in_new_scope ~scopes e =
       in
       let e = { e with exp_desc = Texp_apply(funct, oargs, position) } in
       let position = transl_apply_position position in
-      let mode = transl_exp_mode e in
+      let mode, _ = transl_exp_mode e in
       event_after ~scopes e
         (transl_apply ~scopes ~tailcall ~inlined ~specialised
            ~position ~mode (transl_exp ~scopes funct)
@@ -508,7 +508,7 @@ and transl_exp0 ~in_new_scope ~scopes e =
   | Texp_setfield(arg, _, lbl, newval) ->
       let mode =
         let arg_mode = Mode.Value.regional_to_local_alloc arg.exp_mode in
-        Assignment (transl_alloc_mode arg_mode)
+        Assignment (fst (transl_alloc_mode arg_mode))
       in
       let access =
         match lbl.lbl_repres with
@@ -536,7 +536,7 @@ and transl_exp0 ~in_new_scope ~scopes e =
           raise Not_constant
         end;
         (* Pduparray only works in Alloc_heap mode *)
-        if is_local_mode mode then raise Not_constant;
+        if is_local_mode (fst mode) then raise Not_constant;
         begin match List.map extract_constant ll with
         | exception Not_constant when kind = Pfloatarray ->
             (* We cannot currently lift [Pintarray] arrays safely in Flambda
@@ -552,7 +552,7 @@ and transl_exp0 ~in_new_scope ~scopes e =
                When not [Pfloatarray], the exception propagates to the handler
                below. *)
             let imm_array =
-              Lprim (Pmakearray (kind, Immutable, mode), ll,
+              Lprim (Pmakearray (kind, Immutable, alloc_heap_shared), ll,
                      of_location ~scopes e.exp_loc)
             in
             Lprim (Pduparray (kind, Mutable, mode), [imm_array],
@@ -609,14 +609,14 @@ and transl_exp0 ~in_new_scope ~scopes e =
       let obj = transl_exp ~scopes expr in
       let loc = of_location ~scopes e.exp_loc in
       let pos = transl_apply_position pos in
-      let mode = transl_exp_mode e in
+      let lmode, _ = transl_exp_mode e in
       let lam =
         match met with
-          Tmeth_val id -> Lsend (Self, Lvar id, obj, [], pos, mode, loc)
+          Tmeth_val id -> Lsend (Self, Lvar id, obj, [], pos, lmode, loc)
         | Tmeth_name nm ->
             let (tag, cache) = Translobj.meth obj nm in
             let kind = if cache = [] then Public else Cached in
-            Lsend (kind, tag, obj, cache, pos, mode, loc)
+            Lsend (kind, tag, obj, cache, pos, lmode, loc)
       in
       event_after ~scopes e lam
   | Texp_new (cl, {Location.loc=loc}, _, pos) ->
@@ -708,7 +708,7 @@ and transl_exp0 ~in_new_scope ~scopes e =
       (* when e needs no computation (constants, identifiers, ...), we
          optimize the translation just as Lazy.lazy_from_val would
          do *)
-      assert (is_heap_mode (transl_exp_mode e));
+      assert (is_heap_mode (fst (transl_exp_mode e)));
       begin match Typeopt.classify_lazy_argument e with
       | `Constant_or_function ->
         (* A constant expr (of type <> float if [Config.flat_float_array] is
@@ -719,7 +719,7 @@ and transl_exp0 ~in_new_scope ~scopes e =
              block will never be shortcutted since it points to a float
              and Config.flat_float_array is true. *)
          Lprim(Pmakeblock(Obj.forward_tag, Immutable, None,
-                          alloc_heap),
+                          alloc_heap_shared),
                 [transl_exp ~scopes e], of_location ~scopes e.exp_loc)
       | `Identifier `Forward_value ->
          (* CR-someday mshinwell: Consider adding a new primitive
@@ -730,7 +730,7 @@ and transl_exp0 ~in_new_scope ~scopes e =
             value may subsequently turn into an immediate... *)
          Lprim (Popaque,
                 [Lprim(Pmakeblock(Obj.forward_tag, Immutable, None,
-                                  alloc_heap),
+                                  alloc_heap_shared),
                        [transl_exp ~scopes e],
                        of_location ~scopes e.exp_loc)],
                 of_location ~scopes e.exp_loc)
@@ -748,7 +748,7 @@ and transl_exp0 ~in_new_scope ~scopes e =
                              region = true;
                              body = maybe_region (transl_exp ~scopes e)} in
           Lprim(Pmakeblock(Config.lazy_tag, Mutable, None,
-                           alloc_heap), [fn],
+                           alloc_heap_shared), [fn],
                 of_location ~scopes e.exp_loc)
       end
   | Texp_object (cs, meths) ->
@@ -976,19 +976,19 @@ and transl_apply ~scopes
         let id_arg = Ident.create_local "param" in
         let body =
           let loc = map_scopes enter_partial_or_eta_wrapper loc in
-          let mode = transl_alloc_mode mode_closure in
-          let arg_mode = transl_alloc_mode mode_arg in
-          let ret_mode = transl_alloc_mode mode_ret in
+          let mode, _ = transl_alloc_mode mode_closure in
+          let arg_mode, _ = transl_alloc_mode mode_arg in
+          let ret_mode, _ = transl_alloc_mode mode_ret in
           let body = build_apply handle [Lvar id_arg] loc Rc_normal ret_mode l in
           let nlocal =
-            match join_mode mode (join_mode arg_mode ret_mode) with
-            | (Alloc_local, _) -> 1
-            | (Alloc_heap, _) -> 0
+            match join_locality_mode mode (join_locality_mode arg_mode ret_mode) with
+            | Alloc_local -> 1
+            | Alloc_heap -> 0
           in
           let region =
             match ret_mode with
-            | (Alloc_local, _) -> false
-            | (Alloc_heap, _) -> true
+            | Alloc_local -> false
+            | Alloc_heap -> true
           in
           Lfunction{kind = Curried {nlocal}; params = [id_arg, Pgenval];
                     return = Pgenval; body; mode; region;
@@ -1030,7 +1030,7 @@ and transl_curried_function
       (* Lfunctions must have local returns after the first local arg/ret *)
       if not (sub_mode mode curry_mode && sub_mode arg_mode curry_mode) then
         (* Cannot curry here *)
-        transl_tupled_function ~scopes ~arity ~mode ~region
+        transl_tupled_function ~scopes ~arity ~mode:(fst mode) ~region
           loc return repr partial param cases
       else if Parmatch.inactive ~partial pat
       then
@@ -1065,11 +1065,11 @@ and transl_curried_function
             Warnings.restore prev
         | Partial -> ()
         end;
-        transl_tupled_function ~scopes ~arity ~mode ~region
+        transl_tupled_function ~scopes ~arity ~mode:(fst mode) ~region
           loc return repr partial param cases
       end
     | cases ->
-      transl_tupled_function ~scopes ~arity ~mode ~region
+      transl_tupled_function ~scopes ~arity ~mode:(fst mode) ~region
         loc return repr partial param cases
   in
   loop ~scopes loc return ~arity:1 ~mode ~region partial warnings param cases
@@ -1082,7 +1082,7 @@ and transl_tupled_function
     when !Clflags.native_code
       && arity = 1
       && is_heap_mode mode
-      && is_heap_mode (transl_value_mode pat_mode)
+      && is_heap_mode (fst (transl_value_mode pat_mode))
       && List.length pl <= (Lambda.max_arity ()) ->
       begin try
         let size = List.length pl in
@@ -1128,11 +1128,11 @@ and transl_tupled_function
 and transl_function0
       ~scopes loc ~mode ~region return
       repr partial (param:Ident.t) cases =
-    let arg_mode, kind =
+    let (arg_mode, _), kind =
       match cases with
       | [] ->
         (* With Camlp4, a pattern matching might be empty *)
-        alloc_heap, Pgenval
+        alloc_heap_shared, Pgenval
       | {c_lhs=pat} :: other_cases ->
         (* All the patterns might not share the same types. We must take the
            union of the patterns types *)
@@ -1151,9 +1151,9 @@ and transl_function0
     let region = region || not (may_allocate_in_region body) in
     let nlocal =
       if not region then 1
-      else match join_mode mode arg_mode with
-        | (Alloc_local, _) -> 1
-        | (Alloc_heap, _) -> 0
+      else match join_locality_mode mode arg_mode with
+        | Alloc_local -> 1
+        | Alloc_heap -> 0
     in
     ((Curried {nlocal}, [param, kind], return, region), body)
 
@@ -1170,7 +1170,7 @@ and transl_function ~scopes e param cases partial warnings region =
   let attr = default_function_attribute in
   let loc = of_location ~scopes e.exp_loc in
   let body = if region then maybe_region body else body in
-  let lfunc = {kind; params; return; body; attr; loc; mode; region} in
+  let lfunc = {kind; params; return; body; attr; loc; mode = fst mode; region} in
   Lambda.check_lfunction lfunc;
   let lam = Lfunction lfunc in
   Translattribute.add_function_attributes lam e.exp_loc e.exp_attributes
@@ -1241,24 +1241,10 @@ and transl_setinstvar ~scopes loc self var expr =
     [self; var; transl_exp ~scopes expr], loc)
 
 and transl_record ~scopes loc env mode fields repres opt_init_expr =
-  let maybe_unique_update_on =
-    match opt_init_expr with
-    | None -> None
-    | Some (Create_new, _) -> None
-    | Some (In_place, exp) -> Some (transl_exp ~scopes exp) in
   let is_unique_update_on =
-    match maybe_unique_update_on with | None -> false | Some _ -> true in
-  let reuses =
-    Array.map
-      (fun (_lbl, definition) ->
-          match definition with
-          | Kept _typ -> Reuse_keep
-          | Overridden (_lid, expr) ->
-              let field_kind = value_kind expr.exp_env expr.exp_type in
-              Reuse_set field_kind)
-      fields
-  in
-  let reuses = Array.to_list reuses in
+    match opt_init_expr with
+    | None -> false | Some (Create_new, _) -> false
+    | Some (In_place, _) -> true in
   let size = Array.length fields in
   (* Determine if there are "enough" fields (only relevant if this is a
      functional-style record update *)
@@ -1268,7 +1254,7 @@ and transl_record ~scopes loc env mode fields repres opt_init_expr =
     then Mutable
     else Immutable in
   if no_init || size < Config.max_young_wosize
-     || is_local_mode mode || is_unique_update_on
+     || is_local_mode (fst mode) || is_unique_update_on
   then begin
     (* Allocate new record with given fields (and remaining fields
        taken from init_expr if any *)
@@ -1292,7 +1278,7 @@ and transl_record ~scopes loc env mode fields repres opt_init_expr =
                  | Record_float ->
                     (* This allocation is always deleted,
                        so it's simpler to leave it Alloc_heap *)
-                    Pfloatfield (i, sem, alloc_heap) in
+                    Pfloatfield (i, sem, alloc_heap_shared) in
                Lprim(access, [Lvar init_id],
                      of_location ~scopes loc),
                field_kind
@@ -1319,46 +1305,53 @@ and transl_record ~scopes loc env mode fields repres opt_init_expr =
             raise Not_constant
       with Not_constant ->
         let loc = of_location ~scopes loc in
-        match maybe_unique_update_on with
-        | None ->
-            begin match repres with
-            | Record_regular ->
-                Lprim(Pmakeblock(0, mut, Some shape, mode), ll, loc)
-            | Record_inlined tag ->
-                Lprim(Pmakeblock(tag, mut, Some shape, mode), ll, loc)
-            | Record_unboxed _ -> (match ll with [v] -> v | _ -> assert false)
-            | Record_float ->
-                Lprim(Pmakefloatblock (mut, mode), ll, loc)
-            | Record_extension path ->
-                let slot = transl_extension_path loc env path in
-                Lprim(Pmakeblock(0, mut, Some (Pgenval :: shape), mode),
-                      slot :: ll, loc)
-            end
-        | Some id ->
-            let set_ll = List.map fst (List.filter
-                                     (fun (_, r) -> match r with
-                                        | Reuse_keep -> false
-                                        | Reuse_set _ -> true)
-                                     (List.combine ll reuses)) in
-            match repres with
-            | Record_regular ->
-                Lprim(Preuseblock(0, mut, reuses, mode), id :: set_ll, loc)
-            | Record_inlined tag ->
-                Lprim(Preuseblock(tag, mut, reuses, mode), id :: set_ll, loc)
-            | Record_unboxed _ -> (match ll with [v] -> v | _ -> assert false)
-            | Record_float ->
-                Lprim(Preusefloatblock (mut, reuses, mode), id :: set_ll, loc)
-            | Record_extension _ -> (* We add an Reuse_keep for the extension *)
-                Lprim(Preuseblock(0, mut, Reuse_keep :: reuses, mode), id :: set_ll, loc)
+        if is_unique_update_on then
+          let reuses = Array.to_list (Array.map
+              (fun (_lbl, definition) ->
+                 match definition with
+                 | Kept _typ -> Reuse_keep
+                 | Overridden (_lid, expr) ->
+                     let field_kind = value_kind expr.exp_env expr.exp_type in
+                     Reuse_set field_kind)
+              fields) in
+          let set_ll = List.filter_map
+              (fun (l, r) -> match r with
+                 | Reuse_keep -> None
+                 | Reuse_set _ -> Some l)
+              (List.combine ll reuses) in
+          let id = Lvar init_id in
+          match repres with
+          | Record_regular ->
+              Lprim(Preuseblock(0, mut, reuses, mode), id :: set_ll, loc)
+          | Record_inlined tag ->
+              Lprim(Preuseblock(tag, mut, reuses, mode), id :: set_ll, loc)
+          | Record_unboxed _ -> (match ll with [v] -> v | _ -> assert false)
+          | Record_float ->
+              Lprim(Preusefloatblock (mut, reuses, mode), id :: set_ll, loc)
+          | Record_extension _ -> (* We add an Reuse_keep for the extension *)
+              Lprim(Preuseblock(0, mut, Reuse_keep :: reuses, mode), id :: set_ll, loc)
+        else (* update not unique *)
+          match repres with
+          | Record_regular ->
+              Lprim(Pmakeblock(0, mut, Some shape, mode), ll, loc)
+          | Record_inlined tag ->
+              Lprim(Pmakeblock(tag, mut, Some shape, mode), ll, loc)
+          | Record_unboxed _ -> (match ll with [v] -> v | _ -> assert false)
+          | Record_float ->
+              Lprim(Pmakefloatblock (mut, mode), ll, loc)
+          | Record_extension path ->
+              let slot = transl_extension_path loc env path in
+              Lprim(Pmakeblock(0, mut, Some (Pgenval :: shape), mode),
+                    slot :: ll, loc)
     in
     match opt_init_expr with
-    | None | Some(In_place, _) -> lam
-    | Some (Create_new, init_expr) -> Llet(Strict, Pgenval, init_id,
+    | None -> lam
+    | Some (_, init_expr) -> Llet(Strict, Pgenval, init_id,
                                             transl_exp ~scopes init_expr, lam)
   end else match opt_init_expr with
     | None | Some(In_place, _) -> assert false
     | Some (Create_new, init_expr) ->
-        assert (is_heap_mode mode); (* Pduprecord must be Alloc_heap *)
+        assert (is_heap_mode (fst mode)); (* Pduprecord must be Alloc_heap *)
         (* Take a shallow copy of the init record, then mutate the fields
           of the copy *)
         let copy_id = Ident.create_local "newrecord" in
@@ -1523,7 +1516,7 @@ and transl_letop ~scopes loc env let_ ands param case partial warnings =
       event_function ~scopes case.c_rhs
         (function repr ->
            transl_curried_function ~scopes case.c_rhs.exp_loc return_kind
-             repr ~mode:alloc_heap ~region:true partial warnings param [case])
+             repr ~mode:alloc_heap_shared ~region:true partial warnings param [case])
     in
     let attr = default_function_attribute in
     let loc = of_location ~scopes case.c_rhs.exp_loc in

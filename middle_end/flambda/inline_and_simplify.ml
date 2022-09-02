@@ -911,7 +911,7 @@ and simplify_over_application env r ~args ~args_approxs ~function_decls
   let expr = Lift_code.lift_lets_expr expr ~toplevel:true in
   let expr =
     match mode, function_decl.A.region with
-    | (Lambda.Alloc_heap, _), false -> Flambda.Region expr
+    | Lambda.Alloc_heap, false -> Flambda.Region expr
     | _ -> expr
   in
   let expr =
@@ -950,8 +950,8 @@ and simplify_named env r (tree : Flambda.named) : Flambda.named * R.t =
     let backend = E.backend env in
     let r =
       match set_of_closures.alloc_mode with
-      | Alloc_local, _ -> R.set_region_use r true
-      | Alloc_heap, _ -> r
+      | Alloc_local -> R.set_region_use r true
+      | Alloc_heap -> r
     in
     let set_of_closures, r, first_freshening =
       simplify_set_of_closures env r set_of_closures

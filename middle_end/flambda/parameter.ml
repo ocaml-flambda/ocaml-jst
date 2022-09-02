@@ -23,7 +23,7 @@ open! Int_replace_polymorphic_compare
 
 type parameter = {
   var : Variable.t;
-  mode : Lambda.alloc_mode;
+  mode : Lambda.locality_mode;
 }
 
 let wrap var mode = { var; mode }
@@ -46,8 +46,8 @@ module M =
 
     let print ppf { var; mode } =
       let mode = match mode with
-        | Lambda.Alloc_heap, _ -> ""
-        | Lambda.Alloc_local, _ -> "[->L]" in
+        | Lambda.Alloc_heap -> ""
+        | Lambda.Alloc_local -> "[->L]" in
       Format.fprintf ppf "%a%s" Variable.print var mode
 
     let output o { var; mode = _ } =

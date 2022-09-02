@@ -42,23 +42,24 @@ type uniqueness_mode = private
   | Alloc_unique
   | Alloc_shared
 
-(* CR-soon: This can be private once it is possible to pattern-match on private aliases *)
+(* CR-someday anlorenzen: This can be private once it is possible
+   to pattern-match on private aliases *)
 type alloc_mode = locality_mode * uniqueness_mode
 
-val alloc_heap : alloc_mode
+val alloc_heap : locality_mode
 
 (* Actually [Alloc_heap] if [Config.stack_allocation] is [false] *)
-val alloc_local : alloc_mode
+val alloc_local : locality_mode
 
 val alloc_heap_unique : alloc_mode
-
-(* Actually [Alloc_heap] if [Config.stack_allocation] is [false] *)
+val alloc_heap_shared : alloc_mode
 val alloc_local_unique : alloc_mode
+val alloc_local_shared : alloc_mode
 
 type initialization_or_assignment =
   (* [Assignment Alloc_local] is a mutation of a block that may be heap or local.
      [Assignment Alloc_heap] is a mutation of a block that's definitely heap. *)
-  | Assignment of alloc_mode
+  | Assignment of locality_mode
   (* Initialization of in heap values, like [caml_initialize] C primitive.  The
      field should not have been read before and initialization should happen
      only once. *)
@@ -354,7 +355,7 @@ type lambda =
   | Lfor of Ident.t * lambda * lambda * direction_flag * lambda
   | Lassign of Ident.t * lambda
   | Lsend of meth_kind * lambda * lambda * lambda list
-             * region_close * alloc_mode * scoped_location
+             * region_close * locality_mode * scoped_location
   | Levent of lambda * lambda_event
   | Lifused of Ident.t * lambda
   | Lregion of lambda
@@ -366,7 +367,7 @@ and lfunction =
     body: lambda;
     attr: function_attribute; (* specified with [@inline] attribute *)
     loc : scoped_location;
-    mode : alloc_mode;     (* alloc mode of the closure itself *)
+    mode : locality_mode;  (* locality mode of the closure itself *)
     region : bool;         (* false if this function may locally
                               allocate in the caller's region *)
   }
@@ -375,7 +376,7 @@ and lambda_apply =
   { ap_func : lambda;
     ap_args : lambda list;
     ap_region_close : region_close;
-    ap_mode : alloc_mode;
+    ap_mode : locality_mode;
     ap_loc : scoped_location;
     ap_tailcall : tailcall_attribute;
     ap_inlined : inlined_attribute; (* [@inlined] attribute in code *)
@@ -514,12 +515,15 @@ val max_arity : unit -> int
       (currently to 126) for native code. *)
 
 val join_mode : alloc_mode -> alloc_mode -> alloc_mode
+val join_locality_mode : locality_mode -> locality_mode -> locality_mode
 val sub_mode : alloc_mode -> alloc_mode -> bool
+val sub_mode_locality : locality_mode -> locality_mode -> bool
 val eq_mode : alloc_mode -> alloc_mode -> bool
-val is_local_mode : alloc_mode -> bool
-val is_heap_mode : alloc_mode -> bool
+val eq_mode_locality : locality_mode -> locality_mode -> bool
+val is_local_mode : locality_mode -> bool
+val is_heap_mode : locality_mode -> bool
 
-val primitive_may_allocate : primitive -> alloc_mode option
+val primitive_may_allocate : primitive -> locality_mode option
   (** Whether and where a primitive may allocate.
       [Some Alloc_local] permits both options: that is, primitives that
       may allocate on both the GC heap and locally report this value. *)

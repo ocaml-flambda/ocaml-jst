@@ -755,7 +755,7 @@ let emit_instr fallthrough i =
       | Double ->
           I.movsd (arg i 0) (addressing addr REAL8 i 1)
       end
-  | Lop(Ialloc { bytes = n; dbginfo; mode = Alloc_heap, _ }) ->
+  | Lop(Ialloc { bytes = n; dbginfo; mode = Alloc_heap }) ->
       assert (n <= (Config.max_young_wosize + 1) * Arch.size_addr);
       if !fastcode_flag then begin
         I.sub (int n) r15;
@@ -785,7 +785,7 @@ let emit_instr fallthrough i =
         def_label label;
         I.lea (mem64 NONE 8 R15) (res i 0)
       end
-  | Lop(Ialloc { bytes = n; dbginfo=_; mode = Alloc_local, _ }) ->
+  | Lop(Ialloc { bytes = n; dbginfo=_; mode = Alloc_local }) ->
       let r = res i 0 in
       I.mov (domain_field Domainstate.Domain_local_sp) r;
       I.sub (int n) r;

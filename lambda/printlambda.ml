@@ -90,7 +90,7 @@ and value_kind' ppf = function
 let return_kind ppf (mode, kind) =
   let smode = alloc_mode mode in
   match kind with
-  | Pgenval when is_heap_mode mode -> ()
+  | Pgenval when is_heap_mode (fst mode) -> ()
   | Pgenval -> fprintf ppf ": %s@ " smode
   | Pintval -> fprintf ppf ": int@ "
   | Pfloatval -> fprintf ppf ": %sfloat@ " smode
@@ -114,14 +114,14 @@ let field_kind ppf = function
         value_kind') fields
 
 let alloc_kind = function
-  | Alloc_heap, _ -> ""
-  | Alloc_local, _ -> "[L]"
+  | Alloc_heap -> ""
+  | Alloc_local -> "[L]"
 
-let print_boxed_integer_conversion ppf bi1 bi2 m =
+let print_boxed_integer_conversion ppf bi1 bi2 (m, _) =
   fprintf ppf "%s_of_%s%s" (boxed_integer_name bi2) (boxed_integer_name bi1)
     (alloc_kind m)
 
-let boxed_integer_mark name bi m =
+let boxed_integer_mark name bi (m, _) =
   match bi with
   | Pnativeint -> Printf.sprintf "Nativeint.%s%s" name (alloc_kind m)
   | Pint32 -> Printf.sprintf "Int32.%s%s" name (alloc_kind m)
@@ -274,8 +274,8 @@ let primitive ppf = function
         match init with
         | Heap_initialization -> "(heap-init)"
         | Root_initialization -> "(root-init)"
-        | Assignment (Alloc_heap, _) -> ""
-        | Assignment (Alloc_local, _) -> "(local)"
+        | Assignment Alloc_heap -> ""
+        | Assignment Alloc_local -> "(local)"
       in
       fprintf ppf "setfield_%s%s %i" instr init n
   | Psetfield_computed (ptr, init) ->
@@ -288,8 +288,8 @@ let primitive ppf = function
         match init with
         | Heap_initialization -> "(heap-init)"
         | Root_initialization -> "(root-init)"
-        | Assignment (Alloc_heap, _) -> ""
-        | Assignment (Alloc_local, _) -> "(local)"
+        | Assignment Alloc_heap -> ""
+        | Assignment Alloc_local -> "(local)"
       in
       fprintf ppf "setfield_%s%s_computed" instr init
   | Pfloatfield (n, sem, mode) ->
@@ -300,8 +300,8 @@ let primitive ppf = function
         match init with
         | Heap_initialization -> "(heap-init)"
         | Root_initialization -> "(root-init)"
-        | Assignment (Alloc_heap, _) -> ""
-        | Assignment (Alloc_local, _) -> "(local)"
+        | Assignment Alloc_heap -> ""
+        | Assignment Alloc_local -> "(local)"
       in
       fprintf ppf "setfloatfield%s %i" init n
   | Pduprecord (rep, size) -> fprintf ppf "duprecord %a %i" record_rep rep size
@@ -331,13 +331,13 @@ let primitive ppf = function
   | Poffsetint n -> fprintf ppf "%i+" n
   | Poffsetref n -> fprintf ppf "+:=%i"n
   | Pintoffloat -> fprintf ppf "int_of_float"
-  | Pfloatofint m -> fprintf ppf "float_of_int%s" (alloc_kind m)
-  | Pnegfloat m -> fprintf ppf "~.%s" (alloc_kind m)
-  | Pabsfloat m -> fprintf ppf "abs.%s" (alloc_kind m)
-  | Paddfloat m -> fprintf ppf "+.%s" (alloc_kind m)
-  | Psubfloat m -> fprintf ppf "-.%s" (alloc_kind m)
-  | Pmulfloat m -> fprintf ppf "*.%s" (alloc_kind m)
-  | Pdivfloat m -> fprintf ppf "/.%s" (alloc_kind m)
+  | Pfloatofint (m, _) -> fprintf ppf "float_of_int%s" (alloc_kind m)
+  | Pnegfloat (m, _) -> fprintf ppf "~.%s" (alloc_kind m)
+  | Pabsfloat (m, _) -> fprintf ppf "abs.%s" (alloc_kind m)
+  | Paddfloat (m, _) -> fprintf ppf "+.%s" (alloc_kind m)
+  | Psubfloat (m, _) -> fprintf ppf "-.%s" (alloc_kind m)
+  | Pmulfloat (m, _) -> fprintf ppf "*.%s" (alloc_kind m)
+  | Pdivfloat (m, _) -> fprintf ppf "/.%s" (alloc_kind m)
   | Pfloatcomp(cmp) -> float_comparison ppf cmp
   | Pstringlength -> fprintf ppf "string.length"
   | Pstringrefu -> fprintf ppf "string.unsafe_get"
@@ -377,7 +377,7 @@ let primitive ppf = function
   | Pisint -> fprintf ppf "isint"
   | Pisout -> fprintf ppf "isout"
   | Pbintofint (bi,m) -> print_boxed_integer "of_int" ppf bi m
-  | Pintofbint bi -> print_boxed_integer "to_int" ppf bi alloc_heap
+  | Pintofbint bi -> print_boxed_integer "to_int" ppf bi alloc_heap_shared
   | Pcvtbint (bi1, bi2, m) -> print_boxed_integer_conversion ppf bi1 bi2 m
   | Pnegbint (bi,m) -> print_boxed_integer "neg" ppf bi m
   | Paddbint (bi,m) -> print_boxed_integer "add" ppf bi m
@@ -397,12 +397,12 @@ let primitive ppf = function
   | Plslbint (bi,m) -> print_boxed_integer "lsl" ppf bi m
   | Plsrbint (bi,m) -> print_boxed_integer "lsr" ppf bi m
   | Pasrbint (bi,m) -> print_boxed_integer "asr" ppf bi m
-  | Pbintcomp(bi, Ceq) -> print_boxed_integer "==" ppf bi alloc_heap
-  | Pbintcomp(bi, Cne) -> print_boxed_integer "!=" ppf bi alloc_heap
-  | Pbintcomp(bi, Clt) -> print_boxed_integer "<" ppf bi alloc_heap
-  | Pbintcomp(bi, Cgt) -> print_boxed_integer ">" ppf bi alloc_heap
-  | Pbintcomp(bi, Cle) -> print_boxed_integer "<=" ppf bi alloc_heap
-  | Pbintcomp(bi, Cge) -> print_boxed_integer ">=" ppf bi alloc_heap
+  | Pbintcomp(bi, Ceq) -> print_boxed_integer "==" ppf bi alloc_heap_shared
+  | Pbintcomp(bi, Cne) -> print_boxed_integer "!=" ppf bi alloc_heap_shared
+  | Pbintcomp(bi, Clt) -> print_boxed_integer "<" ppf bi alloc_heap_shared
+  | Pbintcomp(bi, Cgt) -> print_boxed_integer ">" ppf bi alloc_heap_shared
+  | Pbintcomp(bi, Cle) -> print_boxed_integer "<=" ppf bi alloc_heap_shared
+  | Pbintcomp(bi, Cge) -> print_boxed_integer ">=" ppf bi alloc_heap_shared
   | Pbigarrayref(unsafe, _n, kind, layout) ->
       print_bigarray "get" unsafe kind ppf layout
   | Pbigarrayset(unsafe, _n, kind, layout) ->
@@ -411,19 +411,19 @@ let primitive ppf = function
   | Pstring_load_16(unsafe) ->
      if unsafe then fprintf ppf "string.unsafe_get16"
      else fprintf ppf "string.get16"
-  | Pstring_load_32(unsafe, m) ->
+  | Pstring_load_32(unsafe, (m, _)) ->
      if unsafe then fprintf ppf "string.unsafe_get32%s" (alloc_kind m)
      else fprintf ppf "string.get32%s" (alloc_kind m)
-  | Pstring_load_64(unsafe, m) ->
+  | Pstring_load_64(unsafe, (m, _)) ->
      if unsafe then fprintf ppf "string.unsafe_get64%s" (alloc_kind m)
      else fprintf ppf "string.get64%s" (alloc_kind m)
   | Pbytes_load_16(unsafe) ->
      if unsafe then fprintf ppf "bytes.unsafe_get16"
      else fprintf ppf "bytes.get16"
-  | Pbytes_load_32(unsafe,m) ->
+  | Pbytes_load_32(unsafe, (m, _)) ->
      if unsafe then fprintf ppf "bytes.unsafe_get32%s" (alloc_kind m)
      else fprintf ppf "bytes.get32%s" (alloc_kind m)
-  | Pbytes_load_64(unsafe,m) ->
+  | Pbytes_load_64(unsafe, (m, _)) ->
      if unsafe then fprintf ppf "bytes.unsafe_get64%s" (alloc_kind m)
      else fprintf ppf "bytes.get64%s" (alloc_kind m)
   | Pbytes_set_16(unsafe) ->
@@ -438,10 +438,10 @@ let primitive ppf = function
   | Pbigstring_load_16(unsafe) ->
      if unsafe then fprintf ppf "bigarray.array1.unsafe_get16"
      else fprintf ppf "bigarray.array1.get16"
-  | Pbigstring_load_32(unsafe,m) ->
+  | Pbigstring_load_32(unsafe,(m,_)) ->
      if unsafe then fprintf ppf "bigarray.array1.unsafe_get32%s" (alloc_kind m)
      else fprintf ppf "bigarray.array1.get32%s" (alloc_kind m)
-  | Pbigstring_load_64(unsafe,m) ->
+  | Pbigstring_load_64(unsafe,(m,_)) ->
      if unsafe then fprintf ppf "bigarray.array1.unsafe_get64%s" (alloc_kind m)
      else fprintf ppf "bigarray.array1.get64%s" (alloc_kind m)
   | Pbigstring_set_16(unsafe) ->
@@ -655,7 +655,7 @@ let rec lam ppf = function
                 value_kind ppf k)
               params;
             fprintf ppf ")" in
-      let rmode = if region then alloc_heap else alloc_local in
+      let rmode = if region then alloc_heap_shared else alloc_local_shared in
       fprintf ppf "@[<2>(function%s%a@ %a%a%a)@]"
         (alloc_kind mode) pr_params params
         function_attribute attr return_kind (rmode, return) lam body

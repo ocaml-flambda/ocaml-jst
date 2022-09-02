@@ -130,7 +130,7 @@ let rec accumulate ~substitution ~copied_lets ~extracted_lets
           (Let_rec (renamed_defs,
                     Flambda_utils.name_expr ~name
                       (Prim (Pmakeblock (0, Immutable, None,
-                                         Lambda.alloc_heap),
+                                         Lambda.alloc_heap_shared),
                              List.map fst renamed_defs,
                              Debuginfo.none))))
       in

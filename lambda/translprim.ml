@@ -110,8 +110,8 @@ let prim_sys_argv =
   Primitive.simple ~name:"caml_sys_argv" ~arity:1 ~alloc:true
 
 let to_alloc_mode ~poly = function
-  | Prim_global, _ -> alloc_heap
-  | Prim_local, _ -> alloc_local
+  | Prim_global, _ -> alloc_heap_shared
+  | Prim_local, _ -> alloc_local_shared
   | Prim_poly, _ -> poly
 
 let lookup_primitive loc poly pos p =
@@ -137,7 +137,7 @@ let lookup_primitive loc poly pos p =
     | "%setfield0" ->
        let mode =
          match arg_modes with
-         | mode :: _ -> Assignment mode
+         | (lmode, _) :: _ -> Assignment lmode
          | [] -> assert false
        in
        Primitive ((Psetfield(0, Pointer, mode)), 2)
@@ -699,7 +699,7 @@ let lambda_of_prim prim_name prim loc args arg_exps =
       lambda_of_loc kind loc
   | Loc kind, [arg] ->
       let lam = lambda_of_loc kind loc in
-      Lprim(Pmakeblock(0, Immutable, None, alloc_heap), [lam; arg], loc)
+      Lprim(Pmakeblock(0, Immutable, None, alloc_heap_shared), [lam; arg], loc)
   | Send pos, [obj; meth] ->
       Lsend(Public, meth, obj, [], pos, alloc_heap, loc)
   | Send_self pos, [obj; meth] ->
@@ -714,8 +714,8 @@ let lambda_of_prim prim_name prim loc args arg_exps =
 let check_primitive_arity loc p =
   let mode =
     match p.prim_native_repr_res with
-    | Prim_global, _ | Prim_poly, _ -> alloc_heap
-    | Prim_local, _ -> alloc_local
+    | Prim_global, _ | Prim_poly, _ -> alloc_heap_shared
+    | Prim_local, _ -> alloc_local_shared
   in
   let prim = lookup_primitive loc mode Rc_normal p in
   let ok =

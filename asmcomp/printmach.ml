@@ -137,9 +137,9 @@ let operation op arg ppf res =
        (Array.sub arg 1 (Array.length arg - 1))
        reg arg.(0)
        (if is_assign then "(assign)" else "(init)")
-  | Ialloc { bytes = n; mode = Alloc_heap, _ } ->
+  | Ialloc { bytes = n; mode = Alloc_heap } ->
     fprintf ppf "alloc %i" n;
-  | Ialloc { bytes = n; mode = Alloc_local, _ } ->
+  | Ialloc { bytes = n; mode = Alloc_local } ->
     fprintf ppf "alloc_local %i" n;
   | Iintop(op) -> fprintf ppf "%a%s%a" reg arg.(0) (intop op) reg arg.(1)
   | Iintop_imm(op, n) -> fprintf ppf "%a%s%i" reg arg.(0) (intop op) n

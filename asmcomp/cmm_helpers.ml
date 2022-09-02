@@ -94,28 +94,28 @@ let closure_info ~arity ~startenv =
 
 let alloc_float_header mode dbg =
   match mode with
-  | Lambda.Alloc_heap, _ -> Cconst_natint (float_header, dbg)
-  | Lambda.Alloc_local, _ -> Cconst_natint (float_local_header, dbg)
+  | Lambda.Alloc_heap -> Cconst_natint (float_header, dbg)
+  | Lambda.Alloc_local -> Cconst_natint (float_local_header, dbg)
 let alloc_floatarray_header len dbg = Cconst_natint (floatarray_header len, dbg)
 let alloc_closure_header ~mode sz dbg =
-  match (mode : Lambda.alloc_mode) with
-  | Alloc_heap, _ -> Cconst_natint (white_closure_header sz, dbg)
-  | Alloc_local, _ -> Cconst_natint (local_closure_header sz, dbg)
+  match mode with
+  | Lambda.Alloc_heap -> Cconst_natint (white_closure_header sz, dbg)
+  | Lambda.Alloc_local -> Cconst_natint (local_closure_header sz, dbg)
 let alloc_infix_header ofs dbg = Cconst_natint (infix_header ofs, dbg)
 let alloc_closure_info ~arity ~startenv dbg =
   Cconst_natint (closure_info ~arity ~startenv, dbg)
 let alloc_boxedint32_header mode dbg =
   match mode with
-  | Lambda.Alloc_heap, _ -> Cconst_natint (boxedint32_header, dbg)
-  | Lambda.Alloc_local, _ -> Cconst_natint (boxedint32_local_header, dbg)
+  | Lambda.Alloc_heap -> Cconst_natint (boxedint32_header, dbg)
+  | Lambda.Alloc_local -> Cconst_natint (boxedint32_local_header, dbg)
 let alloc_boxedint64_header mode dbg =
   match mode with
-  | Lambda.Alloc_heap, _ -> Cconst_natint (boxedint64_header, dbg)
-  | Lambda.Alloc_local, _ -> Cconst_natint (boxedint64_local_header, dbg)
+  | Lambda.Alloc_heap -> Cconst_natint (boxedint64_header, dbg)
+  | Lambda.Alloc_local -> Cconst_natint (boxedint64_local_header, dbg)
 let alloc_boxedintnat_header mode dbg =
   match mode with
-  | Lambda.Alloc_heap, _ -> Cconst_natint (boxedintnat_header, dbg)
-  | Lambda.Alloc_local, _ -> Cconst_natint (boxedintnat_local_header, dbg)
+  | Lambda.Alloc_heap -> Cconst_natint (boxedintnat_header, dbg)
+  | Lambda.Alloc_local -> Cconst_natint (boxedintnat_local_header, dbg)
 
 (* Integers *)
 
@@ -822,9 +822,9 @@ let send_function_name n (mode : Lambda.locality_mode) =
 let call_cached_method obj tag cache pos args (apos,mode) dbg =
   let arity = List.length args in
   let cache = array_indexing log2_size_addr cache pos dbg in
-  Compilenv.need_send_fun arity (fst mode);
+  Compilenv.need_send_fun arity mode;
   Cop(Capply(typ_val, apos),
-      Cconst_symbol(send_function_name arity (fst mode), dbg) ::
+      Cconst_symbol(send_function_name arity mode, dbg) ::
         obj :: tag :: cache :: args,
       dbg)
 
@@ -834,8 +834,8 @@ let make_alloc_generic ~mode set_fn dbg tag wordsize args =
   if Lambda.is_local_mode mode || wordsize <= Config.max_young_wosize then
     let hdr =
       match mode with
-      | Lambda.Alloc_local, _ -> local_block_header tag wordsize
-      | Lambda.Alloc_heap, _ -> block_header tag wordsize
+      | Lambda.Alloc_local -> local_block_header tag wordsize
+      | Lambda.Alloc_heap -> block_header tag wordsize
     in
     Cop(Calloc mode, Cconst_natint(hdr, dbg) :: args, dbg)
   else begin
@@ -1751,7 +1751,7 @@ let generic_apply mut clos args (pos, mode) dbg =
   | _ ->
       let arity = List.length args in
       let cargs =
-        Cconst_symbol(apply_function_sym arity (fst mode), dbg) :: args @ [clos]
+        Cconst_symbol(apply_function_sym arity mode, dbg) :: args @ [clos]
       in
       Cop(Capply(typ_val, pos), cargs, dbg)
 
@@ -1839,7 +1839,7 @@ let has_local_allocs e =
         (* Local allocations within a nested region do not affect this region,
            except inside a Ctail block *)
         loop_until_tail e
-    | Cop (Calloc (Alloc_local, _), _, _)
+    | Cop (Calloc Alloc_local, _, _)
     | Cop ((Cextcall _ | Capply _), _, _) ->
         raise Exit
     | e ->
@@ -2224,7 +2224,7 @@ module ApplyFnSet =
 module AritySet =
   Set.Make (struct type t = Clambda.arity let compare = compare end)
 
-let default_apply = ApplyFnSet.of_list [2,fst Lambda.alloc_heap; 3,fst Lambda.alloc_heap]
+let default_apply = ApplyFnSet.of_list [2, Lambda.alloc_heap; 3, Lambda.alloc_heap]
   (* These apply funs are always present in the main program because
      the run-time system needs them (cf. runtime/<arch>.S) . *)
 
@@ -2331,8 +2331,8 @@ let assignment_kind
     (ptr: Lambda.immediate_or_pointer)
     (init: Lambda.initialization_or_assignment) =
   match init, ptr with
-  | Assignment (Alloc_heap, _), Pointer -> Caml_modify
-  | Assignment (Alloc_local, _), Pointer ->
+  | Assignment Alloc_heap, Pointer -> Caml_modify
+  | Assignment Alloc_local, Pointer ->
     assert Config.stack_allocation;
     Caml_modify_local
   | Heap_initialization, _ ->

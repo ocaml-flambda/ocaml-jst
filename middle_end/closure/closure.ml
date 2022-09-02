@@ -497,7 +497,7 @@ let simplif_prim_pure ~backend fpc p (args, approxs) dbg =
   let open Clambda_primitives in
   match p, args, approxs with
   (* Block construction *)
-  | Pmakeblock(tag, Immutable, _kind, mode), _, _ ->
+  | Pmakeblock(tag, Immutable, _kind, (mode, _)), _, _ ->
       let field = function
         | Value_const c -> c
         | _ -> raise Exit
@@ -542,7 +542,7 @@ let simplif_prim ~backend fpc p (args, approxs as args_approxs) dbg =
     (* XXX : always return the same approxs as simplif_prim_pure? *)
     let approx =
       match p with
-      | P.Pmakeblock(_, Immutable, _kind, mode) ->
+      | P.Pmakeblock(_, Immutable, _kind, (mode, _)) ->
           Value_tuple (mode, Array.of_list approxs)
       | _ ->
           Value_unknown
@@ -1105,7 +1105,7 @@ let rec close ({ backend; fenv; cenv ; mutable_vars } as env) lam =
           in
           let body =
             match mode, fundesc.fun_region with
-            | (Alloc_heap, _), false -> region body
+            | Alloc_heap, false -> region body
             | _ -> body
           in
           let body =
