@@ -105,18 +105,18 @@ exception Error of error
 module Occurrence : sig
   type t
   module Set : Set.S with type elt = t
-  val fresh : Location.t -> unique_seen_reason -> Mode.Uniqueness.t option -> t
+  val fresh : Location.t -> unique_seen_reason -> Mode.Uniqueness.t -> t
   val force_shared : t -> (unit, unit) result
   val loc : t -> Location.t
   val reason : t -> unique_seen_reason
-  val mode_opt : t -> Mode.Uniqueness.t option
+  val mode : t -> Mode.Uniqueness.t
   val relationship : t -> relationship
   val set_relationship : relationship -> t -> t
 end = struct
   module T = struct
     type t =
       { id : int; loc : Location.t; reason : unique_seen_reason;
-        mode_opt : Mode.Uniqueness.t option; relationship : relationship }
+        mode : Mode.Uniqueness.t; relationship : relationship }
 
     let compare t1 t2 = t1.id - t2.id
   end
@@ -125,19 +125,17 @@ end = struct
 
   let stamp = ref 0
 
-  let fresh loc reason mode_opt =
+  let fresh loc reason mode =
     let id = !stamp in
     stamp := id + 1;
-    { id; loc; reason; mode_opt; relationship = Itself }
+    { id; loc; reason; mode; relationship = Itself }
 
   let force_shared t =
-    match t.mode_opt with
-    | Some m -> Mode.Uniqueness.submode (Amode Shared) m
-    | None -> Ok ()
+    Mode.Uniqueness.submode (Amode Shared) t.mode
 
   let loc t = t.loc
   let reason t = t.reason
-  let mode_opt t = t.mode_opt
+  let mode t = t.mode
   let relationship t = t.relationship
   let set_relationship relationship t = { t with relationship }
 end
@@ -323,6 +321,8 @@ let mark_seen id occ ienv uenv =
       (* The idents that are not in the alias map are other definitions and indices of loops/comprehensions. *)
       (* Location.alert ~kind:"unreg-var" (Occurrence.loc occ) ("Internal error: " ^ Ident.name id ^ " has not been registered"); *)
       uenv
+let mark_seen_all uids occ uenv =
+  List.fold_left (fun uenv uid -> mark_seen_ uid occ uenv) uenv uids
 
 let add_child parent proj uenv =
   let uid = Uqid.fresh (Projection.to_string (Uqid.name parent) proj) in
@@ -359,7 +359,7 @@ let mark_matched parent uenv =
   match parent with
   | OneParent(ps, Some (_, occ))->
       List.fold_left (fun uenv p -> mark_matched_one p occ uenv) uenv ps
-  | OneParent(_, None) -> uenv (* Parent already marked *)
+  | OneParent(_, None) -> uenv (* This is (part of) a global or array field *)
   | TupleParent _ -> uenv (* We have matched on a tuple which we own -- no action necessary *)
 
 let uid_of_ident id =
@@ -378,13 +378,13 @@ let pat_var id parent ienv uenv =
       let uid = uid_of_ident id in
       let ienv = add_alias id [uid] ienv in
       (* Mark all ps as seen, as we bind the tuple to a variable. *)
-      OneParent([uid], None), ienv, List.fold_left (fun uenv (ps, pp) ->
-          match pp with
+      OneParent([uid], None), ienv, List.fold_left (fun uenv (ps, pp_opt) ->
+          match pp_opt with
           | None -> uenv
           | Some (err_id, occ) ->
             let occ = Occurrence.fresh (Occurrence.loc occ)
-                (Tuple_match_on_aliased_as(err_id, id)) (Occurrence.mode_opt occ) in
-            List.fold_left (fun uenv p -> mark_seen_ p occ uenv) uenv ps) uenv ps
+                (Tuple_match_on_aliased_as(err_id, id)) (Occurrence.mode occ) in
+            mark_seen_all ps occ uenv) uenv ps
 
 let is_shared_field global_flag = match global_flag with
   | Global -> true
@@ -398,8 +398,8 @@ let rec pat_to_map (pat : Typedtree.pattern) parent ienv uenv =
       let _, ienv, uenv = pat_var id parent ienv uenv in
       ienv, uenv
   | Tpat_alias(pat',id, _) ->
-      let parent, ienv, uenv = pat_var id parent ienv uenv
-      in pat_to_map pat' parent ienv uenv
+      let parent, ienv, uenv = pat_var id parent ienv uenv in
+      pat_to_map pat' parent ienv uenv
   | Tpat_constant(_) -> ienv, mark_matched parent uenv
   | Tpat_tuple(ps) ->
       pat_proj ~handle_tuple:(fun ps' ->
@@ -413,11 +413,11 @@ let rec pat_to_map (pat : Typedtree.pattern) parent ienv uenv =
       pat_proj ~extract_pat:Fun.id ~mk_proj:(fun i _ -> (Some (Projection.Construct_field(Longident.last lbl.txt, i)))) parent ps ienv uenv
   | Tpat_variant(lbl, mpat, _) -> begin
       let uenv = mark_matched parent uenv in
-      let ps, uenv = match parent with
-        | OneParent(ps, _) -> add_child_many ps (Projection.Variant_field lbl) uenv
+      let pp, (ps, uenv) = match parent with
+        | OneParent(ps, pp) -> pp, add_child_many ps (Projection.Variant_field lbl) uenv
         | TupleParent _ -> assert false in
       match mpat with
-      | Some pat' -> pat_to_map pat' (OneParent(ps, None)) ienv uenv
+      | Some pat' -> pat_to_map pat' (OneParent(ps, pp)) ienv uenv
       | None -> ienv, uenv
       end
   | Tpat_record((ps : (_ * _ * _) list), _) ->
@@ -437,15 +437,15 @@ let rec pat_to_map (pat : Typedtree.pattern) parent ienv uenv =
 and pat_proj : 'a. ?handle_tuple:_ -> extract_pat:('a -> _) -> mk_proj:(_ -> 'a -> _) -> _ -> 'a list -> _ -> _ -> _ =
   fun ?(handle_tuple = fun _ -> assert false) ~extract_pat ~mk_proj parent ps ienv uenv ->
     match parent with
-    | OneParent(parents, _) ->
+    | OneParent(parents, pp) ->
         let uenv = mark_matched parent uenv in
         let ienv, uenv, _ =
           List.fold_left
             (fun (ienv, uenv, i) patlike ->
-               let ps, uenv = match mk_proj i patlike with
-                 | None -> [Uqid.fresh "global"], uenv
-                 | Some proj -> add_child_many parents proj uenv in
-               let ienv, uenv = pat_to_map (extract_pat patlike) (OneParent(ps, None)) ienv uenv in
+               let pp, (ps, uenv) = match mk_proj i patlike with
+                 | None -> None, ([Uqid.fresh "global"], uenv)
+                 | Some proj -> pp, add_child_many parents proj uenv in
+               let ienv, uenv = pat_to_map (extract_pat patlike) (OneParent(ps, pp)) ienv uenv in
                ienv, uenv, i + 1)
             (ienv, uenv, 0) ps
         in ienv, uenv
@@ -470,7 +470,7 @@ let rec check_uniqueness_exp_ exp ienv uenv =
       match ident_option_from_path p with
       | Some id ->
           let occ = Occurrence.fresh exp.exp_loc
-              (Seen_as (Ident id)) (Some mode) in
+              (Seen_as (Ident id)) mode in
           mark_seen id occ ienv uenv
       | None -> uenv
       end
@@ -482,9 +482,9 @@ let rec check_uniqueness_exp_ exp ienv uenv =
       check_uniqueness_cases (OneParent([uid_of_ident param], None)) cases ienv uenv
   | Texp_apply(f, xs, _) ->
       let uenv = check_uniqueness_exp_ f ienv uenv in
-      List.fold_left (fun uenv (_, arg) -> match arg with
+      List.fold_right (fun (_, arg) uenv -> match arg with
           | Arg e -> check_uniqueness_exp_ e ienv uenv
-          | Omitted _ -> uenv) uenv xs
+          | Omitted _ -> uenv) xs uenv
   | Texp_match(e, cs, _) ->
       let parent, uenv = exp_to_parent ~check:true e ienv uenv in
       check_uniqueness_comp_cases parent cs ienv uenv
@@ -493,16 +493,16 @@ let rec check_uniqueness_exp_ exp ienv uenv =
       let ps = [Uqid.fresh "try"] in
       check_uniqueness_cases (OneParent(ps, None)) cs ienv uenv
   | Texp_tuple(es) ->
-      List.fold_left (fun uenv e -> check_uniqueness_exp_ e ienv uenv) uenv es
+      List.fold_right (fun e uenv -> check_uniqueness_exp_ e ienv uenv) es uenv
   | Texp_construct(_, _, es) ->
-      List.fold_left (fun uenv e -> check_uniqueness_exp_ e ienv uenv) uenv es
+      List.fold_right (fun e uenv -> check_uniqueness_exp_ e ienv uenv) es uenv
   | Texp_variant(_, None) -> uenv
   | Texp_variant(_, Some e) -> check_uniqueness_exp_ e ienv uenv
   | Texp_record { fields; extended_expression } -> begin
       let check_fields uenv =
-        Array.fold_left (fun uenv f -> match f with
+        Array.fold_right (fun f uenv -> match f with
           | _, Kept _ -> uenv
-          | _, Overridden (_, e) -> check_uniqueness_exp_ e ienv uenv) uenv fields in
+          | _, Overridden (_, e) -> check_uniqueness_exp_ e ienv uenv) fields uenv in
       match extended_expression with
       | None -> check_fields uenv
       | Some (update_kind, exp) ->
@@ -510,38 +510,36 @@ let rec check_uniqueness_exp_ exp ienv uenv =
         match parent with
         | None -> check_fields uenv
         | Some (ps, (err_id, _), mode) ->
-            let uenv = Array.fold_left (fun uenv field -> match field with
+            let uenv = Array.fold_right (fun field uenv -> match field with
               | l, Kept _ ->
-                  let occ = Occurrence.fresh exp.exp_loc (Seen_as (Field(err_id, l.lbl_name))) (Some mode) in
                   if is_shared_field l.lbl_global then uenv else
+                    let occ = Occurrence.fresh exp.exp_loc (Seen_as (Field(err_id, l.lbl_name))) mode in
                     let ps, uenv = add_child_many ps (Projection.Record_field l.lbl_name) uenv in
-                    List.fold_left (fun uenv p -> mark_seen_ p occ uenv) uenv ps
-              | _, Overridden (_, e) -> check_uniqueness_exp_ e ienv uenv) uenv fields
+                    mark_seen_all ps occ uenv
+              | _, Overridden (_, e) -> check_uniqueness_exp_ e ienv uenv) fields uenv
             in match update_kind with
             | In_place ->
-                let occ = Occurrence.fresh exp.exp_loc (Seen_as err_id) (Some mode) in
+                let occ = Occurrence.fresh exp.exp_loc (Seen_as err_id) mode in
                 let ps, uenv = add_child_many ps Memory_address uenv in
-                List.fold_left (fun uenv p -> mark_seen_ p occ uenv) uenv ps
+                mark_seen_all ps occ uenv
             | Create_new -> uenv
       end
   | Texp_field(e, _, l, mode) -> begin
       match (path_to_parent ~check:true e ienv uenv : (Uqid.t list * path_parent * Mode.Uniqueness.t) option * unique_env) with
       | Some (ps, (err_id, _), _), uenv ->
           if is_shared_field l.lbl_global then uenv else
-            let occ = Occurrence.fresh exp.exp_loc (Seen_as (Field(err_id, l.lbl_name))) (Some mode) in
+            let occ = Occurrence.fresh exp.exp_loc (Seen_as (Field(err_id, l.lbl_name))) mode in
             let ps, uenv = add_child_many ps (Projection.Record_field l.lbl_name) uenv in
-            List.fold_left (fun uenv p -> mark_seen_ p occ uenv) uenv ps
+            mark_seen_all ps occ uenv
       | None, uenv -> uenv
     end
   | Texp_setfield(exp', _, _, e) ->
-      let parent, uenv = path_to_parent ~check:true exp' ienv uenv in
-      let uenv = match parent with | Some(ps, pp, _) -> mark_matched (OneParent(ps, Some pp)) uenv | None -> uenv in
+      let _, uenv = path_to_parent ~check:true exp' ienv uenv in
       check_uniqueness_exp_ e ienv uenv
   | Texp_array(es) ->
-      List.fold_left (fun uenv e -> check_uniqueness_exp_ e ienv uenv) uenv es
+      List.fold_right (fun e uenv -> check_uniqueness_exp_ e ienv uenv) es uenv
   | Texp_ifthenelse(if', then', else_opt) ->
-      let parent, uenv = path_to_parent ~check:true if' ienv uenv in
-      let uenv = match parent with | Some(ps, pp, _) -> mark_matched (OneParent(ps, Some pp)) uenv | None -> uenv in
+      let _, uenv = path_to_parent ~check:true if' ienv uenv in
       begin match else_opt with
       | Some else' -> check_uniqueness_parallel [then'; else'] ienv uenv
       | None -> check_uniqueness_exp_ then' ienv uenv
@@ -599,14 +597,16 @@ and path_to_parent : check:bool -> Typedtree.expression -> id_env -> unique_env 
           | None -> None, uenv
           | Some ps ->
               let err_id = Ident id in
-              let occ = Occurrence.fresh exp.exp_loc (Seen_as err_id) (Some mode) in
+              let occ = Occurrence.fresh exp.exp_loc (Seen_as err_id) mode in
+              let uenv = mark_matched (OneParent(ps, Some(err_id, occ))) uenv in
               Some(ps, (err_id, occ), mode), uenv end
   | Texp_field(e, _, l, mode) -> begin
       match path_to_parent ~check e ienv uenv with
       | Some(ps, (err_id, _), _), uenv ->
           let err_id = Field(err_id, l.lbl_name) in
-          let occ = Occurrence.fresh exp.exp_loc (Seen_as err_id) (Some mode) in
+          let occ = Occurrence.fresh exp.exp_loc (Seen_as err_id) mode in
           let ps, uenv = add_child_many ps (Projection.Record_field l.lbl_name) uenv in
+          let uenv = mark_matched (OneParent(ps, Some(err_id, occ))) uenv in
           Some(ps, (err_id, occ), mode), uenv
       | _, uenv -> None, uenv end
   (* CR-someday anlorenzen: This could also support let-bindings. *)
@@ -677,7 +677,7 @@ and check_uniqueness_binding_op bo exp ienv uenv =
   let uenv = match ident_option_from_path bo.bop_op_path with
     | Some id ->
         let occ = Occurrence.fresh exp.exp_loc
-            (Seen_as (Ident id)) (Some Mode.Uniqueness.shared) in (* TODO: Does this need a mode var? *)
+            (Seen_as (Ident id)) Mode.Uniqueness.shared in
         mark_seen id occ ienv uenv
     | None -> uenv in
   check_uniqueness_exp_ bo.bop_exp ienv uenv

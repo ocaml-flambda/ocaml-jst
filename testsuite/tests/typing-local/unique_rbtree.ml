@@ -297,48 +297,47 @@ end
 module Make_Tagged_Bottom_Up(Ord : Map.OrderedType) = struct
   type 'a t = (Ord.t, 'a, tree_tag) tagged_tree
   type 'a z = (Ord.t, 'a, zipper_tag) tagged_tree
-  type 'a zt = Zt of { z : 'a z; t : 'a t }
 
   let fold = tagged_fold
 
-  let rec move_up : 'a. unique_ 'a zt -> unique_ 'a t = fun (Zt ({z;t} as zt)) ->
+  let rec move_up : 'a. unique_ 'a z -> unique_ 'a t -> unique_ 'a t = fun z t ->
     match z with
     | Node ({ color = Left_red; left = z' } as z) ->
-        move_up (Zt { unique_ zt with z = z'; t = Node { unique_ z with color = Red; left = t }})
+        move_up z' (Node { unique_ z with color = Red; left = t })
     | Node ({ color = Left_black; left = z' } as z) ->
-        move_up (Zt { unique_ zt with z = z'; t = Node { unique_ z with color = Black; left = t }})
+        move_up z' (Node { unique_ z with color = Black; left = t })
     | Node ({ color = Right_red; right = z' } as z) ->
-        move_up (Zt { unique_ zt with z = z'; t = Node { unique_ z with color = Red; right = t }})
+        move_up z' (Node { unique_ z with color = Red; right = t })
     | Node ({ color = Right_black; right = z' } as z) ->
-        move_up (Zt { unique_ zt with z = z'; t = Node { unique_ z with color = Black; right = t }})
+        move_up z' (Node { unique_ z with color = Black; right = t })
     | Leaf -> t
 
-  let rec fixup : 'a. unique_ 'a zt -> unique_ 'a t = fun (Zt ({z;t} as zt)) ->
+  let rec fixup : 'a. unique_ 'a z -> unique_ 'a t -> unique_ 'a t = fun z t ->
     match z with
     | Node ({ color = Left_red; left = z' } as z) -> begin
         match z' with
         | Node ({ color = Left_black; left = z''; right = y } as z') -> begin
             match y with
             | Node ({ color = Red } as y) ->
-                fixup (Zt { unique_ zt with z = z''; t = Node { unique_ z' with color = Red;
-                                                                                left = Node { unique_ z with color = Black; left = t };
-                                                                                right = Node { unique_ y with color = Black } } })
+                fixup z'' (Node { unique_ z' with color = Red;
+                                                  left = Node { unique_ z with color = Black; left = t };
+                                                  right = Node { unique_ y with color = Black } })
             | Node { color = Black } | Leaf ->
-                move_up (Zt { unique_ zt with z = z''; t = Node { unique_ z with color = Black;
-                                                                                 right = Node { unique_ z' with color = Red; left = z.right };
-                                                                                 left = t }}) end
+                move_up z'' (Node { unique_ z with color = Black;
+                                                   right = Node { unique_ z' with color = Red; left = z.right };
+                                                   left = t }) end
         | Node ({ color = Right_black; right = z''; left = y } as z') -> begin
             match y with
             | Node ({ color = Red } as y) ->
-                fixup (Zt { unique_ zt with z = z''; t = Node { unique_ z' with color = Red;
-                                                                                right = Node { unique_ z with color = Black; left = t };
-                                                                                left = Node { unique_ y with color = Black } } })
+                fixup z'' (Node { unique_ z' with color = Red;
+                                                  right = Node { unique_ z with color = Black; left = t };
+                                                  left = Node { unique_ y with color = Black } })
             | Node { color = Black } | Leaf ->
                 match t with
                 | Node ({ color = Red; left = tl; right = tr } as t) ->
-                    move_up (Zt { unique_ zt with z = z''; t = Node { unique_ t with color = Black;
-                                                                                     left = Node { unique_ z' with color = Red; right = tl };
-                                                                                     right = Node { unique_ z with color = Red; left = tr } }})
+                    move_up z'' (Node { unique_ t with color = Black;
+                                                       left = Node { unique_ z' with color = Red; right = tl };
+                                                       right = Node { unique_ z with color = Red; left = tr } })
                  | _ -> assert false end
         | _ -> assert false end
     | Node ({ color = Right_red; right = z' } as z) -> begin
@@ -346,49 +345,49 @@ module Make_Tagged_Bottom_Up(Ord : Map.OrderedType) = struct
         | Node ({ color = Right_black; right = z''; left = y } as z') -> begin
             match y with
             | Node ({ color = Red } as y) ->
-                fixup (Zt { unique_ zt with z = z''; t = Node { unique_ z' with color = Red;
-                                                                                right = Node { unique_ z with color = Black; right = t };
-                                                                                left = Node { unique_ y with color = Black } } })
+                fixup z'' (Node { unique_ z' with color = Red;
+                                                  right = Node { unique_ z with color = Black; right = t };
+                                                  left = Node { unique_ y with color = Black } })
             | Node { color = Black } | Leaf ->
-                move_up (Zt { unique_ zt with z = z''; t = Node { unique_ z with color = Black;
-                                                                                 left = Node { unique_ z' with color = Red; right = z.left };
-                                                                                 right = t }}) end
+                move_up z'' (Node { unique_ z with color = Black;
+                                                   left = Node { unique_ z' with color = Red; right = z.left };
+                                                   right = t }) end
         | Node ({ color = Left_black; left = z''; right = y } as z') -> begin
             match y with
             | Node ({ color = Red } as y) ->
-                fixup (Zt { unique_ zt with z = z''; t = Node { unique_ z' with color = Red;
-                                                                                left = Node { unique_ z with color = Black; right = t };
-                                                                                right = Node { unique_ y with color = Black } } })
+                fixup z'' (Node { unique_ z' with color = Red;
+                                                  left = Node { unique_ z with color = Black; right = t };
+                                                  right = Node { unique_ y with color = Black } })
             | Node { color = Black } | Leaf ->
                 match t with
                 | Node ({ color = Red; left = tl; right = tr } as t) ->
-                    move_up (Zt { unique_ zt with z = z''; t = Node { unique_ t with color = Black;
-                                                                                     right = Node { unique_ z' with color = Red; left = tl };
-                                                                                     left = Node { unique_ z with color = Red; right = tr } }})
+                    move_up z'' (Node { unique_ t with color = Black;
+                                                       right = Node { unique_ z' with color = Red; left = tl };
+                                                       left = Node { unique_ z with color = Red; right = tr } })
                  | _ -> assert false end
         | _ -> assert false end
-    | _ -> move_up (Zt zt)
+    | _ -> move_up z t
 
-  let rec ins : 'a. Ord.t -> 'a -> unique_ 'a zt -> unique_ 'a t = fun k v (Zt ({z;t} as zt)) ->
+  let rec ins : 'a. Ord.t -> 'a -> unique_ 'a z -> unique_ 'a t -> unique_ 'a t = fun k v z t ->
     match t with
     | Node ({ color = Black } as t) -> begin
         match Ord.compare k t.key with
-        | c when c < 0 -> ins k v (Zt { unique_ zt with z = Node { unique_ t with color = Left_black; left = z }; t = t.left })
-        | c when c > 0 -> ins k v (Zt { unique_ zt with z = Node { unique_ t with color = Right_black; right = z }; t = t.right })
-        | _ -> move_up (Zt { unique_ zt with t = Node { unique_ t with value = v }}) (* k == t.key *) end
+        | c when c < 0 -> ins k v (Node { unique_ t with color = Left_black; left = z }) t.left
+        | c when c > 0 -> ins k v (Node { unique_ t with color = Right_black; right = z }) t.right
+        | _ -> move_up z (Node { unique_ t with value = v }) (* k == t.key *) end
     | Node ({ color = Red } as t) -> begin
         match Ord.compare k t.key with
-        | c when c < 0 -> ins k v (Zt { unique_ zt with z = Node { unique_ t with color = Left_red; left = z }; t = t.left })
-        | c when c > 0 -> ins k v (Zt { unique_ zt with z = Node { unique_ t with color = Right_red; right = z }; t = t.right })
-        | _ -> move_up (Zt { unique_ zt with t = Node { unique_ t with value = v }}) (* k == t.key *) end
-    | Leaf -> fixup (Zt { unique_ zt with t = Node { color = Red; left = Leaf; key = k; value = v; right = Leaf }})
+        | c when c < 0 -> ins k v (Node { unique_ t with color = Left_red; left = z }) t.left
+        | c when c > 0 -> ins k v (Node { unique_ t with color = Right_red; right = z }) t.right
+        | _ -> move_up z (Node { unique_ t with value = v }) (* k == t.key *) end
+    | Leaf -> fixup z (Node { color = Red; left = Leaf; key = k; value = v; right = Leaf })
 
   let set_black t =
     match t with
     | Node ({ color = Red } as t) -> Node { unique_ t with color = Black }
     | _ -> t
 
-  let insert k v t = set_black (ins k v (Zt { z = Leaf; t }))
+  let insert k v t = set_black (ins k v Leaf t)
 end
 
 module IntOrder = struct

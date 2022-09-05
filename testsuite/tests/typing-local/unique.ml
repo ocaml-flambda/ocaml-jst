@@ -14,13 +14,13 @@ val dup : unique_ 'a -> 'a * 'a = <fun>
 
 let dup x = unique_ (x, x)
 [%%expect{|
-Line 1, characters 21-22:
-1 | let dup x = unique_ (x, x)
-                         ^
-Error: x is used uniquely here so cannot be used twice. It will be used again at:
 Line 1, characters 24-25:
 1 | let dup x = unique_ (x, x)
                             ^
+Error: x is used uniquely here so cannot be used twice. It will be used again at:
+Line 1, characters 21-22:
+1 | let dup x = unique_ (x, x)
+                         ^
 
 |}]
 
@@ -45,14 +45,14 @@ val branching : unique_ float -> float = <fun>
 
 let sequence (unique_ x : float) = unique_ let y = x in (x, y)
 [%%expect{|
-Line 1, characters 57-58:
-1 | let sequence (unique_ x : float) = unique_ let y = x in (x, y)
-                                                             ^
-Error: x is used uniquely here so cannot be used twice. It will be used again at:
 Line 1, characters 60-61:
 1 | let sequence (unique_ x : float) = unique_ let y = x in (x, y)
                                                                 ^
-  x was used because y is an alias of x.
+Error: y is used uniquely here so cannot be used twice. It will be used again at:
+Line 1, characters 57-58:
+1 | let sequence (unique_ x : float) = unique_ let y = x in (x, y)
+                                                             ^
+  y was used because x is an alias of y.
 |}]
 
 let children_unique (unique_ xs : float list) = match xs with
@@ -83,7 +83,7 @@ let dup_child (unique_ fs : 'a list) = unique_ match fs with
 Line 3, characters 22-24:
 3 |   | x :: xs as gs -> (gs, xs)
                           ^^
-Error: gs is used uniquely here so cannot be used twice. It will be used again at:
+Error: gs is used uniquely here so cannot be used twice. It was used previously at:
 Line 3, characters 26-28:
 3 |   | x :: xs as gs -> (gs, xs)
                               ^^
@@ -239,7 +239,7 @@ Error: p.x is used uniquely here so cannot be used twice. It will be used again 
 Line 3, characters 11-14:
 3 |   let y = (p.x, p.y) in
                ^^^
-  p.x was used because y refers to a tuple containing it.
+
 |}]
 
 let record_mode_vars (p : point) =
@@ -254,7 +254,22 @@ Error: p.x is used uniquely here so cannot be used twice. It was used previously
 Line 2, characters 11-14:
 2 |   let y = (p.x, p.y) in
                ^^^
-  p.x was used because y refers to a tuple containing it.
+
+|}]
+
+let record_mode_vars (p : point) =
+  let p2 = { unique_ p with x = 4.0 } in
+  let x = p.x in
+  (x, p2)
+[%%expect{|
+Line 2, characters 21-22:
+2 |   let p2 = { unique_ p with x = 4.0 } in
+                         ^
+Error: p is used uniquely here so cannot be used twice. It will be used again at:
+Line 3, characters 10-11:
+3 |   let x = p.x in
+              ^
+
 |}]
 
 
@@ -446,18 +461,87 @@ Line 4, characters 27-28:
 
 |}]
 
-let unique_match_on b =
-  let a = [] in
-  let unique_ t = (a, b) in unique_id a
+let unique_match_on a b =
+  let unique_ t = (a, b) in b
 [%%expect{|
-Line 3, characters 19-20:
-3 |   let unique_ t = (a, b) in unique_id a
+Line 2, characters 19-20:
+2 |   let unique_ t = (a, b) in b
                        ^
 Error: a is used uniquely here so cannot be used twice (t refers to a tuple containing it). It will be used again at:
-Line 3, characters 38-39:
-3 |   let unique_ t = (a, b) in unique_id a
-                                          ^
+Line 2, characters 19-20:
+2 |   let unique_ t = (a, b) in b
+                       ^
 
+|}]
+
+type ('a, 'b) record = { foo : 'a; bar : 'b }
+[%%expect{|
+type ('a, 'b) record = { foo : 'a; bar : 'b; }
+|}]
+
+let unique_match_on a =
+  let _p = { unique_ a.foo with foo = (); bar = () } in
+  match a with
+  | { bar } -> bar
+[%%expect{|
+val unique_match_on : unique_ (('a, 'b) record, 'c) record -> 'c = <fun>
+|}]
+
+let unique_match_on a =
+  let _p = { unique_ a.foo with foo = (); bar = () } in
+  match a with
+  | { foo; bar } -> (foo, bar)
+[%%expect{|
+Line 2, characters 21-26:
+2 |   let _p = { unique_ a.foo with foo = (); bar = () } in
+                         ^^^^^
+Error: a.foo is used uniquely here so cannot be used twice. It will be used again at:
+Line 4, characters 21-24:
+4 |   | { foo; bar } -> (foo, bar)
+                         ^^^
+  a.foo was used because foo is a parent of a.foo.
+|}]
+
+let unique_match_on a =
+  let _p = { unique_ a.foo with foo = (); bar = () } in
+  match a with
+  | { foo = { foo }; bar } -> (foo, bar)
+[%%expect{|
+Line 2, characters 21-26:
+2 |   let _p = { unique_ a.foo with foo = (); bar = () } in
+                         ^^^^^
+Error: a.foo is used uniquely here so cannot be used twice. It will be used again at:
+Line 3, characters 8-9:
+3 |   match a with
+            ^
+  a.foo was used because a is an alias of a.foo.
+|}]
+
+let match_function : unique_ 'a * 'b -> 'a * ('a * 'b) = function
+  | (a, b) as t -> unique_ (a, t)
+[%%expect{|
+Line 2, characters 31-32:
+2 |   | (a, b) as t -> unique_ (a, t)
+                                   ^
+Error: t is used uniquely here so cannot be used twice. It will be used again at:
+Line 2, characters 28-29:
+2 |   | (a, b) as t -> unique_ (a, t)
+                                ^
+  t was used because a is a child of t.
+|}]
+
+let tuple_parent_marked a b =
+  match (a, b) with
+  | (a, b) as t -> unique_ (a, t)
+[%%expect{|
+Line 3, characters 31-32:
+3 |   | (a, b) as t -> unique_ (a, t)
+                                   ^
+Error: t is used uniquely here so cannot be used twice. It will be used again at:
+Line 3, characters 28-29:
+3 |   | (a, b) as t -> unique_ (a, t)
+                                ^
+  t was used because a is a child of t.
 |}]
 
 (* CR-someday anlorenzen: This one shouldn't fail in a more clever analysis. *)
@@ -469,14 +553,14 @@ Line 3, characters 16-25:
 3 |   | a, (_, b) | b, (_, a) -> (unique_id a, unique_id b)
                     ^^^^^^^^^
 Warning 12 [redundant-subpat]: this sub-pattern is unused.
-Line 3, characters 40-41:
-3 |   | a, (_, b) | b, (_, a) -> (unique_id a, unique_id b)
-                                            ^
-Error: a is used uniquely here so cannot be used twice. It will be used again at:
 Line 3, characters 53-54:
 3 |   | a, (_, b) | b, (_, a) -> (unique_id a, unique_id b)
                                                          ^
-  a was used because b is an alias of a.
+Error: b is used uniquely here so cannot be used twice. It will be used again at:
+Line 3, characters 40-41:
+3 |   | a, (_, b) | b, (_, a) -> (unique_id a, unique_id b)
+                                            ^
+  b was used because a is an alias of b.
 |}]
 
 type point = { x : float; y : float }
@@ -580,13 +664,13 @@ let curry =
   let bar = foo ~a:3 ~b:2 ~c:4 in
   (bar ~d:3, bar ~d:5)
 [%%expect{|
-Line 4, characters 3-6:
-4 |   (bar ~d:3, bar ~d:5)
-       ^^^
-Error: bar is used uniquely here so cannot be used twice. It will be used again at:
 Line 4, characters 13-16:
 4 |   (bar ~d:3, bar ~d:5)
                  ^^^
+Error: bar is used uniquely here so cannot be used twice. It will be used again at:
+Line 4, characters 3-6:
+4 |   (bar ~d:3, bar ~d:5)
+       ^^^
 
 |}]
 
@@ -595,13 +679,13 @@ let curry =
   let bar = foo ~a:3 ~c:4 in
   let baz = bar ~b:4 in (baz ~d:3, baz ~d:5)
 [%%expect{|
-Line 4, characters 25-28:
-4 |   let baz = bar ~b:4 in (baz ~d:3, baz ~d:5)
-                             ^^^
-Error: baz is used uniquely here so cannot be used twice. It will be used again at:
 Line 4, characters 35-38:
 4 |   let baz = bar ~b:4 in (baz ~d:3, baz ~d:5)
                                        ^^^
+Error: baz is used uniquely here so cannot be used twice. It will be used again at:
+Line 4, characters 25-28:
+4 |   let baz = bar ~b:4 in (baz ~d:3, baz ~d:5)
+                             ^^^
 
 |}]
 
