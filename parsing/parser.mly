@@ -198,6 +198,14 @@ let mktyp_unique typ =
 let wrap_exp_unique exp =
   {exp with pexp_attributes = unique_attr :: exp.pexp_attributes}
 
+let borrow_ext_loc = mknoloc "extension.borrow"
+
+let borrow_extension =
+  Exp.mk ~loc:Location.none (Pexp_extension(borrow_ext_loc, PStr []))
+
+let mkexp_borrow ~loc exp =
+  ghexp ~loc (Pexp_apply(borrow_extension, [Nolabel, exp]))
+
 type mode_flags =
   | Local
   | Unique
@@ -727,6 +735,7 @@ let mk_directive ~loc name arg =
 %token BARBAR
 %token BARRBRACKET
 %token BEGIN
+%token BORROW
 %token <char> CHAR
 %token CLASS
 %token COLON
@@ -2329,6 +2338,8 @@ expr:
      { mkexp_stack ~loc:$sloc $2 }
   | UNIQUE seq_expr
       { mkexp_unique ~loc:$sloc $2 }
+  | BORROW seq_expr
+      { mkexp_borrow ~loc:$sloc $2 }
 ;
 %inline expr_attrs:
   | LET MODULE ext_attributes mkrhs(module_name) module_binding_body IN seq_expr

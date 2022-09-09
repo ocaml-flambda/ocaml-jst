@@ -254,7 +254,7 @@ Error: p.x is used uniquely here so cannot be used twice. It was used previously
 Line 2, characters 11-14:
 2 |   let y = (p.x, p.y) in
                ^^^
-
+  p.x was used because y refers to a tuple containing it.
 |}]
 
 let record_mode_vars (p : point) =
@@ -462,16 +462,9 @@ Line 4, characters 27-28:
 |}]
 
 let unique_match_on a b =
-  let unique_ t = (a, b) in b
+  let unique_ t = (a, b) in t
 [%%expect{|
-Line 2, characters 19-20:
-2 |   let unique_ t = (a, b) in b
-                       ^
-Error: a is used uniquely here so cannot be used twice (t refers to a tuple containing it). It will be used again at:
-Line 2, characters 19-20:
-2 |   let unique_ t = (a, b) in b
-                       ^
-
+val unique_match_on : unique_ 'a -> (unique_ 'b !-> 'a * 'b) = <fun>
 |}]
 
 type ('a, 'b) record = { foo : 'a; bar : 'b }
@@ -687,6 +680,44 @@ Line 4, characters 25-28:
 4 |   let baz = bar ~b:4 in (baz ~d:3, baz ~d:5)
                              ^^^
 
+|}]
+
+let curry =
+  let unique_ x = 3 in
+  let foo y = unique_ x in
+  (foo 1, foo 2)
+[%%expect{|
+Line 4, characters 10-13:
+4 |   (foo 1, foo 2)
+              ^^^
+Error: foo is used uniquely here so cannot be used twice. It will be used again at:
+Line 4, characters 3-6:
+4 |   (foo 1, foo 2)
+       ^^^
+
+|}]
+
+let unique_ x = [1;2;3]
+[%%expect{|
+Line 1, characters 12-13:
+1 | let unique_ x = [1;2;3]
+                ^
+Error: Unique values are not supported at toplevel.
+|}]
+
+let x = [1;2;3]
+[%%expect{|
+val x : int list = [1; 2; 3]
+|}]
+
+let toplevel y = unique_ x
+[%%expect{|
+Line 1, characters 25-26:
+1 | let toplevel y = unique_ x
+                             ^
+Error: Found a shared value where a unique value was expected
+  Hint: This identifier was defined outside of the current closure.
+  Did you forget to use a !-> arrow in a function type?
 |}]
 
 (* ------------------------------------------------------------------------------------ *)

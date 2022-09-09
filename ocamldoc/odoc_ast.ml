@@ -311,7 +311,7 @@ module Analyser =
                  (
                   match func_body.exp_desc with
                     Typedtree.Texp_let (_, {vb_pat={pat_desc = Typedtree.Tpat_var (id, _) };
-                                            vb_expr=exp} :: _, func_body2) ->
+                                            vb_expr=exp} :: _, func_body2, _) ->
                       let name = Name.from_ident id in
                       let new_param = Simple_name
                           { sn_name = name ;
@@ -470,7 +470,7 @@ module Analyser =
                              (
                               match body.exp_desc with
                                 Typedtree.Texp_let (_, {vb_pat={pat_desc = Typedtree.Tpat_var (id, _) };
-                                                        vb_expr=exp} :: _, body2) ->
+                                                        vb_expr=exp} :: _, body2, _) ->
                                   let name = Name.from_ident id in
                                   let new_param = Simple_name
                                       { sn_name = name ;

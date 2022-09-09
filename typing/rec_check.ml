@@ -144,7 +144,7 @@ let classify_expression : Typedtree.expression -> sd =
   *)
   let rec classify_expression env e = match e.exp_desc with
     (* binding and variable cases *)
-    | Texp_let (rec_flag, vb, e) ->
+    | Texp_let (rec_flag, vb, e, _) ->
         let env = classify_value_bindings rec_flag env vb in
         classify_expression env e
     | Texp_ident (path, _, _, _, _) ->
@@ -168,10 +168,10 @@ let classify_expression : Typedtree.expression -> sd =
     | Texp_record _ ->
         Static
 
-    | Texp_apply ({exp_desc = Texp_ident (_, _, vd, Id_prim _, _)}, _, _)
+    | Texp_apply ({exp_desc = Texp_ident (_, _, vd, Id_prim _, _)}, _, _, _)
       when is_ref vd ->
         Static
-    | Texp_apply (_, args, _)
+    | Texp_apply (_, args, _, _)
       when List.exists is_abstracted_arg args ->
         Static
     | Texp_apply _ ->
@@ -524,7 +524,7 @@ let rec expression : Typedtree.expression -> term_judg =
   fun exp -> match exp.exp_desc with
     | Texp_ident (pth, _, _, _, _) ->
       path pth
-    | Texp_let (rec_flag, bindings, body) ->
+    | Texp_let (rec_flag, bindings, body, _) ->
       (*
          G  |- <bindings> : m -| G'
          G' |- body : m
@@ -587,7 +587,7 @@ let rec expression : Typedtree.expression -> term_judg =
     | Texp_instvar (self_path, pth, _inst_var) ->
         join [path self_path << Dereference; path pth]
     | Texp_apply
-        ({exp_desc = Texp_ident (_, _, vd, Id_prim _, _)}, [_, Arg arg], _)
+        ({exp_desc = Texp_ident (_, _, vd, Id_prim _, _)}, [_, Arg arg], _, _)
       when is_ref vd ->
       (*
         G |- e: m[Guard]
@@ -595,7 +595,7 @@ let rec expression : Typedtree.expression -> term_judg =
         G |- ref e: m
       *)
       expression arg << Guard
-    | Texp_apply (e, args, _)  ->
+    | Texp_apply (e, args, _, _)  ->
         let arg (_, arg) =
           match arg with
           | Omitted _ -> empty

@@ -190,12 +190,12 @@ let expr sub {exp_extra; exp_desc; exp_env; _} =
   match exp_desc with
   | Texp_ident _  -> ()
   | Texp_constant _ -> ()
-  | Texp_let (rec_flag, list, exp) ->
+  | Texp_let (rec_flag, list, exp, _) ->
       sub.value_bindings sub (rec_flag, list);
       sub.expr sub exp
   | Texp_function {cases; _} ->
      List.iter (sub.case sub) cases
-  | Texp_apply (exp, list, _) ->
+  | Texp_apply (exp, list, _, _) ->
       sub.expr sub exp;
       List.iter (function
         | (_, Arg exp) -> sub.expr sub exp

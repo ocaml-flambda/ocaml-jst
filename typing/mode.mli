@@ -170,6 +170,7 @@ module Value : sig
   val of_uniqueness_max : Uniqueness.t -> t
   val of_locality_min : Locality.t -> t
   val of_locality_max : Locality.t -> t
+
   val set_uniqueness : Uniqueness.t -> t -> t
 
   (** Injections from [Alloc.t] into [Value_mode.t] *)

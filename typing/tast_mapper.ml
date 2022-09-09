@@ -257,20 +257,20 @@ let expr sub x =
     match x.exp_desc with
     | Texp_ident _
     | Texp_constant _ as d -> d
-    | Texp_let (rec_flag, list, exp) ->
+    | Texp_let (rec_flag, list, exp, bctx) ->
         let (rec_flag, list) = sub.value_bindings sub (rec_flag, list) in
-        Texp_let (rec_flag, list, sub.expr sub exp)
+        Texp_let (rec_flag, list, sub.expr sub exp, bctx)
     | Texp_function { arg_label; param; cases; partial; region; warnings } ->
         let cases = List.map (sub.case sub) cases in
         Texp_function { arg_label; param; cases; partial; region; warnings }
-    | Texp_apply (exp, list, pos) ->
+    | Texp_apply (exp, list, pos, bctx) ->
         Texp_apply (
           sub.expr sub exp,
           List.map (function
             | (lbl, Arg exp) -> (lbl, Arg (sub.expr sub exp))
             | (lbl, Omitted o) -> (lbl, Omitted o))
             list,
-          pos
+          pos, bctx
         )
     | Texp_match (exp, cases, p) ->
         Texp_match (

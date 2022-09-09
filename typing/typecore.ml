@@ -141,6 +141,7 @@ type error =
   | Param_mode_mismatch of type_expr * Mode.Alloc.error
   | Uncurried_function_escapes
   | Captures_unique_value
+  | Unique_at_toplevel
   | Call_once_function_called_shared
   | Local_return_annotation_mismatch of Location.t
   | Bad_tail_annotation of [`Conflict|`Not_a_tailcall]
@@ -282,6 +283,13 @@ let mode_unique expected_mode =
     mode = Mode.Value.to_unique expected_mode.mode;
     tuple_modes = [] }
 
+let mode_local_unique =
+  { position = Nontail;
+    escaping_context = None;
+    shared_context = [];
+    mode = Mode.Value.global;
+    tuple_modes = [] }
+
 let mode_global_shared =
   { position = Nontail;
     escaping_context = None;
@@ -373,7 +381,9 @@ let submode ~loc ~env mode expected_mode =
       raise (Error(loc, env, Submode_failed(reason, escaping_context, shared_contexts)))
 
 let escape ~loc ~env m =
-  Mode.Uniqueness.submode_exn Mode.Uniqueness.shared m.uniqueness;
+  (match Mode.Uniqueness.submode Mode.Uniqueness.shared m.uniqueness with
+  | Ok () -> ()
+  | Error _ -> raise (Error(loc, env, Unique_at_toplevel)));
   submode ~loc ~env m mode_global_shared
 
 let eqmode ~loc ~env m1 m2 ferr =
@@ -2479,7 +2489,7 @@ let force_delayed_checks () =
 
 let rec final_subexpression exp =
   match exp.exp_desc with
-    Texp_let (_, _, e)
+    Texp_let (_, _, e, _)
   | Texp_sequence (_, e)
   | Texp_try (e, _)
   | Texp_ifthenelse (_, e, _)
@@ -2762,10 +2772,10 @@ let rec is_nonexpansive exp =
   | Texp_function _
   | Texp_probe_is_enabled _
   | Texp_array [] -> true
-  | Texp_let(_rec_flag, pat_exp_list, body) ->
+  | Texp_let(_rec_flag, pat_exp_list, body, _) ->
       List.for_all (fun vb -> is_nonexpansive vb.vb_expr) pat_exp_list &&
       is_nonexpansive body
-  | Texp_apply(e, (_,Omitted _)::el, _) ->
+  | Texp_apply(e, (_,Omitted _)::el, _, _) ->
       is_nonexpansive e && List.for_all is_nonexpansive_arg (List.map snd el)
   | Texp_match(e, cases, _) ->
      (* Not sure this is necessary, if [e] is nonexpansive then we shouldn't
@@ -2840,7 +2850,7 @@ let rec is_nonexpansive exp =
              Val_prim {Primitive.prim_name =
                          ("%raise" | "%reraise" | "%raise_notrace")}},
              Id_prim _, _) },
-      [Nolabel, Arg e], _) ->
+      [Nolabel, Arg e], _, _) ->
      is_nonexpansive e
   | Texp_array (_ :: _)
   | Texp_apply _
@@ -3129,7 +3139,7 @@ let check_partial_application statement exp =
           if statement then
             let rec loop {exp_loc; exp_desc; exp_extra; _} =
               match exp_desc with
-              | Texp_let (_, _, e)
+              | Texp_let (_, _, e, _)
               | Texp_sequence (_, e)
               | Texp_letexception (_, e)
               | Texp_letmodule (_, _, _, _, e) ->
@@ -3172,7 +3182,7 @@ let check_partial_application statement exp =
                 check e; List.iter (fun {c_rhs; _} -> check c_rhs) cases
             | Texp_ifthenelse (_, e1, Some e2) ->
                 check e1; check e2
-            | Texp_let (_, _, e) | Texp_sequence (_, e) | Texp_open (_, e)
+            | Texp_let (_, _, e, _) | Texp_sequence (_, e) | Texp_open (_, e)
             | Texp_letexception (_, e) | Texp_letmodule (_, _, _, _, e) ->
                 check e
             | Texp_apply _ | Texp_send _ | Texp_new _ | Texp_letop _ ->
@@ -3371,13 +3381,13 @@ let rec type_exp ?recarg env expected_mode sexp =
    In the principal case, [type_expected'] may be at generic_level.
  *)
 
-and type_expect ?in_function ?recarg env
+and type_expect ?in_function ?recarg ?is_borrowed env
       (expected_mode : expected_mode) sexp ty_expected_explained =
   let previous_saved_types = Cmt_format.get_saved_types () in
   let exp =
     Builtin_attributes.warning_scope sexp.pexp_attributes
       (fun () ->
-         type_expect_ ?in_function ?recarg env
+         type_expect_ ?in_function ?recarg ?is_borrowed env
            expected_mode sexp ty_expected_explained
       )
   in
@@ -3396,7 +3406,7 @@ and with_explanation explanation f =
         raise (Error (loc', env', err))
 
 and type_expect_
-    ?in_function ?(recarg=Rejected)
+    ?in_function ?(recarg=Rejected) ?(is_borrowed=false)
     env (expected_mode : expected_mode) sexp ty_expected_explained =
   let { ty = ty_expected; explanation } = ty_expected_explained in
   let loc = sexp.pexp_loc in
@@ -3435,9 +3445,9 @@ and type_expect_
             let (path, _) =
               Env.find_value_by_name (Longident.Lident ("self-" ^ cl_num)) env
             in
-            Texp_ident(path, lid, desc, kind, mode.uniqueness)
+            Texp_ident(path, lid, desc, kind, {mode = mode.uniqueness; is_borrowed})
         | _ ->
-            Texp_ident(path, lid, desc, kind, mode.uniqueness)
+            Texp_ident(path, lid, desc, kind, {mode = mode.uniqueness; is_borrowed})
       in
       ruem ~mode
            ~expected_mode:(mode_with_shared_context shared_reasons expected_mode) {
@@ -3506,6 +3516,8 @@ and type_expect_
         | [{Parsetree.attr_name = {txt="#default"};_}] -> in_function
         | _ -> None
       in
+      let mode, _ = Mode.Value.newvar_below expected_mode.mode in
+      let expected_mode = { expected_mode with mode } in
       let body =
         type_unpacks ?in_function
           new_env expected_mode unpacks sbody ty_expected_explained in
@@ -3514,7 +3526,7 @@ and type_expect_
           check_recursive_bindings env pat_exp_list
       in
       re {
-        exp_desc = Texp_let(rec_flag, pat_exp_list, body);
+        exp_desc = Texp_let(rec_flag, pat_exp_list, body, Some mode);
         exp_loc = loc; exp_extra = [];
         exp_type = body.exp_type;
         exp_mode = expected_mode.mode;
@@ -3584,6 +3596,15 @@ and type_expect_
       ({ pexp_desc = Pexp_extension({txt = ("ocaml.unique" | "unique")}, PStr []) },
        [Nolabel, sbody]) ->
       type_expect ?in_function ~recarg env (mode_unique expected_mode) sbody
+        ty_expected_explained
+  | Pexp_apply
+      ({ pexp_desc = Pexp_extension({txt = "extension.borrow"}, PStr []) },
+       [Nolabel, sbody]) ->
+      if not (Clflags.Extension.is_enabled Unique) then
+        raise (Typetexp.Error (loc, Env.empty, Unique_not_enabled));
+      (* TODO: Consider erroring if sbody is not Pexp_ident or Pexp_field. *)
+      submode ~loc ~env Mode.Value.local expected_mode;
+      type_expect ?in_function ~recarg ~is_borrowed:true env mode_local_unique sbody
         ty_expected_explained
   | Pexp_apply
       ({ pexp_desc = Pexp_extension({txt = "extension.local"}, PStr []) },
@@ -3662,13 +3683,15 @@ and type_expect_
       in
       let position = apply_position env expected_mode sexp in
       begin_def ();
+      let mode, _ = Mode.Value.newvar_below expected_mode.mode in
       let (args, ty_res, position) =
+        let expected_mode = { expected_mode with mode } in
         type_application env loc expected_mode position funct funct_mode sargs
       in
       end_def ();
       unify_var env (newvar()) funct.exp_type;
       rue {
-        exp_desc = Texp_apply(funct, args, position);
+        exp_desc = Texp_apply(funct, args, position, Some mode);
         exp_loc = loc; exp_extra = [];
         exp_type = ty_res;
         exp_mode = expected_mode.mode;
@@ -3850,7 +3873,7 @@ and type_expect_
            Here, the record might be in the heap (even if its local) while local
            fields may be in the stack. As such, we ensure that fields are global
            and thus in the heap. *)
-        | Some(In_place, _) -> Mode.Value.global
+        | Some(In_place, _) -> Mode.Value.to_global expected_mode.mode
       in
       let lbl_exp_list =
         wrap_disambiguate "This record expression is expected to have"
@@ -3966,7 +3989,7 @@ and type_expect_
       let (_, ty_arg, ty_res) = instance_label false label in
       unify_exp env record ty_res;
       rue {
-        exp_desc = Texp_field(record, lid, label, mode.uniqueness);
+        exp_desc = Texp_field(record, lid, label, {mode = mode.uniqueness; is_borrowed});
         exp_loc = loc; exp_extra = [];
         exp_type = ty_arg;
         exp_mode = expected_mode.mode;
@@ -4249,23 +4272,24 @@ and type_expect_
                     }
                   in
                   let exp_env = Env.add_value method_id method_desc env in
+                  let shared_use = { mode = Mode.Uniqueness.shared; is_borrowed = false } in
                   let exp =
                     Texp_apply({exp_desc =
                                 Texp_ident(Path.Pident method_id,
-                                           lid, method_desc, Id_value, Mode.Uniqueness.shared);
+                                           lid, method_desc, Id_value, shared_use);
                                 exp_loc = loc; exp_extra = [];
                                 exp_type = method_type;
                                 exp_mode = Mode.Value.global;
                                 exp_attributes = []; (* check *)
                                 exp_env = exp_env},
                           [ Nolabel,
-                            Arg {exp_desc = Texp_ident(path, lid, desc, Id_value, Mode.Uniqueness.shared);
+                            Arg {exp_desc = Texp_ident(path, lid, desc, Id_value, shared_use);
                                   exp_loc = obj.exp_loc; exp_extra = [];
                                   exp_type = desc.val_type;
                                   exp_mode = Mode.Value.global;
                                   exp_attributes = []; (* check *)
                                   exp_env = exp_env}
-                          ], ap_pos)
+                          ], ap_pos, None)
                   in
                   (Tmeth_name met, Some (re {exp_desc = exp;
                                              exp_loc = loc; exp_extra = [];
@@ -4969,7 +4993,8 @@ and type_function ?in_function loc attrs env (expected_mode : expected_mode)
   in
   let cases_expected_mode =
     if uncurried_function then
-      mode_nontail (Mode.Value.of_alloc ret_mode)
+      let mode = Mode.Value.of_alloc ret_mode in
+      mode_nontail mode
     else begin
       let ret_value_mode = Mode.Value.of_alloc ret_mode in
       let ret_value_mode =
@@ -5422,7 +5447,7 @@ and type_argument ?explanation ?recarg env (mode : expected_mode) sarg
          exp_extra = []; exp_attributes = [];
          exp_desc =
          Texp_ident(Path.Pident id, mknoloc (Longident.Lident name),
-                    desc, Id_value, mode.uniqueness)}
+                    desc, Id_value, {mode = mode.uniqueness; is_borrowed = false})}
       in
       let eta_mode = Mode.Value.local_to_regional (Mode.Value.of_alloc marg) in
       let eta_pat, eta_var = var_pair ~mode:eta_mode "eta" ty_arg in
@@ -5432,7 +5457,7 @@ and type_argument ?explanation ?recarg env (mode : expected_mode) sarg
           {texp with exp_type = ty_res; exp_mode = ret_mode; exp_desc =
            Texp_apply
              (texp,
-              args @ [Nolabel, Arg eta_var], Nontail)}
+              args @ [Nolabel, Arg eta_var], Nontail, None)}
         in
         let cases = [case eta_pat e] in
         let param = name_cases "param" cases in
@@ -5454,7 +5479,7 @@ and type_argument ?explanation ?recarg env (mode : expected_mode) sarg
                          [{vb_pat=let_pat; vb_expr=texp; vb_attributes=[];
                            vb_loc=Location.none;
                           }],
-                         func let_var) }
+                         func let_var, None) }
       end
   | _ ->
       let texp = type_expect ?recarg env mode sarg
@@ -6591,8 +6616,7 @@ let sharedness_hint reason (context : Env.shared_context list) =
              because it is defined in a class.@]" ]
       else if List.mem Env.Closure context then
         [ Location.msg
-            "@[Hint: This identifier cannot be used uniquely,@ \
-             because it is defined outside of the current closure.@ \
+            "@[Hint: This identifier was defined outside of the current closure.@ \
              Did you forget to use a !-> arrow in a function type?@]" ]
       else []
   | _ -> []
@@ -7001,6 +7025,9 @@ let report_error ~loc env = function
       Location.errorf ~loc
         "This function captures a unique value and so its type needs@ \
         to use the !-> arrow. This ensures that the function is only called once."
+  | Unique_at_toplevel ->
+      Location.errorf ~loc
+        "Unique values are not supported at toplevel."
   | Call_once_function_called_shared ->
       Location.errorf ~loc
         "This function may only be called once, so you may only call it when@ \

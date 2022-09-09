@@ -128,6 +128,9 @@ let unbound_class =
   Path.Pident (Ident.create_local "*undef*")
 
 
+(* All class identifiers are used shared. *)
+let shared_use = {mode = Mode.Uniqueness.shared; is_borrowed = false}
+
                 (************************************)
                 (*  Some operations on class types  *)
                 (************************************)
@@ -1053,7 +1056,7 @@ and class_expr_aux cl_num val_env met_env scl =
             (id,
              {exp_desc =
               Texp_ident(path, mknoloc (Longident.Lident (Ident.name id)), vd,
-                         Id_value, Mode.Uniqueness.shared);
+                         Id_value, shared_use);
               exp_loc = Location.none; exp_extra = [];
               exp_type = Ctype.instance vd.val_type;
               exp_mode = Mode.Value.global;
@@ -1218,7 +1221,7 @@ and class_expr_aux cl_num val_env met_env scl =
              let expr =
                {exp_desc =
                 Texp_ident(path, mknoloc(Longident.Lident (Ident.name id)),vd,
-                           Id_value, Mode.Uniqueness.shared);
+                           Id_value, shared_use);
                 exp_loc = Location.none; exp_extra = [];
                 exp_type = Ctype.instance vd.val_type;
                 exp_mode = Mode.Value.global;

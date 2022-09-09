@@ -173,7 +173,7 @@ let maybe_region lam =
 (* Also push bindings of module patterns, since this sound *)
 
 type binding =
-  | Bind_value of value_binding list
+  | Bind_value of value_binding list * borrow_ctx
   | Bind_module of Ident.t * string option loc * module_presence * module_expr
 
 let rec push_defaults loc bindings cases partial warnings =
@@ -189,8 +189,8 @@ let rec push_defaults loc bindings cases partial warnings =
   | [{c_lhs=pat; c_guard=None;
       c_rhs={exp_attributes=[{Parsetree.attr_name = {txt="#default"};_}];
              exp_desc = Texp_let
-               (Nonrecursive, binds, ({exp_desc = Texp_function _} as e2))}}] ->
-      push_defaults loc (Bind_value binds :: bindings)
+               (Nonrecursive, binds, ({exp_desc = Texp_function _} as e2), bctx)}}] ->
+      push_defaults loc (Bind_value (binds, bctx) :: bindings)
                    [{c_lhs=pat;c_guard=None;c_rhs=e2}]
                    partial warnings
   | [{c_lhs=pat; c_guard=None;
@@ -207,7 +207,7 @@ let rec push_defaults loc bindings cases partial warnings =
           (fun exp binds ->
             {exp with exp_desc =
              match binds with
-             | Bind_value binds -> Texp_let(Nonrecursive, binds, exp)
+             | Bind_value (binds, bctx) -> Texp_let(Nonrecursive, binds, exp, bctx)
              | Bind_module (id, name, pres, mexpr) ->
                  Texp_letmodule (Some id, name, pres, mexpr, exp)})
           case.c_rhs bindings
@@ -232,7 +232,7 @@ let rec push_defaults loc bindings cases partial warnings =
             ({exp with exp_type = pat.pat_type; exp_env = env; exp_desc =
               Texp_ident
                 (Path.Pident param, mknoloc (Longident.Lident name),
-                 desc, Id_value, Mode.Uniqueness.shared)},
+                 desc, Id_value, {mode = Mode.Uniqueness.shared; is_borrowed = false})},
              cases, partial) }
       in
       push_defaults loc bindings
@@ -352,7 +352,7 @@ and transl_exp0 ~in_new_scope ~scopes e =
         e.exp_env e.exp_type path desc kind
   | Texp_constant cst ->
       Lconst(Const_base cst)
-  | Texp_let(rec_flag, pat_expr_list, body) ->
+  | Texp_let(rec_flag, pat_expr_list, body, _) ->
       let body_kind = Typeopt.value_kind body.exp_env body.exp_type in
       transl_let ~scopes rec_flag pat_expr_list
         body_kind (event_before ~scopes body (transl_exp ~scopes body))
@@ -364,7 +364,7 @@ and transl_exp0 ~in_new_scope ~scopes e =
       transl_function ~scopes e param cases partial warnings region
   | Texp_apply({ exp_desc = Texp_ident(path, _, {val_kind = Val_prim p},
                                        Id_prim pmode, _);
-                exp_type = prim_type } as funct, oargs, pos)
+                exp_type = prim_type } as funct, oargs, pos, bctx)
     when can_apply_primitive p pmode pos oargs ->
       let argl, extra_args = cut p.prim_arity oargs in
       let arg_exps =
@@ -393,14 +393,14 @@ and transl_exp0 ~in_new_scope ~scopes e =
         let specialised, funct =
           Translattribute.get_and_remove_specialised_attribute funct
         in
-        let e = { e with exp_desc = Texp_apply(funct, oargs, pos) } in
+        let e = { e with exp_desc = Texp_apply(funct, oargs, pos, bctx) } in
         let position = transl_apply_position pos in
         let mode = transl_exp_mode e in
         event_after ~scopes e
           (transl_apply ~scopes ~tailcall ~inlined ~specialised ~position ~mode:(fst mode)
              lam extra_args (of_location ~scopes e.exp_loc))
       end
-  | Texp_apply(funct, oargs, position) ->
+  | Texp_apply(funct, oargs, position, bctx) ->
       let tailcall, funct =
         Translattribute.get_tailcall_attribute funct
       in
@@ -410,7 +410,7 @@ and transl_exp0 ~in_new_scope ~scopes e =
       let specialised, funct =
         Translattribute.get_and_remove_specialised_attribute funct
       in
-      let e = { e with exp_desc = Texp_apply(funct, oargs, position) } in
+      let e = { e with exp_desc = Texp_apply(funct, oargs, position, bctx) } in
       let position = transl_apply_position position in
       let mode, _ = transl_exp_mode e in
       event_after ~scopes e

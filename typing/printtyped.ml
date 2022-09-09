@@ -356,7 +356,7 @@ and expression i ppf x =
   | Texp_ident (li,_,_,_,_) -> line i ppf "Texp_ident %a\n" fmt_path li;
   | Texp_instvar (_, li,_) -> line i ppf "Texp_instvar %a\n" fmt_path li;
   | Texp_constant (c) -> line i ppf "Texp_constant %a\n" fmt_constant c;
-  | Texp_let (rf, l, e) ->
+  | Texp_let (rf, l, e, _) ->
       line i ppf "Texp_let %a\n" fmt_rec_flag rf;
       list i value_binding ppf l;
       expression i ppf e;
@@ -365,7 +365,7 @@ and expression i ppf x =
       line i ppf "region %b\n" region;
       arg_label i ppf p;
       list i case ppf cases;
-  | Texp_apply (e, l, m) ->
+  | Texp_apply (e, l, m, _) ->
       line i ppf "Texp_apply\n";
       line i ppf "apply_mode %s\n"
         (match m with

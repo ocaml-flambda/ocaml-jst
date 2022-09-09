@@ -405,7 +405,7 @@ let expression sub exp =
     match exp.exp_desc with
       Texp_ident (_path, lid, _, _, _) -> Pexp_ident (map_loc sub lid)
     | Texp_constant cst -> Pexp_constant (constant cst)
-    | Texp_let (rec_flag, list, exp) ->
+    | Texp_let (rec_flag, list, exp, _) ->
         Pexp_let (rec_flag,
           List.map (sub.value_binding sub) list,
           sub.expr sub exp)
@@ -425,7 +425,7 @@ let expression sub exp =
         Pexp_fun (label, None, Pat.var ~loc {loc;txt = name },
           Exp.match_ ~loc (Exp.ident ~loc {loc;txt= Lident name})
                           (List.map (sub.case sub) cases))
-    | Texp_apply (exp, list, _) ->
+    | Texp_apply (exp, list, _, _) ->
         Pexp_apply (sub.expr sub exp,
           List.fold_right (fun (label, arg) list ->
               match arg with

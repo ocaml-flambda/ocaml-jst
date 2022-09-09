@@ -26,8 +26,6 @@ module Projection = struct
       | Construct_field of string * int
       | Variant_field of label
       | Memory_address
-      (* The memory of the allocation to be reused. This is a hack
-         which makes sense since it behaves as the other children. *)
 
     let compare t1 t2 = match t1, t2 with
       | Tuple_field i, Tuple_field j -> Int.compare i j
@@ -99,24 +97,29 @@ type error =
       { here : Location.t; here_reason : unique_seen_reason;
         there : Location.t; there_reason : unique_seen_reason;
         temporal : temporal; there_is_of_here : relationship }
+  | Borrowed_value_escapes of
+      { borrow : Location.t; borrow_reason : unique_seen_reason;
+        context : Location.t; }
 
 exception Error of error
 
 module Occurrence : sig
   type t
   module Set : Set.S with type elt = t
-  val fresh : Location.t -> unique_seen_reason -> Mode.Uniqueness.t -> t
+  val fresh : Location.t -> int -> unique_seen_reason -> Mode.Uniqueness.t -> t
   val force_shared : t -> (unit, unit) result
   val loc : t -> Location.t
   val reason : t -> unique_seen_reason
   val mode : t -> Mode.Uniqueness.t
+  val borrow_level : t -> int
   val relationship : t -> relationship
   val set_relationship : relationship -> t -> t
 end = struct
   module T = struct
     type t =
       { id : int; loc : Location.t; reason : unique_seen_reason;
-        mode : Mode.Uniqueness.t; relationship : relationship }
+        mode : Mode.Uniqueness.t; relationship : relationship;
+        borrow_level : int }
 
     let compare t1 t2 = t1.id - t2.id
   end
@@ -125,10 +128,10 @@ end = struct
 
   let stamp = ref 0
 
-  let fresh loc reason mode =
+  let fresh loc borrow_level reason mode =
     let id = !stamp in
     stamp := id + 1;
-    { id; loc; reason; mode; relationship = Itself }
+    { id; loc; reason; mode; relationship = Itself; borrow_level }
 
   let force_shared t =
     Mode.Uniqueness.submode (Amode Shared) t.mode
@@ -136,6 +139,7 @@ end = struct
   let loc t = t.loc
   let reason t = t.reason
   let mode t = t.mode
+  let borrow_level t = t.borrow_level
   let relationship t = t.relationship
   let set_relationship relationship t = { t with relationship }
 end
@@ -147,6 +151,8 @@ end
    If we see an ident again, we can only fail to make it shared
    at the current location -- and so we report just one previous location. *)
 type occurrences =
+  | Borrow of Occurrence.Set.t
+    (* Potentially lots of borrowed occurrences. *)
   | One of Occurrence.Set.t
     (* One occurrence in the control-flow, but perhaps several
        in total (eg. in different branches) *)
@@ -191,6 +197,8 @@ type unique_env =
        We do not keep global fields (as these are always shared anyway). *)
     parent: Uqid.t Uqid.Map.t;
     (* The parent of a unique ident. We do not keep parents of global fields. *)
+    borrow_level: int;
+    (* The level of the current borrow context. *)
   }
 
 (* Matching on a parent does not cause it to be seen automatically. Instead,
@@ -222,9 +230,14 @@ let join_occurrences o1 o2 = match o1, o2 with
   (* We always also join the children and Many always wins *)
   | Many _, _ -> o1
   | _, Many _ -> o2
-  | One(s1), One(s2) -> One(Occurrence.Set.union s1 s2)
-  | One _, _ -> o1
-  | _, One _ -> o2
+  | One s1, One s2
+  | Borrow s1, One s2
+  | One s1, Borrow s2 -> One(Occurrence.Set.union s1 s2)
+  | Borrow s1, Borrow s2 -> Borrow(Occurrence.Set.union s1 s2)
+  | One _, PartlyUsed _ -> o1
+  | PartlyUsed _, One _ -> o2
+  | Borrow _, PartlyUsed _ -> o1
+  | PartlyUsed _, Borrow _ -> o2
   | PartlyUsed _, PartlyUsed _ -> o1
 
 let invert_relationship = function
@@ -262,7 +275,7 @@ let rec mark_parents loc reason uid uenv =
         | None -> true, { uenv with last_seen = Uqid.Map.add p (PartlyUsed({loc; reason})) uenv.last_seen }
         | Some(PartlyUsed(_)) -> false, uenv (* parents already marked *)
         | Some(Many(_)) -> false, uenv (* parents already marked *)
-        | Some(One(occ_set)) ->
+        | Some(One(occ_set)) | Some(Borrow(occ_set)) ->
             force_previous loc reason (Some Child) occ_set;
             true, { uenv with last_seen = Uqid.Map.add p (Many({loc; reason; relationship = Child; children_marked = false})) uenv.last_seen } in
       if continue then mark_parents loc reason p uenv else uenv
@@ -276,7 +289,8 @@ let rec force_children loc reason uid uenv =
             | None -> true
             | Some(PartlyUsed(_)) -> true
             | Some(Many({children_marked})) -> not children_marked
-            | Some(One(occ_set)) -> force_previous loc reason (Some Parent) occ_set; true in
+            | Some(One(occ_set)) | Some(Borrow(occ_set)) ->
+                force_previous loc reason (Some Parent) occ_set; true in
           let uenv = { uenv with last_seen = Uqid.Map.add c (Many({loc; reason; relationship = Parent; children_marked = true })) uenv.last_seen } in
           if continue then force_children loc reason c uenv else uenv)
         children uenv
@@ -300,29 +314,30 @@ let force_itself ?(need_force_children = true) ?(children_marked = true) ploc pr
   let uenv = if need_force_children then force_children loc reason uid uenv else uenv in
   mark_parents loc reason uid uenv
 
-let mark_seen_ uid occ uenv =
-  match Uqid.Map.find_opt uid uenv.last_seen with
-  | None ->
-      let uenv = { uenv with last_seen = Uqid.Map.add uid (One(Occurrence.Set.singleton occ)) uenv.last_seen } in
-      let uenv = mark_children (Occurrence.set_relationship Parent occ) uid uenv in
-      mark_parents (Occurrence.loc occ) (Occurrence.reason occ) uid uenv
-  | Some(One(occ_set)) ->
-      force_previous (Occurrence.loc occ) (Occurrence.reason occ) None occ_set;
-      let prev = Occurrence.Set.max_elt occ_set in
-      force_itself (Occurrence.loc prev) (Occurrence.reason prev) (Occurrence.relationship prev) uid occ uenv
-  | Some(Many({loc;reason;children_marked;relationship})) ->
-      force_itself ~need_force_children:(not children_marked) loc reason relationship uid occ uenv
-  | Some(PartlyUsed({loc;reason})) ->
-      force_itself loc reason Child uid occ uenv
+let mark_seen_all uids occ uenv =
+  let mark_seen_ uid occ uenv =
+    match Uqid.Map.find_opt uid uenv.last_seen with
+    | None ->
+        let uenv = { uenv with last_seen = Uqid.Map.add uid (One(Occurrence.Set.singleton occ)) uenv.last_seen } in
+        let uenv = mark_children (Occurrence.set_relationship Parent occ) uid uenv in
+        mark_parents (Occurrence.loc occ) (Occurrence.reason occ) uid uenv
+    | Some(One(occ_set)) | Some(Borrow(occ_set)) ->
+        force_previous (Occurrence.loc occ) (Occurrence.reason occ) None occ_set;
+        let prev = Occurrence.Set.max_elt occ_set in
+        force_itself (Occurrence.loc prev) (Occurrence.reason prev) (Occurrence.relationship prev) uid occ uenv
+    | Some(Many({loc;reason;children_marked;relationship})) ->
+        force_itself ~need_force_children:(not children_marked) loc reason relationship uid occ uenv
+    | Some(PartlyUsed({loc;reason})) ->
+        force_itself loc reason Child uid occ uenv in
+  List.fold_left (fun uenv uid -> mark_seen_ uid occ uenv) uenv uids
+
 let mark_seen id occ ienv uenv =
   match Ident.Map.find_opt id ienv.aliases with
-  | Some aliases -> List.fold_left (fun uenv uid -> mark_seen_ uid occ uenv) uenv aliases
+  | Some uids -> mark_seen_all uids occ uenv
   | None ->
       (* The idents that are not in the alias map are other definitions and indices of loops/comprehensions. *)
       (* Location.alert ~kind:"unreg-var" (Occurrence.loc occ) ("Internal error: " ^ Ident.name id ^ " has not been registered"); *)
       uenv
-let mark_seen_all uids occ uenv =
-  List.fold_left (fun uenv uid -> mark_seen_ uid occ uenv) uenv uids
 
 let add_child parent proj uenv =
   let uid = Uqid.fresh (Projection.to_string (Uqid.name parent) proj) in
@@ -331,7 +346,8 @@ let add_child parent proj uenv =
   let with_new projs =
     { children = Uqid.Map.add parent (Projection.Map.add proj uid projs) uenv.children;
       parent = Uqid.Map.add uid parent uenv.parent;
-      last_seen = Uqid.Map.update uid (function | None -> parent_last_seen | l -> l) uenv.last_seen } in
+      last_seen = Uqid.Map.update uid (function | None -> parent_last_seen | l -> l) uenv.last_seen;
+      borrow_level = uenv.borrow_level } in
   match Uqid.Map.find_opt parent uenv.children with
   | None -> uid, with_new Projection.Map.empty
   | Some projs -> match Projection.Map.find_opt proj projs with
@@ -350,6 +366,7 @@ let mark_matched parent uenv =
     let uid, uenv = add_child parent Memory_address uenv in
     match Uqid.Map.find_opt uid uenv.last_seen with
     | None -> uenv
+    | Some(Borrow _) -> uenv
     | Some(One occ_set) ->
         force_previous (Occurrence.loc occ) (Occurrence.reason occ) None occ_set;
         let prev = Occurrence.Set.max_elt occ_set in
@@ -361,6 +378,60 @@ let mark_matched parent uenv =
       List.fold_left (fun uenv p -> mark_matched_one p occ uenv) uenv ps
   | OneParent(_, None) -> uenv (* This is (part of) a global or array field *)
   | TupleParent _ -> uenv (* We have matched on a tuple which we own -- no action necessary *)
+
+let mark_borrowed_all uids occ uenv =
+  let mark_borrowed_ uid occ uenv =
+    match Uqid.Map.find_opt uid uenv.last_seen with
+    | None ->
+        let occ_set' = Occurrence.Set.singleton occ in
+        { uenv with last_seen = Uqid.Map.add uid (Borrow occ_set') uenv.last_seen }
+    | Some(Borrow occ_set) ->
+        let occ_set' = Occurrence.Set.add occ occ_set in
+        { uenv with last_seen = Uqid.Map.add uid (Borrow occ_set') uenv.last_seen }
+    | Some(One occ_set) ->
+        force_previous (Occurrence.loc occ) (Occurrence.reason occ) None occ_set;
+        let prev = Occurrence.Set.max_elt occ_set in
+        force_itself ~need_force_children:false ~children_marked:false (Occurrence.loc prev) (Occurrence.reason prev) Itself uid occ uenv
+    | Some(Many _) -> uenv
+    | Some(PartlyUsed _) -> uenv in
+  List.fold_left (fun uenv uid -> mark_borrowed_ uid occ uenv) uenv uids
+
+let mark_borrowed id occ ienv uenv =
+  match Ident.Map.find_opt id ienv.aliases with
+  | Some uids -> mark_borrowed_all uids occ uenv
+  | None -> uenv (* See comment in mark_seen *)
+
+let begin_borrow_level borrow_ctx uenv =
+  match borrow_ctx with
+  | None -> uenv
+  | Some _ -> { uenv with borrow_level = uenv.borrow_level + 1 }
+
+let ensure_borrow_capture loc mode capture =
+  match capture with
+  | None -> ()
+  | Some occ ->
+    match Mode.Value.submode mode Mode.Value.global with
+    | Ok () -> ()
+    | Error _ ->
+        raise (Error(Borrowed_value_escapes
+                      { borrow = Occurrence.loc occ; borrow_reason = Occurrence.reason occ;
+                        context = loc }))
+
+let end_borrow_level loc borrow_ctx uenv =
+  match borrow_ctx with
+  | None -> uenv
+  | Some mode ->
+    let lvl = uenv.borrow_level in
+    let capture = ref None in
+    let last_seen = Uqid.Map.filter_map (fun _uid v -> match v with
+        | Borrow occ_set ->
+            let occ_set = Occurrence.Set.filter (fun occ ->
+                let keep = Occurrence.borrow_level occ < lvl in
+                if not keep then capture := Some occ; keep ) occ_set in
+            if Occurrence.Set.is_empty occ_set then None else Some (Borrow occ_set)
+        | _ -> Some v) uenv.last_seen in
+    ensure_borrow_capture loc mode !capture;
+    { uenv with last_seen; borrow_level = lvl - 1 }
 
 let uid_of_ident id =
   Uqid.fresh (Ident.name id)
@@ -382,7 +453,7 @@ let pat_var id parent ienv uenv =
           match pp_opt with
           | None -> uenv
           | Some (err_id, occ) ->
-            let occ = Occurrence.fresh (Occurrence.loc occ)
+            let occ = Occurrence.fresh (Occurrence.loc occ) (Occurrence.borrow_level occ)
                 (Tuple_match_on_aliased_as(err_id, id)) (Occurrence.mode occ) in
             mark_seen_all ps occ uenv) uenv ps
 
@@ -466,27 +537,33 @@ let ident_option_from_path p =
 
 let rec check_uniqueness_exp_ exp ienv uenv =
   match exp.exp_desc with
-  | Texp_ident(p, _, _, _, mode) -> begin
+  | Texp_ident(p, _, _, _, use) -> begin
       match ident_option_from_path p with
       | Some id ->
-          let occ = Occurrence.fresh exp.exp_loc
-              (Seen_as (Ident id)) mode in
-          mark_seen id occ ienv uenv
-      | None -> uenv
+          let occ = Occurrence.fresh exp.exp_loc uenv.borrow_level
+              (Seen_as (Ident id)) use.mode in
+          if use.is_borrowed
+          then mark_borrowed id occ ienv uenv
+          else mark_seen id occ ienv uenv
+      | _ -> uenv
       end
   | Texp_constant _ -> uenv
-  | Texp_let(_, vbs, exp') ->
+  | Texp_let(_, vbs, exp', borrow_ctx) ->
+      let uenv = begin_borrow_level borrow_ctx uenv in
       let ienv, uenv = check_uniqueness_value_bindings_ vbs ienv uenv in
-      check_uniqueness_exp_ exp' ienv uenv
+      let uenv = check_uniqueness_exp_ exp' ienv uenv in
+      end_borrow_level exp.exp_loc borrow_ctx uenv
   | Texp_function { param; cases } ->
       check_uniqueness_cases (OneParent([uid_of_ident param], None)) cases ienv uenv
-  | Texp_apply(f, xs, _) ->
+  | Texp_apply(f, xs, _, borrow_ctx) ->
       let uenv = check_uniqueness_exp_ f ienv uenv in
-      List.fold_right (fun (_, arg) uenv -> match arg with
-          | Arg e -> check_uniqueness_exp_ e ienv uenv
-          | Omitted _ -> uenv) xs uenv
+      let uenv = begin_borrow_level borrow_ctx uenv in
+      let uenv = List.fold_right (fun (_, arg) uenv -> match arg with
+                  | Arg e -> check_uniqueness_exp_ e ienv uenv
+                  | Omitted _ -> uenv) xs uenv in
+      end_borrow_level exp.exp_loc borrow_ctx uenv
   | Texp_match(e, cs, _) ->
-      let parent, uenv = exp_to_parent ~check:true e ienv uenv in
+      let parent, uenv = exp_to_parent e ienv uenv in
       check_uniqueness_comp_cases parent cs ienv uenv
   | Texp_try(e, cs) ->
       let uenv = check_uniqueness_exp_ e ienv uenv in
@@ -500,46 +577,48 @@ let rec check_uniqueness_exp_ exp ienv uenv =
   | Texp_variant(_, Some e) -> check_uniqueness_exp_ e ienv uenv
   | Texp_record { fields; extended_expression } -> begin
       let check_fields uenv =
-        Array.fold_right (fun f uenv -> match f with
+        Array.fold_right (fun field uenv -> match field with
           | _, Kept _ -> uenv
           | _, Overridden (_, e) -> check_uniqueness_exp_ e ienv uenv) fields uenv in
       match extended_expression with
       | None -> check_fields uenv
       | Some (update_kind, exp) ->
-        let parent, uenv = path_to_parent ~check:true exp ienv uenv in
+        let parent, uenv = path_to_parent exp ienv uenv in
         match parent with
         | None -> check_fields uenv
         | Some (ps, (err_id, _), mode) ->
             let uenv = Array.fold_right (fun field uenv -> match field with
               | l, Kept _ ->
                   if is_shared_field l.lbl_global then uenv else
-                    let occ = Occurrence.fresh exp.exp_loc (Seen_as (Field(err_id, l.lbl_name))) mode in
+                    let occ = Occurrence.fresh exp.exp_loc  uenv.borrow_level (Seen_as (Field(err_id, l.lbl_name))) mode in
                     let ps, uenv = add_child_many ps (Projection.Record_field l.lbl_name) uenv in
                     mark_seen_all ps occ uenv
               | _, Overridden (_, e) -> check_uniqueness_exp_ e ienv uenv) fields uenv
             in match update_kind with
             | In_place ->
-                let occ = Occurrence.fresh exp.exp_loc (Seen_as err_id) mode in
+                let occ = Occurrence.fresh exp.exp_loc uenv.borrow_level (Seen_as err_id) mode in
                 let ps, uenv = add_child_many ps Memory_address uenv in
                 mark_seen_all ps occ uenv
             | Create_new -> uenv
       end
-  | Texp_field(e, _, l, mode) -> begin
-      match (path_to_parent ~check:true e ienv uenv : (Uqid.t list * path_parent * Mode.Uniqueness.t) option * unique_env) with
+  | Texp_field(e, _, l, use) -> begin
+      match (path_to_parent e ienv uenv : (Uqid.t list * path_parent * Mode.Uniqueness.t) option * unique_env) with
       | Some (ps, (err_id, _), _), uenv ->
           if is_shared_field l.lbl_global then uenv else
-            let occ = Occurrence.fresh exp.exp_loc (Seen_as (Field(err_id, l.lbl_name))) mode in
+            let occ = Occurrence.fresh exp.exp_loc uenv.borrow_level (Seen_as (Field(err_id, l.lbl_name))) use.mode in
             let ps, uenv = add_child_many ps (Projection.Record_field l.lbl_name) uenv in
-            mark_seen_all ps occ uenv
+            if use.is_borrowed
+            then mark_borrowed_all ps occ uenv
+            else mark_seen_all ps occ uenv
       | None, uenv -> uenv
     end
   | Texp_setfield(exp', _, _, e) ->
-      let _, uenv = path_to_parent ~check:true exp' ienv uenv in
+      let _, uenv = path_to_parent exp' ienv uenv in
       check_uniqueness_exp_ e ienv uenv
   | Texp_array(es) ->
       List.fold_right (fun e uenv -> check_uniqueness_exp_ e ienv uenv) es uenv
   | Texp_ifthenelse(if', then', else_opt) ->
-      let _, uenv = path_to_parent ~check:true if' ienv uenv in
+      let _, uenv = path_to_parent if' ienv uenv in
       begin match else_opt with
       | Some else' -> check_uniqueness_parallel [then'; else'] ienv uenv
       | None -> check_uniqueness_exp_ then' ienv uenv
@@ -587,42 +666,43 @@ let rec check_uniqueness_exp_ exp ienv uenv =
   | Texp_probe { handler } -> check_uniqueness_exp_ handler ienv uenv
   | Texp_probe_is_enabled _ -> uenv
 
-and path_to_parent : check:bool -> Typedtree.expression -> id_env -> unique_env -> (Uqid.t list * path_parent * Mode.Uniqueness.t) option * unique_env = fun ~check exp ienv uenv ->
+and path_to_parent : ?do_match:bool -> ?check:bool -> Typedtree.expression -> id_env -> unique_env -> (Uqid.t list * path_parent * Mode.Uniqueness.t) option * unique_env =
+  fun ?(do_match = true) ?(check = true) exp ienv uenv ->
   match exp.exp_desc with
-  | Texp_ident(p, _, _, _, mode) -> begin
-      match ident_option_from_path p with
-      | None -> None, uenv
-      | Some id ->
+  | Texp_ident(p, _, _, _, use) -> begin
+      match ident_option_from_path p, use.is_borrowed with
+      | None, _ | _, true -> None, uenv
+      | Some id, false ->
           match Ident.Map.find_opt id ienv.aliases with
           | None -> None, uenv
           | Some ps ->
               let err_id = Ident id in
-              let occ = Occurrence.fresh exp.exp_loc (Seen_as err_id) mode in
-              let uenv = mark_matched (OneParent(ps, Some(err_id, occ))) uenv in
-              Some(ps, (err_id, occ), mode), uenv end
-  | Texp_field(e, _, l, mode) -> begin
-      match path_to_parent ~check e ienv uenv with
-      | Some(ps, (err_id, _), _), uenv ->
+              let occ = Occurrence.fresh exp.exp_loc uenv.borrow_level (Seen_as err_id) use.mode in
+              let uenv = if do_match then mark_matched (OneParent(ps, Some(err_id, occ))) uenv else uenv in
+              Some(ps, (err_id, occ), use.mode), uenv end
+  | Texp_field(e, _, l, use) -> begin
+      match use.is_borrowed, path_to_parent ~do_match ~check e ienv uenv with
+      | false, (Some(ps, (err_id, _), _), uenv) ->
           let err_id = Field(err_id, l.lbl_name) in
-          let occ = Occurrence.fresh exp.exp_loc (Seen_as err_id) mode in
+          let occ = Occurrence.fresh exp.exp_loc uenv.borrow_level (Seen_as err_id) use.mode in
           let ps, uenv = add_child_many ps (Projection.Record_field l.lbl_name) uenv in
-          let uenv = mark_matched (OneParent(ps, Some(err_id, occ))) uenv in
-          Some(ps, (err_id, occ), mode), uenv
-      | _, uenv -> None, uenv end
+          let uenv = if do_match then mark_matched (OneParent(ps, Some(err_id, occ))) uenv else uenv in
+          Some(ps, (err_id, occ), use.mode), uenv
+      | _, (_, uenv) -> None, uenv end
   (* CR-someday anlorenzen: This could also support let-bindings. *)
   | _ -> None, if check then check_uniqueness_exp_ exp ienv uenv else uenv
-and exp_to_parent ~check exp ienv uenv =
+and exp_to_parent ?do_match ?check exp ienv uenv =
   let uid = Uqid.fresh "match" in
   match exp.exp_desc with
   | Texp_tuple(es) ->
       let uenv, ps = List.fold_left_map (fun uenv e ->
-          match path_to_parent ~check e ienv uenv with
+          match path_to_parent ?do_match ?check e ienv uenv with
           | Some(ps, pp, _), uenv -> uenv, (ps, Some pp)
           | None, uenv -> uenv, ([uid], None))
           uenv es in
       TupleParent(ps), uenv
   | _ ->
-      match path_to_parent ~check exp ienv uenv with
+      match path_to_parent ?do_match ?check exp ienv uenv with
       | Some (ps, pp, _), uenv -> OneParent(ps, Some pp), uenv
       | None, uenv -> OneParent([uid], None), uenv
 
@@ -632,14 +712,14 @@ and check_uniqueness_value_bindings_ vbs ienv uenv =
          let parent, uenv = exp_to_parent ~check:false vb.vb_expr ienv uenv in
          pat_to_map vb.vb_pat parent ienv uenv)
       (ienv, uenv) vbs in
-  ienv, List.fold_left (fun uenv vb -> snd (exp_to_parent ~check:true vb.vb_expr ienv uenv)) uenv vbs
+  ienv, List.fold_left (fun uenv vb -> snd (exp_to_parent ~do_match:false vb.vb_expr ienv uenv)) uenv vbs
 
 and check_uniqueness_parallel es ienv uenv =
   let orig_last_seen = uenv.last_seen in
   let uenv, last_seens = List.fold_left_map (fun uenv e ->
       let uenv = check_uniqueness_exp_ e ienv
         { children = uenv.children; parent = uenv.parent;
-          last_seen = orig_last_seen } in
+          last_seen = orig_last_seen; borrow_level = uenv.borrow_level } in
       uenv, uenv.last_seen) uenv es in
   { uenv with last_seen = List.fold_left
                   (Uqid.Map.union (fun _ o1 o2 -> Some (join_occurrences o1 o2)))
@@ -676,19 +756,19 @@ and check_uniqueness_comprehensions cs ienv uenv =
 and check_uniqueness_binding_op bo exp ienv uenv =
   let uenv = match ident_option_from_path bo.bop_op_path with
     | Some id ->
-        let occ = Occurrence.fresh exp.exp_loc
+        let occ = Occurrence.fresh exp.exp_loc uenv.borrow_level
             (Seen_as (Ident id)) Mode.Uniqueness.shared in
         mark_seen id occ ienv uenv
     | None -> uenv in
   check_uniqueness_exp_ bo.bop_exp ienv uenv
-
 
 let check_uniqueness_exp exp =
   let _ = check_uniqueness_exp_ exp
       { aliases = Ident.Map.empty; }
       { last_seen = Uqid.Map.empty;
         children = Uqid.Map.empty;
-        parent = Uqid.Map.empty; }
+        parent = Uqid.Map.empty;
+        borrow_level = 0; }
   in ()
 
 let check_uniqueness_value_bindings vbs =
@@ -696,7 +776,8 @@ let check_uniqueness_value_bindings vbs =
       { aliases = Ident.Map.empty; }
       { last_seen = Uqid.Map.empty;
         children = Uqid.Map.empty;
-        parent = Uqid.Map.empty; }
+        parent = Uqid.Map.empty;
+        borrow_level = 0; }
   in ()
 
 let print_relationship = function
@@ -727,17 +808,27 @@ let report_error = function
                 "%s was used because %s refers to a tuple@ \
                  containing %s, which is %s of %s."
                 id (Ident.name alias') id' (print_relationship err.there_is_of_here) id in
-      match err.here_reason with
+      begin
+        match err.here_reason with
+        | Seen_as eid ->
+          let id = print_err_id eid in
+          Location.errorf ~loc:err.here
+            ~sub:[Location.msg ~loc:err.there "@[%t @]" (there_explanation id)]
+            "@[%s is used uniquely here so cannot be used twice. %s@]" id temporal
+        | Tuple_match_on_aliased_as(eid, alias) ->
+          let id = print_err_id eid in
+          Location.errorf ~loc:err.here
+            ~sub:[Location.msg ~loc:err.there "@[%t @]" (there_explanation id)]
+            "@[%s is used uniquely here so cannot be used twice (%s refers to a tuple containing it). %s@]" id (Ident.name alias) temporal
+      end
+  | Borrowed_value_escapes err ->
+      match err.borrow_reason with
       | Seen_as eid ->
-        let id = print_err_id eid in
-        Location.errorf ~loc:err.here
-          ~sub:[Location.msg ~loc:err.there "@[%t @]" (there_explanation id)]
-          "@[%s is used uniquely here so cannot be used twice. %s@]" id temporal
-      | Tuple_match_on_aliased_as(eid, alias) ->
-        let id = print_err_id eid in
-        Location.errorf ~loc:err.here
-          ~sub:[Location.msg ~loc:err.there "@[%t @]" (there_explanation id)]
-          "@[%s is used uniquely here so cannot be used twice (%s refers to a tuple containing it). %s@]" id (Ident.name alias) temporal
+          let id = print_err_id eid in
+          Location.errorf ~loc:err.borrow
+            ~sub:[Location.msg ~loc:err.context ""]
+            "@[The borrowed value %s escapes as its context returns a local value. Its context is:@]" id
+      | Tuple_match_on_aliased_as _ -> assert false
 
 let report_error err =
   Printtyp.wrap_printing_env ~error:true Env.empty

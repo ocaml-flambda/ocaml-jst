@@ -99,13 +99,13 @@ and exp_extra =
 
 and expression_desc =
     Texp_ident of
-      Path.t * Longident.t loc * Types.value_description * ident_kind * Mode.Uniqueness.t
+      Path.t * Longident.t loc * Types.value_description * ident_kind * unique_use
   | Texp_constant of constant
-  | Texp_let of rec_flag * value_binding list * expression
+  | Texp_let of rec_flag * value_binding list * expression * borrow_ctx
   | Texp_function of { arg_label : arg_label; param : Ident.t;
       cases : value case list; partial : partial;
       region : bool; warnings : Warnings.state; }
-  | Texp_apply of expression * (arg_label * apply_arg) list * apply_position
+  | Texp_apply of expression * (arg_label * apply_arg) list * apply_position * borrow_ctx
   | Texp_match of expression * computation case list * partial
   | Texp_try of expression * value case list
   | Texp_tuple of expression list
@@ -117,7 +117,7 @@ and expression_desc =
       representation : Types.record_representation;
       extended_expression : (update_kind * expression) option;
     }
-  | Texp_field of expression * Longident.t loc * label_description * Mode.Uniqueness.t
+  | Texp_field of expression * Longident.t loc * label_description * unique_use
   | Texp_setfield of
       expression * Longident.t loc * label_description * expression
   | Texp_array of expression list
@@ -160,6 +160,13 @@ and expression_desc =
   | Texp_probe_is_enabled of { name:string }
 
 and ident_kind = Id_value | Id_prim of Types.alloc_mode
+
+and borrow_ctx = Mode.Value.t option
+
+and unique_use =
+  { mode: Mode.Uniqueness.t;
+    is_borrowed: bool;
+  }
 
 and meth =
     Tmeth_name of string

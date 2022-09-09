@@ -170,13 +170,13 @@ and exp_extra =
 
 and expression_desc =
     Texp_ident of
-      Path.t * Longident.t loc * Types.value_description * ident_kind * Mode.Uniqueness.t
+      Path.t * Longident.t loc * Types.value_description * ident_kind * unique_use
         (** x
             M.x
          *)
   | Texp_constant of constant
         (** 1, 'a', "true", 1.0, 1l, 1L, 1n *)
-  | Texp_let of rec_flag * value_binding list * expression
+  | Texp_let of rec_flag * value_binding list * expression * borrow_ctx
         (** let P1 = E1 and ... and Pn = EN in E       (flag = Nonrecursive)
             let rec P1 = E1 and ... and Pn = EN in E   (flag = Recursive)
          *)
@@ -193,7 +193,7 @@ and expression_desc =
               [Partial] if the pattern match is partial
               [Total] otherwise.
          *)
-  | Texp_apply of expression * (arg_label * apply_arg) list * apply_position
+  | Texp_apply of expression * (arg_label * apply_arg) list * apply_position * borrow_ctx
         (** E0 ~l1:E1 ... ~ln:En
 
             The expression can be Omitted if the expression is abstracted over
@@ -246,7 +246,7 @@ and expression_desc =
               { fields = [| l1, Kept t1; l2 Override P2 |]; representation;
                 extended_expression = Some E0 }
         *)
-  | Texp_field of expression * Longident.t loc * Types.label_description * Mode.Uniqueness.t
+  | Texp_field of expression * Longident.t loc * Types.label_description * unique_use
   | Texp_setfield of
       expression * Longident.t loc * Types.label_description * expression
   | Texp_array of expression list
@@ -290,6 +290,13 @@ and expression_desc =
   | Texp_probe_is_enabled of { name:string }
 
 and ident_kind = Id_value | Id_prim of Types.alloc_mode
+
+and unique_use =
+  { mode: Mode.Uniqueness.t;
+    is_borrowed: bool;
+  }
+
+and borrow_ctx = Mode.Value.t option
 
 and meth =
     Tmeth_name of string
