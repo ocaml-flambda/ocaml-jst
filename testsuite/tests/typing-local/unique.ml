@@ -718,7 +718,7 @@ Error: Found a shared value where a unique value was expected
 
 (* Borrowing *)
 
-let foo p (unique_ x) =
+let borrow_overwritten_by_once p (unique_ x) =
   let _x = if p then (borrow_ x) else unique_id x in local_ (Some 5)
 [%%expect{|
 val foo : bool -> unique_ 'a -> local_ int option = <fun>
