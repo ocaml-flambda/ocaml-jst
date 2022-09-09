@@ -117,6 +117,7 @@ type token =
   | COLON
   | CLASS
   | CHAR of (char)
+  | BORROW
   | BEGIN
   | BARRBRACKET
   | BARBAR
