@@ -56,12 +56,19 @@ module Projection = struct
     | Memory_address -> Printf.sprintf "%s (memory)" parent
 end
 
-(* New names to avoid polluting the Ident namespace. *)
+(* New names to avoid polluting the Ident namespace.
+   These new names usually refer to "memory locations" rather than source identifiers.
+   Example: match x with | A y ->
+              match x with | A z ->  ... y ... z ...
+
+   Here, we will use a single Uqid to refer to 'x.A.1'. The Idents y and z
+   are then mapped to the Uqid 'x.A.1'. We do not use these names for error
+   reporting as 'x.A.1' is a worse name than 'y'. *)
 module Uqid : sig
   type t
   module Map : Map.S with type key = t
   val fresh : string -> t
-  val name : t -> string
+  val name : t -> string (* only for debugging this anaylsis *)
 end = struct
   module T = struct
     type t = { id : int; name : string }
@@ -82,13 +89,20 @@ end
 
 type relationship = Itself | Parent | Child
 
+(* We only mark idents or fields thereof seen and only need to
+   report those to the user in an error. *)
 type err_id =
   | Ident of Ident.t
   | Field of err_id * string
 
 type unique_seen_reason =
-  | Seen_as of err_id
+  | Seen_as of err_id (* We have seen the ident/field itself. *)
   | Tuple_match_on_aliased_as of err_id * Ident.t
+    (* When matching on a tuple, we do not construct a tuple and match on it,
+       but rather match on the individual elements of the tuple -- this preserves
+       their uniqueness. But in a pattern an alias to the tuple could be created,
+       in which case we have to construct the tuple and retroactively mark the
+       elements as seen. *)
 
 type temporal = ThereBeforeHere | HereBeforeThere
 
@@ -97,12 +111,19 @@ type error =
       { here : Location.t; here_reason : unique_seen_reason;
         there : Location.t; there_reason : unique_seen_reason;
         temporal : temporal; there_is_of_here : relationship }
+  (* In an error, we list the problem first as 'here'
+     and give a second occurrence of the ident in 'there'.
+     We also record the relationship if 'here' and 'there' are
+     about different identifiers and which one comes first in the source code. *)
   | Borrowed_value_escapes of
       { borrow : Location.t; borrow_reason : unique_seen_reason;
         context : Location.t; }
+  (* This error is thrown when a borrowed value could escape since its
+     context is not local. *)
 
 exception Error of error
 
+(* The occurrence of a potentially unique ident in the expression. *)
 module Occurrence : sig
   type t
   module Set : Set.S with type elt = t
@@ -152,16 +173,20 @@ end
    at the current location -- and so we report just one previous location. *)
 type occurrences =
   | Borrow of Occurrence.Set.t
-    (* Potentially lots of borrowed occurrences. *)
+    (* Potentially lots of borrowed occurrences.
+       These will be removed from the environment once the borrowed context ends. *)
   | One of Occurrence.Set.t
     (* One occurrence in the control-flow, but perhaps several
        in total (eg. in different branches) *)
   | Many of { loc : Location.t; reason : unique_seen_reason;
               relationship : relationship; children_marked : bool }
-    (* If we see the ident used uniquely again,
-       we want to report the location where it was consumed *)
+    (* Either this value or one of its children is shared. If a child is shared,
+       then the other children can still be used uniquely
+       and do not need to be marked shared yet. *)
   | PartlyUsed of { loc : Location.t; reason : unique_seen_reason }
-    (* A child of this value has been used before *)
+    (* A child of this value has been used before. This is good to know
+       as we might see a occurrence of this value again -- and can immediately
+       mark it as shared (since the child is shared) with a good error message. *)
 
 (* This map is only passed down, never up. *)
 type id_env =
@@ -186,7 +211,7 @@ type id_env =
    as well as aliases that were introduced (e.g. z for y).
    To be able to find aliases like z and y, we keep the children
    by their projections out of the parent.
-   When we see y, we mark y as seen. When we see z, we mark y as seen.
+   When we see y, we mark only y as seen. When we see z, we mark y as seen.
    When we see x, we mark x and y as seen. If y was already marked,
    it must have been seen already and we fail. *)
 type unique_env =
@@ -240,9 +265,6 @@ let join_occurrences o1 o2 = match o1, o2 with
   | PartlyUsed _, Borrow _ -> o2
   | PartlyUsed _, PartlyUsed _ -> o1
 
-let invert_relationship = function
-  | Itself -> Itself | Child -> Parent | Parent -> Child
-
 (* Try to make current location shared. If this fails, report this with a previous location. *)
 let force_here loc reason relationship occ =
   match Occurrence.force_shared occ with
@@ -255,6 +277,8 @@ let force_here loc reason relationship occ =
 
 (* Try to make previous locations shared. If this fails, report with the current location. *)
 let force_previous loc reason relationship occ_set =
+  let invert_relationship = function
+    | Itself -> Itself | Child -> Parent | Parent -> Child in
   Occurrence.Set.iter (fun occ ->
     match Occurrence.force_shared occ with
     | Ok () -> ()

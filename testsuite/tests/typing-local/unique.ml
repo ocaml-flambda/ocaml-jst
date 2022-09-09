@@ -538,21 +538,17 @@ Line 3, characters 28-29:
 |}]
 
 (* CR-someday anlorenzen: This one shouldn't fail in a more clever analysis. *)
-let or_patterns6 f x y =
-  match f x, y with
-  | a, (_, b) | b, (_, a) -> (unique_id a, unique_id b)
+let or_patterns6 flag f x y =
+  match flag, f x, y with
+  | true, a, (_, b) | false, b, (_, a) -> (unique_id a, unique_id b)
 [%%expect{|
-Line 3, characters 16-25:
-3 |   | a, (_, b) | b, (_, a) -> (unique_id a, unique_id b)
-                    ^^^^^^^^^
-Warning 12 [redundant-subpat]: this sub-pattern is unused.
-Line 3, characters 53-54:
-3 |   | a, (_, b) | b, (_, a) -> (unique_id a, unique_id b)
-                                                         ^
+Line 3, characters 66-67:
+3 |   | true, a, (_, b) | false, b, (_, a) -> (unique_id a, unique_id b)
+                                                                      ^
 Error: b is used uniquely here so cannot be used twice. It will be used again at:
-Line 3, characters 40-41:
-3 |   | a, (_, b) | b, (_, a) -> (unique_id a, unique_id b)
-                                            ^
+Line 3, characters 53-54:
+3 |   | true, a, (_, b) | false, b, (_, a) -> (unique_id a, unique_id b)
+                                                         ^
   b was used because a is an alias of b.
 |}]
 
@@ -718,6 +714,14 @@ Line 1, characters 25-26:
 Error: Found a shared value where a unique value was expected
   Hint: This identifier was defined outside of the current closure.
   Did you forget to use a !-> arrow in a function type?
+|}]
+
+(* Borrowing *)
+
+let foo p (unique_ x) =
+  let _x = if p then (borrow_ x) else unique_id x in local_ (Some 5)
+[%%expect{|
+val foo : bool -> unique_ 'a -> local_ int option = <fun>
 |}]
 
 (* ------------------------------------------------------------------------------------ *)

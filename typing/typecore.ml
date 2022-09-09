@@ -5410,8 +5410,8 @@ and type_argument ?explanation ?recarg env (mode : expected_mode) sarg
         match (expand_head env ty_fun).desc with
         | Tarrow ((l,marg,_marr,_mret),ty_arg,ty_fun,_) when is_optional l ->
             let marg = Mode.Value.of_alloc marg in
-            let ty = option_none env (instance ty_arg) marg sarg.pexp_loc in
-            make_args ((l, Arg ty) :: args) ty_fun
+            let e = option_none env (instance ty_arg) marg sarg.pexp_loc in
+            make_args ((l, Arg e) :: args) ty_fun
         | Tarrow ((l,_,_,_),_,ty_res',_) when l = Nolabel || !Clflags.classic ->
             List.rev args, ty_fun, no_labels ty_res'
         | Tvar _ ->  List.rev args, ty_fun, false
