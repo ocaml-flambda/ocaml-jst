@@ -645,7 +645,7 @@ void caml_modify_batch (void)
   value *fp;
   value old, val;
   uintnat h;
-  char *mode = getenv ("CAML_MODIFY_BATCH_STOP");
+  //  char *mode = getenv ("CAML_MODIFY_BATCH_STOP");
   caml_domain_state *ds = Caml_state;
   value y_start = (value) Caml_state->young_start;
   value y_end = (value) Caml_state->young_end;
@@ -654,13 +654,13 @@ void caml_modify_batch (void)
   CAML_EV_BEGIN(EV_MODIFY_BATCH);
   index =
     (intnat) (ds->modify_log_index / sizeof (struct modify_log_entry));
-  fprintf (stderr, "batch size = %ld index=%ld\n", CAML_MODIFY_LOG_SIZE - index, index);
-  fflush (stderr);
-  if (index == 0 && mode != NULL && !strcmp (mode, "before")){
-    fprintf (stderr, "stop before modify-batch\n");
-    fflush (stderr);
-    exit (0);
-  }
+//  fprintf (stderr, "batch size = %ld index=%ld\n", CAML_MODIFY_LOG_SIZE - index, index);
+//  fflush (stderr);
+//  if (index == 0 && mode != NULL && !strcmp (mode, "before")){
+//    fprintf (stderr, "stop before modify-batch\n");
+//    fflush (stderr);
+//    exit (0);
+//  }
   for (i = CAML_MODIFY_LOG_SIZE - 1; i >= index; i--){
     fp = ds->modify_log[i].field_pointer;
     if (L_is_young((value)fp)){
@@ -723,11 +723,11 @@ void caml_modify_batch (void)
   ds->modify_log_index =
     CAML_MODIFY_LOG_SIZE * sizeof (struct modify_log_entry);
   CAML_EV_END(EV_MODIFY_BATCH);
-  if (index == 0 && mode != NULL && !strcmp (mode, "after")){
-    fprintf (stderr, "stop after modify-batch\n");
-    fflush (stderr);
-    exit (0);
-  }
+  //  if (index == 0 && mode != NULL && !strcmp (mode, "after")){
+  //    fprintf (stderr, "stop after modify-batch\n");
+  //    fflush (stderr);
+  //    exit (0);
+  //  }
 }
 
 /* This version of [caml_modify] may additionally be used to mutate
