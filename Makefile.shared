@@ -24,8 +24,9 @@ include stdlib/StdlibModules
 
 CAMLC=$(CAMLRUN) boot/ocamlc -g -nostdlib -I boot -use-prims byterun/primitives
 CAMLOPT=$(CAMLRUN) ./ocamlopt -g -nostdlib -I stdlib -I otherlibs/dynlink
-COMPFLAGS=-strict-sequence -principal -absname -w +a-4-9-41-42-44-45-48 -warn-error A \
-          -bin-annot -safe-string -strict-formats $(INCLUDES)
+COMPFLAGS=-strict-sequence -principal -absname -w +a-4-9-41-42-44-45-48  \
+	  -warn-error A \
+	  -bin-annot -safe-string -strict-formats $(INCLUDES)
 LINKFLAGS=
 
 YACCFLAGS=-v --strict
@@ -39,7 +40,7 @@ OCAMLBUILDNATIVE=$(WITH_OCAMLBUILD:=.native)
 OCAMLDOC_OPT=$(WITH_OCAMLDOC:=.opt)
 
 INCLUDES=-I utils -I parsing -I typing -I bytecomp -I middle_end \
-        -I middle_end/base_types -I asmcomp -I driver -I toplevel
+	-I middle_end/base_types -I asmcomp -I driver -I toplevel
 
 UTILS=utils/config.cmo utils/misc.cmo \
   utils/identifiable.cmo utils/numbers.cmo utils/arg_helper.cmo \
@@ -60,7 +61,7 @@ TYPING=typing/ident.cmo typing/path.cmo \
   typing/primitive.cmo typing/types.cmo \
   typing/btype.cmo typing/oprint.cmo \
   typing/subst.cmo typing/predef.cmo \
-  typing/datarepr.cmo typing/cmi_format.cmo typing/env.cmo \
+  typing/datarepr.cmo typing/cmi_format.cmo typing/env.cmo typing/units.cmo \
   typing/typedtree.cmo typing/printtyped.cmo typing/ctype.cmo \
   typing/printtyp.cmo typing/includeclass.cmo \
   typing/mtype.cmo typing/envaux.cmo typing/includecore.cmo \
@@ -227,16 +228,16 @@ partialclean::
 # Tools
 
 ocamltools: ocamlc ocamlyacc ocamllex asmcomp/cmx_format.cmi \
-            asmcomp/printclambda.cmo compilerlibs/ocamlmiddleend.cma \
-            asmcomp/export_info.cmo
+	    asmcomp/printclambda.cmo compilerlibs/ocamlmiddleend.cma \
+	    asmcomp/export_info.cmo
 	+cd tools ; $(MAKEREC) all
 
 ocamltoolsopt: ocamlopt
 	+cd tools; $(MAKEREC) opt
 
 ocamltoolsopt.opt: ocamlc.opt ocamlyacc ocamllex.opt asmcomp/cmx_format.cmi \
-                   asmcomp/printclambda.cmx compilerlibs/ocamlmiddleend.cmxa \
-                   asmcomp/export_info.cmx
+		   asmcomp/printclambda.cmx compilerlibs/ocamlmiddleend.cmxa \
+		   asmcomp/export_info.cmx
 	+cd tools; $(MAKEREC) opt.opt
 
 partialclean::

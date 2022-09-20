@@ -587,6 +587,7 @@ let typ sub x =
         Ttyp_poly (sl, sub.typ sub ct)
     | Ttyp_package pack ->
         Ttyp_package (sub.package_type sub pack)
+    | Ttyp_unit -> Ttyp_unit
   in
   {x with ctyp_desc; ctyp_env}
 

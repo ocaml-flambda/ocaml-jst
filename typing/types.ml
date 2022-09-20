@@ -38,6 +38,10 @@ and type_desc =
   | Tunivar of string option
   | Tpoly of type_expr * type_expr list
   | Tpackage of Path.t * Longident.t list * type_expr list
+  | Tunit of unit_desc
+and unit_desc =
+  {ud_vars : (type_expr * int) list ;
+   ud_base : (string * int) list}
 
 and row_desc =
     { row_fields: (label * row_field) list;

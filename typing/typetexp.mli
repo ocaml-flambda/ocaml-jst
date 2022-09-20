@@ -69,6 +69,7 @@ type error =
   | Access_functor_as_structure of Longident.t
   | Apply_structure_as_functor of Longident.t
   | Cannot_scrape_alias of Longident.t * Path.t
+  | Bad_unit_expression of string
 
 exception Error of Location.t * Env.t * error
 

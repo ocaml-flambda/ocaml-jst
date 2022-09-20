@@ -702,6 +702,9 @@ let compute_variance env visited vari ty =
           Variance.(if mem Pos vari || mem Neg vari then full else may_inv)
         in
         List.iter (compute_variance_rec v) tyl
+    | Tunit ud ->
+       List.iter (fun (v,_) -> compute_same v) ud.ud_vars
+
   in
   compute_variance_rec vari ty
 

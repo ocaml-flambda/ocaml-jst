@@ -1,0 +1,87 @@
+
+#                                       module Dim :
+  sig
+    type 'a dfloat = private float
+    val create : float -> <'a> dfloat
+    val ( +: ) : <'a> dfloat -> <'a> dfloat -> <'a> dfloat
+    val ( *: ) : <'a> dfloat -> <'b> dfloat -> <'a * 'b> dfloat
+    val ( /: ) : <'a> dfloat -> <'b> dfloat -> <'a / 'b> dfloat
+    val inv : <'a> dfloat -> <'a ^ -1> dfloat
+    val dsqrt : <'a ^ 2> dfloat -> <'a> dfloat
+  end
+#   # type dlist = <l> list
+# val x : <m> Dim.dfloat = 3.
+# val y : <m> Dim.dfloat = 4.
+# - : bool = false
+#   val div : <'a> Dim.dfloat -> <'b> Dim.dfloat -> <'a / 'b> Dim.dfloat = <fun>
+#   val lcm :
+  <'a ^ 15> Dim.dfloat ->
+  <'a ^ 10> Dim.dfloat -> <'a ^ 6> Dim.dfloat -> <'a ^ 30> Dim.dfloat = <fun>
+#   val lcm_bis :
+  <'a ^ 15> Dim.dfloat ->
+  <'a ^ 10> Dim.dfloat -> <'a ^ 6> Dim.dfloat -> <'a ^ 30> Dim.dfloat = <fun>
+#             val prodlist :
+  <'a> Dim.dfloat list -> <'b> Dim.dfloat list -> <'a * 'b> Dim.dfloat list =
+  <fun>
+#   val f : 'a option -> <'a> Dim.dfloat option = <fun>
+# - : <'<bad unit variable>> Dim.dfloat option = None
+#       Characters 68-109:
+    struct let v : <k> dfloat = create 1. end;;
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Signature mismatch:
+       Modules do not match:
+         sig val v : <k> Dim.dfloat end
+       is not included in
+         sig val v : <m> Dim.dfloat end
+       Values do not match:
+         val v : <k> Dim.dfloat
+       is not included in
+         val v : <m> Dim.dfloat
+#                   module M :
+  sig
+    val x : <'_c> Dim.dfloat
+    val f :
+      <'a> Dim.dfloat ->
+      <'a ^ 2 * '_c * 'b ^ -2> Dim.dfloat -> <'b> Dim.dfloat
+  end
+# module M' :
+  sig val f : <'a> Dim.dfloat -> <1> Dim.dfloat -> <'a> Dim.dfloat end
+#                 module M :
+  sig
+    val x : <'_c> Dim.dfloat
+    val f :
+      <'a> Dim.dfloat -> <'a ^ 2 * '_c / 'b> Dim.dfloat -> <'b> Dim.dfloat
+  end
+# Characters 71-72:
+  module M' : sig val f : <'a> dfloat -> <1> dfloat -> <'a> dfloat end = M;;
+                                                                         ^
+Error: Signature mismatch:
+       ...
+       Values do not match:
+         val f :
+           <'a> Dim.dfloat ->
+           <'a ^ 2 * '_c / 'b> Dim.dfloat -> <'b> Dim.dfloat
+       is not included in
+         val f : <'a> Dim.dfloat -> <1> Dim.dfloat -> <'a> Dim.dfloat
+#                 module M :
+  sig
+    val x : <'_c> Dim.dfloat
+    val f :
+      <'a> Dim.dfloat -> <'a ^ 2 / 'b * '_c> Dim.dfloat -> <m> Dim.dfloat
+  end
+# Characters 71-72:
+  module M' : sig val f : <'a> dfloat -> <1> dfloat -> <'a> dfloat end = M;;
+                                                                         ^
+Error: Signature mismatch:
+       ...
+       Values do not match:
+         val f :
+           <'a> Dim.dfloat ->
+           <'a ^ 2 / 'b * '_c> Dim.dfloat -> <m> Dim.dfloat
+       is not included in
+         val f : <'a> Dim.dfloat -> <1> Dim.dfloat -> <'a> Dim.dfloat
+#     val g : <m * s ^ -2> Dim.dfloat = 9.8
+# val speed : <s> Dim.dfloat -> <m / s> Dim.dfloat = <fun>
+#   val foot : <ft ^ -1 * m> Dim.dfloat = 0.305
+# val feet_to_meters : <ft> Dim.dfloat -> <m> Dim.dfloat = <fun>
+# 

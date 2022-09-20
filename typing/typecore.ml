@@ -1731,6 +1731,13 @@ let check_univars env expans kind exp ty_expected vars =
         match t.desc with
           Tvar name when t.level = generic_level ->
             log_type t; t.desc <- Tunivar name; true
+        | Tunit ud ->
+            begin match Units.norm ud with
+              {ud_vars=[({desc=Tvar name} as tv),1]; ud_base=[]}
+              when tv.level = generic_level ->
+                log_type tv; tv.desc <- Tunivar name; true
+            | _ -> false
+            end
         | _ -> false)
       vars in
   if List.length vars = List.length vars' then () else

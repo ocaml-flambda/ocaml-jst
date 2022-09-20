@@ -242,6 +242,7 @@ let is_datatype decl=
   | Type_abstract -> false
 
 
+
                   (**********************************************)
                   (*  Miscellaneous operations on object types  *)
                   (**********************************************)
@@ -1944,7 +1945,7 @@ let is_instantiable env p =
     decl.type_manifest = None &&
     not (non_aliasable p decl)
   with Not_found -> false
-  
+
 
 (* PR#7113: -safe-string should be a global property *)
 let compatible_paths p1 p2 =
@@ -2029,6 +2030,7 @@ let rec mcomp type_pairs env t1 t2 =
               (mcomp type_pairs env)
         | (Tunivar _, Tunivar _) ->
             unify_univar t1' t2' !univar_pairs
+        | (Tunit _, Tunit _) -> () (* temporary *)
         | (_, _) ->
             raise (Unify [])
       end
@@ -2418,6 +2420,14 @@ and unify3 env t1 t1' t2 t2' =
           end
       | (Ttuple tl1, Ttuple tl2) ->
           unify_list env tl1 tl2
+      | (Tunit ud1, Tunit ud2) ->
+          let link_unit env tv ud =
+            if not (is_Tvar tv) then raise (Unify []);
+            let ty = newgenty (Tunit ud) in
+            update_level env tv.level ty ;
+            occur env tv ty;
+            link_type tv ty in
+          if Units.unify (link_unit !env) ud1 ud2 then () else raise (Unify [])
       | (Tconstr (p1, tl1, _), Tconstr (p2, tl2, _)) when Path.same p1 p2 ->
           if !umode = Expression || not !generate_equations then
             unify_list env tl1 tl2
@@ -2888,6 +2898,8 @@ let filter_self_method env lab priv meths ty =
                         (*  Matching between type schemes  *)
                         (***********************************)
 
+let dimension_eqs = ref []
+
 (*
    Update the level of [ty]. First check that the levels of generic
    variables from the subject are not lowered.
@@ -2924,6 +2936,7 @@ let rec moregen inst_nongen type_pairs env t1 t2 =
   let t2 = repr t2 in
   if t1 == t2 then () else
 
+  let moregen_rec = moregen inst_nongen type_pairs env in
   try
     match (t1.desc, t2.desc) with
       (Tvar _, _) when may_instantiate inst_nongen t1 ->
@@ -2946,10 +2959,13 @@ let rec moregen inst_nongen type_pairs env t1 t2 =
             (Tvar _, _) when may_instantiate inst_nongen t1' ->
               moregen_occur env t1'.level t2;
               link_type t1' t2
+          | (Tunit _, Tvar _) ->
+              moregen_rec t1'
+                (newty2 t2'.level (Tunit {ud_vars = [t2',1] ; ud_base = []}))
           | (Tarrow (l1, t1, u1, _), Tarrow (l2, t2, u2, _)) when l1 = l2
             || !Clflags.classic && not (is_optional l1 || is_optional l2) ->
-              moregen inst_nongen type_pairs env t1 t2;
-              moregen inst_nongen type_pairs env u1 u2
+              moregen_rec t1 t2;
+              moregen_rec u1 u2
           | (Ttuple tl1, Ttuple tl2) ->
               moregen_list inst_nongen type_pairs env tl1 tl2
           | (Tconstr (p1, tl1, _), Tconstr (p2, tl2, _))
@@ -2970,12 +2986,13 @@ let rec moregen inst_nongen type_pairs env t1 t2 =
           | (Tnil, Tnil) ->
               ()
           | (Tpoly (t1, []), Tpoly (t2, [])) ->
-              moregen inst_nongen type_pairs env t1 t2
+              moregen_rec t1 t2
           | (Tpoly (t1, tl1), Tpoly (t2, tl2)) ->
-              enter_poly env univar_pairs t1 tl1 t2 tl2
-                (moregen inst_nongen type_pairs env)
+              enter_poly env univar_pairs t1 tl1 t2 tl2 moregen_rec
           | (Tunivar _, Tunivar _) ->
               unify_univar t1' t2' !univar_pairs
+          | (Tunit ud1, Tunit ud2) ->  (* add an equation to the list *)
+              dimension_eqs := (ud1, ud2)::(!dimension_eqs)
           | (_, _) ->
               raise (Unify [])
         end
@@ -3074,7 +3091,19 @@ and moregen_row inst_nongen type_pairs env row1 row2 =
 (* Must empty univar_pairs first *)
 let moregen inst_nongen type_pairs env patt subj =
   univar_pairs := [];
-  moregen inst_nongen type_pairs env patt subj
+  dimension_eqs := [];
+  moregen inst_nongen type_pairs env patt subj;
+
+
+  let link t1 u2 =
+    let t2 = newgenty (Tunit u2) in
+    moregen_occur env t1.level t2;
+    occur env t1 t2;
+    update_level env t1.level t2;
+    link_type t1 t2 in
+  if not (Units.moregen inst_nongen (may_instantiate inst_nongen)
+            link !dimension_eqs)
+  then raise (Unify [])
 
 (*
    Non-generic variable can be instanciated only if [inst_nongen] is
@@ -3162,6 +3191,8 @@ let matches env ty ty' =
                  (*  Equivalence between parameterized types  *)
                  (*********************************************)
 
+let dimension_eqs = ref []
+
 let expand_head_rigid env ty =
   let old = !rigid_variants in
   rigid_variants := true;
@@ -3242,6 +3273,8 @@ let rec eqtype rename type_pairs subst env t1 t2 =
                 (eqtype rename type_pairs subst env)
           | (Tunivar _, Tunivar _) ->
               unify_univar t1' t2' !univar_pairs
+          | (Tunit ud1, Tunit ud2) ->
+              dimension_eqs := (ud1, ud2)::(!dimension_eqs)
           | (_, _) ->
               raise (Unify [])
         end
@@ -3323,8 +3356,13 @@ and eqtype_row rename type_pairs subst env row1 row2 =
 (* Must empty univar_pairs first *)
 let eqtype_list rename type_pairs subst env tl1 tl2 =
   univar_pairs := [];
+  dimension_eqs := [];
   let snap = Btype.snapshot () in
-  try eqtype_list rename type_pairs subst env tl1 tl2; backtrack snap
+  try
+    eqtype_list rename type_pairs subst env tl1 tl2;
+    if Units.eqtype !subst !dimension_eqs
+    then backtrack snap
+    else raise (Unify [])
   with exn -> backtrack snap; raise exn
 
 let eqtype rename type_pairs subst env t1 t2 =
@@ -3854,6 +3892,18 @@ let rec build_subtype env visited loops posi level t =
       else (t, Unchanged)
   | Tunivar _ | Tpackage _ ->
       (t, Unchanged)
+  | Tunit {ud_vars = vlist ; ud_base = b} ->
+     if memq_warn t visited then (t, Unchanged) else
+       let visited = t :: visited in
+       let vlist' =
+         let f (v,n) = build_subtype env visited loops posi level v,n in
+         List.map f vlist
+       in
+       let c = collect (List.map fst vlist') in
+       if c > Unchanged
+       then (newty (Tunit {ud_vars = List.map (fun ((a,_),c) -> a,c) vlist';
+                           ud_base = b}), c)
+       else (t, Unchanged)
 
 let enlarge_type env ty =
   warn := false;
@@ -4216,6 +4266,9 @@ let rec normalize_type_rec env visited ty =
         let fields, row = flatten_fields fi in
         let fi' = build_fields fi.level fields row in
         log_type ty; fi.desc <- fi'.desc
+    | Tunit ud ->
+       iter_type_expr (normalize_type_rec env visited) ty;
+       log_type ty; ty.desc <- Tunit (Units.norm ud)
     | _ -> ()
     end;
     iter_type_expr (normalize_type_rec env visited) ty

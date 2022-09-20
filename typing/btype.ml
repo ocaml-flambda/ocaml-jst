@@ -268,6 +268,7 @@ let iter_type_expr f ty =
   | Tunivar _           -> ()
   | Tpoly (ty, tyl)     -> f ty; List.iter f tyl
   | Tpackage (_, _, l)  -> List.iter f l
+  | Tunit {ud_vars}     -> List.iter (fun (v,_) -> f v) ud_vars
 
 let rec iter_abbrev f = function
     Mnil                   -> ()
@@ -447,6 +448,8 @@ let rec copy_type_desc ?(keep_names=false) f = function
       let tyl = List.map (fun x -> norm_univar (f x)) tyl in
       Tpoly (f ty, tyl)
   | Tpackage (p, n, l)  -> Tpackage (p, n, List.map f l)
+  | Tunit ud ->
+     Tunit {ud with ud_vars = List.map (fun (v,e) -> f v, e) ud.ud_vars}
 
 (* Utilities for copying *)
 

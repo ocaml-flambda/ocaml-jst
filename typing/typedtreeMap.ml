@@ -623,6 +623,7 @@ module MakeMap(Map : MapArgument) = struct
           Ttyp_variant (List.map map_row_field list, bool, labels)
         | Ttyp_poly (list, ct) -> Ttyp_poly (list, map_core_type ct)
         | Ttyp_package pack -> Ttyp_package (map_package_type pack)
+        | Ttyp_unit -> Ttyp_unit
     in
     Map.leave_core_type { ct with ctyp_desc = ctyp_desc }
 

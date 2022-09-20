@@ -57,6 +57,7 @@ type error =
   | Access_functor_as_structure of Longident.t
   | Apply_structure_as_functor of Longident.t
   | Cannot_scrape_alias of Longident.t * Path.t
+  | Bad_unit_expression of string
 
 exception Error of Location.t * Env.t * error
 exception Error_forward of Location.error
@@ -301,7 +302,13 @@ let rec transl_type env policy styp =
   match styp.ptyp_desc with
     Ptyp_any ->
       let ty =
-        if policy = Univars then new_pre_univar () else
+        (* retrieve dimensional attribute *)
+        try
+          let pl = List.assoc (mknoloc "ocaml.dim") styp.ptyp_attributes in
+          let ud = transl_dim env policy pl in
+          newty (Tunit ud)
+        with Not_found ->
+          if policy = Univars then new_pre_univar () else
           if policy = Fixed then
             raise (Error (styp.ptyp_loc, env, Unbound_type_variable "_"))
           else newvar ()
@@ -347,11 +354,19 @@ let rec transl_type env policy styp =
             List.map (fun _ -> t) decl.type_params
         | _ -> stl
       in
-      if List.length stl <> decl.type_arity then
+      let args = List.map (transl_type env policy) stl in
+      let args =
+        (* retrieve dimensional attribute *)
+        try
+          let pl = List.assoc (mknoloc "ocaml.dim") styp.ptyp_attributes in
+          let ud = transl_dim env policy pl in
+          let ty = newty (Tunit ud) in
+          (ctyp Ttyp_unit ty)::args
+        with Not_found -> args in
+      if List.length args <> decl.type_arity then
         raise(Error(styp.ptyp_loc, env,
                     Type_arity_mismatch(lid.txt, decl.type_arity,
                                         List.length stl)));
-      let args = List.map (transl_type env policy) stl in
       let params = instance_list decl.type_params in
       let unify_param =
         match decl.type_manifest with
@@ -360,10 +375,10 @@ let rec transl_type env policy styp =
             if (repr ty).level = Btype.generic_level then unify_var else unify
       in
       List.iter2
-        (fun (sty, cty) ty' ->
+        (fun cty ty' ->
            try unify_param env ty' cty.ctyp_type with Unify trace ->
-             raise (Error(sty.ptyp_loc, env, Type_mismatch (swap_list trace))))
-        (List.combine stl args) params;
+             raise (Error(cty.ctyp_loc, env, Type_mismatch (swap_list trace))))
+        args params;
       let constr =
         newconstr path (List.map (fun ctyp -> ctyp.ctyp_type) args) in
       begin try
@@ -645,7 +660,51 @@ let rec transl_type env policy styp =
             pack_txt = p;
            }) ty
   | Ptyp_extension ext ->
-      raise (Error_forward (Builtin_attributes.error_of_extension ext))
+     raise (Error_forward (Builtin_attributes.error_of_extension ext))
+
+(* tranform ocaml expr into dim expr (unit_desc) *)
+and transl_dim env policy pl =
+  (* extract expression from payload *)
+  let e = match pl with
+  | PStr [{pstr_desc = Pstr_eval (e, _) ; _ }] -> e
+  | _ -> assert false in
+  (* convert expression *)
+  let rec dim_of_expr exp =
+    let desc = exp.pexp_desc in
+    match desc with
+    | Pexp_constant (Pconst_integer (s,None))
+      when Misc.Int_literal_converter.int s = 1 -> Units.one
+    | Pexp_ident {txt = Longident.Lident id ; _} ->
+       { Units.one with ud_base = [id, 1] }
+    | Pexp_variant (s, None) ->
+       let v = {ptyp_desc = Ptyp_var s;
+                ptyp_loc = exp.pexp_loc ;
+                ptyp_attributes = [] } in
+       { Units.one with ud_vars = [(transl_type env policy v).ctyp_type ,1] }
+    | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident s ; loc } ; _},
+                  [_, arg1 ; _, arg2]) ->
+      let ud1 = dim_of_expr arg1 in
+      begin match s with
+      | "*" ->
+         let ud2 = dim_of_expr arg2 in
+         Units.mul ud1 ud2
+      | "/" ->
+         let ud2 = dim_of_expr arg2 in
+         Units.mul ud1 (Units.inv ud2)
+      | "**" | "^" ->
+         let n = match arg2 with
+           | {pexp_desc = Pexp_constant (Pconst_integer (s,_)) ; _} ->
+              int_of_string s
+           | _ ->
+               raise (Error (arg2.pexp_loc, env,
+                             Bad_unit_expression "Bad exponent")) in
+         Units.pow n ud1
+      | _ -> raise (Error (loc, env, Bad_unit_expression "Bad operator" ))
+      end
+    | _ ->  raise (Error (exp.pexp_loc,
+                          env,
+                          Bad_unit_expression "Ill formed unit expression")) in
+  dim_of_expr e
 
 and transl_poly_type env policy t =
   transl_type env policy (Ast_helper.Typ.force_poly t)
@@ -903,6 +962,9 @@ let report_error env ppf = function
       fprintf ppf
         "The module %a is an alias for module %a, which is missing"
         longident lid path p
+  | Bad_unit_expression s ->
+      fprintf ppf "%s" s
+
 
 let () =
   Location.register_error_of_exn

@@ -678,6 +678,7 @@ let core_type sub ct =
         Ptyp_arrow (label, sub.typ sub ct1, sub.typ sub ct2)
     | Ttyp_tuple list -> Ptyp_tuple (List.map (sub.typ sub) list)
     | Ttyp_constr (_path, lid, list) ->
+        let list = List.filter (fun ct -> ct.ctyp_desc <> Ttyp_unit) list in
         Ptyp_constr (map_loc sub lid,
           List.map (sub.typ sub) list)
     | Ttyp_object (list, o) ->
@@ -691,6 +692,7 @@ let core_type sub ct =
         Ptyp_variant (List.map (sub.row_field sub) list, bool, labels)
     | Ttyp_poly (list, ct) -> Ptyp_poly (list, sub.typ sub ct)
     | Ttyp_package pack -> Ptyp_package (sub.package_type sub pack)
+    | Ttyp_unit -> assert false
   in
   Typ.mk ~loc ~attrs desc
 

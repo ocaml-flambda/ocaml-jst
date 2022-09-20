@@ -66,6 +66,7 @@ type out_type =
       bool * out_variant * bool * (string list) option
   | Otyp_poly of string list * out_type
   | Otyp_module of string * string list * out_type list
+  | Otyp_unit of ((bool * string) * int) list * (string * int) list
   | Otyp_attribute of out_type * out_attribute
 
 and out_variant =

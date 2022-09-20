@@ -192,6 +192,13 @@ and print_simple_out_type ppf =
     Otyp_class (ng, id, tyl) ->
       fprintf ppf "@[%a%s#%a@]" print_typargs tyl (if ng then "_" else "")
         print_ident id
+  (*| Otyp_constr (id, (Otyp_unit _ as ou) :: tyl) ->
+      pp_open_box ppf 0;
+      print_typargs ppf tyl;
+      print_ident ppf id;
+      pp_print_space ppf ();
+      print_simple_out_type ppf ou;
+      pp_close_box ppf ()*)
   | Otyp_constr (id, tyl) ->
       pp_open_box ppf 0;
       print_typargs ppf tyl;
@@ -239,6 +246,26 @@ and print_simple_out_type ppf =
         )
         n tyl;
       fprintf ppf ")@]"
+  | Otyp_unit (vl, bl) ->
+     let first = ref true in
+     let punit pname (name,e) =
+       if !first then
+         match e with
+           0 -> ()
+         | 1 -> first := false; fprintf ppf "%a" pname name
+         | _ -> first := false; fprintf ppf "%a ^ %d" pname name e
+       else
+         match e with
+           0 -> ()
+         | 1 -> fprintf ppf "@ * %a" pname name
+         | -1 -> fprintf ppf "@ / %a" pname name
+         | _ -> fprintf ppf "@ * %a ^ %d" pname name e
+     and pvar ppf (ng, s) = fprintf ppf "'%s%s" (if ng then "_" else "") s
+     and pbase ppf = fprintf ppf "%s"
+     in
+     fprintf ppf "<@[%t%t@]%t>" (fun _ppf -> List.iter (punit pvar) vl)
+       (fun _ppf -> List.iter (punit pbase) bl)
+       (fun ppf -> if !first then fprintf ppf "1")
   | Otyp_attribute (t, attr) ->
       fprintf ppf "@[<1>(%a [@@%s])@]" print_out_type t attr.oattr_name
 and print_record_decl ppf lbls =

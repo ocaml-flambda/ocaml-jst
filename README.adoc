@@ -1,5 +1,13 @@
 = README =
 
+== Units of measure extension
+
+This extension introduces units of measure in the type system, in a
+fashion similar to that of F#. For a usage example, see
+link:testsuite/tests/typing-dim[]. For more detailed explanations, an
+article is available
+https://perso.ensta-paristech.fr/~dly/ocamldim.pdf[here] (in French).
+
 == Overview
 
 OCaml is an implementation of the ML language, based on the Caml Light

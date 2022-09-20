@@ -2247,6 +2247,9 @@ simple_core_type2:
       { mktyp(Ptyp_any) }
   | type_longident
       { mktyp(Ptyp_constr(mkrhs $1 1, [])) }
+  | type_longident LBRACKET unit_expr RBRACKET
+      { mktyp_attrs (Ptyp_constr(mkrhs $1 1, []))
+                    (None,[mknoloc "ocaml.dim", PStr [mkstrexp $3 []]]) }
   | simple_core_type2 type_longident
       { mktyp(Ptyp_constr(mkrhs $2 2, [$1])) }
   | LPAREN core_type_comma_list RPAREN type_longident
@@ -2255,6 +2258,9 @@ simple_core_type2:
       { let (f, c) = $2 in mktyp(Ptyp_object (f, c)) }
   | LESS GREATER
       { mktyp(Ptyp_object ([], Closed)) }
+  | LESS unit_expr GREATER
+      { mktyp_attrs Ptyp_any
+                    (None,[mknoloc "ocaml.dim", PStr [mkstrexp $2 []]]) }
   | HASH class_longident
       { mktyp(Ptyp_class(mkrhs $2 2, [])) }
   | simple_core_type2 HASH class_longident
@@ -2283,6 +2289,30 @@ simple_core_type2:
       { mktyp_attrs (Ptyp_package $4) $3 }
   | extension
       { mktyp (Ptyp_extension $1) }
+;
+unit_expr:
+    unit_monome
+      { $1 }
+  | unit_expr STAR unit_monome
+      { mkinfix $1 "*" $3 }
+  | unit_expr INFIXOP3 unit_monome
+      { mkinfix $1 $2 $3 }
+;
+unit_monome:
+    unit_var_or_base
+      { $1 }
+  | unit_var_or_base INFIXOP1 signed_constant
+      { mkinfix $1 $2 (mkexp (Pexp_constant $3)) }
+  | unit_var_or_base INFIXOP4 signed_constant
+      { mkinfix $1 $2 (mkexp (Pexp_constant $3)) }
+  | constant
+      { mkexp (Pexp_constant $1) }
+;
+unit_var_or_base:
+    QUOTE LIDENT
+      { mkexp (Pexp_variant ($2, None)) }
+  | LIDENT
+      { mkexp (Pexp_ident (mkloc (Lident $1) (rhs_loc 1))) }
 ;
 package_type:
     module_type { package_type_of_module_type $1 }

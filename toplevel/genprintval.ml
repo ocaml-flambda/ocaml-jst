@@ -257,6 +257,8 @@ module Make(O : OBJ)(EVP : EVALPATH with type valu = O.t) = struct
               Oval_stuff "<poly>"
           | Tarrow _ ->
               Oval_stuff "<fun>"
+          | Tunit _ ->
+              Oval_stuff "<dim>"
           | Ttuple(ty_list) ->
               Oval_tuple (tree_of_val_list 0 depth obj ty_list)
           | Tconstr(path, [ty_arg], _)
