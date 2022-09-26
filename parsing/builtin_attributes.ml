@@ -90,7 +90,7 @@ let is_builtin_attr s = Hashtbl.mem builtin_attrs s
 
 let mk_internal ?(loc= !default_loc) name payload =
   if is_builtin_attr name.txt
-  then Attribute_table.add unused_attrs name true;
+  then Attribute_table.add unused_attrs name ();
   Attr.mk ~loc name payload
 
 
