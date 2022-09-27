@@ -83,7 +83,7 @@ let builtin_attrs =
 
 let builtin_attrs =
   let tbl = Hashtbl.create 128 in
-  List.iter (fun attr -> Hashtbl.add tbl attr true) builtin_attrs;
+  List.iter (fun attr -> Hashtbl.add tbl attr ()) builtin_attrs;
   tbl
 
 let is_builtin_attr s = Hashtbl.mem builtin_attrs s
