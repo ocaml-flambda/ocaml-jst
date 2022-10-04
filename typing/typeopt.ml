@@ -352,7 +352,7 @@ let value_kind env ty =
             (num_nodes_visited, []) fields
         in
         num_nodes_visited,
-          Value (Pvariant { consts = []; non_consts = [0, fields] })
+          Value (Pvariant { consts = []; non_consts = [0, List.rev fields] })
       end
     | _ ->
       num_nodes_visited, Value Pgenval
