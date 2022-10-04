@@ -55,7 +55,7 @@ let maybe_pointer_type env ty =
 
 let maybe_pointer exp = maybe_pointer_type exp.exp_env exp.exp_type
 
-let is_void_type env ty = Ctype.is_void_type env ty
+let is_void_type env ty = Ctype.is_void_type env (Ctype.correct_levels ty)
 
 let is_void exp = is_void_type exp.exp_env exp.exp_type
 
