@@ -140,8 +140,7 @@ let enter_type rec_flag env sdecl (id, uid) =
      And how we now do it even if there's not manifest, which solves the layout
      problem) *)
   let layout =
-    Type_layout.of_layout_annotation ~default:Type_layout.any
-      (Builtin_attributes.layout sdecl.ptype_attributes)
+    Type_layout.of_attributes ~default:Type_layout.any sdecl.ptype_attributes
   in
   if not needed then env else
   let decl =
@@ -1792,15 +1791,14 @@ let transl_with_constraint id row_path ~sig_env ~sig_decl ~outer_env sdecl =
 
 (* Approximate a type declaration: just make all types abstract *)
 
-let abstract_type_decl ~injective arity =
-  (* CJC XXX where is this used?  revisit after I add better kinding for parameters *)
-  let rec make_params n =
-    if n <= 0 then [] else Ctype.newvar Type_layout.any :: make_params (n-1) in
+let abstract_type_decl ~injective layout params =
+  let arity = List.length params in
+  let params = List.map Ctype.newvar params in
   Ctype.begin_def();
   let decl =
-    { type_params = make_params arity;
+    { type_params = params;
       type_arity = arity;
-      type_kind = Types.kind_abstract_any;
+      type_kind = Types.kind_abstract ~layout;
       type_private = Public;
       type_manifest = None;
       type_variance = Variance.unknown_signature ~injective ~arity;
@@ -1820,9 +1818,19 @@ let approx_type_decl sdecl_list =
   let scope = Ctype.create_scope () in
   List.map
     (fun sdecl ->
-      let injective = sdecl.ptype_kind <> Ptype_abstract in
+       let injective = sdecl.ptype_kind <> Ptype_abstract in
+       let layout =
+         Type_layout.of_attributes ~default:Type_layout.value
+           sdecl.ptype_attributes
+       in
+       let params =
+         List.map (fun (styp,_) ->
+           Type_layout.of_attributes ~default:Type_layout.value
+             styp.ptyp_attributes)
+           sdecl.ptype_params
+       in
       (Ident.create_scoped ~scope sdecl.ptype_name.txt,
-       abstract_type_decl ~injective (List.length sdecl.ptype_params)))
+       abstract_type_decl ~injective layout params))
     sdecl_list
 
 (* Variant of check_abbrev_recursion to check the well-formedness

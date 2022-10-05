@@ -221,3 +221,144 @@ Error: This expression has type 'a but an expression was expected of type 'a0
 |}]
 (* CJC XXX understand what's going on with Principal mode here (and improve
    error messages generally *)
+
+(* Test 5: Recursive modules, with and without layout annotations *)
+(* CJC XXX probably recursive module tests don't belong in "basics" *)
+
+module rec Foo4 : sig
+  val create : Bar4.t -> unit
+end = struct
+  let create _ = ()
+end
+
+and Bar4 : sig
+  type t
+end = struct
+  type t = unit
+end;;
+[%%expect {|
+module rec Foo4 : sig val create : Bar4.t -> unit end
+and Bar4 : sig type t end
+|}];;
+
+module rec Foo4 : sig
+  val create : Bar4.t -> unit
+end = struct
+  let create _ = ()
+end
+
+and Bar4 : sig
+  type t [@@void]
+end = struct
+  type t
+end;;
+[%%expect {|
+Line 2, characters 15-21:
+2 |   val create : Bar4.t -> unit
+                   ^^^^^^
+Error: Function argument types must have layout value.
+        Bar4.t has layout void, which is not a sublayout of value.
+|}];;
+
+module rec Foo4 : sig
+  type t = Bar4.t [@@immediate]
+end = struct
+  type t = Bar4.t
+end
+
+and Bar4 : sig
+  type t [@@value]
+end = struct
+  type t = A
+end;;
+[%%expect {|
+Line 2, characters 2-31:
+2 |   type t = Bar4.t [@@immediate]
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: This type has layout value, which is not a sublayout of immediate.
+|}];;
+
+module rec Foo4 : sig
+  type t = Bar4.t [@@immediate]
+end = struct
+  type t = Bar4.t
+end
+
+and Bar4 : sig
+  type t [@@immediate]
+end = struct
+  type t = A
+end;;
+[%%expect {|
+module rec Foo4 : sig type t = Bar4/2.t [@@immediate] end
+and Bar4 : sig type t [@@immediate] end
+|}];;
+
+module rec Foo4 : sig
+  type 'a t = 'a Bar4.t * 'a list
+end = struct
+  type t = 'a Bar4.t * 'a list
+end
+
+and Bar4 : sig
+  type 'a [@void] t
+end = struct
+  type 'a t
+end;;
+[%%expect {|
+Line 2, characters 26-28:
+2 |   type 'a t = 'a Bar4.t * 'a list
+                              ^^
+Error: This type 'a should be an instance of type 'b
+       'a has layout void, which does not overlap with value.
+|}];;
+(* CJC XXX bad error message *)
+
+
+(* One downside of the current approach - this could be allowed, but isn't.  You
+   need to annotate types declared in recursive modules if they need to have
+   layouts other than value, even if it's obvious from the manifest *)
+type t4 [@@void]
+
+module rec Foo4 : sig
+  type t = t4
+end = struct
+  type t = t4
+end
+
+and Bar4 : sig
+  type 'a [@void] t
+
+  type s = Foo4.t t
+end = struct
+  type 'a [@void] t
+  type s = Foo4.t t
+end;;
+[%%expect {|
+type t4
+Line 12, characters 11-17:
+12 |   type s = Foo4.t t
+                ^^^^^^
+Error: This type Foo4.t should be an instance of type 'a
+       Foo4.t has layout value, which is not a sublayout of void.
+|}];;
+
+(* Previous example works with annotation *)
+module rec Foo4 : sig
+  type t = t4 [@@void]
+end = struct
+  type t = t4
+end
+
+and Bar4 : sig
+  type 'a [@void] t
+
+  type s = Foo4.t t
+end = struct
+  type 'a [@void] t
+  type s = Foo4.t t
+end;;
+[%%expect {|
+module rec Foo4 : sig type t = t4 end
+and Bar4 : sig type 'a t type s = Foo4/2.t t end
+|}];;

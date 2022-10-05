@@ -44,7 +44,8 @@ val transl_with_constraint:
     outer_env:Env.t -> Parsetree.type_declaration ->
     Typedtree.type_declaration
 
-val abstract_type_decl: injective:bool -> int -> type_declaration
+val abstract_type_decl:
+    injective:bool -> layout -> layout list -> type_declaration
 val approx_type_decl:
     Parsetree.type_declaration list ->
                                   (Ident.t * type_declaration) list
