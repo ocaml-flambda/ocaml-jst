@@ -158,7 +158,12 @@ let enter_type rec_flag env sdecl (id, uid) =
       type_arity = arity;
       type_kind = Types.kind_abstract ~layout;
       type_private = sdecl.ptype_private;
-      type_manifest = Some (Ctype.newvar Type_layout.any);
+      (* CJC XXX putting layout here, rather than "any", is causing us to
+         fail earlier and get bad error messages in some cases.  (e.g.,
+         [tests/typing-immediate/immediate.ml], line 149, fails in
+         [update_type] rather than at the very end of [transl_type_decl],
+         resulting in a very bad message. *)
+      type_manifest = Some (Ctype.newvar layout);
       type_variance = Variance.unknown_signature ~injective:false ~arity;
       type_separability = Types.Separability.default_signature ~arity;
       type_is_newtype = false;
@@ -567,7 +572,7 @@ module TypeMap = Btype.TypeMap
 let rec check_constraints_rec env loc visited ty =
   let check_layout_value ~loc ~layout_loc typ =
     match Ctype.constrain_type_layout env ty Type_layout.value with
-    | Ok () -> ()
+    | Ok _ -> ()
     | Error err -> raise(Error(loc, Layout_value {lloc=layout_loc; typ; err}))
   in
   let ty = Ctype.repr ty in
@@ -677,8 +682,13 @@ let check_constraints env sdecl (_, decl) =
    If both a variant/record definition and a type equation are given,
    need to check that the equation refers to a type of the same kind
    with the same constructors and labels.
-   If the kind is Type_abstract {immediate}, need to check that the equation
-   refers to a sufficiently-immediate type.
+
+   If the kind is Type_abstract {layout}, we need to check that the layout
+   corresponds to the manifest (e.g., in the case where layout is immediate, we
+   should check the manifest is immediate).  This process may result in an
+   improved estimate for the layout, so we return an updated decl.  It's
+   perfectly sound to keep the old one, it just may result in more work in
+   future layout checks.
 *)
 let check_coherence env loc dpath decl =
   match decl with
@@ -704,21 +714,23 @@ let check_coherence env loc dpath decl =
             in
             if err <> None then
               raise(Error(loc, Definition_mismatch (ty, err)))
+            else
+              decl
           with Not_found ->
             raise(Error(loc, Unavailable_type_constructor path))
           end
       | _ -> raise(Error(loc, Definition_mismatch (ty, None)))
       end
-  | { type_kind = Type_abstract { layout };
+  | { type_kind = Type_abstract {layout};
       type_manifest = Some ty } ->
      begin match Ctype.check_type_layout env ty layout with
-     | Ok () -> ()
+     | Ok layout -> { decl with type_kind = Type_abstract {layout} }
      | Error v -> raise(Error(loc, Layout v))
      end
-  | { type_manifest = None } -> ()
+  | { type_manifest = None } -> decl
 
 let check_abbrev env sdecl (id, decl) =
-  check_coherence env sdecl.ptype_loc (Path.Pident id) decl
+  (id, check_coherence env sdecl.ptype_loc (Path.Pident id) decl)
 
 (* This eliminates remaining sort variables from type parameters, defaulting to
    value.
@@ -765,7 +777,7 @@ let update_decl_layout env decl =
     let lbls, imm =
       List.fold_left (fun (lbls, all_void) lbl ->
         match Ctype.check_type_layout env lbl.Types.ld_type Type_layout.void with
-        | Ok () -> ({ lbl with ld_void = true } :: lbls, all_void)
+        | Ok _ -> ({ lbl with ld_void = true } :: lbls, all_void)
         | Error _ -> (lbl :: lbls, false))
         ([], true) lbls
     in
@@ -1162,7 +1174,7 @@ let transl_type_decl env rec_flag sdecl_list =
   (* Compute the final environment with variance and immediacy *)
   let final_env = add_types_to_env decls env in
   (* Check re-exportation *)
-  List.iter2 (check_abbrev final_env) sdecl_list decls;
+  let decls = List.map2 (check_abbrev final_env) sdecl_list decls in
   (* Keep original declaration *)
   let final_decls =
     List.map2
@@ -1171,18 +1183,15 @@ let transl_type_decl env rec_flag sdecl_list =
       ) tdecls decls
   in
   (* Check layout annotations *)
-  (* CJC XXX.  Abstract types with manifests and no annotation are currently
-     getting layout "any" in the type kind.  Not a bug, exactly, but ugly.
-     Improve it here or in check_coherence. *)
   List.iter (fun tdecl ->
     let layout =
       Type_layout.of_layout_annotation ~default:Type_layout.any
         tdecl.typ_layout_annotation
     in
     match Ctype.check_decl_layout final_env tdecl.typ_type layout with
-    | Ok () -> ()
+    | Ok _ -> ()
     | Error v -> raise(Error(tdecl.typ_loc, Layout v)))
-    tdecls;
+    final_decls;
   (* Done *)
   (final_decls, final_env)
 
@@ -1844,7 +1853,7 @@ let check_recmod_typedecl env loc recmod_ids path decl =
   check_recursion ~orig_env:env env loc path decl to_check;
   (* additionally check coherece, as one might build an incoherent signature,
      and use it to build an incoherent module, cf. #7851 *)
-  check_coherence env loc path decl
+  ignore (check_coherence env loc path decl)
 
 
 (**** Error report ****)

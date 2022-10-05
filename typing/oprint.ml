@@ -708,18 +708,14 @@ and print_out_type_decl kwd ppf td =
     Asttypes.Private -> fprintf ppf " private"
   | Asttypes.Public -> ()
   in
-  (* CJC XXX currently I'm just matching the old behavior of printing
-     immediacy.  What do we actually want to do? *)
-  (* let print_sort ppf = function
-   *   | Os_value -> ()
-   *   | Os_int0 -> fprintf ppf " [%@%@int0]"
-   * in *)
   let print_layout ppf =
     match td.otype_layout with
-    | Olay_any -> () (* fprintf ppf " [%@%@any]" *)
-    | Olay_sort _ -> () (* print_sort ppf osort *)
-    | Olay_immediate64 -> fprintf ppf " [%@%@immediate64]"
-    | Olay_immediate -> fprintf ppf " [%@%@immediate]"
+    | None -> ()
+    | Some Olay_any -> fprintf ppf " [%@%@any]"
+    | Some Olay_value -> fprintf ppf " [%@%@value]"
+    | Some Olay_void -> fprintf ppf " [%@%@void]"
+    | Some Olay_immediate64 -> fprintf ppf " [%@%@immediate64]"
+    | Some Olay_immediate -> fprintf ppf " [%@%@immediate]"
   in
   let print_unboxed ppf =
     if td.otype_unboxed then fprintf ppf " [%@%@unboxed]" else ()

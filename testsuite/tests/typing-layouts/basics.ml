@@ -7,11 +7,11 @@ type t_imm   [@@immediate]
 type t_imm64 [@@immediate64]
 type t_void  [@@void];;
 [%%expect{|
-type t_any
-type t_value
+type t_any [@@any]
+type t_value [@@value]
 type t_imm [@@immediate]
 type t_imm64 [@@immediate64]
-type t_void
+type t_void [@@void]
 |}];;
 
 (* Test 1: Reject non-value function arg/returns *)
@@ -335,7 +335,7 @@ end = struct
   type s = Foo4.t t
 end;;
 [%%expect {|
-type t4
+type t4 [@@void]
 Line 12, characters 11-17:
 12 |   type s = Foo4.t t
                 ^^^^^^
@@ -359,6 +359,6 @@ end = struct
   type s = Foo4.t t
 end;;
 [%%expect {|
-module rec Foo4 : sig type t = t4 end
+module rec Foo4 : sig type t = t4 [@@void] end
 and Bar4 : sig type 'a t type s = Foo4/2.t t end
 |}];;

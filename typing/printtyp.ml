@@ -1289,42 +1289,40 @@ let rec tree_of_type_decl id decl =
   let (name, args) = type_defined decl in
   let constraints = tree_of_constraints params in
   let olayout_of_layout = function
-    | Any -> Olay_any
-    | Sort (Var _) -> Olay_any
-    | Sort Value -> Olay_sort Os_value
-    | Sort Void -> Olay_sort Os_int0
-    | Immediate64 -> Olay_immediate64
-    | Immediate -> Olay_immediate
+    | Builtin_attributes.Any -> Olay_any
+    | Builtin_attributes.Value -> Olay_value
+    | Builtin_attributes.Void -> Olay_void
+    | Builtin_attributes.Immediate64 -> Olay_immediate64
+    | Builtin_attributes.Immediate -> Olay_immediate
   in
-  let ty, priv, unboxed, lay =
+  let lay =
+    Option.map olayout_of_layout
+      (Builtin_attributes.layout decl.type_attributes)
+  in
+  let ty, priv, unboxed =
     match decl.type_kind with
-    | Type_abstract {layout=lay} ->
+    | Type_abstract _ ->
         begin match ty_manifest with
-        | None -> (Otyp_abstract, Public, false, olayout_of_layout lay)
-        | Some ty ->
-            tree_of_typexp false ty, decl.type_private, false,
-            olayout_of_layout lay
+        | None -> (Otyp_abstract, Public, false)
+        | Some ty -> tree_of_typexp false ty, decl.type_private, false
         end
     | Type_variant (cstrs, rep) ->
-        let unboxed, lay =
+        let unboxed=
           match rep with
-          | Variant_unboxed l -> true, olayout_of_layout l
-          | Variant_regular | Variant_immediate -> false, Olay_any
+          | Variant_unboxed _ -> true
+          | Variant_regular | Variant_immediate -> false
         in
         tree_of_manifest (Otyp_sum (List.map tree_of_constructor cstrs)),
         decl.type_private,
-        unboxed,
-        lay
+        unboxed
     | Type_record(lbls, rep) ->
         tree_of_manifest (Otyp_record (List.map tree_of_label lbls)),
         decl.type_private,
-        (match rep with Record_unboxed _ -> true | _ -> false),
-        Olay_any
+        (match rep with Record_unboxed _ -> true | _ -> false)
     | Type_open ->
         tree_of_manifest Otyp_open,
         decl.type_private,
-        false,
-        Olay_any
+        false
   in
     { otype_name = name;
       otype_params = args;

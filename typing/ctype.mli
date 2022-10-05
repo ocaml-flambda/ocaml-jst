@@ -412,9 +412,12 @@ val mcomp : Env.t -> type_expr -> type_expr -> unit
 
 val get_unboxed_type_representation : Env.t -> type_expr -> type_expr
 
+(* Layout checking.  For convenience, on success these functions return the most
+   precise layout we found for the given type during checking (which may be an
+   upper bound). *)
 val check_decl_layout : Env.t -> type_declaration -> Type_layout.t
-  -> (unit, Type_layout.Violation.t) result
+  -> (Type_layout.t, Type_layout.Violation.t) result
 val check_type_layout : Env.t -> type_expr -> Type_layout.t
-  -> (unit, Type_layout.Violation.t) result
+  -> (Type_layout.t, Type_layout.Violation.t) result
 val constrain_type_layout : Env.t -> type_expr -> Type_layout.t
-  -> (unit, Type_layout.Violation.t) result
+  -> (Type_layout.t, Type_layout.Violation.t) result

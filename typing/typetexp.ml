@@ -262,7 +262,7 @@ and transl_type_aux env policy mode styp =
             constrain_type_layout env arg_ty Type_layout.value,
             constrain_type_layout env ret_cty.ctyp_type Type_layout.value
           with
-          | Ok (), Ok () -> ()
+          | Ok _, Ok _ -> ()
           | Error e, _ ->
             raise (Error(arg.ptyp_loc, env,
                          Non_value_function

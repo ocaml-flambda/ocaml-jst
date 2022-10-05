@@ -1886,7 +1886,7 @@ type layout_result =
    Note that this really returns an upper bound, and in particular returns [Any]
    in some edge cases (when [get_unboxed_type_representation] ran out of fuel,
    or when the type is a Tconstr that is missing from the Env *)
-let rec unboxed_type_layout env ty =
+let rec estimate_type_layout env ty =
   let open Type_layout in
   match (repr ty).desc with
   | Tconstr(p, _, _) -> begin
@@ -1914,19 +1914,20 @@ let rec unboxed_type_layout env ty =
   | Tnil -> Layout value
   | (Tlink _ | Tsubst _) -> assert false
   | Tunivar (_, layout) -> Layout layout
-  | Tpoly (ty, _) -> unboxed_type_layout env ty
+  | Tpoly (ty, _) -> estimate_type_layout env ty
   | Tpackage _ -> Layout value
 
+(* For convenience, returns the most precise layout we computed for the type
+   (which may still be an upper bound). *)
 let rec constrain_type_layout ~fixed env ty1 layout2 =
   let constrain_unboxed ty1 =
-    match unboxed_type_layout env ty1 with
+    match estimate_type_layout env ty1 with
     | Layout layout1 -> Type_layout.sublayout layout1 layout2
     | Var rlayout1 ->
-      if fixed then Type_layout.sublayout !rlayout1 layout2
+      let layout1 = !rlayout1 in
+      if fixed then Type_layout.sublayout layout1 layout2
       else
-        (* CJC XXX were we ignoring the result, previously?
-           Result.map ignore (Type_layout.intersection !rlayout1 layout2) *)
-        Result.map (fun layout1 -> rlayout1 := layout1)
+        Result.map (fun layout1 -> rlayout1 := layout1; layout1)
           (Type_layout.intersection !rlayout1 layout2)
   in
   (* This is an optimization to avoid calling [get_unboxed_type_representation]
@@ -1940,8 +1941,11 @@ let rec constrain_type_layout ~fixed env ty1 layout2 =
         end
       in
       match Type_layout.sublayout layout_bound layout2 with
-      | Ok () -> Ok ()
+      | Ok _ as ok -> ok
       | Error _ ->
+        (* CR ccasinghino: Can we improve performance by reimplementing
+           get_unboxed_type_representation and adding a layout check at each
+           iteration, rather than fully expanding? *)
         let ty1 = get_unboxed_type_representation env ty1 in
         constrain_unboxed ty1
     end
@@ -1965,7 +1969,7 @@ let check_decl_layout env decl layout =
   | { type_kind; type_manifest ; _ } ->
       match Type_layout.sublayout
               (Type_layout.layout_bound_of_kind type_kind) layout with
-      | Ok () -> Ok ()
+      | Ok _ as ok -> ok
       | Error _ as err ->
           match type_manifest with
           | None -> err
@@ -1974,10 +1978,10 @@ let check_decl_layout env decl layout =
 (* CJC XXX locations and better error reporting *)
 let constrain_type_layout_exn env ty layout =
   match constrain_type_layout env ty layout with
-  | Ok () -> ()
+  | Ok _ -> ()
   | Error err -> raise (Unify [Bad_layout (ty,err)])
 
-(* Note: Because [unboxed_type_layout] actually returns an upper bound, this
+(* Note: Because [estimate_type_layout] actually returns an upper bound, this
    function computes an innaccurate intersection in some cases.
 
    This is OK because of where it is used, which is related to gadt equations.
@@ -1989,7 +1993,7 @@ let constrain_type_layout_exn env ty layout =
 *)
 let rec intersect_type_layout env ty1 layout2 =
   let intersect_unboxed ty1 =
-    match unboxed_type_layout env ty1 with
+    match estimate_type_layout env ty1 with
     | Layout layout1 -> Type_layout.intersection layout1 layout2
     | Var rlayout1 -> Type_layout.intersection !rlayout1 layout2
        (* CJC XXX we never want to update the ref here, right? *)

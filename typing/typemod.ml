@@ -583,7 +583,9 @@ let merge_constraint initial_env remove_aliases loc sg constr =
           Typedecl.transl_with_constraint id (Some(Pident id_row))
             ~sig_env ~sig_decl:decl ~outer_env:initial_env sdecl in
         let newdecl = tdecl.typ_type in
-        check_type_decl sig_env sdecl.ptype_loc id row_id newdecl decl rs rem;
+        let newdecl =
+          check_type_decl sig_env sdecl.ptype_loc id row_id newdecl decl rs rem
+        in
         let decl_row = {decl_row with type_params = newdecl.type_params} in
         let rs' = if rs = Trec_first then Trec_not else rs in
         (Pident id, lid, Twith_type tdecl),
@@ -597,7 +599,9 @@ let merge_constraint initial_env remove_aliases loc sg constr =
           Typedecl.transl_with_constraint id None
             ~sig_env ~sig_decl ~outer_env:initial_env sdecl in
         let newdecl = tdecl.typ_type and loc = sdecl.ptype_loc in
-        check_type_decl sig_env loc id row_id newdecl sig_decl rs rem;
+        let newdecl =
+          check_type_decl sig_env loc id row_id newdecl sig_decl rs rem
+        in
         begin match constr with
           Pwith_type _ ->
             (Pident id, lid, Twith_type tdecl),

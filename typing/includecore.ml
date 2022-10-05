@@ -422,7 +422,7 @@ and compare_variants_with_representation ~loc env params1 params2 n
   | None, Variant_immediate, Variant_immediate -> None
   | None, Variant_unboxed l1, Variant_unboxed l2 -> begin
     match Type_layout.sublayout l1 l2 with
-    | Ok () -> None
+    | Ok _ -> None
     | Error e -> Some (Layout e)
   end
   | Some err, _, _ ->
@@ -543,7 +543,7 @@ let type_declarations ?(equality = false) ~loc env ~mark name
   let err = match (decl1.type_kind, decl2.type_kind) with
       (_, Type_abstract { layout }) ->
        (match Ctype.check_decl_layout env decl1 layout with
-        | Ok () -> None
+        | Ok _ -> None
         | Error v -> Some (Layout v))
     | (Type_variant (cstrs1, rep1), Type_variant (cstrs2, rep2)) ->
         if mark then begin

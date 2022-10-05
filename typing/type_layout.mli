@@ -46,14 +46,16 @@ val void : t
 val equal : t -> t -> bool
 val intersection : t -> t -> (t, Violation.t) Result.t
 
-(** [sublayout t1 t2] returns [Ok ()] iff [t1] is a sublayout of
+(** [sublayout t1 t2] returns [Ok t1] iff [t1] is a sublayout of
     of [t2].  The current hierarchy is:
 
     Any > Sort Value > Immediate64 > Immediate
     Any > Sort Void
 
-    Return [Error _] if the coercion is not possible. *)
-val sublayout : t -> t -> (unit, Violation.t) result
+    Return [Error _] if the coercion is not possible. We return a layout in the
+    success case because in some cases it saves time / is convenient to have the
+    same return type as intersection. *)
+val sublayout : t -> t -> (t, Violation.t) result
 
 (** Translate a user layout annotation to a layout *)
 val of_layout_annotation :

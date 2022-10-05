@@ -173,13 +173,13 @@ let intersection l1 l2 =
 
 let sublayout sub super =
   match sub, super with
-  | _, Any -> Ok ()
+  | _, Any -> Ok sub
   | (Immediate64 | Immediate), Sort s ->
-      if equal_sort Value s then Ok ()
+      if equal_sort Value s then Ok sub
       else Error (Violation.Not_a_sublayout (sub,super))
-  | Immediate, Immediate64 -> Ok ()
+  | Immediate, Immediate64 -> Ok sub
   | _, _ ->
-      if equal sub super then Ok ()
+      if equal sub super then Ok sub
       else Error (Violation.Not_a_sublayout (sub,super))
 
 (** This is used in reify.  We default to value as a hack to avoid having rigid sort

@@ -93,13 +93,10 @@ and out_alloc_mode =
   | Oam_global
   | Oam_unknown
 
-and out_sort =
-  | Os_value
-  | Os_int0
-
-and out_layout =
+and out_layout_annot =
   | Olay_any
-  | Olay_sort of out_sort
+  | Olay_value
+  | Olay_void
   | Olay_immediate64
   | Olay_immediate
 
@@ -136,7 +133,7 @@ and out_type_decl =
     otype_params: out_type_param list;
     otype_type: out_type;
     otype_private: Asttypes.private_flag;
-    otype_layout: out_layout;
+    otype_layout: out_layout_annot option;
     otype_unboxed: bool;
     otype_cstrs: (out_type * out_type) list }
 and out_extension_constructor =

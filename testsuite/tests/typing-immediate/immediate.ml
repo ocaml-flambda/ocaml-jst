@@ -42,7 +42,7 @@ module A :
     type r = s
     type p = q [@@immediate]
     and q = int
-    type o = Foo | Bar | Baz
+    type o = Foo | Bar | Baz [@@immediate]
     type m = int [@@immediate64]
     type n = m [@@immediate]
   end
@@ -138,7 +138,8 @@ end;;
 Line 2, characters 2-41:
 2 |   type t = Foo of int | Bar [@@immediate]
       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Error: This type has layout value, which is not a sublayout of immediate.
+Error: This type constructor expands to type t but is used here with type 'a
+       t has layout value, which is not a sublayout of immediate.
 |}];;
 
 (* Cannot directly declare a non-immediate type as immediate (record) *)
@@ -149,7 +150,8 @@ end;;
 Line 2, characters 2-38:
 2 |   type t = { foo : int } [@@immediate]
       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Error: This type has layout value, which is not a sublayout of immediate.
+Error: This type constructor expands to type t but is used here with type 'a
+       t has layout value, which is not a sublayout of immediate.
 |}];;
 
 (* Not guaranteed that t is immediate, so this is an invalid declaration *)
