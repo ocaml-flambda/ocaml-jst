@@ -1585,9 +1585,9 @@ let instance_prim_mode (desc : Primitive.description) ty =
 (**** Instantiation with parameter substitution ****)
 
 let unify' = (* Forward declaration *)
-  ref (fun _env _ty1 _ty2 -> raise (Unify []))
+  ref (fun ~ignore_layouts:_ _env _ty1 _ty2 -> raise (Unify []))
 
-let subst env level priv abbrev ty params args body =
+let subst env ~ignore_layouts level priv abbrev ty params args body =
   if List.length params <> List.length args then raise (Unify []);
   let old_level = !current_level in
   current_level := level;
@@ -1604,8 +1604,8 @@ let subst env level priv abbrev ty params args body =
     abbreviations := abbrev;
     let (params', body') = instance_parameterized_type params body in
     abbreviations := ref Mnil;
-    !unify' env body0 body';
-    List.iter2 (!unify' env) params' args;
+    !unify' ~ignore_layouts:false env body0 body';
+    List.iter2 (!unify' ~ignore_layouts env) params' args;
     current_level := old_level;
     body'
   with Unify _ as exn ->
@@ -1618,13 +1618,15 @@ let subst env level priv abbrev ty params args body =
    invariants on types are enforced (decreasing levels), and we don't
    care about efficiency here.
 *)
-let apply env params body args =
+(* CR ccasinghino: Can we actually just always ignore layouts in apply/subst? *)
+let apply ~ignore_layouts env params body args =
   try
-    subst env generic_level Public (ref Mnil) None params args body
+    subst ~ignore_layouts env generic_level Public (ref Mnil) None params
+      args body
   with
     Unify _ -> raise Cannot_apply
 
-let () = Subst.ctype_apply_env_empty := apply Env.empty
+let () = Subst.ctype_apply_env_empty := apply ~ignore_layouts:true Env.empty
 
                               (****************************)
                               (*  Abbreviation expansion  *)
@@ -1703,7 +1705,10 @@ let expand_abbrev_gen kind find_type_expansion env ty =
           | (params, body, lv) ->
             (* prerr_endline
               ("add a "^string_of_kind kind^" expansion for "^Path.name path);*)
-            let ty' = subst env level kind abbrev (Some ty) params args body in
+            let ty' =
+              subst ~ignore_layouts:false env level kind abbrev (Some ty) params
+                args body
+            in
             (* For gadts, remember type as non exportable *)
             (* The ambiguous level registered for ty' should be the highest *)
             if !trace_gadt_instances then begin
@@ -1859,7 +1864,7 @@ let get_unboxed_type_representation env ty =
         -> begin
           let ty2 = match ty2.desc with Tpoly (t, _) -> t | _ -> ty2 in
           fuel := !fuel - 1;
-          match apply env type_params ty2 args with
+          match apply ~ignore_layouts:false env type_params ty2 args with
           | ty -> loop ty
           | exception Cannot_apply -> ty
         end
@@ -2015,11 +2020,9 @@ let enforce_constraints env ty =
     {desc = Tconstr (path, args, _abbrev); level = level} ->
       begin try
       let decl = Env.find_type path env in
-      (* CJC XXX what is this doing?  I could compute the layout from the type
-         kind, if needed *)
         ignore
-          (subst env level Public (ref Mnil) None decl.type_params args
-             (newvar2 level Type_layout.any))
+          (subst ~ignore_layouts:false env level Public (ref Mnil) None
+             decl.type_params args (newvar2 level Type_layout.any))
       with Not_found -> ()
       end
   | _ ->
@@ -3465,7 +3468,7 @@ let unify_gadt ~equations_level:lev ~allow_recursive (env:Env.t ref) ty1 ty2 =
     TypePairs.clear unify_eq_set;
     raise e
 
-let unify_var env t1 t2 =
+let unify_var ~ignore_layouts env t1 t2 =
   let t1 = repr t1 and t2 = repr t2 in
   if t1 == t2 then () else
   match t1.desc, t2.desc with
@@ -3477,7 +3480,7 @@ let unify_var env t1 t2 =
         occur env t1 t2;
         update_level env t1.level t2;
         update_scope t1.scope t2;
-        constrain_type_layout_exn env t2 !layout;
+        if not ignore_layouts then constrain_type_layout_exn env t2 !layout;
         (* CJC XXX make an example that goes wrong if I delete this *)
         link_type t1 t2;
         reset_trace_gadt_instances reset_tracing;
@@ -3490,6 +3493,8 @@ let unify_var env t1 t2 =
       unify (ref env) t1 t2
 
 let _ = unify' := unify_var
+
+let unify_var env t1 t2 = unify_var ~ignore_layouts:false env t1 t2
 
 let unify_pairs env ty1 ty2 pairs =
   univar_pairs := pairs;
@@ -4541,8 +4546,9 @@ let rec build_subtype env visited loops posi level t =
         Tobject _ when posi && not (opened_object t') ->
           let cl_abbr, body = find_cltype_for_path env p in
           let ty =
-            subst env !current_level Public abbrev None
-              cl_abbr.type_params tl body in
+            subst ~ignore_layouts:false env !current_level Public abbrev None
+              cl_abbr.type_params tl body
+          in
           let ty = repr ty in
           let ty1, tl1 =
             match ty.desc with
@@ -5360,3 +5366,6 @@ let maybe_pointer_type env typ =
 
 let is_void_type env typ =
   Result.is_ok (check_type_layout env typ Type_layout.void)
+
+let apply env params body args =
+  apply ~ignore_layouts:false env params body args
