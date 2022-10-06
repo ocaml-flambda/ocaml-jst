@@ -1981,6 +1981,11 @@ let constrain_type_layout_exn env ty layout =
   | Ok _ -> ()
   | Error err -> raise (Unify [Bad_layout (ty,err)])
 
+let estimate_type_layout env typ =
+  match estimate_type_layout env typ with
+  | Layout l -> l
+  | Var l -> !l
+
 (* Note: Because [estimate_type_layout] actually returns an upper bound, this
    function computes an innaccurate intersection in some cases.
 
@@ -1993,10 +1998,7 @@ let constrain_type_layout_exn env ty layout =
 *)
 let rec intersect_type_layout env ty1 layout2 =
   let intersect_unboxed ty1 =
-    match estimate_type_layout env ty1 with
-    | Layout layout1 -> Type_layout.intersection layout1 layout2
-    | Var rlayout1 -> Type_layout.intersection !rlayout1 layout2
-       (* CJC XXX we never want to update the ref here, right? *)
+    Type_layout.intersection (estimate_type_layout env ty1) layout2
   in
   match (repr ty1).desc with
   | Tpoly (ty, _) -> intersect_type_layout env ty layout2

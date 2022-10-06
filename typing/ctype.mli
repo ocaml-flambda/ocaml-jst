@@ -412,6 +412,10 @@ val mcomp : Env.t -> type_expr -> type_expr -> unit
 
 val get_unboxed_type_representation : Env.t -> type_expr -> type_expr
 
+(* Cheap upper bound on layout.  Will not expand unboxed types - do that first
+   if needed. *)
+val estimate_type_layout : Env.t -> type_expr -> Type_layout.t
+
 (* Layout checking.  For convenience, on success these functions return the most
    precise layout we found for the given type during checking (which may be an
    upper bound). *)

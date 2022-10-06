@@ -398,10 +398,13 @@ let transl_declaration env sdecl (id, uid) =
     match sdecl.ptype_kind with
       | Ptype_abstract ->
         let layout =
-          (* If there's no annotation and no manifest, we just default to value
-             here. We could conceivably, in the future, try to learn something
-             from the uses of the type (particularly in a group of mutually
-             recursive types). *)
+          (* - If there's no annotation and no manifest, we just default to
+               value here. We could conceivably, in the future, try to learn
+               something from the uses of the type (particularly in a group of
+               mutually recursive types).
+             - If there is a manifest, we put in a better bound for the layout
+               after translating the manifest below.
+          *)
           let default =
             if Option.is_some sdecl.ptype_manifest
             then Type_layout.any
@@ -499,6 +502,19 @@ let transl_declaration env sdecl (id, uid) =
         let no_row = not (is_fixed_type sdecl) in
         let cty = transl_simple_type env no_row Global sty in
         Some cty, Some cty.ctyp_type
+    in
+    let kind =
+      (* For abstract types with a manifest, we can avoid unnecessary expansion
+         and save time later by providing an upper bound here.  We do a quick
+         estimate, (in particular not bothering to expand unboxed types), but it
+         would be sound to leave in "any". *)
+      match kind, man with
+      | Type_abstract _, Some typ -> begin
+          match layout_annotation with
+          | Some _ -> kind
+          | None -> Type_abstract {layout = Ctype.estimate_type_layout env typ}
+        end
+      | (((Type_record _ | Type_variant _ | Type_open), _) | (_, None)) -> kind
     in
     let arity = List.length params in
     let decl =
