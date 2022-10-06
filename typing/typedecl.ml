@@ -1818,8 +1818,8 @@ let transl_with_constraint id row_path ~sig_env ~sig_decl ~outer_env sdecl =
 
 let abstract_type_decl ~injective layout params =
   let arity = List.length params in
-  let params = List.map Ctype.newvar params in
   Ctype.begin_def();
+  let params = List.map Ctype.newvar params in
   let decl =
     { type_params = params;
       type_arity = arity;
