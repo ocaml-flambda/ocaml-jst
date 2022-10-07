@@ -304,6 +304,15 @@ type safe_again = Any : 'a stream -> safe_again
     the type declarations that would be required to check these cases
     (unproductive cycles in the type declaration) are already rejected by the
     type-checker, before separability checking. See below *)
+(* CJC XXX The old error message was better:
+[%%expect{|
+type 'a id = Id of 'a [@@unboxed]
+Line 2, characters 0-21:
+2 | type cycle = cycle id
+    ^^^^^^^^^^^^^^^^^^^^^
+Error: The type abbreviation cycle is cyclic
+|}];;
+*)
 type 'a id = Id of 'a [@@unboxed]
 type cycle = cycle id
 [%%expect{|
@@ -311,5 +320,7 @@ type 'a id = Id of 'a [@@unboxed]
 Line 2, characters 0-21:
 2 | type cycle = cycle id
     ^^^^^^^^^^^^^^^^^^^^^
-Error: The type abbreviation cycle is cyclic
+Error: This type constructor expands to type cycle = cycle id
+       but is used here with type 'a
+       cycle has layout any, which is not a sublayout of value.
 |}];;
