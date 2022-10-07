@@ -301,6 +301,12 @@ let transl_labels env closed lbls =
   lbls, lbls'
 
 let transl_constructor_arguments env closed = function
+  (* CJC XXX I believe we want to do some layout checking here.  In particular,
+     we probably want each individual type in the Cstr_tuple or Cstr_record to
+     have a sublayout of (Sort 'k).  But that's not being checked now.
+     If I write [type _ foo = Bar : int * 't -> int foo] is 't getting any?
+     We'd also need to make sure we're defaulting these, somewhere.
+  *)
   | Pcstr_tuple l ->
       let l = List.map (transl_simple_type env closed Global) l in
       Types.Cstr_tuple (List.map (fun t -> t.ctyp_type) l),
@@ -587,7 +593,7 @@ module TypeMap = Btype.TypeMap
 
 let rec check_constraints_rec env loc visited ty =
   let check_layout_value ~loc ~layout_loc typ =
-    match Ctype.constrain_type_layout env ty Type_layout.value with
+    match Ctype.constrain_type_layout env typ Type_layout.value with
     | Ok _ -> ()
     | Error err -> raise(Error(loc, Layout_value {lloc=layout_loc; typ; err}))
   in
