@@ -145,13 +145,12 @@ let enter_type rec_flag env sdecl (id, uid) =
   if not needed then env else
   let decl =
     { type_params =
-        (* CJC XXX: I am confused about enter_type.  It's used for temp_env, which I
-           thought got thrown away, but info from it must stick around somehow because if
-           I make this a sort variable, compilation loops on camlinternalformatbasics
-           while checking recursive functions later in the file. *)
+        (* CR ccasinghino: At the moment, we're defaulting type parameters in
+           recursive type declarations to layout value.  We could probably allow
+           (Sort 'l) and default to value if it's not determined by use. *)
         List.map (fun ({ptyp_attributes;_},_) ->
           let layout =
-            Type_layout.of_attributes ~default:(Type_layout.value)
+            Type_layout.of_attributes ~default:Type_layout.value
               ptyp_attributes
           in
           Btype.newgenvar layout) sdecl.ptype_params;
