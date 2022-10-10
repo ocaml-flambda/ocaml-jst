@@ -2013,6 +2013,28 @@ let rec intersect_type_layout env ty1 layout2 =
     let ty1 = get_unboxed_type_representation env ty1 in
     intersect_unboxed ty1
 
+(* Unification involves checking layouts.  Unification sometimes occurs before
+   the checking for circular / ill-founded types.  Layout checking does things
+   that blow up on those types.
+
+   Solution: Sometimes, remember the relevant layout checks and perform them
+   after unification instead.  This is done in just one place:
+   Type_decl.update_type. *)
+let delayed_layout_checks : (Env.t * type_expr * Type_layout.t) list ref =
+  ref []
+
+let check_or_delay_layouts ~delay_layouts env ty layout =
+  if delay_layouts then begin
+    delayed_layout_checks := (env,ty,layout) :: !delayed_layout_checks
+  end
+  else
+    constrain_type_layout_exn env ty layout
+
+let delayed_layout_checks () =
+  let checks = !delayed_layout_checks in
+  delayed_layout_checks := [];
+  checks
+
 (* Make sure that the type parameters of the type constructor [ty]
    respect the type constraints *)
 let enforce_constraints env ty =
@@ -2888,7 +2910,7 @@ let unify_eq t1 t2 =
   | Pattern ->
       TypePairs.mem unify_eq_set (order_type_pair t1 t2)
 
-let unify1_var env t1 t2 =
+let unify1_var ~delay_layouts env t1 t2 =
   let layout = match t1 with
     | {desc=Tvar (_,layout)} -> !layout
     | _ -> assert false
@@ -2900,7 +2922,7 @@ let unify1_var env t1 t2 =
   try
     update_level env t1.level t2;
     update_scope t1.scope t2;
-    constrain_type_layout_exn env t2 layout
+    check_or_delay_layouts ~delay_layouts env t2 layout
   with Unify _ as e ->
     t1.desc <- d1;
     raise e
@@ -2911,7 +2933,7 @@ let record_equation t1 t2 =
   | Forbidden -> assert false
   | Allowed { equated_types } -> TypePairs.add equated_types (t1, t2)
 
-let rec unify (env:Env.t ref) t1 t2 =
+let rec unify ~delay_layouts (env:Env.t ref) t1 t2 =
   (* First step: special cases (optimizations) *)
   if t1 == t2 then () else
   let t1 = repr t1 in
@@ -2922,13 +2944,13 @@ let rec unify (env:Env.t ref) t1 t2 =
     type_changed := true;
     begin match (t1.desc, t2.desc) with
       (Tvar _, Tconstr _) when deep_occur t1 t2 ->
-        unify2 env t1 t2
+        unify2 ~delay_layouts env t1 t2
     | (Tconstr _, Tvar _) when deep_occur t2 t1 ->
-        unify2 env t1 t2
+        unify2 ~delay_layouts env t1 t2
     | (Tvar _, _) ->
-        unify1_var !env t1 t2
+        unify1_var ~delay_layouts !env t1 t2
     | (_, Tvar _) ->
-        unify1_var !env t2 t1
+        unify1_var ~delay_layouts !env t2 t1
     | (Tunivar _, Tunivar _) ->
         unify_univar t1 t2 !univar_pairs;
         update_level !env t1.level t2;
@@ -2944,6 +2966,7 @@ let rec unify (env:Env.t ref) t1 t2 =
                  || has_cached_expansion p2 !a2) ->
         update_level !env t1.level t2;
         update_scope t1.scope t2;
+        (* CJC XXX do I need to check equality of layotus *)
         link_type t1 t2
     | (Tconstr (p1, [], _), Tconstr (p2, [], _))
       when Env.has_local_constraints !env
@@ -2951,21 +2974,21 @@ let rec unify (env:Env.t ref) t1 t2 =
         (* Do not use local constraints more than necessary *)
         begin try
           if find_expansion_scope !env p1 > find_expansion_scope !env p2 then
-            unify env t1 (try_expand_once !env t2)
+            unify ~delay_layouts env t1 (try_expand_once !env t2)
           else
-            unify env (try_expand_once !env t1) t2
+            unify ~delay_layouts env (try_expand_once !env t1) t2
         with Cannot_expand ->
-          unify2 env t1 t2
+          unify2 ~delay_layouts env t1 t2
         end
     | _ ->
-        unify2 env t1 t2
+        unify2 ~delay_layouts env t1 t2
     end;
     reset_trace_gadt_instances reset_tracing;
   with Unify trace ->
     reset_trace_gadt_instances reset_tracing;
     raise( Unify (Trace.diff t1 t2 :: trace) )
 
-and unify2 env t1 t2 =
+and unify2 ~delay_layouts env t1 t2 =
   (* Second step: expansion of abbreviations *)
   (* Expansion may change the representative of the types. *)
   ignore (expand_head_unif !env t1);
@@ -2991,12 +3014,12 @@ and unify2 env t1 t2 =
     else (t1, t2)
   in
   if unify_eq t1 t1' || not (unify_eq t2 t2') then
-    unify3 env t1 t1' t2 t2'
+    unify3 ~delay_layouts env t1 t1' t2 t2'
   else
-    try unify3 env t2 t2' t1 t1' with Unify trace ->
+    try unify3 ~delay_layouts env t2 t2' t1 t1' with Unify trace ->
       raise (Unify (Trace.swap trace))
 
-and unify3 env t1 t1' t2 t2' =
+and unify3 ~delay_layouts env t1 t1' t2 t2' =
   (* Third step: truly unification *)
   (* Assumes either [t1 == t1'] or [t2 != t2'] *)
   let d1 = t1'.desc and d2 = t2'.desc in
@@ -3009,15 +3032,15 @@ and unify3 env t1 t1' t2 t2' =
   | (Tvar (_, layout), _) ->
       occur !env t1' t2;
       occur_univar !env t2;
-      constrain_type_layout_exn !env t2' !layout;
+      check_or_delay_layouts ~delay_layouts !env t2' !layout;
       link_type t1' t2;
   | (_, Tvar (_, layout)) ->
       occur !env t2' t1;
       occur_univar !env t1;
-      constrain_type_layout_exn !env t1' !layout;
+      check_or_delay_layouts ~delay_layouts !env t1' !layout;
       link_type t2' t1;
   | (Tfield _, Tfield _) -> (* special case for GADTs *)
-      unify_fields env t1' t2'
+      unify_fields ~delay_layouts env t1' t2'
   | _ ->
     begin match !umode with
     | Expression ->
@@ -3038,24 +3061,25 @@ and unify3 env t1 t1' t2 t2' =
                not (is_optional l1 || is_optional l2)) ->
           unify_alloc_mode a1 a2;
           unify_alloc_mode r1 r2;
-          unify  env t1 t2; unify env  u1 u2;
+          unify ~delay_layouts env t1 t2;
+          unify ~delay_layouts env u1 u2;
           begin match commu_repr c1, commu_repr c2 with
             Clink r, c2 -> set_commu r c2
           | c1, Clink r -> set_commu r c1
           | _ -> ()
           end
       | (Ttuple tl1, Ttuple tl2) ->
-          unify_list env tl1 tl2
+          unify_list ~delay_layouts env tl1 tl2
       | (Tconstr (p1, tl1, _), Tconstr (p2, tl2, _)) when Path.same p1 p2 ->
           if !umode = Expression || !equations_generation = Forbidden then
-            unify_list env tl1 tl2
+            unify_list ~delay_layouts env tl1 tl2
           else if !assume_injective then
             set_mode_pattern ~generate:!equations_generation ~injective:false
               ~allow_recursive:!allow_recursive_equation
-              (fun () -> unify_list env tl1 tl2)
+              (fun () -> unify_list ~delay_layouts env tl1 tl2)
           else if in_current_module p1 (* || in_pervasives p1 *)
                   || List.exists (expands_to_datatype !env) [t1'; t1; t2] then
-            unify_list env tl1 tl2
+            unify_list ~delay_layouts env tl1 tl2
           else
             let inj =
               try List.map Variance.(mem Inj)
@@ -3064,12 +3088,12 @@ and unify3 env t1 t1' t2 t2' =
             in
             List.iter2
               (fun i (t1, t2) ->
-                if i then unify env t1 t2 else
+                if i then unify ~delay_layouts env t1 t2 else
                 set_mode_pattern ~generate:Forbidden ~injective:false
                   ~allow_recursive:!allow_recursive_equation
                   begin fun () ->
                     let snap = snapshot () in
-                    try unify env t1 t2 with Unify _ ->
+                    try unify ~delay_layouts env t1 t2 with Unify _ ->
                       backtrack snap;
                       reify env t1; reify env t2
                   end)
@@ -3103,7 +3127,7 @@ and unify3 env t1 t1' t2 t2' =
             record_equation t1' t2'
           )
       | (Tobject (fi1, nm1), Tobject (fi2, _)) ->
-          unify_fields env fi1 fi2;
+          unify_fields ~delay_layouts env fi1 fi2;
           (* Type [t2'] may have been instantiated by [unify_fields] *)
           (* XXX One should do some kind of unification... *)
           begin match (repr t2').desc with
@@ -3115,10 +3139,10 @@ and unify3 env t1 t1' t2 t2' =
           end
       | (Tvariant row1, Tvariant row2) ->
           if !umode = Expression then
-            unify_row env row1 row2
+            unify_row ~delay_layouts env row1 row2
           else begin
             let snap = snapshot () in
-            try unify_row env row1 row2
+            try unify_row ~delay_layouts env row1 row2
             with Unify _ ->
               backtrack snap;
               reify env t1';
@@ -3132,8 +3156,8 @@ and unify3 env t1 t1' t2 t2' =
           begin match field_kind_repr kind with
             Fvar r when f <> dummy_method ->
               set_kind r Fabsent;
-              if d2 = Tnil then unify env rem t2'
-              else unify env (newty2 rem.level Tnil) rem
+              if d2 = Tnil then unify ~delay_layouts env rem t2'
+              else unify ~delay_layouts env (newty2 rem.level Tnil) rem
           | _      ->
               if f = dummy_method then
                 raise (Unify Trace.[Obj Self_cannot_be_closed])
@@ -3145,12 +3169,12 @@ and unify3 env t1 t1' t2 t2' =
       | (Tnil, Tnil) ->
           ()
       | (Tpoly (t1, []), Tpoly (t2, [])) ->
-          unify env t1 t2
+        unify ~delay_layouts env t1 t2
       | (Tpoly (t1, tl1), Tpoly (t2, tl2)) ->
-          enter_poly !env univar_pairs t1 tl1 t2 tl2 (unify env)
+          enter_poly !env univar_pairs t1 tl1 t2 tl2 (unify ~delay_layouts env)
       | (Tpackage (p1, n1, tl1), Tpackage (p2, n2, tl2)) ->
           begin try
-            unify_package !env (unify_list env)
+            unify_package !env (unify_list ~delay_layouts env)
               t1.level p1 n1 tl1 t2.level p2 n2 tl2
           with Not_found ->
             if !umode = Expression then raise (Unify []);
@@ -3177,10 +3201,10 @@ and unify3 env t1 t1' t2 t2' =
       raise (Unify trace)
   end
 
-and unify_list env tl1 tl2 =
+and unify_list ~delay_layouts env tl1 tl2 =
   if List.length tl1 <> List.length tl2 then
     raise (Unify []);
-  List.iter2 (unify env) tl1 tl2
+  List.iter2 (unify ~delay_layouts env) tl1 tl2
 
 (* Build a fresh row variable for unification *)
 and make_rowvar level use1 rest1 use2 rest2  =
@@ -3202,7 +3226,7 @@ and make_rowvar level use1 rest1 use2 rest2  =
   if use1 then rest1 else
   if use2 then rest2 else newvar2 ?name level Type_layout.value
 
-and unify_fields env ty1 ty2 =          (* Optimization *)
+and unify_fields ~delay_layouts env ty1 ty2 =          (* Optimization *)
   let (fields1, rest1) = flatten_fields ty1
   and (fields2, rest2) = flatten_fields ty2 in
   let (pairs, miss1, miss2) = associate_fields fields1 fields2 in
@@ -3210,8 +3234,8 @@ and unify_fields env ty1 ty2 =          (* Optimization *)
   let va = make_rowvar (min l1 l2) (miss2=[]) rest1 (miss1=[]) rest2 in
   let d1 = rest1.desc and d2 = rest2.desc in
   try
-    unify env (build_fields l1 miss1 va) rest2;
-    unify env rest1 (build_fields l2 miss2 va);
+    unify ~delay_layouts env (build_fields l1 miss1 va) rest2;
+    unify ~delay_layouts env rest1 (build_fields l2 miss2 va);
     List.iter
       (fun (n, k1, t1, k2, t2) ->
         unify_kind k1 k2;
@@ -3220,7 +3244,7 @@ and unify_fields env ty1 ty2 =          (* Optimization *)
             update_level !env va.level t1;
             update_scope va.scope t1
           end;
-          unify env t1 t2
+          unify ~delay_layouts env t1 t2
         with Unify trace ->
           raise( Unify (Trace.incompatible_fields n t1 t2 :: trace) )
       )
@@ -3240,7 +3264,7 @@ and unify_kind k1 k2 =
   | (Fpresent, Fpresent)          -> ()
   | _                             -> assert false
 
-and unify_row env row1 row2 =
+and unify_row ~delay_layouts env row1 row2 =
   let row1 = row_repr row1 and row2 = row_repr row2 in
   let rm1 = row_more row1 and rm2 = row_more row2 in
   if unify_eq rm1 rm2 then () else
@@ -3316,7 +3340,7 @@ and unify_row env row1 row2 =
       update_level !env rm.level (newgenty (Tvariant row));
     if row_fixed row then
       if more == rm then () else
-      if is_Tvar rm then link_type rm more else unify env rm more
+      if is_Tvar rm then link_type rm more else unify ~delay_layouts env rm more
     else
       let ty = newgenty (Tvariant {row0 with row_fields = rest}) in
       update_level !env rm.level ty;
@@ -3329,7 +3353,7 @@ and unify_row env row1 row2 =
     set_more row1 r2;
     List.iter
       (fun (l,f1,f2) ->
-        try unify_row_field env fixed1 fixed2 rm1 rm2 l f1 f2
+        try unify_row_field ~delay_layouts env fixed1 fixed2 rm1 rm2 l f1 f2
         with Unify trace ->
           raise Trace.( Unify( Variant (Incompatible_types_for l) :: trace ))
       )
@@ -3342,7 +3366,7 @@ and unify_row env row1 row2 =
     set_type_desc rm1 md1; set_type_desc rm2 md2; raise exn
   end
 
-and unify_row_field env fixed1 fixed2 rm1 rm2 l f1 f2 =
+and unify_row_field ~delay_layouts env fixed1 fixed2 rm1 rm2 l f1 f2 =
   let f1 = row_field_repr f1 and f2 = row_field_repr f2 in
   let if_not_fixed (pos,fixed) f =
     match fixed with
@@ -3356,7 +3380,7 @@ and unify_row_field env fixed1 fixed2 rm1 rm2 l f1 f2 =
     | _ -> true in
   if f1 == f2 then () else
   match f1, f2 with
-    Rpresent(Some t1), Rpresent(Some t2) -> unify env t1 t2
+    Rpresent(Some t1), Rpresent(Some t2) -> unify ~delay_layouts env t1 t2
   | Rpresent None, Rpresent None -> ()
   | Reither(c1, tl1, m1, e1), Reither(c2, tl2, m2, e2) ->
       if e1 == e2 then () else
@@ -3365,7 +3389,7 @@ and unify_row_field env fixed1 fixed2 rm1 rm2 l f1 f2 =
         (* PR#7496 *)
         let f = Reither (c1 || c2, [], m1 || m2, ref None) in
         set_row_field e1 f; set_row_field e2 f;
-        List.iter2 (unify env) tl1 tl2
+        List.iter2 (unify ~delay_layouts env) tl1 tl2
       end
       else let redo =
         (m1 || m2 || either_fixed ||
@@ -3373,10 +3397,12 @@ and unify_row_field env fixed1 fixed2 rm1 rm2 l f1 f2 =
         begin match tl1 @ tl2 with [] -> false
         | t1 :: tl ->
             if c1 || c2 then raise (Unify []);
-            List.iter (unify env t1) tl;
+            List.iter (unify ~delay_layouts env t1) tl;
             !e1 <> None || !e2 <> None
         end in
-      if redo then unify_row_field env fixed1 fixed2 rm1 rm2 l f1 f2 else
+      if redo
+      then unify_row_field ~delay_layouts env fixed1 fixed2 rm1 rm2 l f1 f2
+      else
       let tl1 = List.map repr tl1 and tl2 = List.map repr tl2 in
       let rec remq tl = function [] -> []
         | ty :: tl' ->
@@ -3393,7 +3419,7 @@ and unify_row_field env fixed1 fixed2 rm1 rm2 l f1 f2 =
         [], [] -> ()
       | (tu1::tlu1), _ :: _ ->
           (* Attempt to merge all the types containing univars *)
-          List.iter (unify env tu1) (tlu1@tlu2)
+          List.iter (unify ~delay_layouts env tu1) (tlu1@tlu2)
       | (tu::_, []) | ([], tu::_) -> occur_univar !env tu
       end;
       (* Is this handling of levels really principal? *)
@@ -3422,7 +3448,7 @@ and unify_row_field env fixed1 fixed2 rm1 rm2 l f1 f2 =
           let rm = repr rm1 in
           update_level !env rm.level t2;
           update_scope rm.scope t2;
-          (try List.iter (fun t1 -> unify env t1 t2) tl
+          (try List.iter (fun t1 -> unify ~delay_layouts env t1 t2) tl
            with exn -> e1 := None; raise exn)
         )
   | Rpresent(Some t1), Reither(false, tl, _, e2) ->
@@ -3431,7 +3457,7 @@ and unify_row_field env fixed1 fixed2 rm1 rm2 l f1 f2 =
           let rm = repr rm2 in
           update_level !env rm.level t1;
           update_scope rm.scope t1;
-          (try List.iter (unify env t1) tl
+          (try List.iter (unify ~delay_layouts env t1) tl
            with exn -> e2 := None; raise exn)
         )
   | Reither(true, [], _, e1), Rpresent None ->
@@ -3441,10 +3467,10 @@ and unify_row_field env fixed1 fixed2 rm1 rm2 l f1 f2 =
   | _ -> raise (Unify [])
 
 
-let unify env ty1 ty2 =
+let unify ~delay_layouts env ty1 ty2 =
   let snap = Btype.snapshot () in
   try
-    unify env ty1 ty2
+    unify ~delay_layouts env ty1 ty2
   with
     Unify trace ->
       undo_compress snap;
@@ -3459,7 +3485,7 @@ let unify_gadt ~equations_level:lev ~allow_recursive (env:Env.t ref) ty1 ty2 =
       ~generate:(Allowed { equated_types })
       ~injective:true
       ~allow_recursive
-      (fun () -> unify env ty1 ty2);
+      (fun () -> unify ~delay_layouts:false env ty1 ty2);
     gadt_equations_level := None;
     TypePairs.clear unify_eq_set;
     equated_types
@@ -3468,19 +3494,20 @@ let unify_gadt ~equations_level:lev ~allow_recursive (env:Env.t ref) ty1 ty2 =
     TypePairs.clear unify_eq_set;
     raise e
 
-let unify_var ~ignore_layouts env t1 t2 =
+let unify_var ~delay_layouts ~ignore_layouts env t1 t2 =
   let t1 = repr t1 and t2 = repr t2 in
   if t1 == t2 then () else
   match t1.desc, t2.desc with
     Tvar _, Tconstr _ when deep_occur t1 t2 ->
-      unify (ref env) t1 t2
+      unify ~delay_layouts (ref env) t1 t2
   | Tvar (_,layout), _ ->
       let reset_tracing = check_trace_gadt_instances env in
       begin try
         occur env t1 t2;
         update_level env t1.level t2;
         update_scope t1.scope t2;
-        if not ignore_layouts then constrain_type_layout_exn env t2 !layout;
+        if not ignore_layouts then
+          check_or_delay_layouts ~delay_layouts env t2 !layout;
         (* CJC XXX make an example that goes wrong if I delete this *)
         link_type t1 t2;
         reset_trace_gadt_instances reset_tracing;
@@ -3490,20 +3517,23 @@ let unify_var ~ignore_layouts env t1 t2 =
         raise (Unify expanded_trace)
       end
   | _ ->
-      unify (ref env) t1 t2
+      unify ~delay_layouts (ref env) t1 t2
 
-let _ = unify' := unify_var
+let _ = unify' := unify_var ~delay_layouts:false
 
-let unify_var env t1 t2 = unify_var ~ignore_layouts:false env t1 t2
+let unify_var env t1 t2 =
+  unify_var ~delay_layouts:false ~ignore_layouts:false env t1 t2
 
-let unify_pairs env ty1 ty2 pairs =
+let unify_pairs ~delay_layouts env ty1 ty2 pairs =
   univar_pairs := pairs;
-  unify env ty1 ty2
+  unify ~delay_layouts env ty1 ty2
 
 let unify env ty1 ty2 =
-  unify_pairs (ref env) ty1 ty2 []
+  unify_pairs ~delay_layouts:false (ref env) ty1 ty2 []
 
-
+let unify_delaying_layout_checks env ty1 ty2 =
+  unify_pairs ~delay_layouts:true (ref env) ty1 ty2 [];
+  delayed_layout_checks ()
 
 (**** Special cases of unification ****)
 
@@ -4891,7 +4921,8 @@ let subtype env ty1 ty2 =
   function () ->
     List.iter
       (function (trace0, t1, t2, pairs) ->
-         try unify_pairs (ref env) t1 t2 pairs with Unify trace ->
+         try unify_pairs ~delay_layouts:false (ref env) t1 t2 pairs
+         with Unify trace ->
            raise (Subtype (expand_trace env (List.rev trace0),
                            List.tl trace)))
       (List.rev cstrs)

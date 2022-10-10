@@ -138,7 +138,7 @@ end;;
 Line 2, characters 2-41:
 2 |   type t = Foo of int | Bar [@@immediate]
       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Error: This type constructor expands to type t but is used here with type 'a
+Error:
        t has layout value, which is not a sublayout of immediate.
 |}];;
 
@@ -150,7 +150,7 @@ end;;
 Line 2, characters 2-38:
 2 |   type t = { foo : int } [@@immediate]
       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Error: This type constructor expands to type t but is used here with type 'a
+Error:
        t has layout value, which is not a sublayout of immediate.
 |}];;
 

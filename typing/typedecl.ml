@@ -178,12 +178,14 @@ let enter_type rec_flag env sdecl (id, uid) =
 let update_type temp_env env id loc =
   let path = Path.Pident id in
   let decl = Env.find_type path temp_env in
-  match decl.type_manifest with None -> ()
+  match decl.type_manifest with None -> assert false
   | Some ty ->
       let params =
         List.map (fun _ -> Ctype.newvar Type_layout.any) decl.type_params
       in
-      try Ctype.unify env (Ctype.newconstr path params) ty
+      try
+        (Ctype.unify_delaying_layout_checks env (Ctype.newconstr path params) ty,
+         loc)
       with Ctype.Unify trace ->
         raise (Error(loc, Type_clash (env, trace)))
 
@@ -1138,13 +1140,14 @@ let transl_type_decl env rec_flag sdecl_list =
   (* Build the final env. *)
   let new_env = add_types_to_env decls env in
   (* Update stubs *)
-  begin match rec_flag with
-    | Asttypes.Nonrecursive -> ()
+  let delayed_layout_checks =
+    match rec_flag with
+    | Asttypes.Nonrecursive -> []
     | Asttypes.Recursive ->
-      List.iter2
+      List.map2
         (fun (id, _) sdecl -> update_type temp_env new_env id sdecl.ptype_loc)
         ids_list sdecl_list
-  end;
+  in
   (* Default away sort variables *)
   default_decls_layout decls;
   (* Generalize type declarations. *)
@@ -1167,6 +1170,17 @@ let transl_type_decl env rec_flag sdecl_list =
     decls;
   List.iter
     (check_abbrev_recursion ~orig_env:env new_env id_loc_list to_check) tdecls;
+  (* Now that we've ruled out ill-formed types, we can perform the delayed
+     layout checks. *)
+  (* Ctype.perform_delayed_layout_checks env; *)
+  List.iter (fun (checks,loc) ->
+    (* CJC XXX gross, move unify to ctype *)
+    List.iter (fun (env,ty,layout) ->
+      match Ctype.constrain_type_layout env ty layout with
+      | Ok _ -> ()
+      | Error err -> raise (Error (loc, Type_clash (env, [Bad_layout (ty,err)]))))
+      checks)
+    delayed_layout_checks;
   (* Check that all type variables are closed *)
   List.iter2
     (fun sdecl tdecl ->

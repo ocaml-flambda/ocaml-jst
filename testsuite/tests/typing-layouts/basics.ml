@@ -142,8 +142,7 @@ and s5 = string;;
 Line 3, characters 0-15:
 3 | and s5 = string;;
     ^^^^^^^^^^^^^^^
-Error: This type constructor expands to type s5 = string
-       but is used here with type 'a
+Error:
        s5 has layout value, which is not a sublayout of immediate.
 |}]
 
