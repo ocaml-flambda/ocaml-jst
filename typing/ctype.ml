@@ -2020,13 +2020,12 @@ let rec intersect_type_layout env ty1 layout2 =
    Solution: Sometimes, remember the relevant layout checks and perform them
    after unification instead.  This is done in just one place:
    Type_decl.update_type. *)
-let delayed_layout_checks : (Env.t * type_expr * Type_layout.t) list ref =
+let delayed_layout_checks : (type_expr * Type_layout.t) list ref =
   ref []
 
 let check_or_delay_layouts ~delay_layouts env ty layout =
-  if delay_layouts then begin
-    delayed_layout_checks := (env,ty,layout) :: !delayed_layout_checks
-  end
+  if delay_layouts then
+    delayed_layout_checks := (ty,layout) :: !delayed_layout_checks
   else
     constrain_type_layout_exn env ty layout
 

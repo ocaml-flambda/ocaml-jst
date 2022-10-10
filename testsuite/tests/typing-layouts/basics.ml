@@ -143,7 +143,9 @@ Line 3, characters 0-15:
 3 | and s5 = string;;
     ^^^^^^^^^^^^^^^
 Error:
-       s5 has layout value, which is not a sublayout of immediate.
+       s5/2 has layout value, which is not a sublayout of immediate.
+       Line 3, characters 0-12:
+         Definition of type s5/1
 |}]
 
 type 'a [@any] t4 = 'a

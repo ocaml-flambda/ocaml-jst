@@ -1175,8 +1175,8 @@ let transl_type_decl env rec_flag sdecl_list =
   (* Ctype.perform_delayed_layout_checks env; *)
   List.iter (fun (checks,loc) ->
     (* CJC XXX gross, move unify to ctype *)
-    List.iter (fun (env,ty,layout) ->
-      match Ctype.constrain_type_layout env ty layout with
+    List.iter (fun (ty,layout) ->
+      match Ctype.constrain_type_layout new_env ty layout with
       | Ok _ -> ()
       | Error err -> raise (Error (loc, Type_clash (env, [Bad_layout (ty,err)]))))
       checks)
