@@ -1822,59 +1822,29 @@ let expand_head_opt env ty =
 
 (* We use expand_head_opt version of expand_head to get access
    to the manifest type of private abbreviations. *)
-
-(* [get_unboxed_type_representation] used to take a fuel parameter, to guard
-   against certain kinds of cyclic types.  With the addition of layout checking
-   in unification, cycles are even more of a problem:
-   [get_unboxed_type_representation] calls [subst], which can create variables
-   and unify them, which requires layout checking, which can call
-   [get_unboxed_type_representation].
-
-   This arises, e.g., in:
-
-     type 'a id = Id of 'a [@@unboxed] [@@any]
-     type cycle = cycle id
-
-   (The [@@any] annotation here is not necessary presently, but we may chose to
-   default [id]'s layout to value in the future).
-
-   To guard against this loop, we move the fuel to a ref outside of
-   [get_unboxed_type_representation], so it is decreased not just when it
-   directly calls itself, but also for calls that happen through [apply] ->
-   [subst] -> [unify] -> [constrain_type_layout].
-*)
-let starting_fuel = 100
-let fuel = ref starting_fuel
-
-(* Do not give too much fuel: PR#7424 *)
-let get_unboxed_type_representation env ty =
-  let old_fuel = !fuel in
-  let rec loop ty =
-    if !fuel < 0 then ty else
-    let ty = repr (expand_head_opt env ty) in
-    match ty.desc with
-    | Tconstr (p, args, _) ->
-      begin match Env.find_type p env with
-      | exception Not_found -> ty
-      | {type_params; type_kind =
-           Type_record ([{ld_type = ty2; _}], Record_unboxed _)
-         | Type_variant ([{cd_args = Cstr_tuple [ty2]; _}], Variant_unboxed _)
-         | Type_variant ([{cd_args = Cstr_record [{ld_type = ty2; _}]; _}],
-                         Variant_unboxed _)}
-        -> begin
-          let ty2 = match ty2.desc with Tpoly (t, _) -> t | _ -> ty2 in
-          fuel := !fuel - 1;
-          match apply ~ignore_layouts:false env type_params ty2 args with
-          | ty -> loop ty
-          | exception Cannot_apply -> ty
-        end
-      | _ -> ty
-      end
+let rec get_unboxed_type_representation env ty fuel =
+  if fuel < 0 then ty else
+  let ty = repr (expand_head_opt env ty) in
+  match ty.desc with
+  | Tconstr (p, args, _) ->
+    begin match Env.find_type p env with
+    | exception Not_found -> ty
+    | {type_params; type_kind =
+         Type_record ([{ld_type = ty2; _}], Record_unboxed _)
+       | Type_variant ([{cd_args = Cstr_tuple [ty2]; _}], Variant_unboxed _)
+       | Type_variant ([{cd_args = Cstr_record [{ld_type = ty2; _}]; _}],
+                       Variant_unboxed _)}
+      ->
+        let ty2 = match ty2.desc with Tpoly (t, _) -> t | _ -> ty2 in
+        get_unboxed_type_representation env
+          (apply ~ignore_layouts:false env type_params ty2 args) (fuel - 1)
     | _ -> ty
-  in
-  let ty = loop ty in
-  fuel := old_fuel;
-  ty
+    end
+  | _ -> ty
+
+let get_unboxed_type_representation env ty =
+  (* Do not give too much fuel: PR#7424 *)
+  get_unboxed_type_representation env ty 100
 
 (* When computing a layout, we distinguish two cases because some callers might
    want to update the layout.
