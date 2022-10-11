@@ -132,12 +132,10 @@ val bar : local_ 'a -> ('b -> unit) = <fun>
 
 
 let foo (local_ x) =
-  bar x _
+  let _  = bar x _ in
+  ()
 [%%expect{|
-Line 2, characters 6-7:
-2 |   bar x _
-          ^
-Error: The value x is local, so cannot be used inside a closure that might escape
+val foo : local_ 'a -> unit = <fun>
 |}]
 (* FIXME : with expected semantics and corresponding type checking,
    the above foo should NOT pass type check because x would be
@@ -146,9 +144,40 @@ Error: The value x is local, so cannot be used inside a closure that might escap
 
 (* note that in the following, labels are omitted, and order reversed  *)
 let h ~x ~y ~z = (string_of_int x) ^ y ^ z
-let h_foo = h ~y:_ ~x:_ 
+let h_foo = h ~y:_ ~x:_
 [%%expect{|
 val h : x:int -> y:string -> z:string -> string = <fun>
 val h_foo : string -> int -> z:string -> string = <fun>
 |}]
-   
+
+
+(* An implementation based on naive syntax sugar unfolding would not play well
+   with locals, because the added layer of function abstraction
+   effectively creates another layer of region, which mess with locals and
+   gives unexpected behaviours. Examples follow.
+*)
+let foo (local_ x) = x
+let bar = foo _
+[%%expect{|
+val foo : local_ 'a -> local_ 'a = <fun>
+Line 2, characters 10-15:
+2 | let bar = foo _
+              ^^^^^
+Error: This local value escapes its region
+  Hint: Cannot return local value without an explicit "local_" annotation
+|}]
+
+let foo (_) = local_
+  let local_ x = "foo" in
+  x
+[%%expect{|
+val foo : 'a -> local_ string = <fun>
+|}]
+let bar = foo _
+[%%expect{|
+Line 1, characters 10-15:
+1 | let bar = foo _
+              ^^^^^
+Error: This local value escapes its region
+  Hint: Cannot return local value without an explicit "local_" annotation
+|}]
