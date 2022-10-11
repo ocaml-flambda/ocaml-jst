@@ -1854,6 +1854,10 @@ type layout_result =
   | Layout of layout
   | Var of layout ref
 
+let layout_of_result = function
+  | Layout l -> l
+  | Var lr -> !lr
+
 (* We assume here that [get_unboxed_type_representation] has already been
    called, if the type is a Tconstr.  This allows for some optimization by
    callers (e.g., skip expanding if the kind tells them enough).
@@ -1917,12 +1921,25 @@ let rec constrain_type_layout ~fixed env ty1 layout2 =
       in
       match Type_layout.sublayout layout_bound layout2 with
       | Ok _ as ok -> ok
-      | Error _ ->
+      | Error _ as err1 ->
         (* CR ccasinghino: Can we improve performance by reimplementing
            get_unboxed_type_representation and adding a layout check at each
            iteration, rather than fully expanding? *)
         let ty1 = get_unboxed_type_representation env ty1 in
-        constrain_unboxed ty1
+        match constrain_unboxed ty1 with
+        | Ok _ as ok -> ok
+        | Error _ as err2 ->
+          if Result.is_ok (Type_layout.sublayout layout_bound
+                             (layout_of_result (estimate_type_layout env ty1)))
+          then err1 else err2
+          (* This case is here to give better errors for missing cmis.  In the
+             specific case where an abstract type's manifest refers to a missing
+             cmi file, the layout on the type_kind is a better bound than what
+             we'll get if we expand the type (because we use "any" for missing
+             types).  And error messages are clearer if they refer to the better
+             bound.  See [tests/typing_layouts_missing_cmi] for examples.  Is it
+             worth this complexity and extra pattern match to give better errors
+             in those cases? *)
     end
   | Tpoly (ty, _) -> constrain_type_layout ~fixed env ty layout2
   | _ -> constrain_unboxed ty1
@@ -1957,9 +1974,7 @@ let constrain_type_layout_exn env ty layout =
   | Error err -> raise (Unify [Bad_layout (ty,err)])
 
 let estimate_type_layout env typ =
-  match estimate_type_layout env typ with
-  | Layout l -> l
-  | Var l -> !l
+  layout_of_result (estimate_type_layout env typ)
 
 (* Note: Because [estimate_type_layout] actually returns an upper bound, this
    function computes an innaccurate intersection in some cases.
