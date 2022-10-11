@@ -3544,75 +3544,107 @@ and type_expect_
     in
     {exp with exp_loc = loc}
   | Pexp_apply(sfunct, sargs) ->
-      assert (sargs <> []);
-      let position = apply_position env expected_mode sexp in
-      let funct_mode, funct_expected_mode =
-        match position with
-        | Tail ->
-          let mode = Value_mode.local_to_regional (Value_mode.newvar ()) in
-          mode, mode_tailcall_function mode
-        | Nontail | Default ->
-          let mode = Value_mode.newvar () in
-          mode, mode_nontail mode
+      let open Ast_helper in
+      let (_, ids', sargs') = List.fold_right (fun (lbl, sarg) (idx', ids', sargs') ->
+        (* TODO: need to fill in location info *)
+        match sarg with
+        (* TODO: how about the location_stack and attributes annotating the underscore? *)
+        | {pexp_desc = Pexp_extension ({ txt = "extension.papp"; loc }, _); _} ->
+          let id' = "*us" ^ (string_of_int idx') ^ "*" in
+          let sarg' = {sarg with pexp_desc = Pexp_ident {
+            txt = Longident.Lident id';
+            loc = loc
+          }}
+          in
+          (idx' + 1, id' :: ids',  (lbl, sarg') :: sargs')
+        | _ -> (idx', ids', (lbl, sarg) :: sargs')  (* no change *)
+        )  sargs (0, [], [])
       in
-      let rec lower_args seen ty_fun =
-        let ty = expand_head env ty_fun in
-        if List.memq ty seen then () else
-          match ty.desc with
-            Tarrow (_l, ty_arg, ty_fun, _com) ->
-              (try unify_var env (newvar()) ty_arg
-               with Unify _ -> assert false);
-              lower_args (ty::seen) ty_fun
-          | _ -> ()
-      in
-      let type_sfunct sfunct =
-        begin_def (); (* one more level for non-returning functions *)
-        if !Clflags.principal then begin_def ();
-        let funct = type_exp env funct_expected_mode sfunct in
-        if !Clflags.principal then begin
+      (* check if partial applicaiton at all *)
+      (* needed to avoid infinite loop *)
+      begin
+      match ids' with
+      | [] -> begin
+        assert (sargs <> []);
+        let position = apply_position env expected_mode sexp in
+        let funct_mode, funct_expected_mode =
+          match position with
+          | Tail ->
+            let mode = Value_mode.local_to_regional (Value_mode.newvar ()) in
+            mode, mode_tailcall_function mode
+          | Nontail | Default ->
+            let mode = Value_mode.newvar () in
+            mode, mode_nontail mode
+        in
+        let rec lower_args seen ty_fun =
+          let ty = expand_head env ty_fun in
+          if List.memq ty seen then () else
+            match ty.desc with
+              Tarrow (_l, ty_arg, ty_fun, _com) ->
+                (try unify_var env (newvar()) ty_arg
+                with Unify _ -> assert false);
+                lower_args (ty::seen) ty_fun
+            | _ -> ()
+        in
+        let type_sfunct sfunct =
+          begin_def (); (* one more level for non-returning functions *)
+          if !Clflags.principal then begin_def ();
+          let funct = type_exp env funct_expected_mode sfunct in
+          if !Clflags.principal then begin
+            end_def ();
+            generalize_structure funct.exp_type
+          end;
+          let ty = instance funct.exp_type in
           end_def ();
-          generalize_structure funct.exp_type
-        end;
-        let ty = instance funct.exp_type in
+          wrap_trace_gadt_instances env (lower_args []) ty;
+          funct
+        in
+        let type_sfunct_args sfunct extra_args =
+          match sfunct.pexp_desc with
+          | Pexp_apply (sfunct, args) ->
+            type_sfunct sfunct, args @ extra_args
+          | _ ->
+            type_sfunct sfunct, extra_args
+        in
+        let funct, sargs =
+          let funct = type_sfunct sfunct in
+          match funct.exp_desc, sargs with
+          | Texp_ident (_, _, {val_kind = Val_prim {prim_name = "%revapply"}},
+                        Id_prim _),
+            [Nolabel, sarg; Nolabel, actual_sfunct]
+            when is_inferred actual_sfunct ->
+              type_sfunct_args actual_sfunct [Nolabel, sarg]
+          | Texp_ident (_, _, {val_kind = Val_prim {prim_name = "%apply"}},
+                        Id_prim _),
+            [Nolabel, actual_sfunct; Nolabel, sarg] ->
+              type_sfunct_args actual_sfunct [Nolabel, sarg]
+          | _ ->
+              funct, sargs
+        in
+        begin_def ();
+        let (args, ty_res, position) =
+          type_application env loc expected_mode position funct funct_mode sargs
+        in
         end_def ();
-        wrap_trace_gadt_instances env (lower_args []) ty;
-        funct
-      in
-      let type_sfunct_args sfunct extra_args =
-        match sfunct.pexp_desc with
-        | Pexp_apply (sfunct, args) ->
-           type_sfunct sfunct, args @ extra_args
-        | _ ->
-           type_sfunct sfunct, extra_args
-      in
-      let funct, sargs =
-        let funct = type_sfunct sfunct in
-        match funct.exp_desc, sargs with
-        | Texp_ident (_, _, {val_kind = Val_prim {prim_name = "%revapply"}},
-                      Id_prim _),
-          [Nolabel, sarg; Nolabel, actual_sfunct]
-          when is_inferred actual_sfunct ->
-            type_sfunct_args actual_sfunct [Nolabel, sarg]
-        | Texp_ident (_, _, {val_kind = Val_prim {prim_name = "%apply"}},
-                      Id_prim _),
-          [Nolabel, actual_sfunct; Nolabel, sarg] ->
-            type_sfunct_args actual_sfunct [Nolabel, sarg]
-        | _ ->
-            funct, sargs
-      in
-      begin_def ();
-      let (args, ty_res, position) =
-        type_application env loc expected_mode position funct funct_mode sargs
-      in
-      end_def ();
-      unify_var env (newvar()) funct.exp_type;
-      rue {
-        exp_desc = Texp_apply(funct, args, position);
-        exp_loc = loc; exp_extra = [];
-        exp_type = ty_res;
-        exp_mode = expected_mode.mode;
-        exp_attributes = sexp.pexp_attributes;
-        exp_env = env }
+        unify_var env (newvar()) funct.exp_type;
+        rue {
+          exp_desc = Texp_apply(funct, args, position);
+          exp_loc = loc; exp_extra = [];
+          exp_type = ty_res;
+          exp_mode = expected_mode.mode;
+          exp_attributes = sexp.pexp_attributes;
+          exp_env = env }    
+        end
+      | _ ->
+        (* wrap it inside nested Pexp_fun *)
+          let pexp' = List.fold_right (fun id' pexp -> 
+            Exp.fun_ Nolabel None (Pat.var (mknoloc id')) pexp
+            )
+          ids' {sexp with pexp_desc = (Pexp_apply (sfunct, sargs'))}
+          in
+          (* TODO: those arguments correct? need change? *)
+          type_expect ?in_function ~recarg env expected_mode pexp' ty_expected_explained
+      end
   | Pexp_match(sarg, caselist) ->
       let arg_pat_mode, arg_expected_mode =
         match cases_tuple_arity caselist with

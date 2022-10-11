@@ -160,6 +160,8 @@ let mkuplus ~oploc name arg =
 
 let local_ext_loc loc = mkloc "extension.local" loc
 
+let papp_ext_loc loc = mkloc "extension.papp" loc
+
 let local_attr loc =
   Builtin_attributes.mk_internal ~loc (local_ext_loc loc) (PStr [])
 
@@ -2548,6 +2550,14 @@ labeled_simple_expr:
         (Optional label, mkexpvar ~loc label) }
   | OPTLABEL simple_expr %prec below_HASH
       { (Optional $1, $2) }
+  | UNDERSCORE
+      { (Nolabel, ghexp ~loc:$loc
+          (Pexp_extension (papp_ext_loc Location.none, PStr []))) }
+  | LABEL UNDERSCORE
+      {(Labelled $1, ghexp ~loc:$loc (Pexp_extension (papp_ext_loc Location.none, PStr [])))}
+  | OPTLABEL UNDERSCORE
+      {(Optional $1, ghexp ~loc:$loc (Pexp_extension (papp_ext_loc Location.none, PStr [])))}
+
 ;
 %inline lident_list:
   xs = mkrhs(LIDENT)+
