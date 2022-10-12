@@ -1316,7 +1316,7 @@ let unify_head_only ~refine loc env ty constr =
   let ty_res = repr ty_res in
   match ty_res.desc with
   | Tconstr(p,args,m) ->
-      (* CJC XXX - I need to compute the layout from the desc here? *)
+      (* Parameter layouts filled in by unification in enforce_constraints *)
       ty_res.desc <-
         Tconstr(p,List.map (fun _ -> newvar Type_layout.any) args,m);
       enforce_constraints !env ty_res;
@@ -2041,7 +2041,7 @@ and type_pat_aux
             lid_sp_list (fun lbl_pat_list -> k' (make_record_pat lbl_pat_list))
       end
   | Ppat_array spl ->
-      (* CJC XXX presuably in the future we'll have arrays of other layouts *)
+      (* CR ccasinghino: in the future we'll have arrays of other layouts *)
       let ty_elt = newgenvar Type_layout.value in
       let expected_ty = generic_instance expected_ty in
       unify_pat_types ~refine
@@ -3017,7 +3017,7 @@ let rec type_approx env sexp =
       ({ pexp_desc = Pexp_extension({txt = "extension.escape"}, PStr []) },
        [Nolabel, e]) ->
     type_approx env e
-  | _ -> newvar Type_layout.any (* CJC XXX ?? *)
+  | _ -> newvar Type_layout.any
 
 (* Check that all univars are safe in a type. Both exp.exp_type and
    ty_expected should already be generalized. *)

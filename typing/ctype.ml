@@ -1618,7 +1618,11 @@ let subst env ~ignore_layouts level priv abbrev ty params args body =
    invariants on types are enforced (decreasing levels), and we don't
    care about efficiency here.
 *)
-(* CR ccasinghino: Can we actually just always ignore layouts in apply/subst? *)
+(* CR ccasinghino: Can we actually just always ignore layouts in apply/subst?
+
+   I think no: because of examples like Typecore.unify_head_only ->
+   Ctype.enforce_constraints where we are using subst for its unification effect
+*)
 let apply ~ignore_layouts env params body args =
   try
     subst ~ignore_layouts env generic_level Public (ref Mnil) None params
