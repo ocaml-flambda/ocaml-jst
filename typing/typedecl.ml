@@ -26,7 +26,8 @@ module String = Misc.Stdlib.String
 
 type native_repr_kind = Unboxed | Untagged
 
-type layout_loc = Fun_arg | Fun_ret | Tuple | Field
+type layout_value_loc = Fun_arg | Fun_ret | Tuple | Field
+type layout_sort_loc = Cstr_tuple | Record
 
 type error =
     Repeated_parameter
@@ -64,7 +65,9 @@ type error =
   | Deep_unbox_or_untag_attribute of native_repr_kind
   | Layout of Type_layout.Violation.t
   | Layout_value of
-      {lloc : layout_loc; typ : type_expr; err : Type_layout.Violation.t}
+      {lloc : layout_value_loc; typ : type_expr; err : Type_layout.Violation.t}
+  | Layout_sort of
+      {lloc : layout_sort_loc; typ : type_expr; err : Type_layout.Violation.t}
   | Separability of Typedecl_separability.error
   | Bad_unboxed_attribute of string
   | Boxed_and_unboxed
@@ -251,6 +254,17 @@ let make_params env params =
   in
     List.map make_param params
 
+(* Makes sure a type is representable.  Note that anywhere this is called, you
+   may be creating a sort variable, and you must later check to see if its been
+   filled in and default it to value if not (see default_decl_layout) *)
+let check_layout_sort env lloc ctyp =
+  match
+    Ctype.constrain_type_layout env ctyp.ctyp_type (Type_layout.any_sort ())
+  with
+  | Ok _ -> ()
+  | Error err ->
+    raise (Error (ctyp.ctyp_loc, Layout_sort {lloc; typ=ctyp.ctyp_type; err}))
+
 let transl_labels env closed lbls =
   assert (lbls <> []);
   let all_labels = ref String.Set.empty in
@@ -266,6 +280,7 @@ let transl_labels env closed lbls =
       (fun () ->
          let arg = Ast_helper.Typ.force_poly arg in
          let cty = transl_simple_type env closed Global arg in
+         check_layout_sort env Record cty;
          {ld_id = Ident.create_local name.txt;
           ld_name = name; ld_mutable = mut;
           ld_type = cty; ld_loc = loc; ld_attributes = attrs}
@@ -302,14 +317,11 @@ let transl_labels env closed lbls =
   lbls, lbls'
 
 let transl_constructor_arguments env closed = function
-  (* CJC XXX I believe we want to do some layout checking here.  In particular,
-     we probably want each individual type in the Cstr_tuple or Cstr_record to
-     have a sublayout of (Sort 'k).  But that's not being checked now.
-     If I write [type _ foo = Bar : int * 't -> int foo] is 't getting any?
-     We'd also need to make sure we're defaulting these, somewhere.
-  *)
+  (* CR ccasinghino: In the future we'll need "mixed block restriction" checks
+     here *)
   | Pcstr_tuple l ->
       let l = List.map (transl_simple_type env closed Global) l in
+      List.iter (check_layout_sort env Cstr_tuple) l;
       Types.Cstr_tuple (List.map (fun t -> t.ctyp_type) l),
       Cstr_tuple l
   | Pcstr_record l ->
@@ -755,28 +767,34 @@ let check_coherence env loc dpath decl =
 let check_abbrev env sdecl (id, decl) =
   (id, check_coherence env sdecl.ptype_loc (Path.Pident id) decl)
 
-(* This eliminates remaining sort variables from type parameters, defaulting to
-   value.
+(* This eliminates remaining sort variables, defaulting to value.
 
-   Currently our approach is that if the user hasn't explicitly annotated a type
-   parameter with a layout, it is given a sort variable.  We may discover this
-   is something more specific while checking the type and other types in the
-   mutually defined group.  If not, we default to value.
+   We create sort variables in several places:
 
-   A consequence of this approach is that if you want "any", you have to ask for
-   it.  e.g., in [type 'a foo = Bar], ['a] will get layout [value], but it could
-   be given any.  For that, you need [type ('a : any) foo = Bar].
+   - If the user hasn't explicitly annotated a type parameter with a layout, it
+     is given a sort variable.  We may discover this is something more specific
+     while checking the type and other types in the mutually defined group.  If
+     not, we default to value.
+
+     A consequence of this approach is that if you want "any", you have to ask
+     for it.  e.g., in [type 'a foo = Bar], ['a] will get layout [value], but it
+     could be given any.  For that, you need [type ('a : any) foo = Bar].
+
+   - In type kinds, we check that types are representable by unifying them with
+     a sort variable (e.g., arguments to constructors and types used in
+     records). This is enough to ensure we can compile these types.  (Though in
+     the future there will also be the mixed block restriction.)  We default
+     them to value if we don't learn anything by unifying with the type (as may
+     be the case in an existential like [type any = Any : 'a -> any].
 
    It's important to do this defaulting before things like the separability
    check or update_decl_layout, because those test whether certain types are
    void or immediate, and if there were sort variables still around that would
    have effects!
-
-   CJC XXX: In the future, should apply to existentials too, but I'm not doing that now.
 *)
-let default_decl_layout {type_params} =
-  let default_ty {desc} =
-    match desc with
+let default_decl_layout decl =
+  let default_typ typ =
+    match (Ctype.repr typ).desc with
     | Tvar (_,{contents=Sort (Var s)}) -> begin
         match !s with
         | None -> s := Some Types.Value
@@ -784,7 +802,23 @@ let default_decl_layout {type_params} =
       end
     | _ -> ()
   in
-  List.iter default_ty type_params
+  let default_ldecl (ldecl : Types.label_declaration) =
+    default_typ ldecl.ld_type
+  in
+  let default_cdecl (cdecl : Types.constructor_declaration) =
+    match cdecl.cd_args with
+    | Cstr_tuple typs -> List.iter default_typ typs
+    | Cstr_record ldecls -> List.iter default_ldecl ldecls
+  in
+  let default_kind = function
+    (* Nothing to do in abstract case because we don't put new sort variables
+       there. *)
+    | Type_abstract _ | Type_open -> ()
+    | Type_record (ldecls, _) -> List.iter default_ldecl ldecls
+    | Type_variant (cdecls, _) -> List.iter default_cdecl cdecls
+  in
+  List.iter default_typ decl.type_params;
+  default_kind decl.type_kind
 
 let default_decls_layout decls =
   List.iter (fun (_, decl) -> default_decl_layout decl) decls
@@ -2157,6 +2191,15 @@ let report_error ppf = function
       | Field -> "Field"
     in
     fprintf ppf "@[%s types must have layout value.@ \ %a@]" s
+      (Type_layout.Violation.report_with_offender
+         ~offender:(fun ppf -> Printtyp.type_expr ppf typ)) err
+  | Layout_sort {lloc; typ; err} ->
+    let s =
+      match lloc with
+      | Cstr_tuple -> "Constructor argument"
+      | Record -> "Record element"
+    in
+    fprintf ppf "@[%s types must have a representable layout.@ \ %a@]" s
       (Type_layout.Violation.report_with_offender
          ~offender:(fun ppf -> Printtyp.type_expr ppf typ)) err
   | Bad_unboxed_attribute msg ->

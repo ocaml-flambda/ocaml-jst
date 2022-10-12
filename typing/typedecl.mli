@@ -59,7 +59,8 @@ val is_fixed_type : Parsetree.type_declaration -> bool
 
 type native_repr_kind = Unboxed | Untagged
 
-type layout_loc = Fun_arg | Fun_ret | Tuple | Field
+type layout_value_loc = Fun_arg | Fun_ret | Tuple | Field
+type layout_sort_loc = Cstr_tuple | Record
 
 type error =
     Repeated_parameter
@@ -97,7 +98,9 @@ type error =
   | Deep_unbox_or_untag_attribute of native_repr_kind
   | Layout of Type_layout.Violation.t
   | Layout_value of
-      {lloc : layout_loc; typ : type_expr; err : Type_layout.Violation.t}
+      {lloc : layout_value_loc; typ : type_expr; err : Type_layout.Violation.t}
+  | Layout_sort of
+      {lloc : layout_sort_loc; typ : type_expr; err : Type_layout.Violation.t}
   | Separability of Typedecl_separability.error
   | Bad_unboxed_attribute of string
   | Boxed_and_unboxed

@@ -164,26 +164,34 @@ and 'a t4
 
 (* Test 4: You can touch a void, but not return it directly *)
 type 'a [@void] void4 = Void4  of 'a
-
 type 'a [@any] any4 = Any4 of 'a
 
-  (* f4 and g4 here are allowed, but you can only use them on voids *)
-let f4 : 'a void4 -> 'a any4 = function
-    Void4 x -> Any4 x
+let id4 : 'a void4 -> 'a void4 = function
+  | Void4 x -> Void4 x
 
-let g4 : 'a any4 -> 'a void4 = function
-  Any4 x -> Void4 x
-;;
+(* CR ccasinghino: At the moment, the code in the comment below does not work.
+   Because we demand that constructor arguments have layout (Sort 'l), the type
+   [any4] actually only works on values, and we
+
+   In the future, we would like to allow constructors to take arguments of any
+   layout and instead restrict how those arguments are used.  In that case, the
+   below functions will work (though only on for ('a : void)).
+*)
+(* let f4 : 'a void4 -> 'a any4 = function
+ *     Void4 x -> Any4 x
+ *
+ * let g4 : 'a any4 -> 'a void4 = function
+ *   Any4 x -> Void4 x
+ * ;; *)
 
 [%%expect{|
 type 'a void4 = Void4 of 'a
 type 'a any4 = Any4 of 'a
-val f4 : 'a void4 -> 'a any4 = <fun>
-val g4 : 'a any4 -> 'a void4 = <fun>
+val id4 : 'a void4 -> 'a void4 = <fun>
 |}];;
 
 
-  (* disallowed attempts to use f4 and g4 on non-voids *)
+(* disallowed attempts to use f4 and Void4 on non-voids *)
 let h4 (x : int void4) = f4 x
 [%%expect{|
 Line 1, characters 12-15:
@@ -193,17 +201,18 @@ Error: This type int should be an instance of type 'a
        int has layout immediate, which is not a sublayout of void.
 |}];;
 
-let h4' (x : int any4) = g4 x
+let h4' (x : int any4) = Void4 x
 [%%expect{|
-Line 1, characters 28-29:
-1 | let h4' (x : int any4) = g4 x
-                                ^
+Line 1, characters 31-32:
+1 | let h4' (x : int any4) = Void4 x
+                                   ^
 Error: This expression has type int any4
-       but an expression was expected of type 'a any4
-       int has layout immediate, which is not a sublayout of void.
+       but an expression was expected of type 'a
+       int any4 has layout value, which is not a sublayout of void.
 |}];;
+(* CJC XXX better errors needed *)
 
-  (* disallowed - tries to return void *)
+(* disallowed - tries to return void *)
 let g (x : 'a void4) =
   match x with
   | Void4 x -> x;;
