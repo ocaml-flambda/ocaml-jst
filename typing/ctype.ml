@@ -1825,14 +1825,19 @@ let expand_head_opt env ty =
     repr ty
 
 (* We use expand_head_opt version of expand_head to get access
-   to the manifest type of private abbreviations. *)
-let rec get_unboxed_type_representation env ty fuel =
+   to the manifest type of private abbreviations.
+
+   We use ty_prev to track the last type for which we found a definition,
+   allowing us to return a type for which a definition was found even if
+   we eventually bottom out at a missing cmi file, or otherwise.
+*)
+let rec get_unboxed_type_representation env ty_prev ty fuel =
   if fuel < 0 then ty else
   let ty = repr (expand_head_opt env ty) in
   match ty.desc with
   | Tconstr (p, args, _) ->
     begin match Env.find_type p env with
-    | exception Not_found -> ty
+    | exception Not_found -> ty_prev
     | {type_params; type_kind =
          Type_record ([{ld_type = ty2; _}], Record_unboxed _)
        | Type_variant ([{cd_args = Cstr_tuple [ty2]; _}], Variant_unboxed _)
@@ -1840,7 +1845,7 @@ let rec get_unboxed_type_representation env ty fuel =
                        Variant_unboxed _)}
       ->
         let ty2 = match ty2.desc with Tpoly (t, _) -> t | _ -> ty2 in
-        get_unboxed_type_representation env
+        get_unboxed_type_representation env ty
           (apply ~ignore_layouts:false env type_params ty2 args) (fuel - 1)
     | _ -> ty
     end
@@ -1848,7 +1853,7 @@ let rec get_unboxed_type_representation env ty fuel =
 
 let get_unboxed_type_representation env ty =
   (* Do not give too much fuel: PR#7424 *)
-  get_unboxed_type_representation env ty 100
+  get_unboxed_type_representation env ty ty 100
 
 (* When computing a layout, we distinguish two cases because some callers might
    want to update the layout.
@@ -1925,25 +1930,12 @@ let rec constrain_type_layout ~fixed env ty1 layout2 =
       in
       match Type_layout.sublayout layout_bound layout2 with
       | Ok _ as ok -> ok
-      | Error _ as err1 ->
+      | Error _ ->
         (* CR ccasinghino: Can we improve performance by reimplementing
            get_unboxed_type_representation and adding a layout check at each
            iteration, rather than fully expanding? *)
         let ty1 = get_unboxed_type_representation env ty1 in
-        match constrain_unboxed ty1 with
-        | Ok _ as ok -> ok
-        | Error _ as err2 ->
-          if Result.is_ok (Type_layout.sublayout layout_bound
-                             (layout_of_result (estimate_type_layout env ty1)))
-          then err1 else err2
-          (* This case is here to give better errors for missing cmis.  In the
-             specific case where an abstract type's manifest refers to a missing
-             cmi file, the layout on the type_kind is a better bound than what
-             we'll get if we expand the type (because we use "any" for missing
-             types).  And error messages are clearer if they refer to the better
-             bound.  See [tests/typing_layouts_missing_cmi] for examples.  Is it
-             worth this complexity and extra pattern match to give better errors
-             in those cases? *)
+        constrain_unboxed ty1
     end
   | Tpoly (ty, _) -> constrain_type_layout ~fixed env ty layout2
   | _ -> constrain_unboxed ty1
