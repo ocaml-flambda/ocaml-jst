@@ -206,6 +206,7 @@ type error =
   | Uncurried_function_escapes
   | Local_return_annotation_mismatch of Location.t
   | Bad_tail_annotation of [`Conflict|`Not_a_tailcall]
+  | Unregion_in_nontail_position
 
 
 exception Error of Location.t * Env.t * error

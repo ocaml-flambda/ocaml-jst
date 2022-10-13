@@ -142,6 +142,7 @@ type error =
   | Uncurried_function_escapes
   | Local_return_annotation_mismatch of Location.t
   | Bad_tail_annotation of [`Conflict|`Not_a_tailcall]
+  | Unregion_in_nontail_position
 
 exception Error of Location.t * Env.t * error
 exception Error_forward of Location.error
@@ -3515,6 +3516,33 @@ and type_expect_
           ty_expected_explained
       in
       { exp with exp_loc = loc }
+
+  | Pexp_apply
+      ({ pexp_desc = Pexp_extension({txt = "extension.unregion"}, PStr []) },
+       [Nolabel, sbody]) ->
+      if not (Clflags.Extension.is_enabled Local) then
+        raise (Typetexp.Error (loc, Env.empty, Local_not_enabled));
+      if expected_mode.position = Nontail then
+        raise (Error (loc, env, Unregion_in_nontail_position));
+      submode ~loc ~env Value_mode.regional expected_mode;
+      let env' = Env.add_unregion_lock env in
+      let exp =
+        type_expect ?in_function ~recarg env' mode_local sbody
+          ty_expected_explained
+      in
+      {exp with exp_loc = loc}
+  | Pexp_apply
+      ({ pexp_desc = Pexp_extension({txt = "ocaml.unregion" | "unregion"}, PStr []) },
+       [Nolabel, sbody]) ->
+    if expected_mode.position = Nontail then
+      raise (Error (loc, env, Unregion_in_nontail_position));
+    submode ~loc ~env Value_mode.regional expected_mode;
+    let env' = Env.add_unregion_lock env in
+    let exp =
+        type_expect ?in_function ~recarg env' mode_local sbody
+          ty_expected_explained
+    in
+    {exp with exp_loc = loc}
   | Pexp_apply(sfunct, sargs) ->
       assert (sargs <> []);
       let position = apply_position env expected_mode sexp in
@@ -6888,6 +6916,9 @@ let report_error ~loc env = function
         (match err with
          | `Conflict -> "is contradictory"
          | `Not_a_tailcall -> "is not on a tail call")
+  | Unregion_in_nontail_position ->
+    Location.errorf ~loc
+        "Unregion expression should only be in tail position"
 
 let report_error ~loc env err =
   Printtyp.wrap_printing_env ~error:true env
