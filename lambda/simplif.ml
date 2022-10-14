@@ -97,6 +97,8 @@ let rec eliminate_ref id = function
       Lifused(v, eliminate_ref id e)
   | Lregion e ->
       Lregion(eliminate_ref id e)
+  | Lunregion e ->
+      Lunregion(eliminate_ref id e)
 
 (* Simplification of exits *)
 
@@ -174,6 +176,7 @@ let simplify_exits lam =
   | Levent(l, _) -> count l
   | Lifused(_v, l) -> count l
   | Lregion l -> count l
+  | Lunregion l -> count l
 
   and count_default sw = match sw.sw_failaction with
   | None -> ()
@@ -348,6 +351,7 @@ let simplify_exits lam =
   | Levent(l, ev) -> Levent(simplif l, ev)
   | Lifused(v, l) -> Lifused (v,simplif l)
   | Lregion l -> Lregion (simplif l)
+  | Lunregion l -> Lunregion (simplif l)
   in
   simplif lam
 
@@ -497,6 +501,9 @@ let simplify_lets lam =
       if count_var v > 0 then count bv l
   | Lregion l ->
       count bv l
+  | Lunregion l ->
+      count bv l
+
 
   and count_default bv sw = match sw.sw_failaction with
   | None -> ()
@@ -647,6 +654,7 @@ let simplify_lets lam =
   | Lifused(v, l) ->
       if count_var v > 0 then simplif l else lambda_unit
   | Lregion l -> Lregion (simplif l)
+  | Lunregion l -> Lunregion (simplif l)
   in
   simplif lam
 
@@ -741,6 +749,8 @@ let rec emit_tail_infos is_tail lambda =
       emit_tail_infos is_tail lam
   | Lregion lam ->
       emit_tail_infos is_tail lam
+  | Lunregion lam ->
+      emit_tail_infos is_tail lam
 and list_emit_tail_infos_fun f is_tail =
   List.iter (fun x -> emit_tail_infos is_tail (f x))
 and list_emit_tail_infos is_tail =
@@ -779,6 +789,7 @@ let split_default_wrapper ~id:fun_id ~kind ~params ~return ~body
         let wrapper_body, inner = aux ((optparam, id) :: map) add_region rest in
         Llet(Strict, k, id, def, wrapper_body), inner
     | Lregion rest -> aux map true rest
+    | Lunregion rest -> aux map true rest
     | _ when map = [] -> raise Exit
     | body ->
         (* Check that those *opt* identifiers don't appear in the remaining
@@ -938,6 +949,7 @@ let simplify_local_functions lam =
         check_static lf;
         function_definition lf
     | Lregion lam -> region lam
+    | Lunregion lam -> unregion lam
     | lam ->
         Lambda.shallow_iter ~tail ~non_tail lam
   and non_tail lam =
@@ -949,6 +961,9 @@ let simplify_local_functions lam =
     tail lam;
     current_scope := !current_region_scope;
     current_region_scope := old_tail_scope
+  and unregion lam =
+    current_scope := !current_region_scope;
+    tail lam
   and function_definition lf =
     let old_function_scope = !current_function_scope in
     current_function_scope := lf.body;

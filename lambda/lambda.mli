@@ -357,6 +357,8 @@ type lambda =
   | Levent of lambda * lambda_event
   | Lifused of Ident.t * lambda
   | Lregion of lambda
+  | Lunregion of lambda
+
 
 and lfunction =
   { kind: function_kind;

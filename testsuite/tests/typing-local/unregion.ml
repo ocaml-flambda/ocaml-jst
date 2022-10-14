@@ -1,7 +1,9 @@
 (* TEST
  * expect *)
 
-
+(* TYPING TESTS *)
+(* TYPING TESTS *)
+(* TYPING TESTS *)
 (* the following two tests show that y is regional *)
 let foo x =
   [%unregion] (
@@ -18,16 +20,17 @@ Error: This value escapes its region
 
 let foo x =
   [%unregion] (
-    let local_ y = None in
+    let local_ y = Some x in
     (* y is not local either *)
     (* because it can escape *)
     y
   )
 [%%expect{|
-val foo : 'a -> local_ 'b option = <fun>
+val foo : 'a -> local_ 'a option = <fun>
 |}]
 (* note the type: RHS of arrow is local_,
    meaning it's indeed regional *)
+
 
 let foo x =
   let local_ y = "foo" in
@@ -50,3 +53,22 @@ Line 3, characters 10-30:
 Error: Unregion expression should only be in tail position
 |}]
 
+(* SEMANTICS TESTS *)
+(* SEMANTICS TESTS *)
+(* SEMANTICS TESTS *)
+let foo x =
+  [%unregion] (
+    let local_ y = Some x in
+    y
+  );;
+
+let bar _ =
+  match foo 5 with
+  | None -> "None!"
+  | Some x -> "Some of " ^ (string_of_int (x + 0)) ;;
+bar ();;
+[%%expect{|
+val foo : 'a -> local_ 'a option = <fun>
+val bar : 'a -> string = <fun>
+- : string = "Some of 5"
+|}]

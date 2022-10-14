@@ -129,7 +129,11 @@ let may_allocate_in_region lam =
        end
     | Lregion _body ->
        (* [_body] might do local allocations, but not in the current region *)
-       ()
+      ()
+    | Lunregion _body ->
+      (* [_body] might do local allocations, but not in the current region either *)
+      (* rather, it's in the parent region *)
+      ()
     | Lwhile {wh_cond_region=false} -> raise Exit
     | Lwhile {wh_body_region=false} -> raise Exit
     | Lwhile _ -> ()
