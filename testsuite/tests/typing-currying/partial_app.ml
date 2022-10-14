@@ -9,12 +9,12 @@ val f : string -> string -> string = <fun>
 
 let f_foo = f "foo" _
 [%%expect{|
-val f_foo : string -> string = <fun>
+val f_foo : string -> local_ string = <fun>
 |}]
 
 let f_bar = f _ "bar"
 [%%expect{|
-val f_bar : string -> string = <fun>
+val f_bar : string -> local_ string = <fun>
 |}]
 
 (* pre-existing behaviour, invalid in future *)
@@ -34,7 +34,7 @@ Error: This function has type string -> string -> string
 
 let f_err = (f _ _) _
 [%%expect{|
-val f_err : string -> string -> string = <fun>
+val f_err : string -> local_ (string -> local_ string) = <fun>
 |}]
 
 
@@ -61,12 +61,12 @@ val g_foo : x:string -> string = <fun>
 
 let g_foo = g ~y:"foo" ~x:_
 [%%expect{|
-val g_foo : string -> string = <fun>
+val g_foo : string -> local_ string = <fun>
 |}]
 
 let g_bar = g ~y:_ ~x:_
 [%%expect{|
-val g_bar : string -> string -> string = <fun>
+val g_bar : string -> string -> local_ string = <fun>
 |}]
 
 let g_err = g _ _ _
@@ -85,7 +85,7 @@ Line 1, characters 12-13:
 1 | let g_err = g _ _
                 ^
 Warning 6 [labels-omitted]: labels x, y were omitted in the application of this function.
-val g_err : string -> string -> string = <fun>
+val g_err : string -> string -> local_ string = <fun>
 |}]
 
 let g_err = g ~x:"foo" ~y:"bar" _
@@ -117,7 +117,7 @@ val f_eff : x:string -> y:string -> z:string -> string = <fun>
 let f_foo = f_eff ~x:"foo" ~y:_ ~z:"bar"
 let _ = assert (!cell = "")
 [%%expect{|
-val f_foo : string -> string = <fun>
+val f_foo : string -> local_ string = <fun>
 - : unit = ()
 |}]
 (* FIXME: the above assertion should pass *)
@@ -147,7 +147,7 @@ let h ~x ~y ~z = (string_of_int x) ^ y ^ z
 let h_foo = h ~y:_ ~x:_
 [%%expect{|
 val h : x:int -> y:string -> z:string -> string = <fun>
-val h_foo : string -> int -> z:string -> string = <fun>
+val h_foo : string -> int -> local_ (z:string -> string) = <fun>
 |}]
 
 
@@ -160,11 +160,7 @@ let foo (local_ x) = x
 let bar = foo _
 [%%expect{|
 val foo : local_ 'a -> local_ 'a = <fun>
-Line 2, characters 10-15:
-2 | let bar = foo _
-              ^^^^^
-Error: This local value escapes its region
-  Hint: Cannot return local value without an explicit "local_" annotation
+val bar : 'a -> local_ 'a = <fun>
 |}]
 
 let foo (_) = local_
@@ -175,9 +171,5 @@ val foo : 'a -> local_ string = <fun>
 |}]
 let bar = foo _
 [%%expect{|
-Line 1, characters 10-15:
-1 | let bar = foo _
-              ^^^^^
-Error: This local value escapes its region
-  Hint: Cannot return local value without an explicit "local_" annotation
+val bar : 'a -> local_ string = <fun>
 |}]

@@ -3633,15 +3633,20 @@ and type_expect_
           exp_type = ty_res;
           exp_mode = expected_mode.mode;
           exp_attributes = sexp.pexp_attributes;
-          exp_env = env }    
+          exp_env = env }
         end
       | _ ->
         (* wrap it inside nested Pexp_fun *)
-          let pexp' = List.fold_right (fun id' pexp -> 
-            Exp.fun_ Nolabel None (Pat.var (mknoloc id')) pexp
+        let sexp' = Exp.apply (Exp.extension (mknoloc "unregion", PStr []))
+                       [ Nolabel
+                       , {sexp with pexp_desc = (Pexp_apply (sfunct, sargs'))}
+                       ]
+        in
+        let pexp' = List.fold_right (fun id' pexp ->
+          Exp.fun_ Nolabel None (Pat.var (mknoloc id')) pexp
             )
-          ids' {sexp with pexp_desc = (Pexp_apply (sfunct, sargs'))}
-          in
+          ids' sexp'
+        in
           (* TODO: those arguments correct? need change? *)
           type_expect ?in_function ~recarg env expected_mode pexp' ty_expected_explained
       end
