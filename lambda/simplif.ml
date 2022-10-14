@@ -350,7 +350,7 @@ let simplify_exits lam =
       Lsend(k, simplif m, simplif o, List.map simplif ll, pos, mode, loc)
   | Levent(l, ev) -> Levent(simplif l, ev)
   | Lifused(v, l) -> Lifused (v,simplif l)
-  | Lregion l -> Lregion (simplif l)
+  | Lregion l -> Lregion (simplif l)  (* lwhite suggest to double check this case *)
   | Lunregion l -> Lunregion (simplif l)
   in
   simplif lam
@@ -874,7 +874,7 @@ let simplify_local_functions lam =
      by the outermost lambda for which the the current lambda
      is in tail position. *)
   let current_scope = ref lam in
-  let current_region_scope = ref lam in
+  let current_region_scope = ref (Some lam) in
   let current_function_scope = ref lam in
   let check_static lf =
     if lf.attr.local = Always_local then
@@ -905,7 +905,10 @@ let simplify_local_functions lam =
             let sc =
               (* Do not move higher than current lambda *)
               if scope == !current_scope
-              || scope == !current_region_scope then cont
+              || (match !current_region_scope with
+                  | None -> false
+                  | Some sco -> sco == scope
+                 ) then cont
               else scope
             in
             Hashtbl.add static_id id st;
@@ -922,7 +925,7 @@ let simplify_local_functions lam =
         let curr_scope =
           match ap_region_close with
           | Rc_normal | Rc_nontail -> !current_scope
-          | Rc_close_at_apply -> !current_region_scope
+          | Rc_close_at_apply -> Option.get !current_region_scope  (* will raise if None *)
         in
         begin match Hashtbl.find_opt slots id with
         | Some {func; _}
@@ -956,13 +959,14 @@ let simplify_local_functions lam =
     with_scope ~scope:lam lam
   and region lam =
     let old_tail_scope = !current_region_scope in
-    current_region_scope := !current_scope;
+    current_region_scope := Some !current_scope;
     current_scope := lam;
     tail lam;
-    current_scope := !current_region_scope;
+    current_scope := Option.get !current_region_scope;  (* will raise if None *)
     current_region_scope := old_tail_scope
   and unregion lam =
-    current_scope := !current_region_scope;
+    (* FIXME: check double unregion *)
+    current_scope := Option.get !current_region_scope;  (* will raise if None *)
     tail lam
   and function_definition lf =
     let old_function_scope = !current_function_scope in
@@ -973,7 +977,7 @@ let simplify_local_functions lam =
     let old_scope = !current_scope in
     let old_tail_scope = !current_region_scope in
     current_scope := scope;
-    current_region_scope := scope;
+    current_region_scope := Some scope;
     tail lam;
     current_scope := old_scope;
     current_region_scope := old_tail_scope

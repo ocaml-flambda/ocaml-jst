@@ -153,18 +153,19 @@ let may_allocate_in_region lam =
   end
 
 let maybe_region lam =
-  let rec remove_tail_markers = function
+  let rec remove_tail_markers_and_unregion = function
     | Lapply ({ap_region_close = Rc_close_at_apply} as ap) ->
        Lapply ({ap with ap_region_close = Rc_normal})
     | Lsend (k, lmet, lobj, largs, Rc_close_at_apply, mode, loc) ->
        Lsend (k, lmet, lobj, largs, Rc_normal, mode, loc)
     | Lregion _ as lam -> lam
+    | Lunregion lam -> lam
     | lam ->
-       Lambda.shallow_map ~tail:remove_tail_markers ~non_tail:Fun.id lam
+       Lambda.shallow_map ~tail:remove_tail_markers_and_unregion ~non_tail:Fun.id lam
   in
   if not Config.stack_allocation then lam
   else if may_allocate_in_region lam then Lregion lam
-  else remove_tail_markers lam
+  else remove_tail_markers_and_unregion lam
 
 (* Push the default values under the functional abstractions *)
 (* Also push bindings of module patterns, since this sound *)
