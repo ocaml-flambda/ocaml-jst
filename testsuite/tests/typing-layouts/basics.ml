@@ -139,14 +139,13 @@ and 'a [@immediate] t4
 and s5 = string;;
 
 [%%expect{|
-Line 3, characters 0-15:
-3 | and s5 = string;;
-    ^^^^^^^^^^^^^^^
-Error:
-       s5/2 has layout value, which is not a sublayout of immediate.
-       Line 3, characters 0-12:
-         Definition of type s5/1
+Line 1, characters 10-15:
+1 | type s4 = s5 t4
+              ^^^^^
+Error: Constraints are not satisfied in this type.
+       Type s5 t4 should be an instance of 'a t4
 |}]
+(* CJC XXX improve error *)
 
 type 'a [@any] t4 = 'a
 and s4 = string t4;;

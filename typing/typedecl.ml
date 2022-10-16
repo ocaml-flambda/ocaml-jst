@@ -186,9 +186,7 @@ let update_type temp_env env id loc =
       let params =
         List.map (fun _ -> Ctype.newvar Type_layout.any) decl.type_params
       in
-      try
-        (Ctype.unify_delaying_layout_checks env (Ctype.newconstr path params) ty,
-         loc)
+      try Ctype.unify_ignoring_layouts env (Ctype.newconstr path params) ty
       with Ctype.Unify trace ->
         raise (Error(loc, Type_clash (env, trace)))
 
@@ -257,13 +255,11 @@ let make_params env params =
 (* Makes sure a type is representable.  Note that anywhere this is called, you
    may be creating a sort variable, and you must later check to see if its been
    filled in and default it to value if not (see default_decl_layout) *)
-let check_layout_sort env lloc ctyp =
-  match
-    Ctype.constrain_type_layout env ctyp.ctyp_type (Type_layout.any_sort ())
-  with
+let check_layout_sort env loc lloc typ =
+  match Ctype.constrain_type_layout env typ (Type_layout.any_sort ()) with
   | Ok _ -> ()
   | Error err ->
-    raise (Error (ctyp.ctyp_loc, Layout_sort {lloc; typ=ctyp.ctyp_type; err}))
+    raise (Error (loc, Layout_sort {lloc; typ; err}))
 
 let transl_labels env closed lbls =
   assert (lbls <> []);
@@ -280,7 +276,6 @@ let transl_labels env closed lbls =
       (fun () ->
          let arg = Ast_helper.Typ.force_poly arg in
          let cty = transl_simple_type env closed Global arg in
-         check_layout_sort env Record cty;
          {ld_id = Ident.create_local name.txt;
           ld_name = name; ld_mutable = mut;
           ld_type = cty; ld_loc = loc; ld_attributes = attrs}
@@ -317,11 +312,8 @@ let transl_labels env closed lbls =
   lbls, lbls'
 
 let transl_constructor_arguments env closed = function
-  (* CR ccasinghino: In the future we'll need "mixed block restriction" checks
-     here *)
   | Pcstr_tuple l ->
       let l = List.map (transl_simple_type env closed Global) l in
-      List.iter (check_layout_sort env Cstr_tuple) l;
       Types.Cstr_tuple (List.map (fun t -> t.ctyp_type) l),
       Cstr_tuple l
   | Pcstr_record l ->
@@ -651,7 +643,9 @@ let check_constraints_labels env visited l pl =
   in
   List.iter
     (fun {Types.ld_id=name; ld_type=ty} ->
-       check_constraints_rec env (get_loc (Ident.name name) pl) visited ty)
+       let loc = get_loc (Ident.name name) pl in
+       check_layout_sort env loc Record ty;
+       check_constraints_rec env loc visited ty)
     l
 
 let check_constraints env sdecl (_, decl) =
@@ -673,17 +667,21 @@ let check_constraints env sdecl (_, decl) =
         in
         List.fold_left foldf String.Map.empty pl
       in
+      (* CR ccasinghino: when we add the "mixed block restriction", we'll
+         probably want to check it here. *)
       List.iter
         (fun {Types.cd_id=name; cd_args; cd_res} ->
           let {pcd_args; pcd_res; _} =
             try String.Map.find (Ident.name name) pl_index
             with Not_found -> assert false in
           begin match cd_args, pcd_args with
-          | Cstr_tuple tyl, Pcstr_tuple styl ->
+          | Cstr_tuple tyl, Pcstr_tuple styl -> begin
               List.iter2
                 (fun sty ty ->
+                   check_layout_sort env sty.ptyp_loc Cstr_tuple ty;
                    check_constraints_rec env sty.ptyp_loc visited ty)
                 styl tyl
+            end
           | Cstr_record tyl, Pcstr_record styl ->
               check_constraints_labels env visited tyl styl
           | _ -> assert false
@@ -1174,16 +1172,13 @@ let transl_type_decl env rec_flag sdecl_list =
   (* Build the final env. *)
   let new_env = add_types_to_env decls env in
   (* Update stubs *)
-  let delayed_layout_checks =
-    match rec_flag with
-    | Asttypes.Nonrecursive -> []
+  begin match rec_flag with
+    | Asttypes.Nonrecursive -> ()
     | Asttypes.Recursive ->
-      List.map2
+      List.iter2
         (fun (id, _) sdecl -> update_type temp_env new_env id sdecl.ptype_loc)
         ids_list sdecl_list
-  in
-  (* Default away sort variables *)
-  default_decls_layout decls;
+  end;
   (* Generalize type declarations. *)
   Ctype.end_def();
   List.iter (fun (_, decl) -> generalize_decl decl) decls;
@@ -1204,17 +1199,6 @@ let transl_type_decl env rec_flag sdecl_list =
     decls;
   List.iter
     (check_abbrev_recursion ~orig_env:env new_env id_loc_list to_check) tdecls;
-  (* Now that we've ruled out ill-formed types, we can perform the delayed
-     layout checks. *)
-  (* Ctype.perform_delayed_layout_checks env; *)
-  List.iter (fun (checks,loc) ->
-    (* CJC XXX gross, move unify to ctype *)
-    List.iter (fun (ty,layout) ->
-      match Ctype.constrain_type_layout new_env ty layout with
-      | Ok _ -> ()
-      | Error err -> raise (Error (loc, Type_clash (env, [Bad_layout (ty,err)]))))
-      checks)
-    delayed_layout_checks;
   (* Check that all type variables are closed *)
   List.iter2
     (fun sdecl tdecl ->
@@ -1225,6 +1209,17 @@ let transl_type_decl env rec_flag sdecl_list =
     sdecl_list tdecls;
   (* Check that constraints are enforced *)
   List.iter2 (check_constraints new_env) sdecl_list decls;
+  (* Default away sort variables.  Must happen after check_constraints (which
+     creates sort variables to check layouts of constructor args), and before
+     update_decls_layout, which would modify sort variables by checking if
+     things are void.
+
+     CR ccasinghino: In the future, it may be the case that check_constraints
+     doesn't need to create sort variables because we want to allow
+     unrepresentable algebraic datatype declrations and check that they are
+     specialized to representable types when actually used.  In that case, we
+     can default the sort variables much earlier - right after update_type. *)
+  default_decls_layout decls;
   (* Add type properties to declarations *)
   (* CR ccasinghino: maybe improve immediacy values *)
   let decls =

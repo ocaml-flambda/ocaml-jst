@@ -69,15 +69,12 @@ Error: Constructor argument types must have a representable layout.
 type 'a t1_constraint = T1_con of 'a constraint 'a = 'b t1_constraint'
 and 'b t1_constraint' = t_any
 [%%expect {|
-Line 2, characters 0-29:
-2 | and 'b t1_constraint' = t_any
-    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Error:
-       'a t1_constraint'/2 has layout any, which is not a sublayout of <unification variable>.
-       Line 2, characters 0-30:
-         Definition of type t1_constraint'/1
+Line 1, characters 34-36:
+1 | type 'a t1_constraint = T1_con of 'a constraint 'a = 'b t1_constraint'
+                                      ^^
+Error: Constructor argument types must have a representable layout.
+        'b t1_constraint' has layout any, which is not a sublayout of <unification variable>.
 |}]
-(* CJC XXX better errors *)
 
 (* Test 3: void allowed in records *)
 type t3_void = { x : t_void }
