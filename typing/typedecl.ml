@@ -239,7 +239,14 @@ let set_fixed_row env loc p decl =
 
 (* Translate one type declaration *)
 
+(* [make_params] creates sort variables - these can be defaulted away (as in
+   transl_type_decl) or unified with existing sort-variable-free types (as in
+   transl_with_constraint). *)
 let make_params env params =
+  (* Our choice for now is that if you want a parameter of layout any, you have
+     to ask for it with an annotation.  Some restriction here seems necessary
+     for backwards compatibility (e.g., we wouldn't want [type 'a id = 'a] to
+     have layout any).  But it might be possible to infer any in some cases. *)
   let make_param (sty, v) =
     try
       let layout =
@@ -477,8 +484,6 @@ let transl_declaration env sdecl (id, uid) =
             | _ -> false
         in
         let rep =
-          (* CJC XXX we could, here, look at the manifest for a more accurate
-             bound *)
           if unbox then
             let layout =
               Type_layout.of_layout_annotation ~default:Type_layout.any
@@ -492,8 +497,6 @@ let transl_declaration env sdecl (id, uid) =
       | Ptype_record lbls ->
           let lbls, lbls' = transl_labels env true lbls in
           let rep =
-            (* CJC XXX we could, here, look at the manifest for a more accurate
-               bound *)
             if unbox then
               let layout =
                 Type_layout.of_layout_annotation ~default:Type_layout.any
@@ -821,9 +824,7 @@ let default_decl_layout decl =
 let default_decls_layout decls =
   List.iter (fun (_, decl) -> default_decl_layout decl) decls
 
-(* (CJC XXX: use newenv, but default all decls first)
-
-   This infers more precise layouts in the type kind, including which fields of
+(* This infers more precise layouts in the type kind, including which fields of
    a record are void.  This would be hard to do during [transl_declaration] due
    to mutually recursive types.
  *)
@@ -946,7 +947,6 @@ let check_well_founded env loc path to_check ty =
 
 let check_well_founded_manifest env loc path decl =
   if decl.type_manifest = None then () else
-  (* CJC XXX type params *)
   let args =
     List.map (fun _ -> Ctype.newvar Type_layout.any) decl.type_params
   in
@@ -1221,14 +1221,13 @@ let transl_type_decl env rec_flag sdecl_list =
      can default the sort variables much earlier - right after update_type. *)
   default_decls_layout decls;
   (* Add type properties to declarations *)
-  (* CR ccasinghino: maybe improve immediacy values *)
   let decls =
     try
       decls
       |> name_recursion_decls sdecl_list
       |> Typedecl_variance.update_decls env sdecl_list
       |> Typedecl_separability.update_decls env
-      |> update_decls_layout env
+      |> update_decls_layout new_env
     with
     | Typedecl_variance.Error (loc, err) ->
         raise (Error (loc, Variance err))

@@ -660,7 +660,6 @@ let closed_parameterized_type params ty =
   ok
 
 let closed_type_decl decl =
-  (* CJC XXX TODO: needs to default sort variables to value *)
   try
     List.iter mark_type decl.type_params;
     begin match decl.type_kind with

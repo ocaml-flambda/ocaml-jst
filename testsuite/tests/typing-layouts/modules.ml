@@ -189,7 +189,6 @@ Error: This type 'a should be an instance of type 'b
 |}];;
 (* CJC XXX bad error message *)
 
-
 (* One downside of the current approach - this could be allowed, but isn't.  You
    need to annotate types declared in recursive modules if they need to have
    layouts other than value, even if it's obvious from the manifest *)
