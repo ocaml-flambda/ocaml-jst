@@ -547,9 +547,11 @@ let merge_constraint initial_env remove_aliases loc sg constr =
       when Ident.name id = s && Typedecl.is_fixed_type sdecl ->
         let decl_row =
           let arity = List.length sdecl.ptype_params in
-          { (* CJC XXX deal with layout annotations on parameters *)
-            type_params =
-              List.map (fun _ -> Btype.newgenvar Type_layout.value) sdecl.ptype_params;
+          { type_params =
+              (* layout any is fine on the params because they get thrown away
+                 below *)
+              List.map (fun _ -> Btype.newgenvar Type_layout.any)
+                sdecl.ptype_params;
             type_arity = arity;
             type_kind = Types.kind_abstract ~layout:Type_layout.value;
             type_private = Private;
