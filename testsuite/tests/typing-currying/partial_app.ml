@@ -99,6 +99,7 @@ Error: This function has type x:string -> y:string -> string
 
 
 (* testing side effects vs. partial application *)
+
 let cell = ref ""
 
 let f_eff ~x =
@@ -114,35 +115,51 @@ val cell : string ref = {contents = ""}
 val f_eff : x:string -> y:string -> z:string -> string = <fun>
 |}]
 
+
+(* in the following, f_eff is not evaluated at all *)
 let f_foo = f_eff ~x:"foo" ~y:_ ~z:"bar"
 let _ = assert (!cell = "")
 [%%expect{|
 val f_foo : string -> local_ string = <fun>
 - : unit = ()
 |}]
-(* FIXME: the above assertion should pass *)
 
-(* testing locals vs. partial application *)
-let bar (local_ _) =
-  ();
-  fun _ -> ()
+
+(* Once recognized as partial applicaiton, 
+even the specified arguments are not evaluated.
+   *)
+let cell = ref ""
+let foo x y = x ^ y
+let bar = foo _ (cell := "a"; "foo")
+let _ = assert (!cell = "")
 [%%expect{|
-val bar : local_ 'a -> ('b -> unit) = <fun>
+val cell : string ref = {contents = ""}
+val foo : string -> string -> string = <fun>
+val bar : string -> local_ string = <fun>
+- : unit = ()
+|}]
+
+(* This is unfortunately inconsistent with 
+the other pre-existing behaviours such as 
+currying and omitted labeled arguments. 
+This can be fixed by changing the sugar 
+(add some let bindings)
+*)
+ let cell = ref ""
+ let foo ~x ~y = x ^ y
+ let bar = foo ~y:(cell := "a"; "foo")
+ let _  = assert (!cell = "")
+ [%%expect{|
+val cell : string ref = {contents = ""}
+val foo : x:string -> y:string -> string = <fun>
+val bar : x:string -> string = <fun>
+Exception: Assert_failure ("", 4, 10).
 |}]
 
 
-let foo (local_ x) =
-  let _  = bar x _ in
-  ()
-[%%expect{|
-val foo : local_ 'a -> unit = <fun>
-|}]
-(* FIXME : with expected semantics and corresponding type checking,
-   the above foo should NOT pass type check because x would be
-   captured in the result of foo*)
-
-
-(* note that in the following, labels are omitted, and order reversed  *)
+(* Note that in the following, labels are omitted, and the order is reversed  *)
+(* Alternative design choice is to preserve the labels. 
+   not hard to switch to that *)
 let h ~x ~y ~z = (string_of_int x) ^ y ^ z
 let h_foo = h ~y:_ ~x:_
 [%%expect{|
@@ -150,26 +167,30 @@ val h : x:int -> y:string -> z:string -> string = <fun>
 val h_foo : string -> int -> local_ (z:string -> string) = <fun>
 |}]
 
-
 (* An implementation based on naive syntax sugar unfolding would not play well
    with locals, because the added layer of function abstraction
    effectively creates another layer of region, which mess with locals and
-   gives unexpected behaviours. Examples follow.
+   gives unexpected behaviours. Our syntax sugar uses [%unregion] under the hood 
+   to avoid this issue. Examples follow.
 *)
+
 let foo (local_ x) = x
-let bar = foo _
+module M : sig
+  val bar : local_ 'a -> local_ 'a
+end = struct
+  let bar = foo _
+end 
 [%%expect{|
 val foo : local_ 'a -> local_ 'a = <fun>
-val bar : 'a -> local_ 'a = <fun>
+module M : sig val bar : local_ 'a -> local_ 'a end
 |}]
 
 let foo (_) = local_
   let local_ x = "foo" in
   x
+
+let bar = foo _  
 [%%expect{|
 val foo : 'a -> local_ string = <fun>
-|}]
-let bar = foo _
-[%%expect{|
 val bar : 'a -> local_ string = <fun>
 |}]
