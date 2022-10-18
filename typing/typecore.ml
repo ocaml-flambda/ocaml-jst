@@ -3022,6 +3022,12 @@ let rec type_approx env sexp =
 (* Check that all univars are safe in a type. Both exp.exp_type and
    ty_expected should already be generalized. *)
 let check_univars env kind exp ty_expected vars =
+  let error ty ty_expected errs =
+    let ty_expected = instance ty_expected in
+    raise (Error (exp.exp_loc, env,
+                  Less_general(kind,
+                               [Unification_trace.diff ty ty_expected] @ errs)))
+  in
   let pty = instance ty_expected in
   begin_def ();
   let exp_ty, vars =
@@ -3030,8 +3036,22 @@ let check_univars env kind exp ty_expected vars =
         (* Enforce scoping for type_let:
            since body is not generic,  instance_poly only makes
            copies of nodes that have a Tvar as descendant *)
-        let _, ty' = instance_poly true tl body in
+        let univars, ty' = instance_poly true tl body in
         let vars, exp_ty = instance_parameterized_type vars exp.exp_type in
+        (* CJC XXX think a little harder about whether this the right place for
+           this layouts check, and whether I'm checking the right thing.
+        *)
+        List.iter2 (fun uvar var ->
+          match (repr var).desc with
+          | Tvar (_, layout2) -> begin
+              match check_type_layout env uvar !layout2 with
+              | Ok _ -> ()
+              | Error err ->
+                error exp_ty ty_expected
+                  [Unification_trace.Bad_layout (uvar,err)]
+            end
+          | _ -> error exp_ty ty_expected [])
+          univars vars;
         unify_exp_types exp.exp_loc env exp_ty ty';
         exp_ty, vars
     | _ -> assert false
@@ -3040,10 +3060,7 @@ let check_univars env kind exp ty_expected vars =
   generalize exp_ty;
   List.iter generalize vars;
   let ty, complete = polyfy env exp_ty vars in
-  if not complete then
-    let ty_expected = instance ty_expected in
-    raise (Error (exp.exp_loc, env,
-                  Less_general(kind, [Unification_trace.diff ty ty_expected])))
+  if not complete then error ty ty_expected []
 
 let generalize_and_check_univars env kind exp ty_expected vars =
   generalize exp.exp_type;

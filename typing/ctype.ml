@@ -1189,7 +1189,6 @@ let rec copy ?partial ?keep_names scope ty =
     let desc = ty.desc in
     For_copy.save_desc scope ty desc;
     let t = newvar Any in          (* Stub *)
-    (* CJC XXX do we need to get info from the type being copied for the layout here *)
     set_scope t ty.scope;
     ty.desc <- Tsubst t;
     t.desc <-
@@ -1349,10 +1348,15 @@ let instance_constructor ?in_pattern cstr =
     | None -> ()
     | Some (env, expansion_scope) ->
         let process existential =
-          (* CJC XXX - defaulting to Type_layout.value for now, which is
-             probably wrong.  Probably want to record this info in
-             constructor_description *)
-          let decl = new_declaration expansion_scope None Type_layout.value in
+          (* CR ccasinghino - add test case that hits this once we have syntax
+             for it *)
+          let layout =
+            match (repr existential).desc with
+            | Tvar (_, l) -> !l
+            | Tvariant _ -> Type_layout.value
+            | _ -> assert false
+          in
+          let decl = new_declaration expansion_scope None layout in
           let name = existential_name cstr existential in
           let path =
             Path.Pident
