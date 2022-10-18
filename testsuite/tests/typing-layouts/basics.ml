@@ -231,3 +231,42 @@ Error: This expression has type 'a but an expression was expected of type 'a0
 (* CJC XXX understand what's going on with Principal mode here (and improve
    error messages generally *)
 
+(* Test 5: explicitly polymorphic types *)
+type ('a : immediate) t5_imm = T5imm of 'a
+type ('a : value) t5_val = T5val of 'a;;
+[%%expect{|
+type 'a t5_imm = T5imm of 'a
+type 'a t5_val = T5val of 'a
+|}];;
+
+let ignore_val5 : 'a . 'a -> unit =
+  fun a -> let _ = T5val a in ();;
+[%%expect{|
+val ignore_val5 : 'a -> unit = <fun>
+|}];;
+
+let ignore_imm5 : 'a . 'a -> unit =
+  fun a -> let _ = T5imm a in ();;
+[%%expect{|
+Line 2, characters 2-32:
+2 |   fun a -> let _ = T5imm a in ();;
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: This definition has type 'b -> unit which is less general than
+         'a. 'a -> unit
+       'a has layout value, which is not a sublayout of immediate.
+|}];;
+
+let o5 = object
+  method ignore_imm5 : 'a . 'a -> unit =
+    fun a -> let _ = T5imm a in ()
+end;;
+[%%expect{|
+Line 3, characters 4-34:
+3 |     fun a -> let _ = T5imm a in ()
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: This method has type 'b -> unit which is less general than
+         'a. 'a -> unit
+       'a has layout value, which is not a sublayout of immediate.
+|}];;
+
+(* CJC XXX add more tests here once you can annotate these types with layouts *)
