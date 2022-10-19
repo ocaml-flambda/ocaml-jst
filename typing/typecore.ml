@@ -3545,26 +3545,35 @@ and type_expect_
     {exp with exp_loc = loc}
   | Pexp_apply(sfunct, sargs) ->
       let open Ast_helper in
-      let (_, ids', sargs') = List.fold_right (fun (lbl, sarg) (idx', ids', sargs') ->
-        (* TODO: need to fill in location info *)
+      let (_, lets, ids, sargs') = List.fold_right (fun (lbl, sarg) (idx, lets, ids, sargs') ->
+        let id = "*papp" ^ (string_of_int idx) ^ "*" in
+        (* for each sarg it goes to*)
+        (* either lets for specified arguments *)
+        (* or ids for omitted arguments *)
+        (* TODO: might need to fill in more location info *)
         match sarg with
         (* TODO: how about the location_stack and attributes annotating the underscore? *)
         | {pexp_desc = Pexp_extension ({ txt = "extension.papp"; loc }, _); _} ->
-          let id' = "*us" ^ (string_of_int idx') ^ "*" in
           let sarg' = {sarg with pexp_desc = Pexp_ident {
-            txt = Longident.Lident id';
+            txt = Longident.Lident id;
             loc = loc
           }}
           in
-          (idx' + 1, id' :: ids',  (lbl, sarg') :: sargs')
-        | _ -> (idx', ids', (lbl, sarg) :: sargs')  (* no change *)
-        )  sargs (0, [], [])
+          (idx + 1, lets, id :: ids, (lbl, sarg') :: sargs')
+        | {pexp_loc; _} ->
+          let sarg' = {sarg with pexp_desc = Pexp_ident {
+            txt = Longident.Lident id;
+            loc = pexp_loc
+          }}
+          in
+          (idx + 1, (id, sarg) :: lets, ids, (lbl, sarg') :: sargs')
+        )  sargs (0, [], [], [])
       in
       (* check if partial applicaiton at all *)
       (* needed to avoid infinite loop *)
       begin
-      match ids' with
-      | [] -> begin
+      match ids with
+      | [] ->  begin
         assert (sargs <> []);
         let position = apply_position env expected_mode sexp in
         let funct_mode, funct_expected_mode =
@@ -3634,22 +3643,34 @@ and type_expect_
           exp_mode = expected_mode.mode;
           exp_attributes = sexp.pexp_attributes;
           exp_env = env }
-        end
-      | _ ->
-        (* wrap it inside nested Pexp_fun *)
-        let sexp' = Exp.apply (Exp.extension (mknoloc "unregion", PStr []))
-                       [ Nolabel
-                       , {sexp with pexp_desc = (Pexp_apply (sfunct, sargs'))}
-                       ]
-        in
-        let pexp' = List.fold_right (fun id' pexp ->
-          Exp.fun_ Nolabel None (Pat.var (mknoloc id')) pexp
-            )
-          ids' sexp'
-        in
-          (* TODO: those arguments correct? need change? *)
-          type_expect ?in_function ~recarg env expected_mode pexp' ty_expected_explained
       end
+
+      | _ -> begin
+          (* first construct the function application *)
+          let sexp' = Exp.apply (Exp.extension (mknoloc "unregion", PStr []))
+                        [ Nolabel
+                        , {sexp with pexp_desc = (Pexp_apply (sfunct, sargs'))}
+                        ]
+          in
+          (* which is wrapped inside nested function abstraction *)
+          let sexp' = List.fold_right (fun id sexp' ->
+            Exp.fun_ Nolabel None (Pat.var (mknoloc id)) sexp'
+          )
+            ids sexp'
+          in
+          (* which is wrapped inside a single let binding *)
+          let bindings = List.map (fun (id, sarg) ->
+            Vb.mk (Pat.var (mknoloc id)) sarg
+          ) lets
+          in
+          let sexp' = match bindings with
+            | [] -> sexp'
+            | _ -> Exp.let_  Nonrecursive bindings sexp'
+          in
+          (* TODO: those arguments correct? need change? *)
+          type_expect ?in_function ~recarg env expected_mode sexp' ty_expected_explained
+        end
+        end
   | Pexp_match(sarg, caselist) ->
       let arg_pat_mode, arg_expected_mode =
         match cases_tuple_arity caselist with

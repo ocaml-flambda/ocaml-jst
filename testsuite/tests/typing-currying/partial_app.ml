@@ -125,13 +125,11 @@ val f_foo : string -> local_ string = <fun>
 |}]
 
 
-(* Once recognized as partial applicaiton, 
-even the specified arguments are not evaluated.
-   *)
+(* Arguments that are specified, are evaluated immediately *)
 let cell = ref ""
 let foo x y = x ^ y
 let bar = foo _ (cell := "a"; "foo")
-let _ = assert (!cell = "")
+let _ = assert (!cell = "a")
 [%%expect{|
 val cell : string ref = {contents = ""}
 val foo : string -> string -> string = <fun>
@@ -139,21 +137,19 @@ val bar : string -> local_ string = <fun>
 - : unit = ()
 |}]
 
-(* This is unfortunately inconsistent with 
-the other pre-existing behaviours such as 
-currying and omitted labeled arguments. 
-This can be fixed by changing the sugar 
-(add some let bindings)
+(* This is consistent with
+the other pre-existing behaviours such as
+currying and omitted labeled arguments.
 *)
  let cell = ref ""
  let foo ~x ~y = x ^ y
  let bar = foo ~y:(cell := "a"; "foo")
- let _  = assert (!cell = "")
+ let _  = assert (!cell = "a")
  [%%expect{|
 val cell : string ref = {contents = ""}
 val foo : x:string -> y:string -> string = <fun>
 val bar : x:string -> string = <fun>
-Exception: Assert_failure ("", 4, 10).
+- : unit = ()
 |}]
 
 
