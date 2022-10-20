@@ -71,6 +71,8 @@ module Unification_trace: sig
     | Incompatible_fields of {name:string; diff: type_expr diff }
     | Rec_occur of type_expr * type_expr
     | Bad_layout of type_expr * Type_layout.Violation.t
+    | Unequal_univar_layouts of
+        type_expr * Type_layout.t * type_expr * Type_layout.t
 
   type t = desc elt list
 

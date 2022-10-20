@@ -3038,10 +3038,9 @@ let check_univars env kind exp ty_expected vars =
            copies of nodes that have a Tvar as descendant *)
         let univars, ty' = instance_poly true tl body in
         let vars, exp_ty = instance_parameterized_type vars exp.exp_type in
-        (* CJC XXX think a little harder about whether this the right place for
-           this layouts check, and whether I'm checking the right thing.
-        *)
         List.iter2 (fun uvar var ->
+          (* This checks that the term doesn't require more specific layouts
+             than allowed by the univars. *)
           match (repr var).desc with
           | Tvar (_, layout2) -> begin
               match check_type_layout env uvar !layout2 with

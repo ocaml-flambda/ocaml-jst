@@ -270,3 +270,17 @@ Error: This method has type 'b -> unit which is less general than
 |}];;
 
 (* CJC XXX add more tests here once you can annotate these types with layouts *)
+
+(* Test 6 *)
+(* This one hits the layout check in unify_var *)
+type 'a [@immediate] t6 = Foo6 of 'a
+
+type t6' = (int * int) t6;;
+[%%expect{|
+type 'a t6 = Foo6 of 'a
+Line 3, characters 12-21:
+3 | type t6' = (int * int) t6;;
+                ^^^^^^^^^
+Error: This type int * int should be an instance of type 'a
+       int * int has layout value, which is not a sublayout of immediate.
+|}]

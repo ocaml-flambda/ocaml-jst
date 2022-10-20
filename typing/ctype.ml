@@ -99,6 +99,8 @@ module Unification_trace = struct
     | Incompatible_fields of {name:string; diff:type_expr diff }
     | Rec_occur of type_expr * type_expr
     | Bad_layout of type_expr * Type_layout.Violation.t
+    | Unequal_univar_layouts of
+        type_expr * Type_layout.t * type_expr * Type_layout.t
 
 
   type t = desc elt list
@@ -115,8 +117,8 @@ module Unification_trace = struct
     | Escape {kind=Equation x; context} -> Escape {kind=Equation(f x); context}
     | Rec_occur (_,_)
     | Escape {kind=(Univ _ | Self|Constructor _ | Module_type _ ); _}
-    | Variant _ | Obj _
-    | Incompatible_fields _ | Bad_layout _ as x -> x
+    | Variant _ | Obj _ | Incompatible_fields _
+    | Bad_layout _ | Unequal_univar_layouts _ as x -> x
   let map f = List.map (map_elt f)
 
 
@@ -2926,11 +2928,14 @@ let rec unify ~ignore_layouts (env:Env.t ref) t1 t2 =
         unify1_var ~ignore_layouts !env t1 t2
     | (_, Tvar _) ->
         unify1_var ~ignore_layouts !env t2 t1
-    | (Tunivar _, Tunivar _) ->
+    | (Tunivar (_,l1), Tunivar (_,l2)) ->
         unify_univar t1 t2 !univar_pairs;
         update_level !env t1.level t2;
         update_scope t1.scope t2;
-        (* CJC XXX check equality of layouts *)
+        (* CR ccasinghino: make test cases that his this.  Easier once we have
+           annotations on univars, I think. *)
+        if not (Type_layout.equal l1 l2) then
+          raise (Unify [Trace.Unequal_univar_layouts (t1, l1, t2, l2)]);
         link_type t1 t2
     | (Tconstr (p1, [], a1), Tconstr (p2, [], a2))
           when Path.same p1 p2 (* && actual_mode !env = Old *)
@@ -2941,7 +2946,6 @@ let rec unify ~ignore_layouts (env:Env.t ref) t1 t2 =
                  || has_cached_expansion p2 !a2) ->
         update_level !env t1.level t2;
         update_scope t1.scope t2;
-        (* CJC XXX do I need to check equality of layotus *)
         link_type t1 t2
     | (Tconstr (p1, [], _), Tconstr (p2, [], _))
       when Env.has_local_constraints !env
@@ -3482,7 +3486,6 @@ let unify_var env ~ignore_layouts t1 t2 =
         update_level env t1.level t2;
         update_scope t1.scope t2;
         check_or_ignore_layouts ~ignore_layouts env t2 !layout;
-        (* CJC XXX make an example that goes wrong if I delete this *)
         link_type t1 t2;
         reset_trace_gadt_instances reset_tracing;
       with Unify trace ->
