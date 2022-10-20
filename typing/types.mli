@@ -62,9 +62,7 @@ type type_expr =
     id: int }
 
 and type_desc =
-  (* CJC XXX todo make this tuple a record *)
-  | Tvar of string option * layout ref
-  (*  | Tvar of { name : string option; mutable layout : layout } *)
+  | Tvar of { name : string option; layout : layout }
   (** [Tvar (Some "a")] ==> ['a] or ['_a]
       [Tvar None]       ==> [_] *)
 
@@ -119,7 +117,7 @@ and type_desc =
   | Tvariant of row_desc
   (** Representation of polymorphic variants, see [row_desc]. *)
 
-  | Tunivar of string option * layout
+  | Tunivar of { name : string option; layout : layout }
   (** Occurrence of a type variable introduced by a
       forall quantifier / [Tpoly]. *)
 

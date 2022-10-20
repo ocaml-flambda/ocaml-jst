@@ -76,4 +76,5 @@ val layout_bound_of_kind : Types.type_kind -> t
 (** Pretty printing *)
 val to_string : t -> string
 
+(** Eliminate sort vars (by defaulting to value) - used in Ctype.reify *)
 val reify : t -> unit

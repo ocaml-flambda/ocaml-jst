@@ -3042,8 +3042,8 @@ let check_univars env kind exp ty_expected vars =
           (* This checks that the term doesn't require more specific layouts
              than allowed by the univars. *)
           match (repr var).desc with
-          | Tvar (_, layout2) -> begin
-              match check_type_layout env uvar !layout2 with
+          | Tvar { layout = layout2; _ } -> begin
+              match check_type_layout env uvar layout2 with
               | Ok _ -> ()
               | Error err ->
                 error exp_ty ty_expected

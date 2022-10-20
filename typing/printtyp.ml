@@ -495,9 +495,9 @@ let rec raw_type ppf ty =
   end
 and raw_type_list tl = raw_list raw_type tl
 and raw_type_desc ppf = function
-    Tvar (name, layout) ->
+    Tvar { name; layout }->
       fprintf ppf "Tvar (@,%a,@,%s)" print_name name
-        (Type_layout.to_string !layout)
+        (Type_layout.to_string layout)
   | Tarrow((l,arg,ret),t1,t2,c) ->
       fprintf ppf "@[<hov1>Tarrow((\"%s\",%a,%a),@,%a,@,%a,@,%s)@]"
         (string_of_label l) Alloc_mode.print arg Alloc_mode.print ret
@@ -522,7 +522,7 @@ and raw_type_desc ppf = function
   | Tnil -> fprintf ppf "Tnil"
   | Tlink t -> fprintf ppf "@[<1>Tlink@,%a@]" raw_type t
   | Tsubst t -> fprintf ppf "@[<1>Tsubst@,%a@]" raw_type t
-  | Tunivar (name, layout) ->
+  | Tunivar { name; layout } ->
       fprintf ppf "Tunivar (@,%a,@,%s)" print_name name
         (Type_layout.to_string layout)
   | Tpoly (t, tl) ->
@@ -778,7 +778,7 @@ let named_weak_vars = ref String.Set.empty
 let reset_names () = names := []; name_counter := 0; named_vars := []
 let add_named_var ty =
   match ty.desc with
-    Tvar (Some name, _) | Tunivar (Some name, _) ->
+    Tvar { name = Some name ; _ } | Tunivar { name = Some name ; _ } ->
       if List.mem name !named_vars then () else
       named_vars := name :: !named_vars
   | _ -> ()
@@ -814,7 +814,7 @@ let name_of_type name_generator t =
     try TypeMap.find t !weak_var_map with Not_found ->
     let name =
       match t.desc with
-        Tvar (Some name, _) | Tunivar (Some name, _) ->
+        Tvar { name = Some name; _ } | Tunivar { name = Some name ; _ } ->
           (* Some part of the type we've already printed has assigned another
            * unification variable to that name. We want to keep the name, so try
            * adding a number until we find a name that's not taken. *)
@@ -1199,8 +1199,8 @@ let rec tree_of_type_decl id decl =
   | Some ty ->
       let vars = free_variables ty in
       List.iter
-        (function {desc = Tvar (Some "_",l)} as ty ->
-             if List.memq ty vars then ty.desc <- Tvar (None,l)
+        (function {desc = Tvar { name = Some "_"; layout }} as ty ->
+             if List.memq ty vars then ty.desc <- Tvar { name = None; layout }
           | _ -> ())
         params
   | None -> ()

@@ -437,10 +437,10 @@ and transl_type_aux env policy mode styp =
           let t = instance t in
           let px = Btype.proxy t in
           begin match px.desc with
-          | Tvar (None, layout) ->
-             Btype.set_type_desc px (Tvar (Some alias, layout))
-          | Tunivar (None, layout) ->
-             Btype.set_type_desc px (Tunivar (Some alias, layout))
+          | Tvar { name = None; layout } ->
+             Btype.set_type_desc px (Tvar { name = Some alias; layout })
+          | Tunivar { name = None; layout } ->
+             Btype.set_type_desc px (Tunivar {name = Some alias; layout})
           | _ -> ()
           end;
           { ty with ctyp_type = t }
@@ -572,8 +572,8 @@ and transl_type_aux env policy mode styp =
             let v = Btype.proxy ty1 in
             if deep_occur v ty then begin
               match v.desc with
-                Tvar (name, layout) when v.level = Btype.generic_level ->
-                  v.desc <- Tunivar (name, !layout);
+                Tvar { name; layout } when v.level = Btype.generic_level ->
+                v.desc <- Tunivar { name; layout };
                   v :: tyl
               | _ ->
                 raise (Error (styp.ptyp_loc, env, Cannot_quantify (name, v)))
@@ -752,8 +752,8 @@ let transl_simple_type_univars env styp =
       (fun acc v ->
         let v = repr v in
         match v.desc with
-          Tvar (name, layout) when v.level = Btype.generic_level ->
-            v.desc <- Tunivar (name, !layout); v :: acc
+          Tvar { name; layout } when v.level = Btype.generic_level ->
+            v.desc <- Tunivar { name; layout }; v :: acc
         | _ -> acc)
       [] !pre_univars
   in
@@ -848,7 +848,7 @@ let report_error env ppf = function
         "@[The type %a@ does not expand to a polymorphic variant type@]"
         Printtyp.type_expr ty;
       begin match ty.desc with
-        | Tvar (Some s, _) ->
+        | Tvar { name = Some s; _ } ->
            (* PR#7012: help the user that wrote 'Foo instead of `Foo *)
            Misc.did_you_mean ppf (fun () -> ["`" ^ s])
         | _ -> ()

@@ -269,7 +269,7 @@ let free_variables ty =
   Ctype.free_variables (Ctype.repr ty)
   |> List.map (fun {desc; id; _} ->
       match desc with
-      | Tvar (text,_) -> {text; id}
+      | Tvar { name=text; _ } -> {text; id}
       | _ ->
           (* Ctype.free_variables only returns Tvar nodes *)
           assert false)
@@ -484,8 +484,8 @@ let check_type
     (* "Indifferent" case, the empty context is sufficient. *)
     | (_                  , Ind    ) -> empty
     (* Variable case, add constraint. *)
-    | (Tvar(alpha, _)     , m      ) ->
-        TVarMap.singleton {text = alpha; id = ty.Types.id} m
+    | (Tvar {name; _}     , m      ) ->
+        TVarMap.singleton {text = name; id = ty.Types.id} m
     (* "Separable" case for constructors with known memory representation. *)
     | (Tarrow _           , Sep    )
     | (Ttuple _           , Sep    )
@@ -623,8 +623,8 @@ let msig_of_context : decl_loc:Location.t -> parameters:type_expr list
         | Ind -> true
         | Sep | Deepsep -> false in
       match param_instance.desc with
-      | Tvar (text, _) ->
-          let var = {text; id = param_instance.Types.id} in
+      | Tvar { name; _ } ->
+          let var = {text=name; id = param_instance.Types.id} in
           (get context var) :: acc, (set_ind context var)
       | _ ->
           let instance_exis = free_variables param_instance in

@@ -796,7 +796,7 @@ let check_abbrev env sdecl (id, decl) =
 let default_decl_layout decl =
   let default_typ typ =
     match (Ctype.repr typ).desc with
-    | Tvar (_,{contents=Sort (Var s)}) -> begin
+    | Tvar { layout = Sort (Var s); _ } -> begin
         match !s with
         | None -> s := Some Types.Value
         | _ -> ()
@@ -1296,8 +1296,9 @@ let transl_extension_constructor ~scope env type_path type_params
             Ctype.free_variables (Btype.newgenty (Ttuple args))
           in
             List.iter
-              (function {desc = Tvar (Some "_",l)} as ty ->
-                          if List.memq ty vars then ty.desc <- Tvar (None,l)
+              (function {desc = Tvar { name = Some "_"; layout }} as ty ->
+                          if List.memq ty vars then
+                            ty.desc <- Tvar { name = None; layout }
                         | _ -> ())
               typext_params
         end;

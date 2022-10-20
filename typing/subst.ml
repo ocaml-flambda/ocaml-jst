@@ -179,7 +179,7 @@ let rec typexp copy_scope s ty =
     (* CJC XXX - do we want to estimate layout based on ty here ? *)
     let layout = Type_layout.any in
     let ty' =
-      if s.for_saving then newpersty (Tvar (None, ref layout))
+      if s.for_saving then newpersty (Tvar { name = None; layout })
       else newgenvar layout
     in
     ty'.scope <- ty.scope;
