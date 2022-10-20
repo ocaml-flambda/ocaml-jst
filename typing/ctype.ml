@@ -5193,8 +5193,6 @@ let nondep_type_decl env mid is_covariant decl =
     let tk =
       try map_kind (nondep_type_rec env mid) decl.type_kind
       with Nondep_cannot_erase _ when is_covariant ->
-        (* CJC XXX: Is this layout precise enough?  Think through uses of
-           nondep_type_decl *)
         Types.kind_abstract
           ~layout:(Type_layout.layout_bound_of_kind decl.type_kind)
     and tm, priv =

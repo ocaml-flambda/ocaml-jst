@@ -236,3 +236,60 @@ end;;
 module rec Foo3 : sig type t = t3 [@@void] end
 and Bar3 : sig type 'a t type s = Foo3/2.t t end
 |}];;
+
+(* Test 4: Nondep typedecl layout approximation in the Nondep_cannot_erase
+   case. *)
+
+module F4(X : sig type t end) = struct
+  type s = Foo of X.t
+end
+
+module M4 = F4(struct type t = T end)
+
+type 'a [@value] t4_val
+type 'a [@void] t4_void
+
+type t4 = M4.s t4_val;;
+[%%expect {|
+module F4 : functor (X : sig type t end) -> sig type s = Foo of X.t end
+module M4 : sig type s end
+type 'a t4_val
+type 'a t4_void
+type t4 = M4.s t4_val
+|}]
+
+type t4' = M4.s t4_void;;
+[%%expect {|
+Line 1, characters 11-15:
+1 | type t4' = M4.s t4_void;;
+               ^^^^
+Error: This type M4.s should be an instance of type 'a
+       M4.s has layout value, which is not a sublayout of void.
+|}]
+
+module F4'(X : sig type t [@@immediate] end) = struct
+  type s = Foo of X.t [@@unboxed] [@@immediate]
+end
+
+module M4' = F4'(struct type t = T end)
+
+type 'a [@immediate] t4_imm
+
+type t4 = M4'.s t4_imm;;
+[%%expect{|
+module F4' :
+  functor (X : sig type t [@@immediate] end) ->
+    sig type s = Foo of X.t [@@immediate] [@@unboxed] end
+module M4' : sig type s [@@immediate] end
+type 'a t4_imm
+type t4 = M4'.s t4_imm
+|}];;
+
+type t4 = M4'.s t4_void;;
+[%%expect{|
+Line 1, characters 10-15:
+1 | type t4 = M4'.s t4_void;;
+              ^^^^^
+Error: This type M4'.s should be an instance of type 'a
+       M4'.s has layout immediate, which is not a sublayout of void.
+|}];;
