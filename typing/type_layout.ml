@@ -100,15 +100,6 @@ module Violation = struct
    *       pr "Layout %s is not a sublayout of %s." name
    *  (Type_layout.to_string l1) (Type_layout.to_string l2) *)
 end
-(* let of_kind kind =
- *   match kind with
- *   | Type_abstract {layout} -> layout
- *   | Type_record _ -> Sort Value
- *   | Type_variant (cstrs,_) -> (* CJC XXX to fix or is this used? *)
- *      if List.exists (fun c -> c.cd_args <> Cstr_tuple []) cstrs
- *      then Sort Value
- *      else Immediate
- *   | Type_open -> Sort Value *)
 
 let any = Any
 let any_sort () = Sort (Var (ref None))
@@ -131,9 +122,9 @@ let layout_bound_of_variant_representation = function
   | Variant_immediate -> immediate
 
 let layout_bound_of_kind = function
+  | Type_abstract { layout } -> layout
   | Type_open -> value
   | Type_record (_,rep) -> layout_bound_of_record_representation rep
-  | Type_abstract { layout } -> layout
   | Type_variant (_, rep) -> layout_bound_of_variant_representation rep
 
 let rec sort_repr s =

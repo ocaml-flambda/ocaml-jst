@@ -3560,8 +3560,7 @@ and type_expect_
         if List.memq ty seen then () else
           match ty.desc with
             Tarrow (_l, ty_arg, ty_fun, _com) ->
-              (* CJC XXX layout *)
-              (try unify_var env (newvar Type_layout.value) ty_arg
+              (try unify_var env (newvar Type_layout.any) ty_arg
                with Unify _ -> assert false);
               lower_args (ty::seen) ty_fun
           | _ -> ()
@@ -3606,7 +3605,7 @@ and type_expect_
         type_application env loc expected_mode position funct funct_mode sargs
       in
       end_def ();
-      unify_var env (newvar Type_layout.value) funct.exp_type;
+      unify_var env (newvar Type_layout.any) funct.exp_type;
       rue {
         exp_desc = Texp_apply(funct, args, position);
         exp_loc = loc; exp_extra = [];
@@ -4870,7 +4869,7 @@ and type_function ?in_function loc attrs env (expected_mode : expected_mode)
   end;
   let ty_arg =
     if is_optional l then
-      let tv = newvar Type_layout.value in
+      let tv = newvar Type_layout.any in
       begin
         try unify env ty_arg (type_option tv)
         with Unify _ -> assert false
@@ -5959,8 +5958,6 @@ and type_let
          in
          attrs, pat_mode, exp_mode, spat)
       spat_sexp_list in
-  (* Layouts: Type_layout.value to be relaxed to Type_layout.any_sort when we
-     allow binding other sorts *)
   let nvs = List.map (fun _ -> newvar (Type_layout.any_sort())) spatl in
   let (pat_list, new_env, force, pvs, unpacks) =
     type_pattern_list Value existential_context env spatl nvs allow in

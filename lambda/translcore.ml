@@ -1406,7 +1406,11 @@ and transl_record ~scopes loc env mode fields repres opt_init_expr =
 
 and transl_match ~scopes e arg pat_expr_list partial =
   let layout_rep = Typeopt.value_kind e.exp_env e.exp_type in
-  (* CJC XXX surely we want to match on void stuff *)
+  (* CJC XXX surely we want to match on void stuff.
+     Options:
+     1 (easy): nonvoid_kind_of_layout_rep replaced with something that makes void into unit
+     2: this function adn everything else takes an optional continuation ( k : int option) that says where to raise to if void.
+  *)
   let kind = nonvoid_kind_of_layout_rep layout_rep in
   let rewrite_case (val_cases, exn_cases, static_handlers as acc)
         ({ c_lhs; c_guard; c_rhs } as case) =

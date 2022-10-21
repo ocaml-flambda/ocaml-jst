@@ -37,6 +37,35 @@ Error: Function return types must have layout value.
         t_void has layout void, which is not a sublayout of value.
 |}];;
 
+(* CJC XXX errors: the F1 and F1' errors should ideally mention that the layout
+   restriction is coming from the function type *)
+module F1 (X : sig val x : t_void end) = struct
+  let f () = X.x
+end;;
+[%%expect{|
+Line 2, characters 13-16:
+2 |   let f () = X.x
+                 ^^^
+Error: This expression has type t_void but an expression was expected of type
+         'a
+       t_void has layout void, which is not a sublayout of value.
+|}];;
+
+type t1 = { x : t_void }
+
+module F1 (X : sig val f : t1 -> unit end) = struct
+  let g z = X.f { x = z }
+end;;
+[%%expect{|
+type t1 = { x : t_void; }
+Line 4, characters 22-23:
+4 |   let g z = X.f { x = z }
+                          ^
+Error: This expression has type 'a but an expression was expected of type
+         t_void
+       t_void has layout void, which is not a sublayout of value.
+|}];;
+
 (* Test 2: Permit value function arg/returns *)
 module type S = sig
   val f1 : t_value -> t_value

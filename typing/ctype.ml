@@ -3536,7 +3536,10 @@ let filter_arrow env t l =
   match t.desc with
     Tvar _ ->
       let lv = t.level in
-      (* CR ccasinghino: t1 can probably be sort 'a and t2 any *)
+      (* Layouts: This is a primary place where we are restricting function
+         arguments / returns to have layout value.  When we decide to drop that
+         restriction, we can probably allow [t1] to be any sort, and [t2] to be
+         just any. *)
       let t1 = newvar2 lv Type_layout.value in
       let t2 = newvar2 lv Type_layout.value in
       let marg = Btype.Alloc_mode.newvar () in

@@ -189,7 +189,12 @@ let value_kind env ty =
         | exception Not_found ->
           (num_nodes_visited, Value Pgenval)
         (* CJC XXX in what cases do we hit this Not_found?  Missing cmis?  Is it
-           safe to assume Pgenval here still? *)
+           safe to assume Pgenval here still?
+
+           No, it isn't.  We need to rework the whole lambda translation so that
+           this is only called on values.  We can achieve that by storing
+           layouts in the typed tree at places where the layout isn't clear from
+           the context.  *)
         | Type_variant (constructors, rep) -> begin
           match rep with
           | Variant_immediate -> (num_nodes_visited, Value Pintval)
