@@ -134,15 +134,40 @@ let newpersty desc =
   { desc; level = generic_level; scope = Btype.lowest_level; id = !new_id }
 
 (* ensure that all occurrences of 'Tvar None' are physically shared *)
-(* CJC XXX todo just get rid of these I guess *)
-(*
-let tvar_none = Tvar None
-let tunivar_none = Tunivar None
+let tvar_none_any = Tvar { name = None; layout = Type_layout.any }
+let tvar_none_imm = Tvar { name = None; layout = Type_layout.immediate }
+let tvar_none_imm64 = Tvar { name = None; layout = Type_layout.immediate64 }
+let tvar_none_val = Tvar { name = None; layout = Type_layout.value }
+let tvar_none_void = Tvar { name = None; layout = Type_layout.void }
+
+let tunivar_none_any = Tunivar { name = None; layout = Type_layout.any }
+let tunivar_none_imm = Tunivar { name = None; layout = Type_layout.immediate }
+let tunivar_none_imm64 =
+  Tunivar { name = None; layout = Type_layout.immediate64 }
+let tunivar_none_val = Tunivar { name = None; layout = Type_layout.value }
+let tunivar_none_void = Tunivar { name = None; layout = Type_layout.void}
+
 let norm = function
-  | Tvar None -> tvar_none
-  | Tunivar None -> tunivar_none
+  | Tvar { name = None; layout } -> begin
+      match Type_layout.repr layout with
+      | Any -> tvar_none_any
+      | Immediate -> tvar_none_imm
+      | Immediate64 -> tvar_none_imm64
+      | Sort Value -> tvar_none_val
+      | Sort Void -> tvar_none_void
+      | Sort (Var _) -> assert false
+    end
+  | Tunivar { name = None; layout } -> begin
+      match Type_layout.repr layout with
+      | Any -> tunivar_none_any
+      | Immediate -> tunivar_none_imm
+      | Immediate64 -> tunivar_none_imm64
+      | Sort Value -> tunivar_none_val
+      | Sort Void -> tunivar_none_void
+      | Sort (Var _) -> assert false
+    end
   | d -> d
-*)
+
 let ctype_apply_env_empty = ref (fun _ -> assert false)
 
 (* Similar to [Ctype.nondep_type_rec]. *)
@@ -152,7 +177,7 @@ let rec typexp copy_scope s ty =
     Tvar _ | Tunivar _ as desc ->
       if s.for_saving || ty.id < 0 then
         let ty' =
-          if s.for_saving then newpersty desc
+          if s.for_saving then newpersty (norm desc)
           else newty2 ty.level desc
         in
         For_copy.save_desc copy_scope ty desc;
@@ -234,7 +259,7 @@ let rec typexp copy_scope s ty =
                 | Tconstr _ | Tnil -> typexp copy_scope s more
                 | Tunivar _ | Tvar _ ->
                     For_copy.save_desc copy_scope more more.desc;
-                    if s.for_saving then newpersty more.desc else
+                    if s.for_saving then newpersty (norm more.desc) else
                     if dup && is_Tvar more then newgenty more.desc else more
                 | _ -> assert false
               in
