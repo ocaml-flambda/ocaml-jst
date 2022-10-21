@@ -1972,7 +1972,7 @@ let check_decl_layout env decl layout =
           | None -> err
           | Some ty -> check_type_layout env ty layout
 
-(* CJC XXX locations and better error reporting *)
+(* CJC XXX errors: locations and better error reporting *)
 let constrain_type_layout_exn env ty layout =
   match constrain_type_layout env ty layout with
   | Ok _ -> ()

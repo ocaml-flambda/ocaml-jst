@@ -160,11 +160,11 @@ let enter_type rec_flag env sdecl (id, uid) =
       type_arity = arity;
       type_kind = Types.kind_abstract ~layout;
       type_private = sdecl.ptype_private;
-      (* CJC XXX putting layout here, rather than "any", is causing us to
-         fail earlier and get bad error messages in some cases.  (e.g.,
-         [tests/typing-immediate/immediate.ml], line 149, fails in
-         [update_type] rather than at the very end of [transl_type_decl],
-         resulting in a very bad message. *)
+      (* CJC errors: XXX putting layout here, rather than "any", is causing us
+         to fail earlier and get bad error messages in some cases.  (e.g.,
+         [tests/typing-immediate/immediate.ml], line 149, fails in [update_type]
+         rather than at the very end of [transl_type_decl], resulting in a very
+         bad message. *)
       type_manifest = Some (Ctype.newvar layout);
       type_variance = Variance.unknown_signature ~injective:false ~arity;
       type_separability = Types.Separability.default_signature ~arity;

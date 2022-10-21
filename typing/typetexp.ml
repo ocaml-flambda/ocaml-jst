@@ -781,7 +781,6 @@ let transl_type_scheme env styp =
   let typ = transl_simple_type env false Alloc_mode.Global styp in
   end_def();
   generalize typ.ctyp_type;
-  (* CJC XXX default sort variables to value here (or in the generalize), probably *)
   typ
 
 

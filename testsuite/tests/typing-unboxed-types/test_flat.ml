@@ -304,7 +304,7 @@ type safe_again = Any : 'a stream -> safe_again
     the type declarations that would be required to check these cases
     (unproductive cycles in the type declaration) are already rejected by the
     type-checker, before separability checking. See below *)
-(* CJC XXX The old error message was better:
+(* CJC XXX errors: The old error message was better:
 [%%expect{|
 type 'a id = Id of 'a [@@unboxed]
 Line 2, characters 0-21:

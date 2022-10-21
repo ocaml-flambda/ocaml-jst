@@ -431,7 +431,7 @@ and compare_variants_with_representation ~loc env params1 params2 n
      Some (Unboxed_representation First)
   | None, Variant_regular, Variant_unboxed _ ->
      Some (Unboxed_representation Second)
-  | _ -> Some (Unboxed_representation First) (* CJC XXX todo generalize error *)
+  | _ -> Some (Unboxed_representation First) (* CJC XXX errors: todo generalize error *)
 
 and compare_labels env params1 params2
       (ld1 : Types.label_declaration)
@@ -502,8 +502,8 @@ let compare_records_with_representation ~loc env params1 params2 n
         Some (Record_mismatch (Unboxed_float_representation Second))
 
      | Record_immediate _, Record_immediate _ -> None
-     | Record_immediate _, _ -> failwith "CJC XXX error messages"
-     | _, Record_immediate _ -> failwith "CJC XXX error messages"
+     | Record_immediate _, _ -> failwith "CJC XXX errors: nice error and test case"
+     | _, Record_immediate _ -> failwith "CJC XXX errors: nice error and test case"
 
      | Record_regular, Record_regular
      | Record_inlined _, Record_inlined _

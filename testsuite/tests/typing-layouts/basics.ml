@@ -145,7 +145,7 @@ Line 1, characters 10-15:
 Error: Constraints are not satisfied in this type.
        Type s5 t4 should be an instance of 'a t4
 |}]
-(* CJC XXX improve error *)
+(* CJC XXX errors: improve error *)
 
 type 'a [@any] t4 = 'a
 and s4 = string t4;;
@@ -209,7 +209,7 @@ Error: This expression has type int any4
        but an expression was expected of type 'a
        int any4 has layout value, which is not a sublayout of void.
 |}];;
-(* CJC XXX better errors needed *)
+(* CJC XXX errors: better errors needed *)
 
 (* disallowed - tries to return void *)
 let g (x : 'a void4) =
@@ -228,7 +228,7 @@ Lines 2-3, characters 2-16:
 Error: This expression has type 'a but an expression was expected of type 'a0
        'a has layout value, which does not overlap with void.
 |}]
-(* CJC XXX understand what's going on with Principal mode here (and improve
+(* CJC XXX errors: understand what's going on with Principal mode here (and improve
    error messages generally *)
 
 (* Test 5: explicitly polymorphic types *)

@@ -38,7 +38,7 @@ Error: The type constraints are not consistent.
 Type 'a is not compatible with type 'b
 'a has layout void, which does not overlap with value.
 |}];;
-(* CJC XXX error message *)
+(* CJC XXX errors: error message *)
 
 module type S1'' = S1 with type s = t_void;;
 
@@ -187,7 +187,7 @@ Line 2, characters 26-28:
 Error: This type 'a should be an instance of type 'b
        'a has layout void, which does not overlap with value.
 |}];;
-(* CJC XXX bad error message *)
+(* CJC XXX errors: bad error message *)
 
 (* One downside of the current approach - this could be allowed, but isn't.  You
    need to annotate types declared in recursive modules if they need to have

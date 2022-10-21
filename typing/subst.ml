@@ -201,7 +201,6 @@ let rec typexp copy_scope s ty =
     let has_fixed_row =
       not (is_Tconstr ty) && is_constr_row ~allow_ident:false tm in
     (* Make a stub *)
-    (* CJC XXX - do we want to estimate layout based on ty here ? *)
     let layout = Type_layout.any in
     let ty' =
       if s.for_saving then newpersty (Tvar { name = None; layout })
