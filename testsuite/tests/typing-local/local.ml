@@ -2506,25 +2506,17 @@ Error: This local value escapes its region
 
 (* but global is outer than local *)
 let f (s : string) =  (* s is global *)
-  let local_ x = RFoo (s, "bar") in  (* x is local *)
+  let local_ _x = RFoo (s, "bar") in  (* x is local *)
   "foo"
 [%%expect{|
-Line 2, characters 13-14:
-2 |   let local_ x = RFoo (s, "bar") in  (* x is local *)
-                 ^
-Warning 26 [unused-var]: unused variable x.
 val f : string -> string = <fun>
 |}]
 
 (* and regional is outer than local *)
 let f (local_ s : string) =  (* s is regional *)
-  let local_ x = RFoo (s, "bar") in  (* x is local *)
+  let local_ _x = RFoo (s, "bar") in  (* x is local *)
   "foo"
 [%%expect{|
-Line 2, characters 13-14:
-2 |   let local_ x = RFoo (s, "bar") in  (* x is local *)
-                 ^
-Warning 26 [unused-var]: unused variable x.
 val f : local_ string -> string = <fun>
 |}]
 
