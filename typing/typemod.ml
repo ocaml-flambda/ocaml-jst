@@ -1730,7 +1730,7 @@ and check_signature_item env f = function
 
 let check_nongen_scheme env sig_item =
   let check ty =
-    Ctype.remove_mode_variables ty; Ctype.closed_schema env ty
+    Ctype.remove_mode_and_layout_variables ty; Ctype.closed_schema env ty
   in
   let ok = check_signature_item env check sig_item in
   match sig_item with
@@ -1745,11 +1745,11 @@ let check_nongen_schemes env sg =
 
 let closed_modtype env mty =
   let check ty =
-    Ctype.remove_mode_variables ty; Ctype.closed_schema env ty
+    Ctype.remove_mode_and_layout_variables ty; Ctype.closed_schema env ty
   in check_modtype env check mty
 
-let remove_mode_variables env sg =
-  let rm ty = Ctype.remove_mode_variables ty; true in
+let remove_mode_and_layout_variables env sg =
+  let rm ty = Ctype.remove_mode_and_layout_variables ty; true in
   List.for_all (check_signature_item env rm) sg |> ignore
 
 (* Helpers for typing recursive modules *)
@@ -2568,7 +2568,7 @@ and type_structure ?(toplevel = None) funct_body anchor env sstr =
   else Builtin_attributes.warning_scope [] run
 
 (* The toplevel will print some types not present in the signature *)
-let remove_mode_variables_for_toplevel str =
+let remove_mode_and_layout_variables_for_toplevel str =
   match str.str_items with
   | [{ str_desc =
          ( Tstr_eval (exp, _)
@@ -2577,7 +2577,7 @@ let remove_mode_variables_for_toplevel str =
                          vb_expr = exp}])) }] ->
      (* These types are printed by the toplevel,
         even though they do not appear in sg *)
-     Ctype.remove_mode_variables exp.exp_type
+     Ctype.remove_mode_and_layout_variables exp.exp_type
   | _ -> ()
 
 let type_toplevel_phrase env sig_acc s =
@@ -2586,8 +2586,8 @@ let type_toplevel_phrase env sig_acc s =
   Typecore.reset_allocations ();
   let (str, sg, to_remove_from_sg, env) =
     type_structure ~toplevel:(Some sig_acc) false None env s in
-  remove_mode_variables env sg;
-  remove_mode_variables_for_toplevel str;
+  remove_mode_and_layout_variables env sg;
+  remove_mode_and_layout_variables_for_toplevel str;
   Typecore.optimise_allocations ();
   (str, sg, to_remove_from_sg, env)
 

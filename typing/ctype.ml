@@ -1884,8 +1884,8 @@ let layout_of_result = function
    in some edge cases (when [get_unboxed_type_representation] ran out of fuel,
    or when the type is a Tconstr that is missing from the Env *)
 let rec estimate_type_layout env ty =
-  let open Type_layout in
   let ty = repr ty in
+  let open Type_layout in
   match ty.desc with
   | Tconstr(p, _, _) -> begin
       match Env.find_type p env with
@@ -4966,13 +4966,15 @@ let cyclic_abbrev env id ty =
   in check_cycle [] ty
 
 (* Ensure all mode variables are fully determined *)
-let remove_mode_variables ty =
+let remove_mode_and_layout_variables ty =
   let visited = ref TypeSet.empty in
   let rec go ty =
     let ty = repr ty in
     if TypeSet.mem ty !visited then () else begin
       visited := TypeSet.add ty !visited;
       match ty.desc with
+      | Tvar { layout } -> Type_layout.default_to_value layout
+      | Tunivar { layout } -> Type_layout.default_to_value layout
       | Tarrow ((_,marg,mret),targ,tret,_) ->
          let _ = Btype.Alloc_mode.constrain_lower marg in
          let _ = Btype.Alloc_mode.constrain_lower mret in

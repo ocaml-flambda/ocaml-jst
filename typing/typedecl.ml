@@ -794,13 +794,11 @@ let check_abbrev env sdecl (id, decl) =
    have effects!
 *)
 let default_decl_layout decl =
+  (* CJC XXX is this really sufficient, or do I need to do a full iteration as
+     in Ctype.remove_mode_and_layout_variables? *)
   let default_typ typ =
     match (Ctype.repr typ).desc with
-    | Tvar { layout = Sort (Var s); _ } -> begin
-        match !s with
-        | None -> s := Some Types.Value
-        | _ -> ()
-      end
+    | Tvar { layout } -> Type_layout.default_to_value layout
     | _ -> ()
   in
   let default_ldecl (ldecl : Types.label_declaration) =

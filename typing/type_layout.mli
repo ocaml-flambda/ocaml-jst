@@ -43,6 +43,9 @@ val immediate : t
 val immediate64 : t
 val void : t
 
+val repr : t -> t
+val default_to_value : t -> unit
+
 val equal : t -> t -> bool
 val intersection : t -> t -> (t, Violation.t) Result.t
 

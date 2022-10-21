@@ -215,7 +215,7 @@ let rec abbreviate_class_type path params cty =
 (* Use Env.empty to prevent expansion of recursively defined object types;
    cf. typing-poly/poly.ml *)
 let closed_type ty =
-  Ctype.remove_mode_variables ty; Ctype.closed_schema Env.empty ty
+  Ctype.remove_mode_and_layout_variables ty; Ctype.closed_schema Env.empty ty
 
 let rec closed_class_type =
   function

@@ -145,6 +145,17 @@ let rec sort_repr s =
       | None -> s
     end
 
+let repr l =
+  match l with
+  | (Any | Immediate | Immediate64) -> l
+  | Sort s -> Sort (sort_repr s)
+
+let default_to_value t =
+  match repr t with
+  | (Any | Immediate | Immediate64
+     | Sort (Value | Void | Var { contents = Some _ })) -> ()
+  | Sort (Var ({contents = None} as r)) -> r := Some Value
+
 let equal_sort s1 s2 =
   match sort_repr s1, sort_repr s2 with
   | Value, Value -> true
