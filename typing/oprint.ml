@@ -436,14 +436,23 @@ and print_typargs ppf =
       pp_close_box ppf ();
       pp_print_space ppf ()
 and print_out_label ppf (name, mut_or_gbl, arg) =
-  let flag =
+  if Clflags.Extension.is_enabled Local then
+    let flag =
+      match mut_or_gbl with
+      | Ogom_mutable -> "mutable "
+      | Ogom_global -> "global_ "
+      | Ogom_nonlocal -> "nonlocal_ "
+      | Ogom_immutable -> ""
+    in
+    fprintf ppf "@[<2>%s%s :@ %a@];" flag name print_out_type arg
+  else
     match mut_or_gbl with
-    | Ogom_mutable -> "mutable "
-    | Ogom_global -> "global_ "
-    | Ogom_nonlocal -> "nonlocal_ "
-    | Ogom_immutable -> ""
-  in
-  fprintf ppf "@[<2>%s%s :@ %a@];" flag name print_out_type arg
+    | Ogom_mutable -> fprintf ppf "@[mutable %s :@ %a@];" name print_out_type arg
+    | Ogom_immutable -> fprintf ppf "@[%s :@ %a@];" name print_out_type arg
+    | Ogom_global -> fprintf ppf "@[%s :@ %a@];" name print_out_type
+                       (Otyp_attribute (arg, {oattr_name="global"}))
+    | Ogom_nonlocal -> fprintf ppf "@[%s :@ %a@];" name print_out_type
+                       (Otyp_attribute (arg, {oattr_name="nonlocal"}))
 
 let out_label = ref print_out_label
 

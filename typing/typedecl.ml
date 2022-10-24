@@ -66,6 +66,8 @@ type error =
   | Boxed_and_unboxed
   | Nonrec_gadt
   | Invalid_private_row_declaration of type_expr
+  | Local_not_enabled
+  | Global_and_nonlocal
 
 open Typedtree
 
@@ -206,13 +208,30 @@ let make_params env params =
   in
   List.map make_param params
 
-let transl_global attrs =
-  if Builtin_attributes.has_global attrs then
-    Types.Global
-  else if Builtin_attributes.has_nonlocal attrs then
-    Types.Nonlocal
+
+let transl_global_flags loc attrs =
+  let transl_global_flag loc (r : (bool,unit) result) =
+    match r with
+    | Ok b -> b
+    | Error () -> raise(Error(loc, Local_not_enabled))
+  in
+  let global = transl_global_flag loc (Builtin_attributes.has_global attrs)
+  and nonlocal = transl_global_flag loc (Builtin_attributes.has_nonlocal attrs)
+  in
+  if global then
+    begin
+      if not nonlocal then
+        Types.Global
+      else
+        raise(Error(loc, Global_and_nonlocal))
+    end
   else
-    Types.Unrestricted
+    begin
+      if not nonlocal then
+        Types.Unrestricted
+      else
+        Types.Nonlocal
+    end
 
 let transl_labels env univars closed lbls =
   assert (lbls <> []);
@@ -232,7 +251,7 @@ let transl_labels env univars closed lbls =
          let gbl =
            match mut with
            | Mutable -> Types.Global
-           | Immutable -> transl_global attrs
+           | Immutable -> transl_global_flags loc attrs
          in
          {ld_id = Ident.create_local name.txt;
           ld_name = name; ld_mutable = mut; ld_global = gbl;
@@ -260,7 +279,7 @@ let transl_labels env univars closed lbls =
 let transl_types_gf env closed tyl =
   let mk arg =
     let cty = transl_simple_type env closed Global arg in
-    let gf = transl_global cty.ctyp_attributes in
+    let gf = transl_global_flags arg.ptyp_loc arg.ptyp_attributes in
     (cty, gf)
   in
   let tyl_gfl = List.map mk tyl in
@@ -1944,6 +1963,11 @@ let report_error ppf = function
          @[<hv>@[Hint: If you intended to define a private type abbreviation,@ \
          write explicitly@]@;<1 2>private %a@]"
         Printtyp.type_expr ty Printtyp.type_expr ty
+  | Local_not_enabled ->
+      fprintf ppf "@[The local extension is disabled@ \
+                   To enable it, pass the '-extension local' flag@]"
+  | Global_and_nonlocal ->
+      fprintf ppf "@[A type cannot be both global and nonlocal@]"
 
 let () =
   Location.register_error_of_exn
