@@ -82,7 +82,7 @@ let transl_meth_list lst =
 
 let set_inst_var ~scopes obj id expr =
   Lprim(Psetfield_computed (Typeopt.maybe_pointer expr, Assignment alloc_heap),
-    [Lvar obj; Lvar id; transl_exp ~scopes expr], Loc_unknown)
+    [Lvar obj; Lvar id; transl_exp ~scopes None expr], Loc_unknown)
 
 let transl_val tbl create name =
   mkappl (oo_prim (if create then "new_variable" else "get_variable"),
@@ -215,7 +215,7 @@ let rec build_object_init ~scopes cl_table obj params inh_init obj_init cl =
           inh_init obj_init cl
       in
       (inh_init,
-       Translcore.transl_let ~scopes rec_flag defs (Value Pgenval) obj_init)
+       Translcore.transl_let ~scopes rec_flag defs Pgenval obj_init)
   | Tcl_open (_, cl)
   | Tcl_constraint (cl, _, _, _, _) ->
       build_object_init ~scopes cl_table obj params inh_init obj_init cl
@@ -329,7 +329,7 @@ let rec build_class_init ~scopes cla cstr super inh_init cl_init msubst top cl =
             | Tcf_method (name, _, Tcfk_concrete (_, exp)) ->
                 let scopes = enter_method_definition ~scopes name.txt in
                 let met_code =
-                  msubst true (transl_scoped_exp ~scopes exp) in
+                  msubst true (transl_scoped_exp ~scopes None exp) in
                 let met_code =
                   if !Clflags.native_code && List.length met_code = 1 then
                     (* Force correct naming of method for profiles *)
@@ -344,7 +344,7 @@ let rec build_class_init ~scopes cla cstr super inh_init cl_init msubst top cl =
                 (inh_init,
                  Lsequence(mkappl (oo_prim "add_initializer",
                                    Lvar cla :: msubst false
-                                                 (transl_exp ~scopes exp)),
+                                                 (transl_exp ~scopes None exp)),
                            cl_init),
                  methods, values)
             | Tcf_attribute _ ->
@@ -424,7 +424,7 @@ let rec build_class_lets ~scopes cl =
     Tcl_let (rec_flag, defs, _vals, cl') ->
       let env, wrap = build_class_lets ~scopes cl' in
       (env, fun x ->
-          Translcore.transl_let ~scopes rec_flag defs (Value Pgenval) (wrap x))
+          Translcore.transl_let ~scopes rec_flag defs Pgenval (wrap x))
   | _ ->
       (cl.cl_env, fun x -> x)
 
@@ -483,7 +483,7 @@ let rec transl_class_rebind ~scopes obj_init cl vf =
       let path, path_lam, obj_init =
         transl_class_rebind ~scopes obj_init cl vf in
       (path, path_lam,
-       Translcore.transl_let ~scopes rec_flag defs (Value Pgenval) obj_init)
+       Translcore.transl_let ~scopes rec_flag defs Pgenval obj_init)
   | Tcl_structure _ -> raise Exit
   | Tcl_constraint (cl', _, _, _, _) ->
       let path, path_lam, obj_init =
@@ -505,7 +505,7 @@ let rec transl_class_rebind_0 ~scopes (self:Ident.t) obj_init cl vf =
         transl_class_rebind_0 ~scopes self obj_init cl vf
       in
       (path, path_lam,
-       Translcore.transl_let ~scopes rec_flag defs (Value Pgenval) obj_init)
+       Translcore.transl_let ~scopes rec_flag defs Pgenval obj_init)
   | _ ->
       let path, path_lam, obj_init =
         transl_class_rebind ~scopes obj_init cl vf in

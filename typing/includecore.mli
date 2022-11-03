@@ -31,7 +31,8 @@ type record_mismatch =
   | Label_mismatch of label_declaration * label_declaration * label_mismatch
   | Label_names of int * Ident.t * Ident.t
   | Label_missing of position * Ident.t
-  | Unboxed_float_representation of position
+  | Inlined_representation of position
+  | Float_representation of position
 
 type constructor_mismatch =
   | Type
@@ -64,6 +65,7 @@ type type_mismatch =
   | Record_mismatch of record_mismatch
   | Variant_mismatch of variant_mismatch
   | Unboxed_representation of position
+  | Extensible_representation of position
   | Layout of Type_layout.Violation.t
 
 val value_descriptions:

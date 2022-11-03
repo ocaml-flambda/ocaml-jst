@@ -122,12 +122,13 @@ and expression_desc =
       expression * Longident.t loc * label_description * expression
   | Texp_array of expression list
   | Texp_ifthenelse of expression * expression * expression option
-  | Texp_sequence of expression * expression
+  | Texp_sequence of expression * layout * expression
   | Texp_while of {
       wh_cond : expression;
       wh_cond_region : bool;
       wh_body : expression;
-      wh_body_region : bool
+      wh_body_region : bool;
+      wh_body_layout : layout
     }
   | Texp_list_comprehension of
       expression * comprehension list
@@ -140,6 +141,7 @@ and expression_desc =
       for_to   : expression;
       for_dir  : direction_flag;
       for_body : expression;
+      for_body_layout : Types.layout;
       for_region : bool;
     }
   | Texp_send of expression * meth * expression option * apply_position
@@ -319,7 +321,7 @@ and structure_item =
   }
 
 and structure_item_desc =
-    Tstr_eval of expression * attributes
+    Tstr_eval of expression * layout * attributes
   | Tstr_value of rec_flag * value_binding list
   | Tstr_primitive of value_description
   | Tstr_type of rec_flag * type_declaration list
@@ -348,6 +350,7 @@ and value_binding =
   {
     vb_pat: pattern;
     vb_expr: expression;
+    vb_sort: sort;
     vb_attributes: attributes;
     vb_loc: Location.t;
   }

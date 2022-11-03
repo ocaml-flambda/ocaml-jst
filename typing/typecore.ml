@@ -743,15 +743,15 @@ and build_as_type_aux env p =
       let lbl = snd3 (List.hd lpl) in
       if lbl.lbl_private = Private then p.pat_type, p.pat_mode else
       let ty = newvar Type_layout.any in
-      let ppl = List.map (fun (_, l, p) -> l.lbl_pos, p) lpl in
+      let ppl = List.map (fun (_, l, p) -> l.lbl_num, p) lpl in
       let do_label lbl =
         let _, ty_arg, ty_res = instance_label false lbl in
         unify_pat env {p with pat_type = ty} ty_res;
         let refinable =
-          lbl.lbl_mut = Immutable && List.mem_assoc lbl.lbl_pos ppl &&
+          lbl.lbl_mut = Immutable && List.mem_assoc lbl.lbl_num ppl &&
           match (repr lbl.lbl_arg).desc with Tpoly _ -> false | _ -> true in
         if refinable then begin
-          let arg = List.assoc lbl.lbl_pos ppl in
+          let arg = List.assoc lbl.lbl_num ppl in
           unify_pat env {arg with pat_type = build_as_type env arg} ty_arg
         end else begin
           let _, ty_arg', ty_res' = instance_label false lbl in
@@ -1135,10 +1135,8 @@ module Label = NameChoice (struct
     Env.lookup_all_labels_from_type ~loc path env
   let in_env lbl =
     match lbl.lbl_repres with
-    | Record_regular | Record_float
-    | Record_unboxed (false,_) | Record_immediate false -> true
-    | Record_unboxed (true,_) | Record_immediate true
-    | Record_inlined _ | Record_extension _ -> false
+    | Record_boxed _ | Record_float | Record_unboxed _ -> true
+    | Record_inlined _ -> false
 end)
 
 (* In record-construction expressions and patterns, we have many labels
@@ -1249,7 +1247,7 @@ let type_label_a_list
   (* Invariant: records are sorted in the typed tree *)
   let lbl_a_list =
     List.sort
-      (fun (_,lbl1,_) (_,lbl2,_) -> compare lbl1.lbl_pos lbl2.lbl_pos)
+      (fun (_,lbl1,_) (_,lbl2,_) -> compare lbl1.lbl_num lbl2.lbl_num)
       lbl_a_list
   in
   map_fold_cont type_lbl_a lbl_a_list k
@@ -1265,9 +1263,9 @@ let check_recordpat_labels loc lbl_pat_list closed =
       let all = label1.lbl_all in
       let defined = Array.make (Array.length all) false in
       let check_defined (_, label, _) =
-        if defined.(label.lbl_pos)
+        if defined.(label.lbl_num)
         then raise(Error(loc, Env.empty, Label_multiply_defined label.lbl_name))
-        else defined.(label.lbl_pos) <- true in
+        else defined.(label.lbl_num) <- true in
       List.iter check_defined lbl_pat_list;
       if closed = Closed
       && Warnings.is_active (Warnings.Missing_record_field_pattern "")
@@ -2447,7 +2445,7 @@ let force_delayed_checks () =
 let rec final_subexpression exp =
   match exp.exp_desc with
     Texp_let (_, _, e)
-  | Texp_sequence (_, e)
+  | Texp_sequence (_, _, e)
   | Texp_try (e, _)
   | Texp_ifthenelse (_, e, _)
   | Texp_match (_, {c_rhs=e} :: _, _)
@@ -2749,7 +2747,7 @@ let rec is_nonexpansive exp =
   | Texp_field(exp, _, _) -> is_nonexpansive exp
   | Texp_ifthenelse(_cond, ifso, ifnot) ->
       is_nonexpansive ifso && is_nonexpansive_opt ifnot
-  | Texp_sequence (_e1, e2) -> is_nonexpansive e2  (* PR#4354 *)
+  | Texp_sequence (_e1, _layout, e2) -> is_nonexpansive e2  (* PR#4354 *)
   | Texp_new (_, _, cl_decl, _) -> Ctype.class_type_arity cl_decl.cty_type > 0
   (* Note: nonexpansive only means no _observable_ side effects *)
   | Texp_lazy e -> is_nonexpansive e
@@ -3079,7 +3077,7 @@ let check_partial_application statement exp =
             let rec loop {exp_loc; exp_desc; exp_extra; _} =
               match exp_desc with
               | Texp_let (_, _, e)
-              | Texp_sequence (_, e)
+              | Texp_sequence (_, _, e)
               | Texp_letexception (_, e)
               | Texp_letmodule (_, _, _, _, e) ->
                   loop e
@@ -3121,7 +3119,7 @@ let check_partial_application statement exp =
                 check e; List.iter (fun {c_rhs; _} -> check c_rhs) cases
             | Texp_ifthenelse (_, e1, Some e2) ->
                 check e1; check e2
-            | Texp_let (_, _, e) | Texp_sequence (_, e) | Texp_open (_, e)
+            | Texp_let (_, _, e) | Texp_sequence (_, _, e) | Texp_open (_, e)
             | Texp_letexception (_, e) | Texp_letmodule (_, _, _, _, e) ->
                 check e
             | Texp_apply _ | Texp_send _ | Texp_new _ | Texp_letop _ ->
@@ -3798,11 +3796,11 @@ and type_expect_
            lbl_exp_list then
         register_allocation expected_mode;
 
-      (* type_label_a_list returns a list of labels sorted by lbl_pos *)
+      (* type_label_a_list returns a list of labels sorted by lbl_num *)
       (* note: check_duplicates would better be implemented in
          type_label_a_list directly *)
       let rec check_duplicates = function
-        | (_, lbl1, _) :: (_, lbl2, _) :: _ when lbl1.lbl_pos = lbl2.lbl_pos ->
+        | (_, lbl1, _) :: (_, lbl2, _) :: _ when lbl1.lbl_num = lbl2.lbl_num ->
           raise(Error(loc, env, Label_multiply_defined lbl1.lbl_name))
         | _ :: rem ->
             check_duplicates rem
@@ -3813,7 +3811,7 @@ and type_expect_
         let (_lid, lbl, _lbl_exp) = List.hd lbl_exp_list in
         let matching_label lbl =
           List.find
-            (fun (_, lbl',_) -> lbl'.lbl_pos = lbl.lbl_pos)
+            (fun (_, lbl',_) -> lbl'.lbl_num = lbl.lbl_num)
             lbl_exp_list
         in
         match opt_exp with
@@ -3825,7 +3823,7 @@ and type_expect_
                       Overridden (lid, lbl_exp)
                   | exception Not_found ->
                       let present_indices =
-                        List.map (fun (_, lbl, _) -> lbl.lbl_pos) lbl_exp_list
+                        List.map (fun (_, lbl, _) -> lbl.lbl_num) lbl_exp_list
                       in
                       let label_names = extract_label_names env ty_expected in
                       let rec missing_labels n = function
@@ -3978,8 +3976,9 @@ and type_expect_
       let exp1 = type_statement ~explanation:Sequence_left_hand_side
           env sexp1 in
       let exp2 = type_expect env expected_mode sexp2 ty_expected_explained in
+      let layout = type_layout env exp1.exp_type in
       re {
-        exp_desc = Texp_sequence(exp1, exp2);
+        exp_desc = Texp_sequence(exp1, layout, exp2);
         exp_loc = loc; exp_extra = [];
         exp_type = exp2.exp_type;
         exp_mode = expected_mode.mode;
@@ -4001,9 +4000,11 @@ and type_expect_
       let wh_body =
         type_statement ~explanation:While_loop_body body_env sbody
       in
+      let wh_body_layout = Ctype.type_layout env wh_body.exp_type in
       rue {
         exp_desc =
-          Texp_while {wh_cond; wh_cond_region; wh_body; wh_body_region};
+          Texp_while {wh_cond; wh_cond_region;
+                      wh_body; wh_body_region; wh_body_layout};
         exp_loc = loc; exp_extra = [];
         exp_type = instance Predef.type_unit;
         exp_mode = expected_mode.mode;
@@ -4028,9 +4029,11 @@ and type_expect_
       let for_body =
         type_statement ~explanation:For_loop_body new_env sbody
       in
+      let for_body_layout = Ctype.type_layout env for_body.exp_type in
       rue {
         exp_desc = Texp_for {for_id; for_pat = param; for_from; for_to;
-                             for_dir = dir; for_body; for_region};
+                             for_dir = dir; for_body; for_body_layout;
+                             for_region};
         exp_loc = loc; exp_extra = [];
         exp_type = instance Predef.type_unit;
         exp_mode = expected_mode.mode;
@@ -4688,7 +4691,7 @@ and type_expect_
               Env.lookup_constructor Env.Positive ~loc:lid.loc lid.txt env
             in
             match cd.cstr_tag with
-            | Cstr_extension (path, _) -> path
+            | Extension path -> path
             | _ -> raise (Error (lid.loc, env, Not_an_extension_constructor))
           in
           rue {
@@ -5395,8 +5398,8 @@ and type_argument ?explanation ?recarg env (mode : expected_mode) sarg
       re { texp with exp_type = ty_fun; exp_mode = mode.mode;
              exp_desc =
                Texp_let (Nonrecursive,
-                         [{vb_pat=let_pat; vb_expr=texp; vb_attributes=[];
-                           vb_loc=Location.none;
+                         [{vb_pat=let_pat; vb_expr=texp; vb_sort=Value;
+                           vb_attributes=[]; vb_loc=Location.none;
                           }],
                          func let_var) }
       end
@@ -5569,13 +5572,10 @@ and type_construct env (expected_mode : expected_mode) loc lid sarg
       end
   in
   let argument_mode =
-    match constr.cstr_tag with
-    | Cstr_unboxed -> expected_mode
-    (* CJC XXX In the Cstr_constant case, sargs used to always be empty, but now
-       may not be because the constructor may have a argument with layout void.
-       Is doing the same thing as we do in the block and extension cases overly
-       restrictive? *)
-    | Cstr_constant _ | Cstr_block _ | Cstr_extension _ ->
+    match constr.cstr_repr with
+    | Variant_unboxed _ -> expected_mode
+    (* CJC XXX Should we have special mode treatment for void stuff? *)
+    | Variant_boxed _ | Variant_extensible ->
        register_allocation expected_mode;
        mode_subcomponent expected_mode
   in
@@ -5585,10 +5585,10 @@ and type_construct env (expected_mode : expected_mode) loc lid sarg
       sargs (List.combine ty_args ty_args0)
   in
   if constr.cstr_private = Private then
-    begin match constr.cstr_tag with
-    | Cstr_extension _ ->
+    begin match constr.cstr_repr with
+    | Variant_extensible ->
         raise(Error(loc, env, Private_constructor (constr, ty_res)))
-    | Cstr_constant _ | Cstr_block _ | Cstr_unboxed ->
+    | Variant_boxed _ | Variant_unboxed _ ->
         raise (Error(loc, env, Private_type ty_res));
     end;
   (* NOTE: shouldn't we call "re" on this final expression? -- AF *)
@@ -5958,7 +5958,8 @@ and type_let
          in
          attrs, pat_mode, exp_mode, spat)
       spat_sexp_list in
-  let nvs = List.map (fun _ -> newvar (Type_layout.any_sort())) spatl in
+  let sorts = List.map (fun _ -> Type_layout.sort_var ()) spatl in
+  let nvs = List.map (fun s -> newvar (Sort s)) sorts in
   let (pat_list, new_env, force, pvs, unpacks) =
     type_pattern_list Value existential_context env spatl nvs allow in
   let attrs_list = List.map (fun (attrs, _, _, _) -> attrs) spatl in
@@ -6166,11 +6167,12 @@ and type_let
            generalize_and_check_univars env "definition" exp pat.pat_type vars)
     pat_list exp_list;
   let l = List.combine pat_list exp_list in
+  let l = List.combine sorts l in
   let l =
     List.map2
-      (fun ((_,p), (e, _)) pvb ->
-        {vb_pat=p; vb_expr=e; vb_attributes=pvb.pvb_attributes;
-         vb_loc=pvb.pvb_loc;
+      (fun (s, ((_,p), (e, _))) pvb ->
+         {vb_pat=p; vb_expr=e; vb_sort = s; vb_attributes=pvb.pvb_attributes;
+          vb_loc=pvb.pvb_loc;
         })
       l spat_sexp_list
   in

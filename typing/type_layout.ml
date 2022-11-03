@@ -67,6 +67,8 @@ let to_string = function
   | Immediate64 -> "immediate64"
   | Immediate -> "immediate"
 
+let format ppf t = Format.fprintf ppf "%s" (to_string t)
+
 module Violation = struct
   type nonrec t =
     | Not_a_sublayout of t * t
@@ -76,22 +78,22 @@ module Violation = struct
     let pr fmt = Format.fprintf ppf fmt in
     match t with
     | Not_a_sublayout (l1, l2) ->
-        pr "%t has layout %s, which is not a sublayout of %s." offender
-          (to_string l1) (to_string l2)
+        pr "%t has layout %a, which is not a sublayout of %a." offender
+          format l1 format l2
     | No_intersection (l1, l2) ->
-        pr "%t has layout %s, which does not overlap with %s." offender
-          (to_string l1) (to_string l2)
+        pr "%t has layout %a, which does not overlap with %a." offender
+          format l1 format l2
 
   let report_with_name ~name ppf t =
     let pr fmt = Format.fprintf ppf fmt in
     let name = StringLabels.capitalize_ascii name in
     match t with
     | Not_a_sublayout (l1,l2) ->
-        pr "%s has layout %s, which is not a sublayout of %s." name
-          (to_string l1) (to_string l2)
+        pr "%s has layout %a, which is not a sublayout of %a." name
+          format l1 format l2
     | No_intersection (l1, l2) ->
-        pr "%s has layout %s, which does not overlap with %s." name
-          (to_string l1) (to_string l2)
+        pr "%s has layout %a, which does not overlap with %a." name
+          format l1 format l2
 
   (* let report ppf t =
    *   let pr fmt = Format.fprintf ppf fmt in
@@ -101,31 +103,14 @@ module Violation = struct
    *  (Type_layout.to_string l1) (Type_layout.to_string l2) *)
 end
 
+let sort_var () = Var (ref None)
+
 let any = Any
-let any_sort () = Sort (Var (ref None))
+let any_sort () = Sort (sort_var ())
 let value = Sort Value
 let immediate = Immediate
 let immediate64 = Immediate64
 let void = Sort Void
-
-let layout_bound_of_record_representation = function
-  | Record_regular -> value
-  | Record_float -> value
-  | Record_unboxed (_,l) -> l
-  | Record_inlined _ -> value
-  | Record_extension _ -> value
-  | Record_immediate _ -> immediate
-
-let layout_bound_of_variant_representation = function
-    Variant_regular -> value
-  | Variant_unboxed t -> t
-  | Variant_immediate -> immediate
-
-let layout_bound_of_kind = function
-  | Type_abstract { layout } -> layout
-  | Type_open -> value
-  | Type_record (_,rep) -> layout_bound_of_record_representation rep
-  | Type_variant (_, rep) -> layout_bound_of_variant_representation rep
 
 let rec sort_repr s =
   match s with
@@ -140,6 +125,43 @@ let repr l =
   match l with
   | (Any | Immediate | Immediate64) -> l
   | Sort s -> Sort (sort_repr s)
+
+let all_void layouts =
+  Array.for_all (fun l ->
+    match repr l with
+    | Sort Void -> true
+    | (Any | Immediate | Immediate64
+      | Sort (Value | Var _)) -> false) layouts
+
+let layout_bound_of_record_representation = function
+  | Record_unboxed l -> l
+  | Record_float -> value
+  | Record_inlined (tag,rep) -> begin
+      match (tag,rep) with
+      | Extension _, _ -> value
+      | _, Variant_extensible -> value
+      | Ordinary _, Variant_unboxed l -> l (* n must be 0 here *)
+      | Ordinary {index}, Variant_boxed layouts ->
+        if all_void layouts.(index) then immediate else value
+    end
+  | Record_boxed layouts when all_void layouts -> immediate
+  | Record_boxed _ -> value
+
+let cstr_layouts_immediate layouts =
+  Array.for_all all_void layouts
+
+let layout_bound_of_variant_representation = function
+    Variant_unboxed l -> l
+  | Variant_boxed layouts ->
+    if cstr_layouts_immediate layouts then immediate else value
+  | Variant_extensible -> value
+
+(* should not mutate sorts *)
+let layout_bound_of_kind = function
+  | Type_abstract { layout } -> layout
+  | Type_open -> value
+  | Type_record (_,rep) -> layout_bound_of_record_representation rep
+  | Type_variant (_, rep) -> layout_bound_of_variant_representation rep
 
 let default_to_value t =
   match repr t with

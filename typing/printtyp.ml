@@ -1307,10 +1307,10 @@ let rec tree_of_type_decl id decl =
         | Some ty -> tree_of_typexp false ty, decl.type_private, false
         end
     | Type_variant (cstrs, rep) ->
-        let unboxed=
+        let unboxed =
           match rep with
           | Variant_unboxed _ -> true
-          | Variant_regular | Variant_immediate -> false
+          | Variant_boxed _ | Variant_extensible -> false
         in
         tree_of_manifest (Otyp_sum (List.map tree_of_constructor cstrs)),
         decl.type_private,

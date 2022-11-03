@@ -386,18 +386,27 @@ module Make(O : OBJ)(EVP : EVALPATH with type valu = O.t) = struct
                     tree_of_val depth obj
                       (instantiate_type env decl.type_params ty_list body)
                 | {type_kind = Type_variant (constr_list,rep)} ->
-                    let unbx =
-                      match rep with
-                      | Variant_unboxed _ -> true
-                      | Variant_regular | Variant_immediate -> false
+                  (* CJC XXX revisit whether there is a cleaner way to find the
+                     constr, or to rewrite the rest of this. *)
+                    let cstrs =
+                      Env.lookup_all_constructors_from_type ~use:false
+                        ~loc:Location.none Positive path env
                     in
-                    let tag =
-                      if unbx then Cstr_unboxed
-                      else if O.is_block obj
-                      then Cstr_block(O.tag obj)
-                      else Cstr_constant(O.obj obj) in
+                    let constant, tag =
+                      if O.is_block obj
+                      then false, O.tag obj
+                      else true, O.obj obj
+                    in
+                    let {cstr_uid} =
+                      Datarepr.find_constr_by_tag ~constant tag cstrs
+                    in
                     let {cd_id;cd_args;cd_res} =
-                      Datarepr.find_constr_by_tag tag constr_list in
+                      try
+                        List.find (fun {cd_uid} -> Uid.equal cd_uid cstr_uid)
+                          constr_list
+                      with
+                      | Not_found -> raise Datarepr.Constr_not_found
+                    in
                     let type_params =
                       match cd_res with
                         Some t ->
@@ -406,6 +415,11 @@ module Make(O : OBJ)(EVP : EVALPATH with type valu = O.t) = struct
                               params
                           | _ -> assert false end
                       | None -> decl.type_params
+                    in
+                    let unbx =
+                      match rep with
+                      | Variant_unboxed _ -> true
+                      | Variant_boxed _ | Variant_extensible -> false
                     in
                     begin
                       match cd_args with
@@ -431,7 +445,7 @@ module Make(O : OBJ)(EVP : EVALPATH with type valu = O.t) = struct
                     | None ->
                         let pos =
                           match rep with
-                          | Record_extension _ -> 1
+                          | Record_inlined (_, Variant_extensible) -> 1
                           | _ -> 0
                         in
                         let unbx =
@@ -555,7 +569,7 @@ module Make(O : OBJ)(EVP : EVALPATH with type valu = O.t) = struct
         let cstr = Env.find_constructor_by_name lid env in
         let path =
           match cstr.cstr_tag with
-            Cstr_extension(p, _) -> p
+              Extension p -> p
             | _ -> raise Not_found
         in
         let addr = Env.find_constructor_address path env in

@@ -399,28 +399,29 @@ type type_declaration =
 
 and type_kind =
     Type_abstract of {layout : layout}
-  | Type_record of label_declaration list  * record_representation
+  | Type_record of label_declaration list * record_representation
   | Type_variant of constructor_declaration list * variant_representation
   | Type_open
 
+and tag = Ordinary of {index: int;  (* Unique name (per type) *)
+                       tag: int}    (* The runtime tag *)
+        | Extension of Path.t
+
 and record_representation =
-    Record_regular                      (* All fields are boxed / tagged *)
-  | Record_float                        (* All fields are floats *)
-  | Record_unboxed of bool*layout
-      (* Unboxed single-field record, inlined or not *)
-  | Record_inlined of int               (* Inlined record *)
-  | Record_extension of Path.t          (* Inlined record under extension *)
-  | Record_immediate of bool   (* inlined or not *)
+  | Record_unboxed of layout
+  | Record_inlined of tag * variant_representation
+  | Record_boxed of layout array
+  | Record_float
+
+and variant_representation =
+  | Variant_unboxed of layout
+  | Variant_boxed of layout array array
+  | Variant_extensible
 
 and global_flag =
   | Global
   | Nonlocal
   | Unrestricted
-
-and variant_representation =
-    Variant_regular           (* Constant or boxed constructors *)
-  | Variant_unboxed of layout (* One unboxed single-field constructor *)
-  | Variant_immediate         (* Variants with all constant constructors *)
 
 and label_declaration =
   {
@@ -459,6 +460,8 @@ type extension_constructor =
     ext_type_path: Path.t;
     ext_type_params: type_expr list;
     ext_args: constructor_arguments;
+    ext_arg_layouts: layout array;
+    ext_constant: bool;
     ext_ret_type: type_expr option;
     ext_private: private_flag;
     ext_loc: Location.t;
@@ -575,8 +578,11 @@ type constructor_description =
     cstr_res: type_expr;                (* Type of the result *)
     cstr_existentials: type_expr list;  (* list of existentials *)
     cstr_args: type_expr list;          (* Type of the arguments *)
+    cstr_arg_layouts: layout array;     (* Layouts of the arguments *)
     cstr_arity: int;                    (* Number of arguments *)
-    cstr_tag: constructor_tag;          (* Tag for heap blocks *)
+    cstr_tag: tag;                      (* Tag for heap blocks *)
+    cstr_repr: variant_representation;  (* Repr of the outer variant *)
+    cstr_constant: bool;                (* True if all args are void *)
     cstr_consts: int;                   (* Number of constant constructors *)
     cstr_nonconsts: int;                (* Number of non-const constructors *)
     cstr_normal: int;                   (* Number of non generalized constrs *)
@@ -588,15 +594,8 @@ type constructor_description =
     cstr_uid: Uid.t;
    }
 
-and constructor_tag =
-    Cstr_constant of int                (* Constant constructor (an int) *)
-  | Cstr_block of int                   (* Regular constructor (a block) *)
-  | Cstr_unboxed                        (* Constructor of an unboxed type *)
-  | Cstr_extension of Path.t * bool     (* Extension constructor
-                                           true if a constant false if a block*)
-
 (* Constructors are the same *)
-val equal_tag :  constructor_tag -> constructor_tag -> bool
+val equal_tag :  tag -> tag -> bool
 
 (* Constructors may be the same, given potential rebinding *)
 val may_equal_constr :
@@ -608,10 +607,12 @@ type label_description =
     lbl_arg: type_expr;                 (* Type of the argument *)
     lbl_mut: mutable_flag;              (* Is this a mutable field? *)
     lbl_global: global_flag;        (* Is this a nonlocal field? *)
+    lbl_num: int;                       (* Position in the type *)
     lbl_pos: int;                       (* Position in block *)
     lbl_all: label_description array;   (* All the labels in this type *)
-    lbl_repres: record_representation;  (* Representation for this record *)
+    lbl_repres: record_representation;  (* Representation for outer record *)
     lbl_private: private_flag;          (* Read-only field? *)
+    lbl_in_env: bool;                   (* False for inlined records *)
     lbl_loc: Location.t;
     lbl_attributes: Parsetree.attributes;
     lbl_uid: Uid.t;

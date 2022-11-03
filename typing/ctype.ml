@@ -1981,11 +1981,23 @@ let constrain_type_layout_exn env ty layout =
 let estimate_type_layout env typ =
   layout_of_result (estimate_type_layout env typ)
 
+let type_layout env ty =
+  estimate_type_layout env (get_unboxed_type_representation env ty)
+
+(* CJC XXX am I using this anywhere now? *)
+let type_sort env ty =
+  let sort = Type_layout.any_sort () in
+  let _ = check_type_layout env ty sort in
+  match sort with
+  | Sort s -> s
+  | Any | Immediate | Immediate64 -> assert false
+
+
 (* Note: Because [estimate_type_layout] actually returns an upper bound, this
    function computes an innaccurate intersection in some cases.
 
    This is OK because of where it is used, which is related to gadt equations.
-   Basically the question we're trying to answer is not really "is this
+   The question we're trying to answer there is not really "is this
    intersection inhabited" but rather "do we know for sure that this
    intersection is uninhabited".  It's fine to call the intersection non-empty
    in some cases where its not (this will happen when pattern matching on a
@@ -5288,6 +5300,8 @@ let nondep_extension_constructor env ids ext =
       { ext_type_path = type_path;
         ext_type_params = type_params;
         ext_args = args;
+        ext_arg_layouts = ext.ext_arg_layouts;
+        ext_constant = ext.ext_constant;
         ext_ret_type = ret_type;
         ext_private = ext.ext_private;
         ext_attributes = ext.ext_attributes;

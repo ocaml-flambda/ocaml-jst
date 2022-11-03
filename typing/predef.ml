@@ -158,9 +158,10 @@ let common_initial_env add_type add_extension empty_env =
   let add_type = mk_add_type add_type
   and add_type1 type_ident
       ~variance ~separability ?(kind=fun _ -> Types.kind_abstract_value) env =
-    (* CJC: Think harder - for now I'm just going to say the parameters of these
-       built-in types must have layout value.  Could we be less restrictive in
-       some cases?  Are there any phantom type parameters here? *)
+    (* CR ccasinghino: Think harder - for now I'm just going to say the
+       parameters of these built-in types must have layout value.  Could we be
+       less restrictive in some cases?  Are there any phantom type parameters
+       here? *)
     let param = newgenvar Type_layout.value in
     let decl =
       {type_params = [param];
@@ -180,11 +181,13 @@ let common_initial_env add_type add_extension empty_env =
     in
     add_type type_ident decl env
   in
-  let add_extension id l =
+  let add_extension id args layouts =
     add_extension id
       { ext_type_path = path_exn;
         ext_type_params = [];
-        ext_args = Cstr_tuple l;
+        ext_args = Cstr_tuple args;
+        ext_arg_layouts = layouts;
+        ext_constant = args = [];
         ext_ret_type = None;
         ext_private = Asttypes.Public;
         ext_loc = Location.none;
@@ -195,20 +198,23 @@ let common_initial_env add_type add_extension empty_env =
       }
   in
   add_extension ident_match_failure
-                         [newgenty (Ttuple[type_string; type_int; type_int])] (
-  add_extension ident_out_of_memory [] (
-  add_extension ident_stack_overflow [] (
-  add_extension ident_invalid_argument [type_string] (
-  add_extension ident_failure [type_string] (
-  add_extension ident_not_found [] (
-  add_extension ident_sys_blocked_io [] (
-  add_extension ident_sys_error [type_string] (
-  add_extension ident_end_of_file [] (
-  add_extension ident_division_by_zero [] (
+                         [newgenty (Ttuple[type_string; type_int; type_int])]
+                         [| Type_layout.value |] (
+  add_extension ident_out_of_memory [] [||] (
+  add_extension ident_stack_overflow [] [||] (
+  add_extension ident_invalid_argument [type_string] [| Type_layout.value |] (
+  add_extension ident_failure [type_string] [| Type_layout.value |] (
+  add_extension ident_not_found [] [||] (
+  add_extension ident_sys_blocked_io [] [||] (
+  add_extension ident_sys_error [type_string] [| Type_layout.value |] (
+  add_extension ident_end_of_file [] [||] (
+  add_extension ident_division_by_zero [] [||] (
   add_extension ident_assert_failure
-                         [newgenty (Ttuple[type_string; type_int; type_int])] (
+                         [newgenty (Ttuple[type_string; type_int; type_int])]
+                         [| Type_layout.value |] (
   add_extension ident_undefined_recursive_module
-                         [newgenty (Ttuple[type_string; type_int; type_int])] (
+                         [newgenty (Ttuple[type_string; type_int; type_int])]
+                         [| Type_layout.value |] (
   add_type ident_int64 (
   add_type ident_int32 (
   add_type ident_nativeint (
@@ -218,21 +224,22 @@ let common_initial_env add_type add_extension empty_env =
     ~separability:Separability.Ind
     ~kind:(fun tvar ->
       Type_variant([cstr ident_none []; cstr ident_some [tvar]],
-                   Variant_regular)
+                   Variant_boxed [| [| |]; [| Type_layout.value |] |])
     ) (
   add_type1 ident_list ~variance:Variance.covariant
     ~separability:Separability.Ind
     ~kind:(fun tvar ->
       Type_variant([cstr ident_nil []; cstr ident_cons [tvar; type_list tvar]],
-                   Variant_regular)
+                   Variant_boxed
+                     [| [| |]; [| Type_layout.value; Type_layout.value |] |])
     ) (
   add_type1 ident_array ~variance:Variance.full ~separability:Separability.Ind (
   add_type ident_exn ~kind:Type_open (
   add_type ident_unit
-    ~kind:(Type_variant([cstr ident_void []], Variant_immediate)) (
+    ~kind:(Type_variant([cstr ident_void []], Variant_boxed [| [| |] |])) (
   add_type ident_bool
     ~kind:(Type_variant([cstr ident_false []; cstr ident_true []],
-                        Variant_immediate)) (
+                        Variant_boxed [| [| |]; [| |] |])) (
   add_type ident_float (
   add_type ident_string (
   add_type ident_char ~kind:Types.kind_abstract_immediate (

@@ -66,13 +66,12 @@ type type_structure =
   | Algebraic of branching * structure_boxed
 
 let unboxed_of_record_repr = function
-  | Record_unboxed _ -> Unboxed
-  | ( Record_regular | Record_float | Record_inlined _ | Record_extension _
-    | Record_immediate _) ->
-    Boxed
+  | Record_unboxed _ | Record_inlined (_, Variant_unboxed _)-> Unboxed
+  | Record_inlined (_, (Variant_boxed _ | Variant_extensible))
+  | Record_boxed _ | Record_float -> Boxed
 
 let unboxed_of_variant_repr = function
-  | Variant_regular | Variant_immediate -> Boxed
+  | Variant_boxed _ | Variant_extensible -> Boxed
   | Variant_unboxed _ -> Unboxed
 
 let not_void_type env ty =

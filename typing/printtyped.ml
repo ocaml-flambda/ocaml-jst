@@ -155,14 +155,31 @@ let arg_label i ppf = function
   | Labelled s -> line i ppf "Labelled \"%s\"\n" s
 ;;
 
+let tag ppf = let open Types in function
+  | Ordinary {index;tag} ->
+      fprintf ppf "Ordinary {index: %d; tag: %d}" index tag
+  | Extension p -> fprintf ppf "Extension %a" fmt_path p
+
+let layout_array i ppf layouts =
+  array (i+1) (fun _ ppf l -> fprintf ppf "%a;@ " Type_layout.format l)
+    ppf layouts
+
+let variant_representation i ppf = let open Types in function
+  | Variant_unboxed l ->
+    line i ppf "Variant_unboxed %a\n" Type_layout.format l
+  | Variant_boxed layouts ->
+    line i ppf "Variant_boxed %a\n"
+      (array (i+1) (fun _ ppf -> layout_array (i+1) ppf)) layouts
+  | Variant_extensible -> line i ppf "Variant_inlined\n"
+
 let record_representation i ppf = let open Types in function
-  | Record_regular -> line i ppf "Record_regular\n"
+  | Record_unboxed l ->
+    line i ppf "Record_unboxed %a\n" Type_layout.format l
+  | Record_boxed layouts ->
+    line i ppf "Record_boxed %a\n" (layout_array i) layouts
+  | Record_inlined (t,v) ->
+    line i ppf "Record_inlined (%a, %a)\n" tag t (variant_representation i) v
   | Record_float -> line i ppf "Record_float\n"
-  | Record_unboxed (b,l) ->
-    line i ppf "Record_unboxed %b %s\n" b (Type_layout.to_string l)
-  | Record_inlined i -> line i ppf "Record_inlined %d\n" i
-  | Record_extension p -> line i ppf "Record_extension %a\n" fmt_path p
-  | Record_immediate b -> line i ppf "Record_immediate %b\n" b
 
 let attribute i ppf k a =
   line i ppf "%s \"%s\"\n" k a.Parsetree.attr_name.txt;
@@ -402,9 +419,10 @@ and expression i ppf x =
       expression i ppf e1;
       expression i ppf e2;
       option i expression ppf eo;
-  | Texp_sequence (e1, e2) ->
+  | Texp_sequence (e1, l, e2) ->
       line i ppf "Texp_sequence\n";
       expression i ppf e1;
+      line i ppf "%a\n" Type_layout.format l;
       expression i ppf e2;
   | Texp_while {wh_cond; wh_cond_region; wh_body; wh_body_region} ->
       line i ppf "Texp_while\n";
@@ -856,9 +874,10 @@ and structure_item i ppf x =
   line i ppf "structure_item %a\n" fmt_location x.str_loc;
   let i = i+1 in
   match x.str_desc with
-  | Tstr_eval (e, attrs) ->
+  | Tstr_eval (e, layout, attrs) ->
       line i ppf "Tstr_eval\n";
       attributes i ppf attrs;
+      line i ppf "%a\n" Type_layout.format layout;
       expression i ppf e;
   | Tstr_value (rf, l) ->
       line i ppf "Tstr_value %a\n" fmt_rec_flag rf;

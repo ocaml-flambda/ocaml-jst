@@ -12,6 +12,9 @@
 (*                                                                        *)
 (**************************************************************************)
 
+(* CR ccasinghino: Perhaps we should take an approach similar to the new
+   type_expr style, making layouts abstract to enforce the use of repr *)
+
 type t = Types.layout
 
 
@@ -35,6 +38,8 @@ module Violation : sig
     offender:(Format.formatter -> unit) -> Format.formatter -> t -> unit
   val report_with_name : name:string -> Format.formatter -> t -> unit
 end
+
+val sort_var : unit -> Types.sort
 
 val any : t
 val any_sort : unit -> t
@@ -71,13 +76,12 @@ val of_attributes : default:t -> Parsetree.attributes -> t
 (* (** The least layout that represents the kind *)
  * val of_kind : Types.type_kind -> t *)
 
-val layout_bound_of_record_representation : Types.record_representation -> t
-val layout_bound_of_variant_representation : Types.variant_representation -> t
 val layout_bound_of_kind : Types.type_kind -> t
 
 
 (** Pretty printing *)
 val to_string : t -> string
+val format : Format.formatter -> t -> unit
 
 (** Eliminate sort vars (by defaulting to value) - used in Ctype.reify *)
 val reify : t -> unit

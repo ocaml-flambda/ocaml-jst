@@ -328,13 +328,16 @@ let transl_constructor_arguments env closed = function
       Types.Cstr_record lbls',
       Cstr_record lbls
 
+(* Note that [make_constructor] does not fill in the [ld_void] field of any
+   computed record types, because it's called too early in the translation of a
+   type declaration to compute accurate layouts in the presence of recursively
+   defined types. It is updated later by [update_constructor_arguments_layouts]
+*)
 let make_constructor env type_path type_params sargs sret_type =
   match sret_type with
   | None ->
-      let args, targs =
-        transl_constructor_arguments env true sargs
-      in
-        targs, None, args, None
+      let args, targs = transl_constructor_arguments env true sargs in
+      targs, None, args, None
   | Some sret_type ->
       (* if it's a generalized constructor we must first narrow and
          then widen so as to not introduce any new constraints *)
@@ -452,8 +455,8 @@ let transl_declaration env sdecl (id, uid) =
         let make_cstr scstr =
           let name = Ident.create_local scstr.pcd_name.txt in
           let targs, tret_type, args, ret_type =
-            make_constructor env (Path.Pident id) params
-                             scstr.pcd_args scstr.pcd_res
+            make_constructor env (Path.Pident id) params scstr.pcd_args
+              scstr.pcd_res
           in
           let tcstr =
             { cd_id = name;
@@ -478,11 +481,6 @@ let transl_declaration env sdecl (id, uid) =
             (fun () -> make_cstr scstr)
         in
         let tcstrs, cstrs = List.split (List.map make_cstr scstrs) in
-        let is_constant (constructor : Types.constructor_declaration) =
-            match constructor.cd_args with
-            | Cstr_tuple [] -> true
-            | _ -> false
-        in
         let rep =
           if unbox then
             let layout =
@@ -490,8 +488,18 @@ let transl_declaration env sdecl (id, uid) =
                 layout_annotation
             in
             Variant_unboxed layout
-          else if List.for_all is_constant cstrs then Variant_immediate
-          else Variant_regular
+          else
+            (* We mark all arg layouts "any" here.  They are updated later,
+               after the circular type checks make it safe to check layouts. *)
+            Variant_boxed (
+              Array.of_list (List.map (fun cstr ->
+                match Types.(cstr.cd_args) with
+                | Cstr_tuple args ->
+                  Array.make (List.length args) Type_layout.any
+                | Cstr_record args ->
+                  Array.make (List.length args) Type_layout.any)
+                cstrs)
+            )
         in
           Ttype_variant tcstrs, Type_variant (cstrs, rep)
       | Ptype_record lbls ->
@@ -502,10 +510,10 @@ let transl_declaration env sdecl (id, uid) =
                 Type_layout.of_layout_annotation ~default:Type_layout.any
                   layout_annotation
               in
-              Record_unboxed (false, layout)
+              Record_unboxed layout
             else if List.for_all (fun l -> is_float env l.Types.ld_type) lbls'
             then Record_float
-            else Record_regular
+            else Record_boxed (Array.make (List.length lbls) Type_layout.any)
           in
           Ttype_record lbls, Type_record(lbls', rep)
       | Ptype_open -> Ttype_open, Type_open
@@ -822,63 +830,93 @@ let default_decl_layout decl =
 let default_decls_layout decls =
   List.iter (fun (_, decl) -> default_decl_layout decl) decls
 
-(* This infers more precise layouts in the type kind, including which fields of
-   a record are void.  This would be hard to do during [transl_declaration] due
-   to mutually recursive types.
- *)
+(* The [update_x_layouts] functions infer more precise layouts in the type kind,
+   including which fields of a record are void.  This would be hard to do during
+   [transl_declaration] due to mutually recursive types.
+*)
+let update_label_layouts env lbls layouts =
+  let _, lbls =
+    List.fold_left (fun (idx,lbls) ({Types.ld_type} as lbl) ->
+      let layout = Ctype.type_layout env ld_type in
+      let ld_void = Type_layout.(equal void layout) in
+      layouts.(idx) <- layout;
+      (idx+1, {lbl with ld_void} :: lbls)
+    ) (0,[]) lbls
+  in
+  List.rev lbls
+
+let update_constructor_arguments_layouts env cd_args layouts =
+  match cd_args with
+  | Types.Cstr_tuple tys ->
+    List.iteri (fun idx ty -> layouts.(idx) <- Ctype.type_layout env ty) tys;
+    cd_args
+  | Types.Cstr_record lbls ->
+    let lbls = update_label_layouts env lbls layouts in
+    Types.Cstr_record lbls
+
+(* CJC XXX I believe this will fail to infer immediate appropriately for
+   mutually recursive datatypes. *)
 let update_decl_layout env decl =
-  let update_label_voids lbls =
-    let lbls, imm =
-      List.fold_left (fun (lbls, all_void) lbl ->
-        match Ctype.check_type_layout env lbl.Types.ld_type Type_layout.void with
-        | Ok _ -> ({ lbl with ld_void = true } :: lbls, all_void)
-        | Error _ -> (lbl :: lbls, false))
-        ([], true) lbls
-    in
-    List.rev lbls, imm
+  let update_record_kind lbls rep =
+    match lbls, rep with
+    | [{Types.ld_type} as lbl], Record_unboxed _ -> begin
+        match Ctype.check_type_layout env ld_type Type_layout.void with
+        | Ok _ -> [{lbl with ld_void = true}],
+                  Record_unboxed Type_layout.void
+        | Error _ -> [lbl], rep
+      end
+    | _, Record_boxed layouts ->
+      let lbls = update_label_layouts env lbls layouts in
+      lbls, rep
+    | _, Record_float -> lbls, rep
+    | (([] | (_ :: _)), Record_unboxed _ | _, Record_inlined _) -> assert false
   in
-  let update_cstr_voids cstrs =
-    let cstrs, imm =
-      List.fold_left (fun (cstrs, all_void) cstr ->
-        match cstr with
-        | {Types.cd_args = Cstr_record lbls} ->
-            let (lbls, imm) = update_label_voids lbls in
-            { cstr with Types.cd_args = Cstr_record lbls } :: cstrs,
-            imm && all_void
-        | {Types.cd_args = Cstr_tuple typs} ->
-            let imm =
-              List.for_all (fun ty ->
-                Result.is_ok (Ctype.check_type_layout env ty
-                                Type_layout.void))
-                typs
-            in
-            cstr :: cstrs,
-            imm && all_void)
-        ([], true) cstrs
-    in
-    (List.rev cstrs, imm)
+
+  let update_variant_kind cstrs rep =
+    (* CR ccasinghino factor out duplication *)
+    match cstrs, rep with
+    | [{Types.cd_args} as cstr], Variant_unboxed _ -> begin
+        match cd_args with
+        | Cstr_tuple [ty] -> begin
+            match Ctype.check_type_layout env ty Type_layout.void with
+            | Ok _ -> cstrs, Variant_unboxed Type_layout.void
+            | Error _ -> cstrs, rep
+          end
+        | Cstr_record [{ld_type} as lbl] -> begin
+            match Ctype.check_type_layout env ld_type Type_layout.void with
+            | Ok _ ->
+              [{ cstr with Types.cd_args =
+                             Cstr_record [{ lbl with ld_void = true }] }],
+              Variant_unboxed Type_layout.void
+            | Error _ -> cstrs, rep
+          end
+        | (Cstr_tuple ([] | _ :: _ :: _) | Cstr_record ([] | _ :: _ :: _)) ->
+          assert false
+      end
+    | cstrs, Variant_boxed layouts ->
+      let (_,cstrs) =
+        List.fold_left (fun (idx,cstrs) cstr ->
+          let cd_args =
+            update_constructor_arguments_layouts env cstr.Types.cd_args
+              layouts.(idx)
+          in
+          let cstr = { cstr with Types.cd_args } in
+          (idx+1,cstr::cstrs)
+        ) (0,[]) cstrs
+      in
+      List.rev cstrs, rep
+    | (([] | (_ :: _)), Variant_unboxed _ | _, Variant_extensible) ->
+      assert false
   in
+
   match decl.type_kind with
   | Type_abstract _ | Type_open -> decl
   | Type_record (lbls, rep) ->
-      let lbls, imm = update_label_voids lbls in
-      let rep =
-        match imm, rep with
-        | _, (Record_unboxed (_,_) | Record_float) -> rep
-        | _, (Record_inlined _ | Record_extension _) -> assert false
-        | true, (Record_regular | Record_immediate _) -> Record_immediate false
-        | false, (Record_regular | Record_immediate _) -> rep
-      in
-      { decl with type_kind = Type_record (lbls, rep) }
+    let lbls, rep = update_record_kind lbls rep in
+    { decl with type_kind = Type_record (lbls, rep) }
   | Type_variant (cstrs, rep) ->
-      let cstrs, imm = update_cstr_voids cstrs in
-      let rep =
-        match imm, rep with
-        | _, Variant_unboxed _ -> rep
-        | true, (Variant_regular | Variant_immediate) -> Variant_immediate
-        | false, (Variant_regular | Variant_immediate) -> rep
-      in
-      { decl with type_kind = Type_variant (cstrs, rep) }
+    let cstrs, rep = update_variant_kind cstrs rep in
+    { decl with type_kind = Type_variant (cstrs, rep) }
 
 let update_decls_layout env decls =
   List.map (fun (id, decl) -> (id, update_decl_layout env decl)) decls
@@ -1261,14 +1299,21 @@ let transl_type_decl env rec_flag sdecl_list =
 let transl_extension_constructor ~scope env type_path type_params
                                  typext_params priv sext =
   let id = Ident.create_scoped ~scope sext.pext_name.txt in
-  let args, ret_type, kind =
+  let args, arg_layouts, constant, ret_type, kind =
     match sext.pext_kind with
       Pext_decl(sargs, sret_type) ->
         let targs, tret_type, args, ret_type =
-          make_constructor env type_path typext_params
-            sargs sret_type
+          make_constructor env type_path typext_params sargs sret_type
         in
-          args, ret_type, Text_decl(targs, tret_type)
+        let num_args =
+          match targs with
+          | Cstr_tuple args -> List.length args
+          | Cstr_record args -> List.length args
+        in
+        let layouts = Array.make num_args Type_layout.any in
+        let args = update_constructor_arguments_layouts env args layouts in
+        let constant = Array.for_all Type_layout.(equal void) layouts in
+          args, layouts, constant, ret_type, Text_decl(targs, tret_type)
     | Pext_rebind lid ->
         let usage = if priv = Public then Env.Positive else Env.Privatize in
         let cdescr = Env.lookup_constructor ~loc:lid.loc usage lid.txt env in
@@ -1330,7 +1375,7 @@ let transl_extension_constructor ~scope env type_path type_params
         end;
         let path =
           match cdescr.cstr_tag with
-            Cstr_extension(path, _) -> path
+            Extension path -> path
           | _ -> assert false
         in
         let args =
@@ -1348,17 +1393,20 @@ let transl_extension_constructor ~scope env type_path type_params
               List.iter2 (Ctype.unify env) decl.type_params tl;
               let lbls =
                 match decl.type_kind with
-                | Type_record (lbls, Record_extension _) -> lbls
+                | Type_record (lbls, Record_inlined _) -> lbls
                 | _ -> assert false
               in
               Types.Cstr_record lbls
         in
-        args, ret_type, Text_rebind(path, lid)
+        args, cdescr.cstr_arg_layouts, cdescr.cstr_constant, ret_type,
+        Text_rebind(path, lid)
   in
   let ext =
     { ext_type_path = type_path;
       ext_type_params = typext_params;
       ext_args = args;
+      ext_arg_layouts = arg_layouts;
+      ext_constant = constant;
       ext_ret_type = ret_type;
       ext_private = priv;
       Types.ext_loc = sext.pext_loc;

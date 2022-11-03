@@ -647,12 +647,12 @@ let is_ident = function
 
 let is_ext cda =
   match cda.cda_description with
-  | {cstr_tag = Cstr_extension _} -> true
+  | {cstr_tag = Extension _} -> true
   | _ -> false
 
 let is_local_ext cda =
   match cda.cda_description with
-  | {cstr_tag = Cstr_extension(p, _)} -> is_ident p
+  | {cstr_tag = Extension p} -> is_ident p
   | _ -> false
 
 let diff env1 env2 =
@@ -1044,7 +1044,7 @@ let find_ident_label id env =
 let type_of_cstr path = function
   | {cstr_inlined = Some decl; _} ->
       let labels =
-        List.map snd (Datarepr.labels_of_type path decl)
+        List.map snd (Datarepr.labels_of_type ~inlined:true path decl)
       in
       { tda_declaration = decl; tda_descriptions = ([], labels) }
   | _ ->
@@ -1115,12 +1115,12 @@ let find_value_address path env =
 let find_class_address path env =
   get_address (find_class_full path env).clda_address
 
-let rec get_constrs_address = function
+let rec get_constrs_with_address = function
   | [] -> raise Not_found
   | cda :: rest ->
     match cda.cda_address with
-    | None -> get_constrs_address rest
-    | Some a -> get_address a
+    | None -> get_constrs_with_address rest
+    | Some a -> (cda.cda_description, get_address a)
 
 let find_constructor_address path env =
   match path with
@@ -1132,7 +1132,21 @@ let find_constructor_address path env =
     end
   | Pdot(p, s) ->
       let c = find_structure_components p env in
-      get_constrs_address (NameMap.find s c.comp_constrs)
+      snd (get_constrs_with_address (NameMap.find s c.comp_constrs))
+  | Papply _ ->
+      raise Not_found
+
+let find_constructor path env =
+  match path with
+  | Pident id -> begin
+      let cda = TycompTbl.find_same id env.constrs in
+      match cda.cda_address with
+      | None -> raise Not_found
+      | Some addr -> (cda.cda_description, get_address addr)
+    end
+  | Pdot(p, s) ->
+      let c = find_structure_components p env in
+      get_constrs_with_address (NameMap.find s c.comp_constrs)
   | Papply _ ->
       raise Not_found
 
@@ -1605,7 +1619,9 @@ let rec components_of_module_maker
                    path final_decl)
             in
             let labels =
-              List.map snd (Datarepr.labels_of_type path final_decl) in
+              List.map snd
+                (Datarepr.labels_of_type ~inlined:false path final_decl)
+            in
             let tda =
               { tda_declaration = final_decl;
                 tda_descriptions = (constructors, labels); }
@@ -1753,7 +1769,7 @@ and store_type ~check id info env =
     Datarepr.constructors_of_type path info
       ~current_unit:(get_unit_name ())
   in
-  let labels = Datarepr.labels_of_type path info in
+  let labels = Datarepr.labels_of_type ~inlined:false path info in
   let descrs = (List.map snd constructors, List.map snd labels) in
   let tda = { tda_declaration = info; tda_descriptions = descrs } in
   if check && not loc.Location.loc_ghost &&

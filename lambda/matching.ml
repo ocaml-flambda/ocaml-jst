@@ -139,7 +139,7 @@ let all_record_args lbls =
             (mknoloc (Longident.Lident "?temp?"), lbl, Patterns.omega))
           lbl_all
       in
-      List.iter (fun ((_, lbl, _) as x) -> t.(lbl.lbl_pos) <- x) lbls;
+      List.iter (fun ((_, lbl, _) as x) -> t.(lbl.lbl_num) <- x) lbls;
       Array.to_list t
 
 let expand_record_head h =
@@ -230,7 +230,7 @@ end = struct
       | `Var (id, s) -> continue p (`Alias (Patterns.omega, id, s))
       | `Alias (p, id, _) ->
           let k = Typeopt.value_kind p.pat_env p.pat_type in
-          let action = bind_with_layout_rep Alias (id,k) arg action in
+          let action = bind_with_value_kind Alias (id,k) arg action in
           aux ((General.view p, patl), action)
       | `Record ([], _) as view -> stop p view
       | `Record (lbls, closed) ->
@@ -884,7 +884,7 @@ type 'row pattern_matching = {
 type handler = {
   provenance : matrix;
   exit : int;
-  vars : (Ident.t * Lambda.layout_rep) list;
+  vars : (Ident.t * value_kind) list;
   pm : initial_clause pattern_matching
 }
 
@@ -1093,7 +1093,7 @@ let can_group discr pat =
   | Constant (Const_int64 _), Constant (Const_int64 _)
   | Constant (Const_nativeint _), Constant (Const_nativeint _) ->
       true
-  | Construct { cstr_tag = Cstr_extension _ as discr_tag }, Construct pat_cstr
+  | Construct { cstr_tag = Extension _ as discr_tag }, Construct pat_cstr
     ->
       (* Extension constructors with distinct names may be equal thanks to
          constructor rebinding. So we need to produce a specialized
@@ -1365,7 +1365,7 @@ and split_no_or cls args def k =
           ((idef, next) :: nexts)
   and should_split group_discr =
     match group_discr.pat_desc with
-    | Patterns.Head.Construct { cstr_tag = Cstr_extension _ } ->
+    | Patterns.Head.Construct { cstr_tag = Extension _ } ->
         (* it is unlikely that we will raise anything, so we split now *)
         true
     | _ -> false
@@ -1666,6 +1666,7 @@ let get_pat_args_constr p rem =
   | { pat_desc = Tpat_construct (_, _, args) } -> args @ rem
   | _ -> assert false
 
+(* CJC XXX needs to be updated for void? *)
 let get_expr_args_constr ~scopes head (arg, _mut) rem =
   let cstr =
     match head.pat_desc with
@@ -1686,12 +1687,11 @@ let get_expr_args_constr ~scopes head (arg, _mut) rem =
   if cstr.cstr_inlined <> None then
     (arg, Alias) :: rem
   else
-    match cstr.cstr_tag with
-    | Cstr_constant _
-    | Cstr_block _ ->
+    match cstr.cstr_repr with
+    | Variant_unboxed _ -> (arg, Alias) :: rem
+    | Variant_extensible -> make_field_accesses Alias 1 cstr.cstr_arity rem
+    | Variant_boxed _ ->
         make_field_accesses Alias 0 (cstr.cstr_arity - 1) rem
-    | Cstr_unboxed -> (arg, Alias) :: rem
-    | Cstr_extension _ -> make_field_accesses Alias 1 cstr.cstr_arity rem
 
 let divide_constructor ~scopes ctx pm =
   divide
@@ -1732,17 +1732,18 @@ let divide_variant ~scopes row ctx { cases = cl; args; default = def } =
           variants
         else
           let tag = Btype.hash_variant lab in
+          (* CJC XXX does this take into account void args correctly? *)
           match pato with
           | None ->
               add_in_div
                 (make_matching get_expr_args_variant_constant head def ctx)
-                ( = ) (Cstr_constant tag) (patl, action) variants
+                ( = ) (tag, true) (patl, action) variants
           | Some pat ->
               add_in_div
                 (make_matching
                    (get_expr_args_variant_nonconst ~scopes)
                    head def ctx)
-                ( = ) (Cstr_block tag)
+                ( = ) (tag, false)
                 (pat :: patl, action)
                 variants
       )
@@ -1960,7 +1961,7 @@ let divide_tuple ~scopes head ctx pm =
 
 let record_matching_line num_fields lbl_pat_list =
   let patv = Array.make num_fields Patterns.omega in
-  List.iter (fun (_, lbl, pat) -> patv.(lbl.lbl_pos) <- pat) lbl_pat_list;
+  List.iter (fun (_, lbl, pat) -> patv.(lbl.lbl_num) <- pat) lbl_pat_list;
   Array.to_list patv
 
 let get_pat_args_record num_fields p rem =
@@ -1980,6 +1981,7 @@ let get_expr_args_record ~scopes head (arg, _mut) rem =
     | _ ->
         assert false
   in
+  (* CJC XXX omit voids? *)
   let rec make_args pos =
     if pos >= Array.length all_labels then
       rem
@@ -1992,16 +1994,15 @@ let get_expr_args_record ~scopes head (arg, _mut) rem =
       in
       let access =
         match lbl.lbl_repres with
-        | Record_regular
-        | Record_inlined _ ->
+        | Record_boxed _
+        | Record_inlined (_, Variant_boxed _) ->
             Lprim (Pfield (lbl.lbl_pos, sem), [ arg ], loc)
-        | Record_unboxed _ -> arg
+        | Record_unboxed _ | Record_inlined (_, Variant_unboxed _) -> arg
+        | Record_inlined (_, Variant_extensible) ->
+            Lprim (Pfield (lbl.lbl_pos + 1, sem), [ arg ], loc)
         | Record_float ->
            (* TODO: could optimise to Alloc_local sometimes *)
            Lprim (Pfloatfield (lbl.lbl_pos, sem, alloc_heap), [ arg ], loc)
-        | Record_extension _ ->
-            Lprim (Pfield (lbl.lbl_pos + 1, sem), [ arg ], loc)
-        | Record_immediate _ -> assert false (* CJC XXX come back *)
       in
       let str =
         match lbl.lbl_mut with
@@ -2155,8 +2156,6 @@ let rec do_make_string_test_tree loc kind arg sw delta d =
 
 (* Entry point *)
 let expand_stringswitch loc kind arg sw d =
-  (* CJC XXX obviously wrong *)
-  let kind = nonvoid_kind_of_layout_rep kind in
   match d with
   | None -> bind_sw arg (fun arg -> do_make_string_test_tree loc kind arg sw 0 None)
   | Some e ->
@@ -2688,41 +2687,63 @@ let combine_constant value_kind loc arg cst partial ctx def
 let split_cases tag_lambda_list =
   let rec split_rec = function
     | [] -> ([], [])
-    | (cstr_tag, act) :: rem -> (
+    | ({cstr_tag; cstr_repr; cstr_constant}, act) :: rem -> (
         let consts, nonconsts = split_rec rem in
-        match cstr_tag with
-        | Cstr_constant n -> ((n, act) :: consts, nonconsts)
-        | Cstr_block n -> (consts, (n, act) :: nonconsts)
-        | Cstr_unboxed -> (consts, (0, act) :: nonconsts)
-        | Cstr_extension _ -> assert false
+        match cstr_tag, cstr_repr with
+        | Ordinary _, Variant_unboxed l when Type_layout.(equal void l) ->
+          (* CJC XXX There's no good answer here.  Who are the callers? *)
+          assert false
+        | Ordinary _, Variant_unboxed _ -> (consts, (0, act) :: nonconsts)
+        | Ordinary {tag}, Variant_boxed _ when cstr_constant ->
+          ((tag, act) :: consts, nonconsts)
+        | Ordinary {tag}, Variant_boxed _ ->
+          (consts, (tag, act) :: nonconsts)
+        | _, Variant_extensible -> assert false
+        | Extension _, _ -> assert false
       )
   in
   let const, nonconst = split_rec tag_lambda_list in
   (sort_int_lambda_list const, sort_int_lambda_list nonconst)
 
-let split_extension_cases tag_lambda_list =
+(* The bool tracks whether the constructor is constant, because we don't have a
+   constructor_description available for polymorphic variants *)
+let split_variant_cases tag_lambda_list =
   let rec split_rec = function
     | [] -> ([], [])
-    | (cstr_tag, act) :: rem -> (
+    | (tag, act) :: rem -> (
         let consts, nonconsts = split_rec rem in
-        match cstr_tag with
-        | Cstr_extension (path, true) -> ((path, act) :: consts, nonconsts)
-        | Cstr_extension (path, false) -> (consts, (path, act) :: nonconsts)
-        | _ -> assert false
+        match tag with
+        | (n, true) -> ((n, act) :: consts, nonconsts)
+        | (n, false) -> (consts, (n, act) :: nonconsts)
+      )
+  in
+  let const, nonconst = split_rec tag_lambda_list in
+  (sort_int_lambda_list const, sort_int_lambda_list nonconst)
+
+
+let split_extension_cases tag_lambda_list =
+  (* CJC XXX: need to optimize extensible variant constructors with all void
+     args into constant constructors? *)
+  let rec split_rec = function
+    | [] -> ([], [])
+    | ({cstr_args; cstr_tag}, act) :: rem -> (
+        let consts, nonconsts = split_rec rem in
+        match cstr_args, cstr_tag with
+        | [], Extension path -> ((path,act) :: consts, nonconsts)
+        | _ :: _, Extension path -> (consts, (path, act) :: nonconsts)
+        | _, Ordinary _ -> assert false
       )
   in
   split_rec tag_lambda_list
 
 let combine_constructor value_kind loc arg pat_env cstr partial ctx def
     (descr_lambda_list, total1, pats) =
-  let tag_lambda (cstr, act) = (cstr.cstr_tag, act) in
   match cstr.cstr_tag with
-  | Cstr_extension _ ->
+  | Extension _ ->
       (* Special cases for extensions *)
       let fail, local_jumps = mk_failaction_neg partial ctx def in
       let lambda1 =
-        let consts, nonconsts =
-          split_extension_cases (List.map tag_lambda descr_lambda_list) in
+        let consts, nonconsts = split_extension_cases descr_lambda_list in
         let default, consts, nonconsts =
           match fail with
           | None -> (
@@ -2741,7 +2762,7 @@ let combine_constructor value_kind loc arg pat_env cstr partial ctx def
               let tests =
                 List.fold_right
                   (fun (path, act) rem ->
-                    let ext = transl_extension_path loc pat_env path in
+                    let (ext,_) = transl_extension_path loc pat_env path in
                     Lifthenelse
                       (Lprim (Pintcomp Ceq, [ Lvar tag; ext ], loc), act, rem, value_kind))
                   nonconsts default
@@ -2752,7 +2773,7 @@ let combine_constructor value_kind loc arg pat_env cstr partial ctx def
         in
         List.fold_right
           (fun (path, act) rem ->
-            let ext = transl_extension_path loc pat_env path in
+            let (ext, _) = transl_extension_path loc pat_env path in
             Lifthenelse (Lprim (Pintcomp Ceq, [ arg; ext ], loc), act, rem,
                          value_kind))
           consts nonconst_lambda
@@ -2773,8 +2794,7 @@ let combine_constructor value_kind loc arg pat_env cstr partial ctx def
           mk_failaction_pos partial constrs ctx def
       in
       let descr_lambda_list = fails @ descr_lambda_list in
-      let consts, nonconsts =
-        split_cases (List.map tag_lambda descr_lambda_list) in
+      let consts, nonconsts = split_cases descr_lambda_list in
       let lambda1 =
         match (fail_opt, same_actions descr_lambda_list) with
         | None, Some act -> act (* Identical actions, no failure *)
@@ -2876,7 +2896,7 @@ let combine_variant value_kind loc row arg partial ctx def
     else
       mk_failaction_neg partial ctx def
   in
-  let consts, nonconsts = split_cases tag_lambda_list in
+  let consts, nonconsts = split_variant_cases tag_lambda_list in
   let lambda1 =
     match (fail, one_action) with
     | None, Some act -> act
@@ -2987,26 +3007,18 @@ let compile_orhandlers value_kind compile_fun lambda1 total1 ctx to_catch =
           (* Whilst the handler is [lambda_unit] it is actually unused and only added
              to produce well-formed code. In reality this expression returns a
              [value_kind]. *)
-          (* CJC XXX void? *)
-          let vars =
-            List.map (fun (id,lr) -> (id,nonvoid_kind_of_layout_rep lr)) vars
-          in
           do_rec (Lstaticcatch (r, (i, vars), lambda_unit, value_kind)) total_r rem
         | handler_i, total_i ->
           begin match raw_action r with
           | Lstaticraise (j, args) ->
               if i = j then
                 ( List.fold_right2
-                    (bind_with_layout_rep Alias)
+                    (bind_with_value_kind Alias)
                     vars args handler_i,
                   Jumps.map (Context.rshift_num (ncols mat)) total_i )
               else
                 do_rec r total_r rem
           | _ ->
-              (* CJC XXX void? *)
-              let vars =
-                List.map (fun (id,lr) -> (id,nonvoid_kind_of_layout_rep lr)) vars
-              in
               do_rec
                 (Lstaticcatch (r, (i, vars), handler_i, value_kind))
                 (Jumps.union (Jumps.remove i total_r)
@@ -3403,7 +3415,7 @@ let failure_handler ~scopes loc ~failer () =
     Lprim (Praise Raise_reraise, [ exn_lam ], Scoped_location.Loc_unknown)
   | Raise_match_failure ->
     let sloc = Scoped_location.of_location ~scopes loc in
-    let slot =
+    let (slot, _) =
       transl_extension_path sloc
         Env.initial_safe_string Predef.path_match_failure
     in
@@ -3478,8 +3490,6 @@ let for_trywith ~scopes value_kind loc param pat_act_list =
      It is important to *not* include location information in
      the reraise (hence the [_noloc]) to avoid seeing this
      silent reraise in exception backtraces. *)
-  (* CJC XXX obviously wrong *)
-  let value_kind = nonvoid_kind_of_layout_rep value_kind in
   compile_matching ~scopes value_kind loc ~failer:(Reraise_noloc param)
     None param pat_act_list Partial
 
@@ -3621,8 +3631,6 @@ let assign_pat ~scopes value_kind opt nraise catch_ids loc pat lam =
   List.fold_left push_sublet exit rev_sublets
 
 let for_let ~scopes loc param pat body_kind body =
-  (* CJC XXX obviously wrong *)
-  let body_kind = nonvoid_kind_of_layout_rep body_kind in
   match pat.pat_desc with
   | Tpat_any ->
       (* This eliminates a useless variable (and stack slot in bytecode)
@@ -3631,7 +3639,7 @@ let for_let ~scopes loc param pat body_kind body =
   | Tpat_var (id, _) ->
       (* fast path, and keep track of simple bindings to unboxable numbers *)
       let k = Typeopt.value_kind pat.pat_env pat.pat_type in
-      bind_with_layout_rep Strict (id,k) param body
+      bind_with_value_kind Strict (id,k) param body
   | _ ->
       let opt = ref false in
       let nraise = next_raise_count () in
@@ -3639,7 +3647,7 @@ let for_let ~scopes loc param pat body_kind body =
       (* CJC XXX there can be void things here - rewrite to move them around *)
       let ids_with_kinds =
         List.map
-          (fun (id, _, typ) -> (id, nonvoid_kind_of_layout_rep (Typeopt.value_kind pat.pat_env typ)))
+          (fun (id, _, typ) -> (id, Typeopt.value_kind pat.pat_env typ))
           catch_ids
       in
       let ids = List.map (fun (id, _, _) -> id) catch_ids in
@@ -3828,8 +3836,6 @@ let bind_opt (v, eo) k =
   | Some e -> Lambda.bind Strict v e k
 
 let for_multiple_match ~scopes value_kind loc paraml mode pat_act_list partial =
-  (* CJC XXX obviously wrong *)
-  let value_kind = nonvoid_kind_of_layout_rep value_kind in
   let v_paraml = List.map param_to_var paraml in
   let paraml = List.map (fun (v, _) -> Lvar v) v_paraml in
   List.fold_right bind_opt v_paraml

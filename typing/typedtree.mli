@@ -250,12 +250,13 @@ and expression_desc =
       expression * Longident.t loc * Types.label_description * expression
   | Texp_array of expression list
   | Texp_ifthenelse of expression * expression * expression option
-  | Texp_sequence of expression * expression
+  | Texp_sequence of expression * Types.layout * expression
   | Texp_while of {
       wh_cond : expression;
       wh_cond_region : bool; (* False means allocates in outer region *)
       wh_body : expression;
-      wh_body_region : bool  (* False means allocates in outer region *)
+      wh_body_region : bool;  (* False means allocates in outer region *)
+      wh_body_layout : Types.layout
     }
   | Texp_list_comprehension of
       expression * comprehension list
@@ -268,6 +269,7 @@ and expression_desc =
       for_to   : expression;
       for_dir  : direction_flag;
       for_body : expression;
+      for_body_layout : Types.layout;
       for_region : bool;
       (* for_region = true means we create a region for the body.  false means
          it may allocated in the containing region *)
@@ -458,7 +460,7 @@ and structure_item =
   }
 
 and structure_item_desc =
-    Tstr_eval of expression * attributes
+    Tstr_eval of expression * Types.layout * attributes
   | Tstr_value of rec_flag * value_binding list
   | Tstr_primitive of value_description
   | Tstr_type of rec_flag * type_declaration list
@@ -487,6 +489,7 @@ and value_binding =
   {
     vb_pat: pattern;
     vb_expr: expression;
+    vb_sort: Types.sort;
     vb_attributes: attributes;
     vb_loc: Location.t;
   }

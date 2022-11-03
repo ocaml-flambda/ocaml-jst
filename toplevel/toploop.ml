@@ -295,7 +295,7 @@ let execute_phrase print_outcome ppf phr =
                 Printtyp.wrap_printing_env ~error:false oldenv (fun () ->
                   match str.str_items with
                   | [ { str_desc =
-                          (Tstr_eval (exp, _)
+                          (Tstr_eval (exp, _, _)
                           |Tstr_value
                               (Asttypes.Nonrecursive,
                                [{vb_pat = {pat_desc=Tpat_any};

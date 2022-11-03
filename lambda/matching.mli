@@ -25,15 +25,15 @@ val for_function:
         int ref option -> lambda -> (pattern * lambda) list -> partial ->
         lambda
 val for_trywith:
-        scopes:scopes -> layout_rep -> Location.t ->
+        scopes:scopes -> value_kind -> Location.t ->
         lambda -> (pattern * lambda) list ->
         lambda
 val for_let:
         scopes:scopes -> Location.t ->
-        lambda -> pattern -> layout_rep -> lambda ->
+        lambda -> pattern -> value_kind -> lambda ->
         lambda
 val for_multiple_match:
-        scopes:scopes -> layout_rep -> Location.t ->
+        scopes:scopes -> value_kind -> Location.t ->
         lambda list -> alloc_mode -> (pattern * lambda) list -> partial ->
         lambda
 
@@ -48,7 +48,7 @@ val flatten_pattern: int -> pattern -> pattern list
 
 (* Expand stringswitch to  string test tree *)
 val expand_stringswitch:
-    scoped_location -> layout_rep -> lambda -> (string * lambda) list ->
+    scoped_location -> value_kind -> lambda -> (string * lambda) list ->
     lambda option -> lambda
 
 val inline_lazy_force : lambda -> region_close -> scoped_location -> lambda

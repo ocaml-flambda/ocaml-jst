@@ -218,10 +218,6 @@ and integer_comparison =
 and float_comparison =
     CFeq | CFneq | CFlt | CFnlt | CFgt | CFngt | CFle | CFnle | CFge | CFnge
 
-and layout_rep =
-  | Value of value_kind
-  | Void
-
 and value_kind =
     Pgenval | Pfloatval | Pboxedintval of boxed_integer | Pintval
   | Pvariant of {
@@ -841,8 +837,12 @@ let transl_module_path loc env path =
 let transl_value_path loc env path =
   transl_path Env.find_value_address loc env path
 
+(* CJC XXX I think I can undo the change that makes this return the cstr *)
 let transl_extension_path loc env path =
-  transl_path Env.find_constructor_address loc env path
+  match Env.find_constructor path env with
+  | exception Not_found ->
+      fatal_error ("Cannot find address for: " ^ (Path.name path))
+  | (cstr, addr) -> (transl_address loc addr, cstr)
 
 let transl_class_path loc env path =
   transl_path Env.find_class_address loc env path
@@ -1097,26 +1097,13 @@ let map f =
   g
 
 (* To let-bind expressions to variables *)
-let bind_with_layout_rep let_kind (var, layout_rep) exp body =
+let bind_with_value_kind let_kind (var, kind) exp body =
   match exp with
     Lvar var' when Ident.same var var' -> body
-  | _ ->
-    match layout_rep with
-    | Void -> Lsequence (exp, body)
-    | Value k -> Llet (let_kind, k, var, exp, body)
+  | _ -> Llet (let_kind, kind, var, exp, body)
 
 let bind str var exp body =
-  bind_with_layout_rep str (var, Value Pgenval) exp body
-
-let kind_of_layout_rep rep =
-  match rep with
-  | Void -> Pintval
-  | Value k -> k
-
-let nonvoid_kind_of_layout_rep rep =
-  match rep with
-  | Void -> assert false
-  | Value k -> k
+  bind_with_value_kind str (var, Pgenval) exp body
 
 let negate_integer_comparison = function
   | Ceq -> Cne

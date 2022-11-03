@@ -23,8 +23,11 @@ open Debuginfo.Scoped_location
 
 val pure_module : module_expr -> let_kind
 
-(* Used for translating Alloc_heap values in classes and modules *)
-val transl_exp: scopes:scopes -> expression -> lambda
+(* Used for translating Alloc_heap values in classes and modules.  The [int
+   option] must be [Some n] iff the expression's type has layout void.  In that
+   case, the result will [Lstaticraise] to handler [transl_exp] after evaluating
+   the expression. *)
+val transl_exp: scopes:scopes -> int option -> expression -> lambda
 val transl_apply: scopes:scopes
                   -> ?tailcall:tailcall_attribute
                   -> ?inlined:inlined_attribute
@@ -35,13 +38,13 @@ val transl_apply: scopes:scopes
                   -> (arg_label * apply_arg) list
                   -> scoped_location -> lambda
 val transl_let: scopes:scopes -> ?in_structure:bool
-                  -> rec_flag -> value_binding list -> layout_rep -> lambda -> lambda
+                  -> rec_flag -> value_binding list -> value_kind -> lambda -> lambda
 
 val transl_extension_constructor: scopes:scopes ->
   Env.t -> Path.t option ->
   extension_constructor -> lambda
 
-val transl_scoped_exp : scopes:scopes -> expression -> lambda
+val transl_scoped_exp : scopes:scopes -> int option -> expression -> lambda
 
 val transl_alloc_mode : Types.alloc_mode -> Lambda.alloc_mode
 
@@ -66,3 +69,8 @@ val transl_object :
 (* Declarations to be wrapped around the entire body *)
 val clear_probe_handlers : unit -> unit
 val declare_probe_handlers : lambda -> lambda
+
+(* Helper function for translating voids. [catch_void body after kind]
+   performs [body] (which should be void and is provided a continuation),
+   and then [after]. *)
+val catch_void : (int option -> lambda) -> lambda -> value_kind -> lambda

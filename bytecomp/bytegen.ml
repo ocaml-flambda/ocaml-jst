@@ -183,10 +183,10 @@ let rec size_of_lambda env = function
   | Llet (Strict, _k, id, Lprim (Pduprecord (kind, size), _, _), body)
     when check_recordwith_updates id body ->
       begin match kind with
-      | Record_regular | Record_inlined _ -> RHS_block size
-      | Record_unboxed _ | Record_immediate _ -> assert false
+      | Record_boxed _ | Record_inlined (_, Variant_boxed _) -> RHS_block size
+      | Record_unboxed _ | Record_inlined (_, Variant_unboxed _) -> assert false
       | Record_float -> RHS_floatblock size
-      | Record_extension _ -> RHS_block (size + 1)
+      | Record_inlined (_, Variant_extensible) -> RHS_block (size + 1)
       end
   | Llet(_str, _k, id, arg, body) ->
       size_of_lambda (Ident.add id (size_of_lambda env arg) env) body
@@ -218,11 +218,14 @@ let rec size_of_lambda env = function
      (* Pgenarray is excluded from recursive bindings by the
         check in Translcore.check_recursive_lambda *)
       RHS_nonrec
-  | Lprim (Pduprecord ((Record_regular | Record_inlined _), size), _, _) ->
+  | Lprim (Pduprecord ((Record_boxed _ | Record_inlined (_, Variant_boxed _)),
+                       size), _, _) ->
       RHS_block size
-  | Lprim (Pduprecord (Record_unboxed _, _), _, _) ->
+  | Lprim (Pduprecord ((Record_unboxed _
+                       | Record_inlined (_, Variant_unboxed _)),
+           _), _, _) ->
       assert false
-  | Lprim (Pduprecord (Record_extension _, size), _, _) ->
+  | Lprim (Pduprecord (Record_inlined (_, Variant_extensible), size), _, _) ->
       RHS_block (size + 1)
   | Lprim (Pduprecord (Record_float, size), _, _) -> RHS_floatblock size
   | Levent (lam, _) -> size_of_lambda env lam
@@ -930,7 +933,7 @@ let rec comp_expr env exp sz cont =
       done;
       comp_expr env arg sz (Kswitch(lbl_consts, lbl_blocks) :: !c)
   | Lstringswitch (arg,sw,d,loc, kind) ->
-      comp_expr env (Matching.expand_stringswitch loc (Value kind) arg sw d) sz cont
+      comp_expr env (Matching.expand_stringswitch loc kind arg sw d) sz cont
   | Lassign(id, expr) ->
       begin try
         let pos = Ident.find_same id env.ce_stack in

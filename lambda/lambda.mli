@@ -191,10 +191,9 @@ and float_comparison =
 and array_kind =
     Pgenarray | Paddrarray | Pintarray | Pfloatarray
 
-and layout_rep =
-  | Value of value_kind
-  | Void
-
+(* We sometimes use [Pintval] for voids in lambda terms, but only in places the
+   control flow will never actually reach - see the comment on
+   [value_kind_if_not_void] in translcore. *)
 and value_kind =
     Pgenval | Pfloatval | Pboxedintval of boxed_integer | Pintval
   | Pvariant of {
@@ -465,7 +464,8 @@ val free_variables: lambda -> Ident.Set.t
 
 val transl_module_path: scoped_location -> Env.t -> Path.t -> lambda
 val transl_value_path: scoped_location -> Env.t -> Path.t -> lambda
-val transl_extension_path: scoped_location -> Env.t -> Path.t -> lambda
+val transl_extension_path: scoped_location -> Env.t -> Path.t ->
+  lambda * Types.constructor_description
 val transl_class_path: scoped_location -> Env.t -> Path.t -> lambda
 
 val make_sequence: ('a -> lambda) -> 'a list -> lambda
@@ -505,15 +505,8 @@ val shallow_map  :
   (** Rewrite each immediate sub-term with the function. *)
 
 val bind : let_kind -> Ident.t -> lambda -> lambda -> lambda
-val bind_with_layout_rep:
-  let_kind -> (Ident.t * layout_rep) -> lambda -> lambda -> lambda
-
-(** [kind_of_layout_rep] defaults the Void layout rep to Pintval, and is
-    suitable for places in the translation where we treat void types as unit.
-    [nonvoid_kind_of_layout_rep] fails on the Void layout rep, and is suitable
-    for places where void values may not appear. *)
-val kind_of_layout_rep : layout_rep -> value_kind
-val nonvoid_kind_of_layout_rep : layout_rep -> value_kind
+val bind_with_value_kind:
+  let_kind -> (Ident.t * value_kind) -> lambda -> lambda -> lambda
 
 val negate_integer_comparison : integer_comparison -> integer_comparison
 val swap_integer_comparison : integer_comparison -> integer_comparison

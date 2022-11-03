@@ -2276,7 +2276,8 @@ and type_structure ?(toplevel = None) funct_body anchor env sstr =
           Builtin_attributes.warning_scope attrs
             (fun () -> Typecore.type_expression env sexpr)
         in
-        Tstr_eval (expr, attrs), [], env
+        let layout = Ctype.type_layout expr.exp_env expr.exp_type in
+        Tstr_eval (expr, layout, attrs), [], env
     | Pstr_value(rec_flag, sdefs) ->
         let (defs, newenv) =
           Typecore.type_binding env rec_flag sdefs in
@@ -2601,7 +2602,7 @@ and type_structure ?(toplevel = None) funct_body anchor env sstr =
 let remove_mode_and_layout_variables_for_toplevel str =
   match str.str_items with
   | [{ str_desc =
-         ( Tstr_eval (exp, _)
+         ( Tstr_eval (exp, _, _)
          | Tstr_value (Nonrecursive,
                        [{vb_pat = {pat_desc=Tpat_any};
                          vb_expr = exp}])) }] ->
