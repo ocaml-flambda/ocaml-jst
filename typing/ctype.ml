@@ -3534,7 +3534,7 @@ let expand_head_trace env t =
 let filter_arrow env t l =
   let t = expand_head_trace env t in
   match t.desc with
-    Tvar _ ->
+    Tvar {layout} ->
       let lv = t.level in
       (* Layouts: This is a primary place where we are restricting function
          arguments / returns to have layout value.  When we decide to drop that
@@ -3546,6 +3546,7 @@ let filter_arrow env t l =
       let mret = Btype.Alloc_mode.newvar () in
       let t' = newty2 lv (Tarrow ((l,marg,mret), t1, t2, Cok)) in
       link_type t t';
+      constrain_type_layout_exn env t' layout;
       (marg, t1, mret, t2)
   | Tarrow((l', arg, ret), t1, t2, _)
     when (l = l' || !Clflags.classic && l = Nolabel && not (is_optional l)) ->
