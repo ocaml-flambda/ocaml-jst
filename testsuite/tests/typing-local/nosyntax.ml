@@ -30,3 +30,34 @@ let local_ref (f : lfn -> unit) =
 [%%expect{|
 val local_ref : (lfn -> unit) -> unit = <fun>
 |}]
+
+type foo = {
+  global_ x :  string
+}
+[%%expect{|
+type foo = { global_ x : string; }
+|}]
+(* FIXME the above should fail *)
+
+type foo = Foo of string
+type gfoo = GFoo of (string [@ocaml.global])
+type gfoo' = Gfoo of global_ string
+
+[%%expect{|
+type foo = Foo of string
+type gfoo = GFoo of (string [@global])
+type gfoo' = Gfoo of (string [@global])
+|}]
+(* FIXME: gfoo' should trigger error *)
+
+let cast1 ((x : foo) [@ocaml.local]) = match x with
+  Foo s -> GFoo s
+[%%expect{|
+Line 2, characters 16-17:
+2 |   Foo s -> GFoo s
+                    ^
+Error: This value escapes its region
+|}]
+
+
+
