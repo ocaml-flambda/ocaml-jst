@@ -3694,6 +3694,21 @@ let may_instantiate inst_nongen t1 =
   if inst_nongen then t1.level <> generic_level - 1
                  else t1.level =  generic_level
 
+(* CJC XXX It is tempting to add layout checking in the places where do to a
+   link_type below.  However, this function is called before all the circularity
+   checks that make layout checking safe.
+
+   As a consequence, in examples like:
+
+   module M : sig
+     val x : int
+   end = struct
+     val x = assert false
+   end
+
+   A sort variable escapes all the way to the very hacky sort defaulting at the
+   end of [type_implementation] in typemod.  This seems bad, and maybe unsound.
+*)
 let rec moregen inst_nongen variance type_pairs env t1 t2 =
   if t1 == t2 then () else
   let t1 = repr t1 in
@@ -3841,6 +3856,8 @@ and moregen_row inst_nongen variance type_pairs env row1 row2 =
       moregen_occur env rm1.level ext;
       update_scope rm1.scope ext;
       link_type rm1 ext
+  (* CJC XXX I think we don't need a layout check here because row variables are
+     already value? *)
   | Tconstr _, Tconstr _ ->
       moregen inst_nongen variance type_pairs env rm1 rm2
   | _ -> raise (Unify [])
@@ -3994,12 +4011,13 @@ let rec eqtype rename type_pairs subst env t1 t2 =
 
   try
     match (t1.desc, t2.desc) with
-      (Tvar _, Tvar _) when rename ->
+      (Tvar {layout=l1}, Tvar {layout=l2}) when rename ->
         begin try
           normalize_subst subst;
           if List.assq t1 !subst != t2 then raise (Unify [])
         with Not_found ->
           if List.exists (fun (_, t) -> t == t2) !subst then raise (Unify []);
+          if not (Type_layout.equal l1 l2) then raise (Unify []);
           subst := (t1, t2) :: !subst
         end
     | (Tconstr (p1, [], _), Tconstr (p2, [], _)) when Path.same p1 p2 ->
@@ -4013,13 +4031,14 @@ let rec eqtype rename type_pairs subst env t1 t2 =
         if not (TypePairs.mem type_pairs (t1', t2')) then begin
           TypePairs.add type_pairs (t1', t2');
           match (t1'.desc, t2'.desc) with
-            (Tvar _, Tvar _) when rename ->
+            (Tvar {layout=l1}, Tvar {layout=l2}) when rename ->
               begin try
                 normalize_subst subst;
                 if List.assq t1' !subst != t2' then raise (Unify [])
               with Not_found ->
                 if List.exists (fun (_, t) -> t == t2') !subst
                 then raise (Unify []);
+                if not (Type_layout.equal l1 l2) then raise (Unify []);
                 subst := (t1', t2') :: !subst
               end
           | (Tarrow ((l1,a1,r1), t1, u1, _),
