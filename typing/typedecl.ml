@@ -1247,8 +1247,8 @@ let transl_type_decl env rec_flag sdecl_list =
   List.iter2 (check_constraints new_env) sdecl_list decls;
   (* Default away sort variables.  Must happen after check_constraints (which
      creates sort variables to check layouts of constructor args), and before
-     update_decls_layout, which would modify sort variables by checking if
-     things are void.
+     update_decls_layout and Typedecl_seperability.update_decls, which would
+     modify sort variables by checking if things are void.
 
      CR ccasinghino: In the future, it may be the case that check_constraints
      doesn't need to create sort variables because we want to allow

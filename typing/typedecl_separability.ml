@@ -74,9 +74,6 @@ let unboxed_of_variant_repr = function
   | Variant_boxed _ | Variant_extensible -> Boxed
   | Variant_unboxed _ -> Unboxed
 
-let not_void_type env ty =
-  Result.is_error (Ctype.check_type_layout env ty Type_layout.void)
-
 let demultiply_list
   : type a b. a list -> (a -> b) -> b multiplicity
   = fun li f -> match li with
@@ -84,7 +81,7 @@ let demultiply_list
   | [v] -> One (f v)
   | _::_::_ -> Several
 
-let structure : Env.t -> type_definition -> type_structure = fun env def ->
+let structure : type_definition -> type_structure = fun def ->
   match def.type_kind with
   | Type_open -> Open
   | Type_abstract _ ->
@@ -123,8 +120,18 @@ let structure : Env.t -> type_definition -> type_structure = fun env def ->
           in
           begin match cd.cd_args with
           | Cstr_tuple tys ->
-              (* CJC XXX: this void info should be in Cstr_tuple.  Or cd_tags, or something *)
-              let tys = List.filter (fun ty -> not_void_type env ty) tys in
+              (* CJC XXX come up with a test case that hits this with voids *)
+              let layouts =
+                match repr with
+                | Variant_boxed layouts -> layouts.(0)
+                | Variant_unboxed layout -> [| layout |]
+                | Variant_extensible -> assert false
+              in
+              let tys =
+                List.filteri
+                  (fun i _ -> not Type_layout.(equal void layouts.(i)))
+                  tys
+              in
               demultiply_list tys @@ fun argument_type -> {
                 location = cd.cd_loc;
                 kind = Constructor_parameter;
@@ -691,7 +698,7 @@ let msig_of_context : decl_loc:Location.t -> parameters:type_expr list
 let check_def
   : Env.t -> type_definition -> Sep.signature
   = fun env def ->
-  match structure env def with
+  match structure def with
   | Abstract ->
       msig_of_external_type env def
   | Synonym type_expr ->
