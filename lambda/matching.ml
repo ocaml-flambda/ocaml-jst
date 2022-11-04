@@ -2694,10 +2694,10 @@ let split_cases tag_lambda_list =
           (* CJC XXX There's no good answer here.  Who are the callers? *)
           assert false
         | Ordinary _, Variant_unboxed _ -> (consts, (0, act) :: nonconsts)
-        | Ordinary {tag}, Variant_boxed _ when cstr_constant ->
-          ((tag, act) :: consts, nonconsts)
-        | Ordinary {tag}, Variant_boxed _ ->
-          (consts, (tag, act) :: nonconsts)
+        | Ordinary {runtime_tag}, Variant_boxed _ when cstr_constant ->
+          ((runtime_tag, act) :: consts, nonconsts)
+        | Ordinary {runtime_tag}, Variant_boxed _ ->
+          (consts, (runtime_tag, act) :: nonconsts)
         | _, Variant_extensible -> assert false
         | Extension _, _ -> assert false
       )

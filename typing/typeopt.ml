@@ -308,8 +308,8 @@ let value_kind env ty =
               let layouts =
                 match record_representation with
                 | Record_boxed layouts -> layouts
-                | Record_inlined (Ordinary {index}, (Variant_boxed layouts)) ->
-                  layouts.(index)
+                | Record_inlined (Ordinary {src_index}, (Variant_boxed l)) ->
+                  l.(src_index)
                 | Record_float ->
                   Array.make (List.length labels) Type_layout.value
                 | Record_inlined (Extension path, Variant_extensible) -> begin
@@ -352,8 +352,8 @@ let value_kind env ty =
               | false, _ :: _ -> begin
                   let non_consts =
                     match record_representation with
-                    | Record_inlined (Ordinary {tag}, _) ->
-                      [tag, kinds]
+                    | Record_inlined (Ordinary {runtime_tag}, _) ->
+                      [runtime_tag, kinds]
                     | Record_float ->
                       [ Obj.double_array_tag,
                         List.map (fun _ -> Pfloatval) kinds ]

@@ -563,21 +563,21 @@ and transl_exp0 ~in_new_scope ~scopes void_k e =
         | [e] -> transl_exp ~scopes None e
         | _ -> assert false
       end else begin match cstr.cstr_tag, cstr.cstr_repr with
-        Ordinary {tag}, _ when cstr.cstr_constant ->
-          Lconst(const_int tag)
+        Ordinary {runtime_tag}, _ when cstr.cstr_constant ->
+          Lconst(const_int runtime_tag)
       | Ordinary _, Variant_unboxed _ -> begin
           match args with
           | [arg] -> transl_exp ~scopes void_k arg
           | _ -> assert false
         end
-      | Ordinary {tag}, Variant_boxed _ -> begin
+      | Ordinary {runtime_tag}, Variant_boxed _ -> begin
           let ll, shape = transl_arg_list args in
           try
             (* CJC XXX is this optimization firing as often as we'd like in the
                presence of voids? *)
-            Lconst(Const_block(tag, List.map extract_constant ll))
+            Lconst(Const_block(runtime_tag, List.map extract_constant ll))
           with Not_constant ->
-            Lprim(Pmakeblock(tag, Immutable, Some shape,
+            Lprim(Pmakeblock(runtime_tag, Immutable, Some shape,
                              transl_exp_mode e),
                   ll,
                   of_location ~scopes e.exp_loc)
@@ -1521,8 +1521,8 @@ and transl_record ~scopes kind loc env mode fields repres opt_init_expr =
         (* CJC XXX same question about immediate record case here and below *)
         match repres with
         | Record_boxed _ -> Lconst(Const_block(0, cl))
-        | Record_inlined (Ordinary {tag}, Variant_boxed _) ->
-            Lconst(Const_block(tag, cl))
+        | Record_inlined (Ordinary {runtime_tag}, Variant_boxed _) ->
+            Lconst(Const_block(runtime_tag, cl))
         | Record_unboxed _ | Record_inlined (_, Variant_unboxed _) ->
             (* CJC XXX handle the [type t = { x : tvoid } [@@unboxed]] case here
                and below *)
@@ -1537,8 +1537,8 @@ and transl_record ~scopes kind loc env mode fields repres opt_init_expr =
         match repres with
           Record_boxed _ ->
             Lprim(Pmakeblock(0, mut, Some shape, mode), ll, loc)
-        | Record_inlined (Ordinary {tag}, Variant_boxed _) ->
-            Lprim(Pmakeblock(tag, mut, Some shape, mode), ll, loc)
+        | Record_inlined (Ordinary {runtime_tag}, Variant_boxed _) ->
+            Lprim(Pmakeblock(runtime_tag, mut, Some shape, mode), ll, loc)
         | Record_unboxed _ | Record_inlined (Ordinary _, Variant_unboxed _) ->
             (match ll with [v] -> v | _ -> assert false)
         | Record_float ->

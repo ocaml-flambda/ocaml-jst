@@ -156,8 +156,8 @@ let arg_label i ppf = function
 ;;
 
 let tag ppf = let open Types in function
-  | Ordinary {index;tag} ->
-      fprintf ppf "Ordinary {index: %d; tag: %d}" index tag
+  | Ordinary {src_index;runtime_tag} ->
+      fprintf ppf "Ordinary {index: %d; tag: %d}" src_index runtime_tag
   | Extension p -> fprintf ppf "Extension %a" fmt_path p
 
 let layout_array i ppf layouts =

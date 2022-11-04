@@ -141,8 +141,8 @@ let layout_bound_of_record_representation = function
       | Extension _, _ -> value
       | _, Variant_extensible -> value
       | Ordinary _, Variant_unboxed l -> l (* n must be 0 here *)
-      | Ordinary {index}, Variant_boxed layouts ->
-        if all_void layouts.(index) then immediate else value
+      | Ordinary {src_index}, Variant_boxed layouts ->
+        if all_void layouts.(src_index) then immediate else value
     end
   | Record_boxed layouts when all_void layouts -> immediate
   | Record_boxed _ -> value

@@ -386,8 +386,6 @@ module Make(O : OBJ)(EVP : EVALPATH with type valu = O.t) = struct
                     tree_of_val depth obj
                       (instantiate_type env decl.type_params ty_list body)
                 | {type_kind = Type_variant (constr_list,rep)} ->
-                  (* CJC XXX revisit whether there is a cleaner way to find the
-                     constr, or to rewrite the rest of this. *)
                     let cstrs =
                       Env.lookup_all_constructors_from_type ~use:false
                         ~loc:Location.none Positive path env

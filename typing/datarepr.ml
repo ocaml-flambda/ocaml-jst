@@ -108,7 +108,7 @@ let constructor_descrs ~current_unit ty_path decl cstrs rep =
     | Variant_boxed layouts -> fun i -> layouts.(i)
     | Variant_unboxed layout -> fun _ -> [| layout |]
   in
-  let describe_constructor (index, const_tag, nonconst_tag, acc)
+  let describe_constructor (src_index, const_tag, nonconst_tag, acc)
         {cd_id; cd_args; cd_res; cd_loc; cd_attributes; cd_uid} =
     let cstr_name = Ident.name cd_id in
     let cstr_res =
@@ -116,16 +116,16 @@ let constructor_descrs ~current_unit ty_path decl cstrs rep =
       | Some ty_res' -> ty_res'
       | None -> ty_res
     in
-    let cstr_arg_layouts = cstr_arg_layouts index in
+    let cstr_arg_layouts = cstr_arg_layouts src_index in
     let cstr_constant =
       Array.for_all Type_layout.(equal void) cstr_arg_layouts
     in
-    let tag, const_tag, nonconst_tag =
+    let runtime_tag, const_tag, nonconst_tag =
       if cstr_constant
       then const_tag, 1 + const_tag, nonconst_tag
       else nonconst_tag, const_tag, 1 + nonconst_tag
     in
-    let cstr_tag = Ordinary {index; tag} in
+    let cstr_tag = Ordinary {src_index; runtime_tag} in
     let cstr_existentials, cstr_args, cstr_inlined =
       (* This is the representation of the inner record, IF there is one *)
       let record_repr = match rep with
@@ -156,7 +156,7 @@ let constructor_descrs ~current_unit ty_path decl cstrs rep =
         cstr_inlined;
         cstr_uid = cd_uid;
       } in
-    (index+1, const_tag, nonconst_tag, (cd_id, cstr) :: acc)
+    (src_index+1, const_tag, nonconst_tag, (cd_id, cstr) :: acc)
   in
   let (_,_,_,cstrs) = List.fold_left describe_constructor (0,0,0,[]) cstrs in
   List.rev cstrs
@@ -238,7 +238,7 @@ let find_constr ~constant tag cstrs =
   try
     List.find
       (function
-        | ({cstr_tag=Ordinary {tag=tag'}; cstr_constant},_) ->
+        | ({cstr_tag=Ordinary {runtime_tag=tag'}; cstr_constant},_) ->
           tag' = tag && cstr_constant = constant
         | ({cstr_tag=Extension _},_) -> false)
       cstrs

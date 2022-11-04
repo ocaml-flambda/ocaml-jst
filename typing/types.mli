@@ -403,8 +403,8 @@ and type_kind =
   | Type_variant of constructor_declaration list * variant_representation
   | Type_open
 
-and tag = Ordinary of {index: int;  (* Unique name (per type) *)
-                       tag: int}    (* The runtime tag *)
+and tag = Ordinary of {src_index: int;  (* Unique name (per type) *)
+                       runtime_tag: int}    (* The runtime tag *)
         | Extension of Path.t
 
 and record_representation =

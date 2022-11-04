@@ -271,9 +271,8 @@ and type_kind =
   | Type_variant of constructor_declaration list * variant_representation
   | Type_open
 
-(* CJC XXX clearer names?  source_index and runtime_tag maybe? *)
-and tag = Ordinary of {index: int; (* Unique name (per type) *)
-                       tag: int}   (* The runtime tag *)
+and tag = Ordinary of {src_index: int;     (* Unique name (per type) *)
+                       runtime_tag: int}   (* The runtime tag *)
         | Extension of Path.t
 
 and record_representation =
@@ -457,7 +456,7 @@ type constructor_description =
 
 let equal_tag t1 t2 =
   match (t1, t2) with
-  | Ordinary {index=i1}, Ordinary {index=i2} -> i2 = i1
+  | Ordinary {src_index=i1}, Ordinary {src_index=i2} -> i2 = i1
   | Extension path1, Extension path2 -> Path.same path1 path2
   | (Ordinary _ | Extension _), _ -> false
 

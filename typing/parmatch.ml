@@ -809,7 +809,7 @@ let complete_tags constructors tags =
   let unseen = Array.make constructors true in
   List.iter
     (function
-      | Ordinary {index} -> unseen.(index) <- false
+      | Ordinary {src_index} -> unseen.(src_index) <- false
       | _  -> assert false)
     tags;
   unseen
@@ -882,7 +882,7 @@ let complete_constrs constr all_tags =
   let others =
     List.filter (fun {cstr_tag} ->
       match cstr_tag with
-      | Ordinary {index} -> unseen.(index)
+      | Ordinary {src_index} -> unseen.(src_index)
       | Extension _ -> assert false)
       constrs
   in
