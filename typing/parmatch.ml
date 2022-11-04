@@ -893,13 +893,7 @@ let complete_constrs constr all_tags =
 let build_other_constrs env p =
   let open Patterns.Head in
   match p.pat_desc with
-  (* CJC XXX previous version:
-
-   | Construct ({ cstr_tag = Cstr_constant _ | Cstr_block _ } as c) ->
-
-     Am I OK in unboxed case here?
-  *)
-   | Construct ({ cstr_tag = Ordinary _ } as c) ->
+   | Construct ({ cstr_repr = Variant_boxed _ } as c) ->
       let constr = { p with pat_desc = c } in
       let get_tag q =
         match q.pat_desc with
