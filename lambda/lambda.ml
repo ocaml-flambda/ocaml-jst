@@ -837,12 +837,8 @@ let transl_module_path loc env path =
 let transl_value_path loc env path =
   transl_path Env.find_value_address loc env path
 
-(* CJC XXX I think I can undo the change that makes this return the cstr *)
 let transl_extension_path loc env path =
-  match Env.find_constructor path env with
-  | exception Not_found ->
-      fatal_error ("Cannot find address for: " ^ (Path.name path))
-  | (cstr, addr) -> (transl_address loc addr, cstr)
+  transl_path Env.find_constructor_address loc env path
 
 let transl_class_path loc env path =
   transl_path Env.find_class_address loc env path

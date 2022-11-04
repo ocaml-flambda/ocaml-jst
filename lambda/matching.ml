@@ -2762,7 +2762,7 @@ let combine_constructor value_kind loc arg pat_env cstr partial ctx def
               let tests =
                 List.fold_right
                   (fun (path, act) rem ->
-                    let (ext,_) = transl_extension_path loc pat_env path in
+                    let ext = transl_extension_path loc pat_env path in
                     Lifthenelse
                       (Lprim (Pintcomp Ceq, [ Lvar tag; ext ], loc), act, rem, value_kind))
                   nonconsts default
@@ -2773,7 +2773,7 @@ let combine_constructor value_kind loc arg pat_env cstr partial ctx def
         in
         List.fold_right
           (fun (path, act) rem ->
-            let (ext, _) = transl_extension_path loc pat_env path in
+            let ext = transl_extension_path loc pat_env path in
             Lifthenelse (Lprim (Pintcomp Ceq, [ arg; ext ], loc), act, rem,
                          value_kind))
           consts nonconst_lambda
@@ -3415,7 +3415,7 @@ let failure_handler ~scopes loc ~failer () =
     Lprim (Praise Raise_reraise, [ exn_lam ], Scoped_location.Loc_unknown)
   | Raise_match_failure ->
     let sloc = Scoped_location.of_location ~scopes loc in
-    let (slot, _) =
+    let slot =
       transl_extension_path sloc
         Env.initial_safe_string Predef.path_match_failure
     in

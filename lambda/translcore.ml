@@ -80,7 +80,7 @@ let transl_extension_constructor ~scopes env path ext =
          Lprim (prim_fresh_oo_id, [Lconst (const_int 0)], loc)],
         loc)
   | Text_rebind(path, _lid) ->
-      fst (transl_extension_path loc env path)
+      transl_extension_path loc env path
 
 (* To propagate structured constants *)
 
@@ -261,7 +261,7 @@ let event_function ~scopes exp lam =
 (* Assertions *)
 
 let assert_failed ~scopes exp =
-  let (slot, _) =
+  let slot =
     transl_extension_path Loc_unknown
       Env.initial_safe_string Predef.path_assert_failure
   in
@@ -583,8 +583,8 @@ and transl_exp0 ~in_new_scope ~scopes void_k e =
                   of_location ~scopes e.exp_loc)
           end
       | Extension path, Variant_extensible ->
-          let (lam,_) = transl_extension_path
-                          (of_location ~scopes e.exp_loc) e.exp_env path in
+          let lam = transl_extension_path
+                      (of_location ~scopes e.exp_loc) e.exp_env path in
           if cstr.cstr_constant then lam
           else
             let ll, shape = transl_arg_list args in
@@ -594,7 +594,7 @@ and transl_exp0 ~in_new_scope ~scopes void_k e =
       | Extension _, _ | _, Variant_extensible -> assert false
       end
   | Texp_extension_constructor (_, path) ->
-      fst (transl_extension_path (of_location ~scopes e.exp_loc) e.exp_env path)
+      transl_extension_path (of_location ~scopes e.exp_loc) e.exp_env path
   | Texp_variant(l, arg) ->
     (* CJC XXX double check that we aren't allowing void args to polymorphic
        variants, in the type checker.  Add some tests. *)
@@ -1544,7 +1544,7 @@ and transl_record ~scopes kind loc env mode fields repres opt_init_expr =
         | Record_float ->
             Lprim(Pmakefloatblock (mut, mode), ll, loc)
         | Record_inlined (Extension path, Variant_extensible) ->
-            let (slot,_) = transl_extension_path loc env path in
+            let slot = transl_extension_path loc env path in
             Lprim(Pmakeblock(0, mut, Some (Pgenval :: shape), mode),
                   slot :: ll, loc)
         | Record_inlined (Extension _, (Variant_unboxed _ | Variant_boxed _))
