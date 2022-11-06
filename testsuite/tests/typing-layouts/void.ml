@@ -22,13 +22,13 @@ let r = ref []
 let cons_r x = r := x :: !r
 
 let id1 {a1; a2; x; v; z; b1; b2} =
-  {a1 = (cons_r 11; {v = ((cons_r 12; v).v)});
-   a2 = (cons_r 9; {v = ((cons_r 10; v).v)});
+  {a1 = (cons_r 11; {v = ((cons_r 12; a1).v)});
+   a2 = (cons_r 9; {v = ((cons_r 10; a2).v)});
    x = (cons_r 8; x);
    v = (cons_r 6; {v = ((cons_r 7; v).v)});
    z = (cons_r 5; z);
-   b1 = (cons_r 3; {v = ((cons_r 4; v).v)});
-   b2 = (cons_r 1; {v = ((cons_r 2; v).v)});
+   b1 = (cons_r 3; {v = ((cons_r 4; b1).v)});
+   b2 = (cons_r 1; {v = ((cons_r 2; b2).v)});
   }
 
 type bar = { x : int; z : int }

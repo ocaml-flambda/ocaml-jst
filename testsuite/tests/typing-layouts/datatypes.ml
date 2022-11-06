@@ -76,12 +76,10 @@ Error: Constructor argument types must have a representable layout.
         'b t1_constraint' has layout any, which is not a sublayout of <unification variable>.
 |}]
 
-(* Test 3: void allowed in records *)
-type t3_void = { x : t_void }
+(* Test 3: void allowed in records, but not by itself *)
 type t3_value = { x : t_value }
 type t3_immediate = { x : t_immediate }
 
-type t3_cvoid = C of { x : t_void }
 type t3_cvalue = C of { x : t_value }
 type t3_cimmediate = C of { x : t_immediate }
 
@@ -94,10 +92,8 @@ type t3_cmixed1 = C of { x : t_void; y : t_immediate }
 type t3_cmixed2 = C of { x : t_immediate; y : t_value; z : t_void }
 type t3_cmixed3 = C of { x : t_value; y : t_immediate }
 [%%expect {|
-type t3_void = { x : t_void; }
 type t3_value = { x : t_value; }
 type t3_immediate = { x : t_immediate; }
-type t3_cvoid = C of { x : t_void; }
 type t3_cvalue = C of { x : t_value; }
 type t3_cimmediate = C of { x : t_immediate; }
 type t3_mixed1 = { x : t_void; y : t_immediate; }
@@ -106,6 +102,22 @@ type t3_mixed3 = { x : t_value; y : t_immediate; }
 type t3_cmixed1 = C of { x : t_void; y : t_immediate; }
 type t3_cmixed2 = C of { x : t_immediate; y : t_value; z : t_void; }
 type t3_cmixed3 = C of { x : t_value; y : t_immediate; }
+|}];;
+
+type t3_void = { x : t_void };;
+[%%expect {|
+Line 1, characters 0-29:
+1 | type t3_void = { x : t_void };;
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Records must contain at least one runtime value.
+|}]
+
+type t3_cvoid = C of { x : t_void }
+[%%expect{|
+Line 1, characters 16-35:
+1 | type t3_cvoid = C of { x : t_void }
+                    ^^^^^^^^^^^^^^^^^^^
+Error: Records must contain at least one runtime value.
 |}]
 
 (* Test 4: but any is not *)
