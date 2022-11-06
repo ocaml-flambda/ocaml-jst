@@ -253,6 +253,7 @@ module Make(O : OBJ)(EVP : EVALPATH with type valu = O.t) = struct
 
       let nest f = nest_gen (Oval_stuff "<cycle>") f in
 
+      (* CJC XXX many more void cases to handle here *)
       let rec tree_of_val depth obj ty =
         decr printer_steps;
         if !printer_steps < 0 || depth < 0 then Oval_ellipsis
@@ -501,18 +502,20 @@ module Make(O : OBJ)(EVP : EVALPATH with type valu = O.t) = struct
 
       and tree_of_record_fields depth env path type_params ty_list
           lbl_list pos obj unboxed =
-        let rec tree_of_fields pos = function
+        let rec tree_of_fields first pos = function
           | [] -> []
-          | {ld_id; ld_type} :: remainder ->
+          | {ld_id; ld_type; ld_void} :: remainder ->
               let ty_arg = instantiate_type env type_params ty_list ld_type in
               let name = Ident.name ld_id in
               (* PR#5722: print full module path only
                  for first record field *)
               let lid =
-                if pos = 0 then tree_of_label env path (Out_name.create name)
+                if first then tree_of_label env path (Out_name.create name)
                 else Oide_ident (Out_name.create name)
               and v =
-                if unboxed then
+                if ld_void then
+                  Oval_stuff "<void>"
+                else if unboxed then
                   tree_of_val (depth - 1) obj ty_arg
                 else begin
                   let fld =
@@ -524,9 +527,10 @@ module Make(O : OBJ)(EVP : EVALPATH with type valu = O.t) = struct
                   nest tree_of_val (depth - 1) fld ty_arg
                 end
               in
-              (lid, v) :: tree_of_fields (pos + 1) remainder
+              let pos = if ld_void then pos else pos + 1 in
+              (lid, v) :: tree_of_fields false pos remainder
         in
-        Oval_record (tree_of_fields pos lbl_list)
+        Oval_record (tree_of_fields (pos = 0) pos lbl_list)
 
       and tree_of_val_list start depth obj ty_list =
         let rec tree_list i = function

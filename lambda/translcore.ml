@@ -353,7 +353,6 @@ let value_kind_if_not_void e void_k =
   | Some _ -> Pintval
 
 let catch_void body after kind =
-  let _ = if true then assert false else () in
   let static_exception_id = next_raise_count () in
   Lstaticcatch (body (Some static_exception_id),
                 (static_exception_id, []),
@@ -407,22 +406,23 @@ let transl_list_with_voids ~is_void ~value_kind ~transl expr_list =
     let rec get_afters idx afters = function
       | e :: exprs when is_void e ->
         get_afters (idx + 1) (e :: afters) exprs
-      | exprs -> (idx,afters,exprs)
+      | exprs -> (idx,exprs,afters)
     in
-    let rec group idx afters nonvoid befores acc exprs =
+    let rec group idx befores nonvoid afters acc exprs =
       match exprs with
-      | [] -> (afters,nonvoid,befores) :: acc
+      | [] -> (List.rev befores,nonvoid, List.rev afters) :: acc
       | e :: exprs when is_void e ->
-        group (idx+1) afters nonvoid (e :: befores) acc exprs
+        group (idx+1) (e :: befores) nonvoid afters acc exprs
       | e :: exprs ->
-        group (idx+1) [] e [] ((afters,nonvoid,befores) :: acc) exprs
+        group (idx+1) [] e []
+          ((List.rev befores,nonvoid,List.rev afters) :: acc) exprs
     in
-    let (idx,afters,exprs) = get_afters 0 [] exprs in
+    let (idx,exprs,afters) = get_afters 0 [] exprs in
     let (first_non_void,exprs) = match exprs with
       | [] -> assert false
       | (e :: exprs) -> e,exprs
     in
-    List.rev (group (idx+1) afters first_non_void [] [] exprs)
+    List.rev (group (idx+1) [] first_non_void afters [] exprs)
   in
   let grouped = group_voids expr_list in
   List.split (List.map transl_with_voids_before_and_after grouped)
@@ -613,34 +613,42 @@ and transl_exp0 ~in_new_scope ~scopes void_k e =
                   of_location ~scopes e.exp_loc)
       end
   | Texp_record {fields; representation; extended_expression} ->
-      (* CJC XXX `type t = { x : void_t } [@@unboxed]` ??? *)
-      let kind = Typeopt.value_kind e.exp_env e.exp_type in
-      transl_record ~scopes kind e.exp_loc e.exp_env
+      let kind = value_kind_if_not_void e void_k in
+      transl_record ~scopes void_k kind e.exp_loc e.exp_env
         (transl_exp_mode e)
         fields representation extended_expression
   | Texp_field(arg, _, lbl) -> begin
-      (* CJC XXX same ? as above for arg *)
-      let targ = transl_exp ~scopes None arg in
-      match void_k with
-      | Some n -> Lsequence (targ, Lstaticraise (n, []))
-      | None -> begin
-        let sem =
-          match lbl.lbl_mut with
-          | Immutable -> Reads_agree
-          | Mutable -> Reads_vary
-        in
-        match lbl.lbl_repres with
-            Record_boxed _ | Record_inlined (_, Variant_boxed _) ->
-            Lprim (Pfield (lbl.lbl_pos, sem), [targ],
-                   of_location ~scopes e.exp_loc)
-          | Record_unboxed _ | Record_inlined (_, Variant_unboxed _) -> targ
-          | Record_float ->
-            let mode = transl_exp_mode e in
-            Lprim (Pfloatfield (lbl.lbl_pos, sem, mode), [targ],
-                   of_location ~scopes e.exp_loc)
-          | Record_inlined (_, Variant_extensible) ->
-            Lprim (Pfield (lbl.lbl_pos + 1, sem), [targ],
-                   of_location ~scopes e.exp_loc)
+      match lbl.lbl_repres, void_k with
+      | ((Record_unboxed l | Record_inlined (_, Variant_unboxed l)), Some n)
+        when Type_layout.(equal l void) ->
+          (* Special case for projecting from records like
+             type t = { t : some_void_type } [@@unboxed]
+          *)
+          catch_void (fun void_k -> transl_exp ~scopes void_k arg)
+            (Lstaticraise (n,[])) Pintval
+      | _ -> begin
+        let targ = transl_exp ~scopes None arg in
+        match void_k with
+        | Some n -> Lsequence (targ, Lstaticraise (n, []))
+        | None -> begin
+          let sem =
+            match lbl.lbl_mut with
+            | Immutable -> Reads_agree
+            | Mutable -> Reads_vary
+          in
+          match lbl.lbl_repres with
+              Record_boxed _ | Record_inlined (_, Variant_boxed _) ->
+              Lprim (Pfield (lbl.lbl_pos, sem), [targ],
+                     of_location ~scopes e.exp_loc)
+            | Record_unboxed _ | Record_inlined (_, Variant_unboxed _) -> targ
+            | Record_float ->
+              let mode = transl_exp_mode e in
+              Lprim (Pfloatfield (lbl.lbl_pos, sem, mode), [targ],
+                     of_location ~scopes e.exp_loc)
+            | Record_inlined (_, Variant_extensible) ->
+              Lprim (Pfield (lbl.lbl_pos + 1, sem), [targ],
+                     of_location ~scopes e.exp_loc)
+        end
       end
     end
   | Texp_setfield(arg, _, lbl, newval) -> begin
@@ -1459,18 +1467,28 @@ and transl_setinstvar ~scopes loc self var expr =
   Lprim(Psetfield_computed (maybe_pointer expr, Assignment alloc_heap),
     [self; var; transl_exp ~scopes None expr], loc)
 
-and transl_record ~scopes kind loc env mode fields repres opt_init_expr =
+and transl_record ~scopes void_k kind loc env mode fields repres opt_init_expr =
   let size = Array.length fields in
   (* Determine if there are "enough" fields (only relevant if this is a
      functional-style record update *)
   let no_init = match opt_init_expr with None -> true | _ -> false in
-  if no_init || size < Config.max_young_wosize || is_local_mode mode
-  then begin
+  match repres with
+  | Record_unboxed l when Type_layout.(equal l void) -> begin
+    let field =
+      match fields.(0) with
+      | (_, Kept _) -> assert false
+      | (_, Overridden (_, e)) -> transl_exp ~scopes void_k e
+    in
+    match opt_init_expr with
+    | None -> field
+    | Some e ->
+      catch_void (fun void_k -> transl_exp ~scopes void_k e) field Pintval
+    end
+  | _ when no_init || size < Config.max_young_wosize || is_local_mode mode ->
+    begin
     (* Allocate new record with given fields (and remaining fields
        taken from init_expr if any *)
     let init_id = Ident.create_local "init" in
-    (* CJC XXX this is wrong for the case where all fields are void.  We can't
-       call [transl_kist_with_voids] in that case.  *)
     let ll, shape =
       let is_void (lbl, _) = lbl.lbl_pos = lbl_pos_void in
       let value_kind (_, def) =
@@ -1492,8 +1510,6 @@ and transl_record ~scopes kind loc env mode fields repres opt_init_expr =
             | Mutable -> Reads_vary
           in
           let access =
-            (* CJC XXX did there used to be some optimization for the
-               Record_immediate case here? *)
             match repres with
             | Record_boxed _ | Record_inlined (_, Variant_boxed _) ->
               Pfield (lbl.lbl_pos, sem)
@@ -1508,6 +1524,7 @@ and transl_record ~scopes kind loc env mode fields repres opt_init_expr =
           in
           Lprim(access, [Lvar init_id], of_location ~scopes loc)
       in
+      (* Safe because we disallow records with only voids *)
       transl_list_with_voids ~is_void ~value_kind ~transl (Array.to_list fields)
     in
     let mut : Lambda.mutable_flag =
@@ -1518,7 +1535,6 @@ and transl_record ~scopes kind loc env mode fields repres opt_init_expr =
       try
         if mut = Mutable then raise Not_constant;
         let cl = List.map extract_constant ll in
-        (* CJC XXX same question about immediate record case here and below *)
         match repres with
         | Record_boxed _ -> Lconst(Const_block(0, cl))
         | Record_inlined (Ordinary {runtime_tag}, Variant_boxed _) ->
@@ -1557,7 +1573,8 @@ and transl_record ~scopes kind loc env mode fields repres opt_init_expr =
                              transl_exp ~scopes None init_expr, lam)
       (* CJC XXX None for void_k is wrong here in the unboxed void record case *)
     end
-  end else begin
+    end
+  | _ -> begin
     (* Take a shallow copy of the init record, then mutate the fields
        of the copy *)
     let copy_id = Ident.create_local "newrecord" in

@@ -68,6 +68,7 @@ type error =
       {lloc : layout_value_loc; typ : type_expr; err : Type_layout.Violation.t}
   | Layout_sort of
       {lloc : layout_sort_loc; typ : type_expr; err : Type_layout.Violation.t}
+  | Layout_empty_record
   | Separability of Typedecl_separability.error
   | Bad_unboxed_attribute of string
   | Boxed_and_unboxed
@@ -834,7 +835,7 @@ let default_decls_layout decls =
    including which fields of a record are void.  This would be hard to do during
    [transl_declaration] due to mutually recursive types.
 *)
-let update_label_layouts env lbls layouts =
+let update_label_layouts env loc lbls layouts =
   let _, lbls =
     List.fold_left (fun (idx,lbls) ({Types.ld_type} as lbl) ->
       let layout = Ctype.type_layout env ld_type in
@@ -843,21 +844,23 @@ let update_label_layouts env lbls layouts =
       (idx+1, {lbl with ld_void} :: lbls)
     ) (0,[]) lbls
   in
+  if List.for_all (fun l -> l.ld_void) lbls then
+    raise (Error (loc, Layout_empty_record));
   List.rev lbls
 
-let update_constructor_arguments_layouts env cd_args layouts =
+let update_constructor_arguments_layouts env loc cd_args layouts =
   match cd_args with
   | Types.Cstr_tuple tys ->
     List.iteri (fun idx ty -> layouts.(idx) <- Ctype.type_layout env ty) tys;
     cd_args
   | Types.Cstr_record lbls ->
-    let lbls = update_label_layouts env lbls layouts in
+    let lbls = update_label_layouts env loc lbls layouts in
     Types.Cstr_record lbls
 
 (* CJC XXX I believe this will fail to infer immediate appropriately for
    mutually recursive datatypes. *)
 let update_decl_layout env decl =
-  let update_record_kind lbls rep =
+  let update_record_kind loc lbls rep =
     match lbls, rep with
     | [{Types.ld_type} as lbl], Record_unboxed _ -> begin
         match Ctype.check_type_layout env ld_type Type_layout.void with
@@ -866,7 +869,7 @@ let update_decl_layout env decl =
         | Error _ -> [lbl], rep
       end
     | _, Record_boxed layouts ->
-      let lbls = update_label_layouts env lbls layouts in
+      let lbls = update_label_layouts env loc lbls layouts in
       lbls, rep
     | _, Record_float -> lbls, rep
     | (([] | (_ :: _)), Record_unboxed _ | _, Record_inlined _) -> assert false
@@ -897,8 +900,8 @@ let update_decl_layout env decl =
       let (_,cstrs) =
         List.fold_left (fun (idx,cstrs) cstr ->
           let cd_args =
-            update_constructor_arguments_layouts env cstr.Types.cd_args
-              layouts.(idx)
+            update_constructor_arguments_layouts env cstr.Types.cd_loc
+              cstr.Types.cd_args layouts.(idx)
           in
           let cstr = { cstr with Types.cd_args } in
           (idx+1,cstr::cstrs)
@@ -912,7 +915,7 @@ let update_decl_layout env decl =
   match decl.type_kind with
   | Type_abstract _ | Type_open -> decl
   | Type_record (lbls, rep) ->
-    let lbls, rep = update_record_kind lbls rep in
+    let lbls, rep = update_record_kind decl.type_loc lbls rep in
     { decl with type_kind = Type_record (lbls, rep) }
   | Type_variant (cstrs, rep) ->
     let cstrs, rep = update_variant_kind cstrs rep in
@@ -1311,7 +1314,9 @@ let transl_extension_constructor ~scope env type_path type_params
           | Cstr_record args -> List.length args
         in
         let layouts = Array.make num_args Type_layout.any in
-        let args = update_constructor_arguments_layouts env args layouts in
+        let args =
+          update_constructor_arguments_layouts env sext.pext_loc args layouts
+        in
         let constant = Array.for_all Type_layout.(equal void) layouts in
           args, layouts, constant, ret_type, Text_decl(targs, tret_type)
     | Pext_rebind lid ->
@@ -2243,6 +2248,8 @@ let report_error ppf = function
     fprintf ppf "@[%s types must have a representable layout.@ \ %a@]" s
       (Type_layout.Violation.report_with_offender
          ~offender:(fun ppf -> Printtyp.type_expr ppf typ)) err
+  | Layout_empty_record ->
+    fprintf ppf "@[Records must contain at least one runtime value.@]"
   | Bad_unboxed_attribute msg ->
       fprintf ppf "@[This type cannot be unboxed because@ %s.@]" msg
   | Separability (Typedecl_separability.Non_separable_evar evar) ->

@@ -101,6 +101,7 @@ type error =
       {lloc : layout_value_loc; typ : type_expr; err : Type_layout.Violation.t}
   | Layout_sort of
       {lloc : layout_sort_loc; typ : type_expr; err : Type_layout.Violation.t}
+  | Layout_empty_record
   | Separability of Typedecl_separability.error
   | Bad_unboxed_attribute of string
   | Boxed_and_unboxed
