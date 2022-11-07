@@ -96,18 +96,21 @@ let constructor_args ~current_unit priv cd_args cd_res path rep =
 
 let constructor_descrs ~current_unit ty_path decl cstrs rep =
   let ty_res = newgenconstr ty_path decl.type_params in
-  let num_consts = ref 0 and num_nonconsts = ref 0  and num_normal = ref 0 in
-  List.iter
-    (fun {cd_args; cd_res; _} ->
-      if cd_args = Cstr_tuple [] then incr num_consts else incr num_nonconsts;
-      if cd_res = None then incr num_normal)
-    cstrs;
   let cstr_arg_layouts : int -> layout array =
     match rep with
     | Variant_extensible -> fun _ -> assert false
     | Variant_boxed layouts -> fun i -> layouts.(i)
     | Variant_unboxed layout -> fun _ -> [| layout |]
   in
+  let cstr_constant i =
+    Array.for_all Type_layout.(equal void) (cstr_arg_layouts i)
+  in
+  let num_consts = ref 0 and num_nonconsts = ref 0  and num_normal = ref 0 in
+  List.iteri
+    (fun i {cd_res; _} ->
+      if cstr_constant i then incr num_consts else incr num_nonconsts;
+      if cd_res = None then incr num_normal)
+    cstrs;
   let describe_constructor (src_index, const_tag, nonconst_tag, acc)
         {cd_id; cd_args; cd_res; cd_loc; cd_attributes; cd_uid} =
     let cstr_name = Ident.name cd_id in
@@ -117,9 +120,7 @@ let constructor_descrs ~current_unit ty_path decl cstrs rep =
       | None -> ty_res
     in
     let cstr_arg_layouts = cstr_arg_layouts src_index in
-    let cstr_constant =
-      Array.for_all Type_layout.(equal void) cstr_arg_layouts
-    in
+    let cstr_constant = cstr_constant src_index in
     let runtime_tag, const_tag, nonconst_tag =
       if cstr_constant
       then const_tag, 1 + const_tag, nonconst_tag

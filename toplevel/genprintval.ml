@@ -267,6 +267,8 @@ module Make(O : OBJ)(EVP : EVALPATH with type valu = O.t) = struct
           | Tarrow _ ->
               Oval_stuff "<fun>"
           | Ttuple(ty_list) ->
+              (* No voids in tuples *)
+              let ty_list = List.map (fun t -> (t,false)) ty_list in
               Oval_tuple (tree_of_val_list 0 depth obj ty_list)
           | Tconstr(path, [ty_arg], _)
             when Path.same path Predef.path_list ->
@@ -396,7 +398,7 @@ module Make(O : OBJ)(EVP : EVALPATH with type valu = O.t) = struct
                       then false, O.tag obj
                       else true, O.obj obj
                     in
-                    let {cstr_uid} =
+                    let {cstr_uid;cstr_arg_layouts} =
                       Datarepr.find_constr_by_tag ~constant tag cstrs
                     in
                     let {cd_id;cd_args;cd_res} =
@@ -425,6 +427,13 @@ module Make(O : OBJ)(EVP : EVALPATH with type valu = O.t) = struct
                       | Cstr_tuple l ->
                           let ty_args =
                             instantiate_types env type_params ty_list l in
+                          let ty_args =
+                            List.mapi
+                              (fun i ty_arg ->
+                                 (ty_arg,
+                                  Type_layout.(equal void cstr_arg_layouts.(i))))
+                              ty_args
+                          in
                           tree_of_constr_with_args (tree_of_constr env path)
                             (Ident.name cd_id) false 0 depth obj
                             ty_args unbx
@@ -535,18 +544,23 @@ module Make(O : OBJ)(EVP : EVALPATH with type valu = O.t) = struct
       and tree_of_val_list start depth obj ty_list =
         let rec tree_list i = function
           | [] -> []
-          | ty :: ty_list ->
+          | (_,true) :: ty_list -> Oval_stuff "<void>" :: tree_list i ty_list
+          | (ty,false) :: ty_list ->
               let tree = nest tree_of_val (depth - 1) (O.field obj i) ty in
               tree :: tree_list (i + 1) ty_list in
       tree_list start ty_list
 
+      (* CR ccasinghino: When we allow other layouts in tuples, this should be
+         generalized to take a list or array of layouts, rather than just
+         pairing each type with a bool indicating whether it is void *)
       and tree_of_constr_with_args
              tree_of_cstr cstr_name inlined start depth obj ty_args unboxed =
         let lid = tree_of_cstr (Out_name.create cstr_name) in
         let args =
           if inlined || unboxed then
             match ty_args with
-            | [ty] -> [ tree_of_val (depth - 1) obj ty ]
+            | [_,true] -> [ Oval_stuff "<void>" ]
+            | [ty,false] -> [ tree_of_val (depth - 1) obj ty ]
             | _ -> assert false
           else
             tree_of_val_list start depth obj ty_args
@@ -587,6 +601,11 @@ module Make(O : OBJ)(EVP : EVALPATH with type valu = O.t) = struct
           | _ -> assert false
         in
         let args = instantiate_types env type_params ty_list cstr.cstr_args in
+        let args =
+          List.mapi (fun i arg ->
+            (arg, Type_layout.(equal void cstr.cstr_arg_layouts.(i))))
+            args
+        in
         tree_of_constr_with_args
            (fun x -> Oide_ident x) name (cstr.cstr_inlined <> None)
            1 depth bucket

@@ -563,8 +563,12 @@ and transl_exp0 ~in_new_scope ~scopes void_k e =
         | [e] -> transl_exp ~scopes None e
         | _ -> assert false
       end else begin match cstr.cstr_tag, cstr.cstr_repr with
-        Ordinary {runtime_tag}, _ when cstr.cstr_constant ->
-          Lconst(const_int runtime_tag)
+      | Ordinary {runtime_tag}, _ when cstr.cstr_constant ->
+          (* In the constant case, any args must be void *)
+          List.fold_left (fun l arg ->
+            catch_void (fun void_k -> transl_exp ~scopes void_k arg)
+              l Pintval)
+          (Lconst(const_int runtime_tag)) args
       | Ordinary _, Variant_unboxed _ -> begin
           match args with
           | [arg] -> transl_exp ~scopes void_k arg

@@ -1666,7 +1666,6 @@ let get_pat_args_constr p rem =
   | { pat_desc = Tpat_construct (_, _, args) } -> args @ rem
   | _ -> assert false
 
-(* CJC XXX needs to be updated for void? *)
 let get_expr_args_constr ~scopes head (arg, _mut) rem =
   let cstr =
     match head.pat_desc with
@@ -1675,21 +1674,24 @@ let get_expr_args_constr ~scopes head (arg, _mut) rem =
   in
   let loc = head_loc ~scopes head in
   let make_field_accesses binding_kind first_pos last_pos argl =
-    let rec make_args pos =
-      if pos > last_pos then
+    let rec make_args src_pos runtime_pos =
+      if src_pos > last_pos then
         argl
+      else if Type_layout.(equal cstr.cstr_arg_layouts.(src_pos) void) then
+        make_args (src_pos + 1) runtime_pos
       else
-        (Lprim (Pfield (pos, Reads_agree), [ arg ], loc), binding_kind)
-          :: make_args (pos + 1)
+        (Lprim (Pfield (runtime_pos, Reads_agree), [ arg ], loc), binding_kind)
+          :: make_args (src_pos + 1) (runtime_pos + 1)
     in
-    make_args first_pos
+    make_args 0 first_pos
   in
   if cstr.cstr_inlined <> None then
     (arg, Alias) :: rem
   else
     match cstr.cstr_repr with
     | Variant_unboxed _ -> (arg, Alias) :: rem
-    | Variant_extensible -> make_field_accesses Alias 1 cstr.cstr_arity rem
+    | Variant_extensible ->
+        make_field_accesses Alias 1 (cstr.cstr_arity - 1) rem
     | Variant_boxed _ ->
         make_field_accesses Alias 0 (cstr.cstr_arity - 1) rem
 
@@ -1961,7 +1963,8 @@ let divide_tuple ~scopes head ctx pm =
 
 let record_matching_line num_fields lbl_pat_list =
   let patv = Array.make num_fields Patterns.omega in
-  List.iter (fun (_, lbl, pat) -> patv.(lbl.lbl_num) <- pat) lbl_pat_list;
+  List.iter (fun (_, lbl, pat) ->
+    if lbl.lbl_pos <> lbl_pos_void then patv.(lbl.lbl_pos) <- pat) lbl_pat_list;
   Array.to_list patv
 
 let get_pat_args_record num_fields p rem =
@@ -1981,35 +1984,37 @@ let get_expr_args_record ~scopes head (arg, _mut) rem =
     | _ ->
         assert false
   in
-  (* CJC XXX omit voids? *)
-  let rec make_args pos =
-    if pos >= Array.length all_labels then
+
+  let rec make_args src_pos =
+    if src_pos >= Array.length all_labels then
       rem
     else
-      let lbl = all_labels.(pos) in
-      let sem =
-        match lbl.lbl_mut with
-        | Immutable -> Reads_agree
-        | Mutable -> Reads_vary
-      in
-      let access =
-        match lbl.lbl_repres with
-        | Record_boxed _
-        | Record_inlined (_, Variant_boxed _) ->
-            Lprim (Pfield (lbl.lbl_pos, sem), [ arg ], loc)
-        | Record_unboxed _ | Record_inlined (_, Variant_unboxed _) -> arg
-        | Record_inlined (_, Variant_extensible) ->
-            Lprim (Pfield (lbl.lbl_pos + 1, sem), [ arg ], loc)
-        | Record_float ->
-           (* TODO: could optimise to Alloc_local sometimes *)
-           Lprim (Pfloatfield (lbl.lbl_pos, sem, alloc_heap), [ arg ], loc)
-      in
-      let str =
-        match lbl.lbl_mut with
-        | Immutable -> Alias
-        | Mutable -> StrictOpt
-      in
-      (access, str) :: make_args (pos + 1)
+      let lbl = all_labels.(src_pos) in
+      if lbl.lbl_pos = lbl_pos_void then make_args (src_pos + 1)
+      else
+        let sem =
+          match lbl.lbl_mut with
+          | Immutable -> Reads_agree
+          | Mutable -> Reads_vary
+        in
+        let access =
+          match lbl.lbl_repres with
+          | Record_boxed _
+          | Record_inlined (_, Variant_boxed _) ->
+              Lprim (Pfield (lbl.lbl_pos, sem), [ arg ], loc)
+          | Record_unboxed _ | Record_inlined (_, Variant_unboxed _) -> arg
+          | Record_inlined (_, Variant_extensible) ->
+              Lprim (Pfield (lbl.lbl_pos + 1, sem), [ arg ], loc)
+          | Record_float ->
+             (* TODO: could optimise to Alloc_local sometimes *)
+             Lprim (Pfloatfield (lbl.lbl_pos, sem, alloc_heap), [ arg ], loc)
+        in
+        let str =
+          match lbl.lbl_mut with
+          | Immutable -> Alias
+          | Mutable -> StrictOpt
+        in
+        (access, str) :: make_args (src_pos + 1)
   in
   make_args 0
 
@@ -2020,9 +2025,13 @@ let divide_record all_labels ~scopes head ctx pm =
      and non-expanded heads, to be able to reason confidently on
      when expansions must happen. *)
   let head = expand_record_head head in
+  let non_void_label_count =
+    Array.fold_left (fun i l -> if l.lbl_pos = lbl_pos_void then i else i + 1)
+      0 all_labels
+  in
   divide_line (Context.specialize head)
     (get_expr_args_record ~scopes)
-    (get_pat_args_record (Array.length all_labels))
+    (get_pat_args_record non_void_label_count)
     head ctx pm
 
 (* Matching against an array pattern *)
@@ -3168,6 +3177,16 @@ let arg_to_var arg cls =
 
 let rec compile_match ~scopes value_kind repr partial ctx
     (m : initial_clause pattern_matching) =
+  (* CJC XXX obviously just put a layout in the pat if we stick with this *)
+  let filter_void_pats (pats,action) =
+    (List.filter (fun pat ->
+       not
+         Type_layout.(equal void (Ctype.type_layout pat.pat_env
+                                    (Ctype.correct_levels pat.pat_type))))
+       pats,
+     action)
+  in
+  let m = { m with cases = List.map filter_void_pats m.cases } in
   match m.cases with
   | ([], action) :: rem ->
       if is_guarded action then
