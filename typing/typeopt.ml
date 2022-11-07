@@ -194,7 +194,6 @@ let value_kind env ty =
         | Type_variant (constructors, rep) -> begin
           match rep with
           | Variant_extensible -> assert false
-              (* (num_nodes_visited, Pgenval) CJC XXX ??? *)
           | Variant_unboxed l -> begin
               (* CR ccasinghino remove this assert *)
               (* Since value_kind is never called on things with layout void,
