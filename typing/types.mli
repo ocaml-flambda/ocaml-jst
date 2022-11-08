@@ -413,6 +413,8 @@ and tag = Ordinary of {src_index: int;  (* Unique name (per type) *)
 and record_representation =
   | Record_unboxed of layout
   | Record_inlined of tag * variant_representation
+  (* For an inlined record, we record the representation of the variant that
+     contains it and the tag of the relevant constructor of that variant. *)
   | Record_boxed of layout array
   | Record_float
 
