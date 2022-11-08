@@ -158,8 +158,8 @@ and layout =
   | Any
   | Sort of sort
   | Immediate64
-  (** We know for sure that values of this type are always immediate
-      on 64 bit platforms. For other platforms, we know nothing. *)
+  (** We know for sure that values of this type are always immediate on 64 bit
+      platforms. For other platforms, we know nothing about immediacy. *)
   | Immediate
   (** We know for sure that values of this type are always immediate *)
 
@@ -399,6 +399,9 @@ type type_declaration =
 
 and type_kind =
     Type_abstract of {layout : layout}
+  (* The layout here is authoritative if the manifest is [None].  Otherwise,
+     it's an upper bound; it may be necessary to look at the manifest for the
+     most precise layout. *)
   | Type_record of label_declaration list * record_representation
   | Type_variant of constructor_declaration list * variant_representation
   | Type_open

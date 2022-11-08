@@ -423,6 +423,9 @@ val get_unboxed_type_representation : Env.t -> type_expr -> type_expr
    [type_layout] if that's needed. *)
 val estimate_type_layout : Env.t ->  type_expr -> Type_layout.t
 val type_layout : Env.t -> type_expr -> Type_layout.t
+
+(* Find a type's sort (and raise if it has a layout like "any" that isn't a
+   subtype of any sort). *)
 val type_sort : Env.t -> type_expr -> sort
 
 (* Layout checking.  For convenience, on success these functions return the most
