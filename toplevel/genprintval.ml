@@ -431,8 +431,8 @@ module Make(O : OBJ)(EVP : EVALPATH with type valu = O.t) = struct
                             List.mapi
                               (fun i ty_arg ->
                                  (ty_arg,
-                                  Type_layout.(equal void cstr_arg_layouts.(i))))
-                              ty_args
+                                  Type_layout.(equal void cstr_arg_layouts.(i)))
+                              ) ty_args
                           in
                           tree_of_constr_with_args (tree_of_constr env path)
                             (Ident.name cd_id) false 0 depth obj

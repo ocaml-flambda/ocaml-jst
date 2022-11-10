@@ -418,6 +418,11 @@ and record_representation =
   | Record_boxed of layout array
   | Record_float
 
+
+(* For unboxed variants, we record the layout of the mandatory single argument.
+   For boxed variants, we record the layouts for the arguments of each
+   constructor.  For inlined records, we record the layouts of each element of
+   the record, not the record as a whole. *)
 and variant_representation =
   | Variant_unboxed of layout
   | Variant_boxed of layout array array
@@ -584,6 +589,12 @@ type constructor_description =
     cstr_existentials: type_expr list;  (* list of existentials *)
     cstr_args: type_expr list;          (* Type of the arguments *)
     cstr_arg_layouts: layout array;     (* Layouts of the arguments *)
+    (* Note: The lengths of cstr_args and cstr_arg_layouts differ in the case
+       of inline records, where we record the layouts of each field in
+       cstr_arg_layouts (but just the one record type).
+
+       CJC XXX change this?
+    *)
     cstr_arity: int;                    (* Number of arguments *)
     cstr_tag: tag;                      (* Tag for heap blocks *)
     cstr_repr: variant_representation;  (* Repr of the outer variant *)

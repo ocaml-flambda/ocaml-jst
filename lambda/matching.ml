@@ -1480,6 +1480,7 @@ and precompile_or ~arg_id (cls : Simple.clause list) ors args def k =
             let vars =
               (* bound variables of the or-pattern and used in the orpm
                  actions *)
+              (* CJC XXX void bound idents not safe for value kind *)
               Typedtree.pat_bound_idents_full orp
               |> List.filter (fun (id, _, _) -> Ident.Set.mem id pm_fv)
               |> List.map (fun (id, _, ty) ->
@@ -1663,7 +1664,17 @@ let get_key_constr = function
 
 let get_pat_args_constr p rem =
   match p with
-  | { pat_desc = Tpat_construct (_, _, args) } -> args @ rem
+  | { pat_desc = Tpat_construct (_, {cstr_arg_layouts; cstr_inlined=Some _},
+                                 args) } ->
+        (* Here the args list has one element - the record - and
+           cstr_arg_layouts has the layout of each field. *)
+        (if Array.for_all (fun l -> Type_layout.(equal void l)) cstr_arg_layouts
+         then []
+         else args) @ rem
+  | { pat_desc = Tpat_construct (_, {cstr_arg_layouts}, args) } ->
+    (List.filteri (fun i _ -> not Type_layout.(equal void cstr_arg_layouts.(i)))
+       args
+    ) @ rem
   | _ -> assert false
 
 let get_expr_args_constr ~scopes head (arg, _mut) rem =
@@ -3177,16 +3188,6 @@ let arg_to_var arg cls =
 
 let rec compile_match ~scopes value_kind repr partial ctx
     (m : initial_clause pattern_matching) =
-  (* CJC XXX obviously just put a layout in the pat if we stick with this *)
-  let filter_void_pats (pats,action) =
-    (List.filter (fun pat ->
-       not
-         Type_layout.(equal void (Ctype.type_layout pat.pat_env
-                                    (Ctype.correct_levels pat.pat_type))))
-       pats,
-     action)
-  in
-  let m = { m with cases = List.map filter_void_pats m.cases } in
   match m.cases with
   | ([], action) :: rem ->
       if is_guarded action then
@@ -3654,8 +3655,11 @@ let for_let ~scopes loc param pat body_kind body =
   | Tpat_any ->
       (* This eliminates a useless variable (and stack slot in bytecode)
          for "let _ = ...". See #6865. *)
+       (* CJC XXX if it's void, should probably raise rather than seq for
+          consistency *)
       Lsequence (param, body)
   | Tpat_var (id, _) ->
+      (* CJC XXX var can be void *)
       (* fast path, and keep track of simple bindings to unboxable numbers *)
       let k = Typeopt.value_kind pat.pat_env pat.pat_type in
       bind_with_value_kind Strict (id,k) param body
@@ -3663,10 +3667,15 @@ let for_let ~scopes loc param pat body_kind body =
       let opt = ref false in
       let nraise = next_raise_count () in
       let catch_ids = pat_bound_idents_full pat in
-      (* CJC XXX there can be void things here - rewrite to move them around *)
+      (* CJC XXX put void info in the pat, probably *)
       let ids_with_kinds =
-        List.map
-          (fun (id, _, typ) -> (id, Typeopt.value_kind pat.pat_env typ))
+        List.filter_map
+          (fun (id, _, typ) ->
+             if Type_layout.equal Type_layout.void
+                  (Ctype.type_layout pat.pat_env
+                     (Ctype.correct_levels typ))
+             then None
+             else Some (id, Typeopt.value_kind pat.pat_env typ))
           catch_ids
       in
       let ids = List.map (fun (id, _, _) -> id) catch_ids in

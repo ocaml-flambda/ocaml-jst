@@ -553,6 +553,8 @@ and transl_exp0 ~in_new_scope ~scopes void_k e =
       let transl_arg_list args =
         let args = List.mapi (fun i arg -> (i,arg)) args in
         let is_void (i,_) =
+          (* Would be wrong for inlined records, but we don't use
+             transl_arg_list in that case. *)
           Type_layout.(equal void cstr.cstr_arg_layouts.(i))
         in
         let value_kind (_,e) = Typeopt.value_kind e.exp_env e.exp_type in
