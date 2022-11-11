@@ -209,13 +209,13 @@ and expression_desc =
                          (Labelled "y", Some (Texp_constant Const_int 3))
                         ])
          *)
-  | Texp_match of expression * computation case list * partial
+  | Texp_match of expression * Types.sort * computation case list * partial
         (** match E0 with
             | P1 -> E1
             | P2 | exception P3 -> E2
             | exception P4 -> E3
 
-            [Texp_match (E0, [(P1, E1); (P2 | exception P3, E2);
+            [Texp_match (E0, sort_of_E0, [(P1, E1); (P2 | exception P3, E2);
                               (exception P4, E3)], _)]
          *)
   | Texp_try of expression * value case list
@@ -849,9 +849,9 @@ val exists_pattern: (pattern -> bool) -> pattern -> bool
 val let_bound_idents: value_binding list -> Ident.t list
 val let_bound_idents_full:
     value_binding list -> (Ident.t * string loc * Types.type_expr) list
-val let_bound_idents_with_modes:
+val let_bound_idents_with_modes_and_sorts:
   value_binding list
-  -> (Ident.t * (Location.t * Types.value_mode) list) list
+  -> (Ident.t * (Location.t * Types.value_mode * Types.sort) list) list
 
 (** Alpha conversion of patterns *)
 val alpha_pat:

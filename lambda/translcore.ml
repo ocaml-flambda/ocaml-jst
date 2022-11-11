@@ -229,6 +229,9 @@ let rec push_defaults loc bindings cases partial warnings =
               Texp_ident
                 (Path.Pident param, mknoloc (Longident.Lident name),
                  desc, Id_value)},
+             Types.Value,
+             (* CR ccasinghino Value here will changes when functions take other
+                layouts *)
              cases, partial) }
       in
       push_defaults loc bindings
@@ -527,7 +530,8 @@ and transl_exp0 ~in_new_scope ~scopes void_k e =
         (transl_apply ~scopes ~tailcall ~inlined ~specialised
            ~position ~mode (transl_exp ~scopes None funct)
            oargs (of_location ~scopes e.exp_loc))
-  | Texp_match(arg, pat_expr_list, partial) ->
+  | Texp_match(arg, _sort, pat_expr_list, partial) ->
+      (* CJC XXX will use sort when I rework translmatch *)
       transl_match ~scopes e arg pat_expr_list partial void_k
   | Texp_try(body, pat_expr_list) ->
       let id = Typecore.name_cases "exn" pat_expr_list in
@@ -536,7 +540,7 @@ and transl_exp0 ~in_new_scope ~scopes void_k e =
                Matching.for_trywith ~scopes k e.exp_loc (Lvar id)
                  (transl_cases_try ~scopes void_k pat_expr_list), k)
   | Texp_tuple el ->
-      (* CJC XXX allow void in tuples? *)
+      (* CR ccasinghino work to do here when we allow other layouts in tuples *)
       let ll = transl_list ~scopes el in
       let shape =
         List.map (fun e -> Typeopt.value_kind e.exp_env e.exp_type) el
@@ -1415,14 +1419,17 @@ and transl_let ~scopes ?(add_regions=false) ?(in_structure=false)
           fun body -> body
       | {vb_pat=pat; vb_expr=expr; vb_sort=sort; vb_attributes=attr; vb_loc}
         :: rem ->
-          let bound_void_k =
+          (* CJC XXX convince myself that everything is defaulted by now.
+             let x = assert false in ...
+             ???
+          *)
+          let param_void_k =
             if Type_layout.(equal (Sort sort) void) then
-              let () = if true then assert false else () in
               Some (next_raise_count ())
             else None
           in
           let lam =
-            transl_bound_exp ~scopes ~in_structure bound_void_k pat expr
+            transl_bound_exp ~scopes ~in_structure param_void_k pat expr
           in
           (* CJC XXX think about whether add_function_attributes makes sense for
              void things.  I don't think we can inline them, for example,
@@ -1431,10 +1438,9 @@ and transl_let ~scopes ?(add_regions=false) ?(in_structure=false)
           let lam = Translattribute.add_function_attributes lam vb_loc attr in
           let lam = if add_regions then maybe_region lam else lam in
           let mk_body = transl rem in
-          (* CJC XXX Matching.for_let to be adjusted to handle both void bound
-             things and void bodies *)
           fun body ->
-            Matching.for_let ~scopes pat.pat_loc lam pat body_kind (mk_body body)
+            Matching.for_let ~scopes pat.pat_loc param_void_k lam pat body_kind
+              (mk_body body)
       in
       transl pat_expr_list
   | Recursive ->

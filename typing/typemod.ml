@@ -113,6 +113,7 @@ type error =
   | Cannot_hide_id of hiding_error
   | Invalid_type_subst_rhs
   | Unsupported_extension of Clflags.Extension.t
+  | Toplevel_nonvalue of string * sort
 
 exception Error of Location.t * Env.t * error
 exception Error_forward of Location.error
@@ -2295,12 +2296,19 @@ and type_structure ?(toplevel = None) funct_body anchor env sstr =
         Tstr_value(rec_flag, defs),
         List.map (fun (id, modes) ->
           List.iter
-            (fun (loc, mode) -> Typecore.escape ~loc ~env:newenv mode)
+            (fun (loc, mode, sort) ->
+               Typecore.escape ~loc ~env:newenv mode;
+               (* Note that this layout check has the effect of defaulting the
+                  sort of top-level bindings to value. *)
+               if not (Type_layout.(equal (Sort sort) value)) then
+                 raise (Error (loc, env,
+                               Toplevel_nonvalue (Ident.name id,sort)))
+            )
             modes;
-          let (first_loc, _) = List.hd modes in
+          let (first_loc, _, _) = List.hd modes in
           Signature_names.check_value names first_loc id;
           Sig_value(id, Env.find_value (Pident id) newenv, Exported)
-        ) (let_bound_idents_with_modes defs),
+        ) (let_bound_idents_with_modes_and_sorts defs),
         newenv
     | Pstr_primitive sdesc ->
         let (desc, newenv) = Typedecl.transl_value_decl env loc sdesc in
@@ -3157,6 +3165,9 @@ let report_error ppf = function
       let ext = Clflags.Extension.to_string ext in
       fprintf ppf "@[The %s extension is disabled@ \
                    To enable it, pass the '-extension %s' flag@]" ext ext
+  | Toplevel_nonvalue (id, sort) ->
+      fprintf ppf "@[Top-level module bindings must have layout value, but@ \
+                   %s has layout@ %a.@]" id Type_layout.format (Sort sort)
 
 
 let report_error env ppf err =

@@ -273,9 +273,10 @@ let expr sub x =
             list,
           pos
         )
-    | Texp_match (exp, cases, p) ->
+    | Texp_match (exp, sort, cases, p) ->
         Texp_match (
           sub.expr sub exp,
+          sort,
           List.map (sub.case sub) cases,
           p
         )

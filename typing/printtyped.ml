@@ -376,9 +376,10 @@ and expression i ppf x =
          | Default -> "Default");
       expression i ppf e;
       list i label_x_apply_arg ppf l;
-  | Texp_match (e, l, _partial) ->
+  | Texp_match (e, sort, l, _partial) ->
       line i ppf "Texp_match\n";
       expression i ppf e;
+      line i ppf "%a\n" Type_layout.format (Types.Sort sort);
       list i case ppf l;
   | Texp_try (e, l) ->
       line i ppf "Texp_try\n";

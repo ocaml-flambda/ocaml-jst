@@ -1209,10 +1209,10 @@ and class_expr_aux cl_num val_env met_env scl =
         Typecore.type_let In_class_def val_env rec_flag sdefs in
       let (vals, met_env) =
         List.fold_right
-          (fun (id, modes) (vals, met_env) ->
+          (fun (id, modes_and_sorts) (vals, met_env) ->
              List.iter
-               (fun (loc, mode) -> Typecore.escape ~loc ~env:val_env mode)
-               modes;
+               (fun (loc, mode, _) -> Typecore.escape ~loc ~env:val_env mode)
+               modes_and_sorts;
              let path = Pident id in
              (* do not mark the value as used *)
              let vd = Env.find_value path val_env in
@@ -1242,7 +1242,7 @@ and class_expr_aux cl_num val_env met_env scl =
              ((id', expr)
               :: vals,
               Env.add_value id' desc met_env))
-          (let_bound_idents_with_modes defs)
+          (let_bound_idents_with_modes_and_sorts defs)
           ([], met_env)
       in
       let cl = class_expr cl_num val_env met_env scl' in

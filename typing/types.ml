@@ -296,6 +296,8 @@ and label_declaration =
     ld_id: Ident.t;
     ld_mutable: mutable_flag;
     ld_global: global_flag;
+    (* CJC XXX this feels like it belongs in the description more than the
+       declaration *)
     ld_void: bool;
     ld_type: type_expr;
     ld_loc: Location.t;
@@ -485,8 +487,8 @@ type label_description =
     lbl_arg: type_expr;                 (* Type of the argument *)
     lbl_mut: mutable_flag;              (* Is this a mutable field? *)
     lbl_global: global_flag;            (* Is this a global field? *)
-    lbl_num: int;                       (* Position in type *)
     lbl_pos: int;                       (* Position in block *)
+    lbl_num: int;                       (* Position in type *)
     lbl_all: label_description array;   (* All the labels in this type *)
     lbl_repres: record_representation;  (* Representation for outer record *)
     lbl_private: private_flag;          (* Read-only field? *)

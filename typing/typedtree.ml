@@ -106,7 +106,7 @@ and expression_desc =
       cases : value case list; partial : partial;
       region : bool; warnings : Warnings.state; }
   | Texp_apply of expression * (arg_label * apply_arg) list * apply_position
-  | Texp_match of expression * computation case list * partial
+  | Texp_match of expression * sort * computation case list * partial
   | Texp_try of expression * value case list
   | Texp_tuple of expression list
   | Texp_construct of
@@ -836,21 +836,70 @@ let rev_let_bound_idents_full bindings =
   List.iter (fun vb -> iter_bound_idents add vb.vb_pat) bindings;
   !idents_full
 
-let let_bound_idents_with_modes bindings =
-  let modes = Ident.Tbl.create 3 in
-  let rec loop : type k . k general_pattern -> _ =
-    fun pat ->
+let let_bound_idents_with_modes_and_sorts bindings =
+  let modes_and_sorts = Ident.Tbl.create 3 in
+  let rec loop : type k . sort -> k general_pattern -> _ =
+    fun sort pat ->
       match pat.pat_desc with
+      (* Cases where we push the sort inwards: *)
       | Tpat_var (id, { loc }) ->
-          Ident.Tbl.add modes id (loc, pat.pat_mode)
+          Ident.Tbl.add modes_and_sorts id (loc, pat.pat_mode, sort)
       | Tpat_alias(p, id, { loc }) ->
-          loop p;
-          Ident.Tbl.add modes id (loc, pat.pat_mode)
-      | d -> shallow_iter_pattern_desc { f = loop } d
+          loop sort p;
+          Ident.Tbl.add modes_and_sorts id (loc, pat.pat_mode, sort)
+      | Tpat_or (p1, p2, _) -> loop sort p1; loop sort p2
+      | Tpat_value p -> loop sort p
+      (* Cases where we compute the sort of the inner thing from the pattern *)
+      | Tpat_construct(_, cstr, patl) ->
+          let sorts =
+            match cstr.cstr_inlined, cstr.cstr_repr with
+            | None, _ -> Array.to_list (Array.map Type_layout.sort_of_layout
+                                          cstr.cstr_arg_layouts)
+            | Some _, Variant_unboxed _ -> [ sort ]
+            | Some _, (Variant_boxed _ | Variant_extensible) -> [ Types.Value ]
+          in
+          List.iter2 loop sorts patl
+      | Tpat_record (lbl_pat_list, _) ->
+          let rec_layouts =
+            match lbl_pat_list with
+            | [] -> assert false
+            | (_,lbl,pat) :: _ -> begin
+                match lbl.lbl_repres with
+                | Record_unboxed l
+                | Record_inlined (Ordinary _, Variant_unboxed l) ->
+                    [| l |]
+                | Record_float ->
+                    Array.map (fun _ -> Type_layout.value) lbl.lbl_all
+                | Record_boxed l -> l
+                | Record_inlined (Ordinary {src_index}, Variant_boxed l) ->
+                    l.(src_index)
+                | Record_inlined (Extension p, Variant_extensible) -> begin
+                    match Env.find_constructor p pat.pat_env with
+                    | ({cstr_arg_layouts},_) -> cstr_arg_layouts
+                    | exception Not_found -> assert false
+                  end
+                | Record_inlined (Extension _,
+                                  (Variant_unboxed _ | Variant_boxed _))
+                | Record_inlined (Ordinary _, Variant_extensible) ->
+                    assert false
+              end
+          in
+          List.iter (fun (_, lbl, pat) ->
+            loop (Type_layout.sort_of_layout (rec_layouts.(lbl.lbl_num))) pat)
+            lbl_pat_list
+      (* Cases where the inner things must be value: *)
+      | Tpat_variant (_, pat, _) -> Option.iter (loop Types.Value) pat
+      | Tpat_tuple patl -> List.iter (loop Types.Value) patl
+        (* CR ccasinghino: tuple case to change when we allow non-values in
+           tuples *)
+      | Tpat_array patl -> List.iter (loop Types.Value) patl
+      | Tpat_lazy p | Tpat_exception p -> loop Types.Value p
+      (* Cases without variables: *)
+      | Tpat_any | Tpat_constant _ -> ()
   in
-  List.iter (fun vb -> loop vb.vb_pat) bindings;
+  List.iter (fun vb -> loop vb.vb_sort vb.vb_pat) bindings;
   List.rev_map
-    (fun (id, _, _) -> id, List.rev (Ident.Tbl.find_all modes id))
+    (fun (id, _, _) -> id, List.rev (Ident.Tbl.find_all modes_and_sorts id))
     (rev_let_bound_idents_full bindings)
 
 let let_bound_idents_full bindings =

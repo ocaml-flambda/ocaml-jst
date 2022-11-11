@@ -51,6 +51,9 @@ val void : t
 val repr : t -> t
 val default_to_value : t -> unit
 
+(** [equal t1 t2] checks if the two layouts are equal, and will set sort
+    variables to make this true if possible. (e.g., [equal (Sort 'k) (Sort
+    Value)] is true and has the effect of setting 'k to value). *)
 val equal : t -> t -> bool
 val intersection : t -> t -> (t, Violation.t) Result.t
 
@@ -72,6 +75,9 @@ val of_layout_annotation :
 (** Find a layout in attributes, defaulting to ~default *)
 val of_attributes : default:t -> Parsetree.attributes -> t
 
+(** Returns the sort corresponding to the layout.  Call only on representable
+    layouts - errors on Any. *)
+val sort_of_layout : t -> Types.sort
 
 (* (** The least layout that represents the kind *)
  * val of_kind : Types.type_kind -> t *)

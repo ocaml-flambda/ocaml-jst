@@ -534,7 +534,7 @@ let rec expression : Typedtree.expression -> term_judg =
       value_bindings rec_flag bindings >> expression body
     | Texp_letmodule (x, _, _, mexp, e) ->
       module_binding (x, mexp) >> expression e
-    | Texp_match (e, cases, _) ->
+    | Texp_match (e, _, cases, _) ->
       (*
          (Gi; mi |- pi -> ei : m)^i
          G |- e : sum(mi)^i

@@ -201,7 +201,7 @@ let expr sub {exp_extra; exp_desc; exp_env; _} =
         | (_, Arg exp) -> sub.expr sub exp
         | (_, Omitted _) -> ())
         list
-  | Texp_match (exp, cases, _) ->
+  | Texp_match (exp, _, cases, _) ->
       sub.expr sub exp;
       List.iter (sub.case sub) cases
   | Texp_try (exp, cases) ->

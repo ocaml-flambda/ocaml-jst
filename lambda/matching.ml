@@ -3650,41 +3650,46 @@ let assign_pat ~scopes value_kind opt nraise catch_ids loc pat lam =
     simple_for_let ~scopes value_kind loc lam pat code in
   List.fold_left push_sublet exit rev_sublets
 
-let for_let ~scopes loc param pat body_kind body =
-  match pat.pat_desc with
-  | Tpat_any ->
-      (* This eliminates a useless variable (and stack slot in bytecode)
-         for "let _ = ...". See #6865. *)
-       (* CJC XXX if it's void, should probably raise rather than seq for
-          consistency *)
-      Lsequence (param, body)
-  | Tpat_var (id, _) ->
-      (* CJC XXX var can be void *)
-      (* fast path, and keep track of simple bindings to unboxable numbers *)
-      let k = Typeopt.value_kind pat.pat_env pat.pat_type in
-      bind_with_value_kind Strict (id,k) param body
-  | _ ->
-      let opt = ref false in
-      let nraise = next_raise_count () in
-      let catch_ids = pat_bound_idents_full pat in
-      (* CJC XXX put void info in the pat, probably *)
-      let ids_with_kinds =
-        List.filter_map
-          (fun (id, _, typ) ->
-             if Type_layout.equal Type_layout.void
-                  (Ctype.type_layout pat.pat_env
-                     (Ctype.correct_levels typ))
-             then None
-             else Some (id, Typeopt.value_kind pat.pat_env typ))
-          catch_ids
-      in
-      let ids = List.map (fun (id, _, _) -> id) catch_ids in
-      let bind =
-        map_return (assign_pat ~scopes body_kind opt nraise ids loc pat) param in
-      if !opt then
-        Lstaticcatch (bind, (nraise, ids_with_kinds), body, body_kind)
-      else
-        simple_for_let ~scopes body_kind loc param pat body
+let for_let ~scopes loc param_void_k param pat body_kind body =
+  match param_void_k with
+  | Some k ->
+    (* the param is void.  Any variables bound by the pattern must also be void,
+       so we can just skip the whole pattern matching compiler and evaluate the
+       param. *)
+    Lstaticcatch(param, (k,[]), body, body_kind)
+  | None -> begin
+      match pat.pat_desc with
+      | Tpat_any ->
+        (* This eliminates a useless variable (and stack slot in bytecode)
+           for "let _ = ...". See #6865. *)
+        Lsequence (param, body)
+      | Tpat_var (id, _) ->
+        (* fast path, and keep track of simple bindings to unboxable numbers *)
+        let k = Typeopt.value_kind pat.pat_env pat.pat_type in
+        bind_with_value_kind Strict (id,k) param body
+      | _ ->
+        let opt = ref false in
+        let nraise = next_raise_count () in
+        let catch_ids = pat_bound_idents_full pat in
+        (* CJC XXX put void info in the pat, probably *)
+        let ids_with_kinds =
+          List.filter_map
+            (fun (id, _, typ) ->
+               if Type_layout.equal Type_layout.void
+                    (Ctype.type_layout pat.pat_env
+                       (Ctype.correct_levels typ))
+               then None
+               else Some (id, Typeopt.value_kind pat.pat_env typ))
+            catch_ids
+        in
+        let ids = List.map (fun (id, _, _) -> id) catch_ids in
+        let bind =
+          map_return (assign_pat ~scopes body_kind opt nraise ids loc pat) param in
+        if !opt then
+          Lstaticcatch (bind, (nraise, ids_with_kinds), body, body_kind)
+        else
+          simple_for_let ~scopes body_kind loc param pat body
+    end
 
 (* Handling of tupled functions and matchings *)
 

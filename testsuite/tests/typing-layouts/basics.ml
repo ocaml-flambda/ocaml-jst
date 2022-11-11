@@ -338,3 +338,6 @@ Line 3, characters 12-21:
 Error: This type int * int should be an instance of type 'a
        int * int has layout value, which is not a sublayout of immediate.
 |}]
+
+(* CJC XXX add test for top-level module items being default to value, which will require
+   dealing with moregeneral *)

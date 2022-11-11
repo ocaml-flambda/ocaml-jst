@@ -133,6 +133,12 @@ let all_void layouts =
     | (Any | Immediate | Immediate64
       | Sort (Value | Var _)) -> false) layouts
 
+let sort_of_layout l =
+  match repr l with
+  | Sort s -> s
+  | Immediate | Immediate64 -> Value
+  | Any -> Misc.fatal_error "Type_layout.sort_of_layout"
+
 let layout_bound_of_record_representation = function
   | Record_unboxed l -> l
   | Record_float -> value
