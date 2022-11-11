@@ -339,5 +339,63 @@ Error: This type int * int should be an instance of type 'a
        int * int has layout value, which is not a sublayout of immediate.
 |}]
 
+(* Test 7: Polymorphic variants take value args (for now) *)
+module M7_1 = struct
+  type foo1 = [ `Foo1 of int | `Baz1 of t_void | `Bar1 of string ];;
+end
+[%%expect{|
+Line 2, characters 14-66:
+2 |   type foo1 = [ `Foo1 of int | `Baz1 of t_void | `Bar1 of string ];;
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Polymorphic variant argument types must have layout value.
+        t_void has layout void, which is not a sublayout of value.
+|}];;
+
+module M7_2 = struct
+  type t = { v : t_void } [@@unboxed]
+  type result = V of t | I of int
+
+  let foo x =
+    match x with
+    | `Baz 42 -> I 53
+    | `Bar v -> { v }
+    | `Bas i -> I i
+end;;
+[%%expect {|
+Line 8, characters 18-19:
+8 |     | `Bar v -> { v }
+                      ^
+Error: This expression has type 'a but an expression was expected of type
+         t_void
+       t_void has layout void, which is not a sublayout of value.
+|}];;
+
+module M7_3 = struct
+  type 'a t = [ `Foo of 'a | `Baz of int ]
+
+  type bad = t_void t
+end;;
+[%%expect {|
+Line 4, characters 13-19:
+4 |   type bad = t_void t
+                 ^^^^^^
+Error: This type t_void should be an instance of type 'a
+       t_void has layout void, which is not a sublayout of value.
+|}];;
+
+module M7_4 = struct
+  type vr = { v : t_void } [@@unboxed]
+  type 'a t = [ `Foo of 'a | `Baz of int ] constraint 'a = vr
+end;;
+[%%expect {|
+Line 3, characters 14-42:
+3 |   type 'a t = [ `Foo of 'a | `Baz of int ] constraint 'a = vr
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Polymorphic variant argument types must have layout value.
+        vr has layout void, which is not a sublayout of value.
+|}];;
+
+
+
 (* CJC XXX add test for top-level module items being default to value, which will require
    dealing with moregeneral *)

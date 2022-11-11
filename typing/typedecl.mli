@@ -59,7 +59,7 @@ val is_fixed_type : Parsetree.type_declaration -> bool
 
 type native_repr_kind = Unboxed | Untagged
 
-type layout_value_loc = Fun_arg | Fun_ret | Tuple | Field
+type layout_value_loc = Fun_arg | Fun_ret | Tuple | Field | Poly_variant
 type layout_sort_loc = Cstr_tuple | Record
 
 type error =

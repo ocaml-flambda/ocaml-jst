@@ -4,11 +4,15 @@
 (* CR ccasinghino: when we add the ability to make actual void types, eliminate the uses
    of Obj.magic from this file *)
 
-(* Test 1: Evaluation order of records with voids *)
 type t_void [@@void]
 
-type void_rec = { v : t_void } [@@unboxed]
+type void_rec = { v : t_void } [@@unboxed];;
+[%%expect{|
+type t_void [@@void]
+type void_rec = { v : t_void; } [@@unboxed]
+|}]
 
+(* Test 1: Evaluation order of records with voids *)
 type baz = { a1 : void_rec;
              a2 : void_rec;
              x : int;
@@ -42,8 +46,6 @@ let b' = id1 b'
 let _ = assert (List.for_all2 (=) !r [12;11;10;9;8;7;6;5;4;3;2;1]);;
 
 [%%expect{|
-type t_void [@@void]
-type void_rec = { v : t_void; } [@@unboxed]
 type baz = {
   a1 : void_rec;
   a2 : void_rec;

@@ -469,7 +469,6 @@ and transl_exp0 ~in_new_scope ~scopes void_k e =
   | Texp_constant cst ->
       Lconst(Const_base cst)
   | Texp_let(rec_flag, pat_expr_list, body) ->
-    (* CJC XXX voids in pat_expr_list - deal with in transl_let *)
       let body_kind = value_kind_if_not_void body void_k in
       transl_let ~scopes rec_flag pat_expr_list
         body_kind (event_before ~scopes body (transl_exp ~scopes void_k body))
@@ -535,7 +534,6 @@ and transl_exp0 ~in_new_scope ~scopes void_k e =
            ~position ~mode (transl_exp ~scopes None funct)
            oargs (of_location ~scopes e.exp_loc))
   | Texp_match(arg, sort, pat_expr_list, partial) ->
-      (* CJC XXX will use sort when I rework translmatch *)
       transl_match ~scopes e arg sort pat_expr_list partial void_k
   | Texp_try(body, pat_expr_list) ->
       let id = Typecore.name_cases "exn" pat_expr_list in
@@ -609,8 +607,6 @@ and transl_exp0 ~in_new_scope ~scopes void_k e =
   | Texp_extension_constructor (_, path) ->
       transl_extension_path (of_location ~scopes e.exp_loc) e.exp_env path
   | Texp_variant(l, arg) ->
-    (* CJC XXX double check that we aren't allowing void args to polymorphic
-       variants, in the type checker.  Add some tests. *)
       let tag = Btype.hash_variant l in
       begin match arg with
         None -> Lconst(const_int tag)
@@ -1422,12 +1418,6 @@ and transl_let ~scopes ?(add_regions=false) ?(in_structure=false)
           fun body -> body
       | {vb_pat=pat; vb_expr=expr; vb_sort=sort; vb_attributes=attr; vb_loc}
         :: rem ->
-          (* CJC XXX convince myself that everything is defaulted by now.
-             let x = assert false in ...
-             ???
-
-             or, instead, convince myself it's fine to default that to void
-          *)
           let param_void_k =
             if is_void_sort sort then Some (next_raise_count ())
             else None

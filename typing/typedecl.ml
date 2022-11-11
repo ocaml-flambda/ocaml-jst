@@ -26,7 +26,7 @@ module String = Misc.Stdlib.String
 
 type native_repr_kind = Unboxed | Untagged
 
-type layout_value_loc = Fun_arg | Fun_ret | Tuple | Field
+type layout_value_loc = Fun_arg | Fun_ret | Tuple | Field | Poly_variant
 type layout_sort_loc = Cstr_tuple | Record
 
 type error =
@@ -641,6 +641,14 @@ let rec check_constraints_rec env loc visited ty =
   | Tfield (_,_,ty,tys) ->
       check_layout_value ~loc ~layout_loc:Field ty;
       check_constraints_rec env loc visited tys
+  | Tvariant row ->
+    Btype.iter_row
+      (fun ty ->
+         check_layout_value ~loc ~layout_loc:Poly_variant ty;
+         check_constraints_rec env loc visited ty)
+      row;
+    check_layout_value ~loc ~layout_loc:Poly_variant row.row_more;
+    check_constraints_rec env loc visited row.row_more
   (* CJC XXX do something for package *)
   | _ ->
       Btype.iter_type_expr (check_constraints_rec env loc visited) ty
@@ -2235,6 +2243,7 @@ let report_error ppf = function
       | Fun_ret -> "Function return"
       | Tuple -> "Tuple element"
       | Field -> "Field"
+      | Poly_variant -> "Polymorphic variant argument"
     in
     fprintf ppf "@[%s types must have layout value.@ \ %a@]" s
       (Type_layout.Violation.report_with_offender
