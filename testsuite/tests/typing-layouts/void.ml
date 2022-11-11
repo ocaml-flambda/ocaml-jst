@@ -316,12 +316,6 @@ val z : int = 87
 - : unit = ()
 |}];;
 
-(* CJC XXX need to have tests for all three cases of for let:
-   - anon void args
-   - named void vars
-   - complex void pats
-*)
-
 (* CJC XXX add test cases for matching on void that can raise.
 
    e.g.,
@@ -332,11 +326,6 @@ val z : int = 87
 
    have cases where we hit the void and where we don't
 *)
-
-(* CJC XXX write test that void is disallowed in tuples.
-
-   also should all the tests about disallowing void in functions and stuff be moved here
-   from basics? *)
 
 (* CJC XXX
 

@@ -395,6 +395,89 @@ Error: Polymorphic variant argument types must have layout value.
         vr has layout void, which is not a sublayout of value.
 |}];;
 
+(* Test 8: Tuples only work on values (for now) *)
+module M8_1 = struct
+  type foo1 = int * t_void * [ `Foo1 of int | `Bar1 of string ];;
+end
+[%%expect{|
+Line 2, characters 14-63:
+2 |   type foo1 = int * t_void * [ `Foo1 of int | `Bar1 of string ];;
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Tuple element types must have layout value.
+        t_void has layout void, which is not a sublayout of value.
+|}];;
+
+module M8_2 = struct
+  type t = { v : t_void } [@@unboxed]
+  type result = V of (string * t) | I of int
+end;;
+[%%expect {|
+Line 3, characters 22-32:
+3 |   type result = V of (string * t) | I of int
+                          ^^^^^^^^^^
+Error: Tuple element types must have layout value.
+        t has layout void, which is not a sublayout of value.
+|}];;
+
+module M8_3 = struct
+  type t = { v : t_void } [@@unboxed]
+  type s = V of t | I of int
+
+  let foo x =
+    match x with
+    | I _ -> assert false
+    | V t -> t, 27
+end;;
+[%%expect {|
+Line 8, characters 13-14:
+8 |     | V t -> t, 27
+                 ^
+Error: This expression has type t but an expression was expected of type 'a
+       t has layout void, which is not a sublayout of value.
+|}];;
+
+module M8_4 = struct
+  type t = { v : t_void } [@@unboxed]
+
+  let foo x =
+    match x with
+    | ({v = _},i) -> i
+end;;
+[%%expect {|
+Line 6, characters 7-14:
+6 |     | ({v = _},i) -> i
+           ^^^^^^^
+Error: This pattern matches values of type t
+       but a pattern was expected which matches values of type 'a
+       t has layout void, which is not a sublayout of value.
+|}];;
+
+module M8_5 = struct
+  type 'a t = (int * 'a)
+
+  type bad = t_void t
+end;;
+[%%expect {|
+Line 4, characters 13-19:
+4 |   type bad = t_void t
+                 ^^^^^^
+Error: This type t_void should be an instance of type 'a
+       t_void has layout void, which is not a sublayout of value.
+|}];;
+
+module M8_6 = struct
+  type vr = { v : t_void } [@@unboxed]
+  type 'a t = int * 'a constraint 'a = vr
+end;;
+[%%expect {|
+Line 3, characters 14-22:
+3 |   type 'a t = int * 'a constraint 'a = vr
+                  ^^^^^^^^
+Error: Tuple element types must have layout value.
+        vr has layout void, which is not a sublayout of value.
+|}];;
+
+
 
 
 (* CJC XXX add test for top-level module items being default to value, which will require

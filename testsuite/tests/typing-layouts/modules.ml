@@ -52,11 +52,11 @@ Error: This type has layout void, which is not a sublayout of value.
 (* Test 2: with type constraints for fixed types (the complicated case of
    Type_mod.merge_constraint) *)
 module type S2 = sig
-  type 'a [@void] t
+  type 'a [@immediate] t
 end
 
-type 'a [@void] r2 = R
-type 'a [@void] s2 = private [> `A of 'a r2]
+type 'a [@immediate] r2 = R
+type 'a [@immediate] s2 = private [> `A of 'a r2]
 
 module type T2 = S2 with type 'a t = 'a s2
 
@@ -71,24 +71,26 @@ module type T2 = sig type 'a t = 'a s2 end
 module F2 : functor (X : T2) -> sig val f : unit -> 'a X.t end
 |}]
 
-type 'a [@void] s2' = private [> `B of 'a]
+type 'a [@immediate] s2' = private [> `B of 'a]
 module type T2' = S2 with type 'a t = 'a s2'
 
 module F2' (X : T2') = struct
-  let f () : 'a X.t = `B 3
+  let f () : 'a X.t = `B "bad"
 end
 [%%expect{|
 type !'a s2' = private [> `B of 'a ]
 module type T2' = sig type 'a t = 'a s2' end
-Line 5, characters 25-26:
-5 |   let f () : 'a X.t = `B 3
-                             ^
-Error: This expression has type int but an expression was expected of type 'a
-       int has layout immediate, which is not a sublayout of void.
+Line 5, characters 25-30:
+5 |   let f () : 'a X.t = `B "bad"
+                             ^^^^^
+Error: This expression has type string but an expression was expected of type
+         'a
+       string has layout value, which is not a sublayout of immediate.
 |}]
-
-type 'a [@void] s2' = private [> `B of 'a]
-module type T2' = S2 with type 'a t = 'a list;;
+(*
+type 'a [@value] s2' = private [> `C of 'a]
+type foo = (int list) s2'
+module type T2' = S2 with type 'a t = 'a s2';;
 [%%expect{|
 type !'a s2' = private [> `B of 'a ]
 Line 2, characters 31-33:
@@ -96,8 +98,12 @@ Line 2, characters 31-33:
                                    ^^
 Error: The type constraints are not consistent.
 Type 'a is not compatible with type 'b
-'a has layout void, which does not overlap with value.
+'a has layout immediate, which does not overlap with value.
 |}]
+
+   CJC XXX the above test is broken.  It's modified from the original test.
+   But I think the new version should be failing for different reasons *)
+
 
 (* Test 3: Recursive modules, with and without layout annotations *)
 module rec Foo3 : sig

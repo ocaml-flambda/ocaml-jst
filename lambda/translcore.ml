@@ -992,10 +992,9 @@ and transl_exp0 ~in_new_scope ~scopes void_k e =
       | _ ->
           let oid = Ident.create_local "open" in
           let body, _ =
-            (* CJC XXX check that we aren't allowing void things at top level of
-               modules.  If we are, revise this to not bother making a let for
-               them?  And if we're not, leave a CR here saying we may want to do
-               that optimization when we do. *)
+            (* CR ccasinghino Currently only allow values at the top level.
+               When we allow other layouts, and particularly void, we'll need
+               adjustments here. *)
             List.fold_left (fun (body, pos) id ->
               Llet(Alias, Pgenval, id,
                    Lprim(mod_field pos, [Lvar oid],
