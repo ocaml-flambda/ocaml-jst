@@ -2150,6 +2150,10 @@ let explanation intro prev env = function
       Some (dprintf "@,@[<hov>%a@]"
               (Type_layout.Violation.report_with_offender
                  ~offender:(fun ppf -> type_expr ppf t)) e)
+  | Trace.Bad_layout_sort (t,e) ->
+      Some (dprintf "@,@[<hov>%a@]"
+              (Type_layout.Violation.report_with_offender_sort
+                 ~offender:(fun ppf -> type_expr ppf t)) e)
   | Trace.Unequal_univar_layouts (t1,l1,t2,l2) ->
       Some (dprintf "@,@[<hov>Universal variables %a and %a should be equal, \
                      but@ the former has layout %s,@ and the latter has \

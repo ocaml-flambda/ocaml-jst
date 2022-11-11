@@ -17,7 +17,9 @@
 
 type t = Types.layout
 
-
+(* The functions in Constant are used after typechecking, including checking
+   against module signatures.  At this point, any remaining sort variables
+   may be freely defaulted. *)
 module Constant : sig
   type t =
     | Any
@@ -27,6 +29,9 @@ module Constant : sig
     | Void
 
   val constrain_default_void : Types.layout -> t
+  val is_void_with_void_default : Types.layout -> bool
+  (* CJC XXX at the moment we default to void whenever we can.  But perhaps it
+     would be better to default to value before we actually ship. *)
 end
 
 module Violation : sig
@@ -35,6 +40,8 @@ module Violation : sig
     | No_intersection of t * t
 
   val report_with_offender :
+    offender:(Format.formatter -> unit) -> Format.formatter -> t -> unit
+  val report_with_offender_sort :
     offender:(Format.formatter -> unit) -> Format.formatter -> t -> unit
   val report_with_name : name:string -> Format.formatter -> t -> unit
 end

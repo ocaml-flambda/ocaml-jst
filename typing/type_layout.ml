@@ -37,6 +37,8 @@ module Constant = struct
     | Types.Sort sort -> constrain_sort_default_void sort
     | Types.Immediate64 -> Immediate64
     | Types.Immediate -> Immediate
+
+  let is_void_with_void_default l = Void = constrain_default_void l
 end
 
 
@@ -56,7 +58,7 @@ let rec sort_to_string = function
   | Var r -> begin
     match !r with
     | Some s -> sort_to_string s
-    | None -> "<unification variable>"
+    | None -> "<sort variable>"
   end
   | Value -> "value"
   | Void -> "void"
@@ -83,6 +85,19 @@ module Violation = struct
     | No_intersection (l1, l2) ->
         pr "%t has layout %a, which does not overlap with %a." offender
           format l1 format l2
+
+  let report_with_offender_sort ~offender ppf t =
+    let sort_expected =
+      "A representable layout was expected, but"
+    in
+    let pr fmt = Format.fprintf ppf fmt in
+    match t with
+    | Not_a_sublayout (l1, l2) ->
+      pr "%s@ %t has layout %a, which is not a sublayout of %a."
+        sort_expected offender format l1 format l2
+    | No_intersection (l1, l2) ->
+      pr "%s@ %t has layout %a, which does not overlap with %a."
+        sort_expected offender format l1 format l2
 
   let report_with_name ~name ppf t =
     let pr fmt = Format.fprintf ppf fmt in
@@ -179,6 +194,7 @@ let equal_sort s1 s2 =
   match sort_repr s1, sort_repr s2 with
   | Value, Value -> true
   | Void, Void -> true
+  | (Var r, Var s) when s == r -> true
   | (Var r, s) | (s, Var r) -> (r := Some s; true)
   | (Value | Void), _ -> false
 

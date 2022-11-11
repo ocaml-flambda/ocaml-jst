@@ -148,23 +148,23 @@ let tunivar_none_val = Tunivar { name = None; layout = Type_layout.value }
 let tunivar_none_void = Tunivar { name = None; layout = Type_layout.void}
 
 let norm = function
-  | Tvar { name = None; layout } -> begin
+  | (Tvar { name = None; layout }) as t -> begin
       match Type_layout.repr layout with
       | Any -> tvar_none_any
       | Immediate -> tvar_none_imm
       | Immediate64 -> tvar_none_imm64
       | Sort Value -> tvar_none_val
       | Sort Void -> tvar_none_void
-      | Sort (Var _) -> assert false
+      | Sort (Var _) -> t
     end
-  | Tunivar { name = None; layout } -> begin
+  | (Tunivar { name = None; layout }) as t -> begin
       match Type_layout.repr layout with
       | Any -> tunivar_none_any
       | Immediate -> tunivar_none_imm
       | Immediate64 -> tunivar_none_imm64
       | Sort Value -> tunivar_none_val
       | Sort Void -> tunivar_none_void
-      | Sort (Var _) -> assert false
+      | Sort (Var _) -> t
     end
   | d -> d
 

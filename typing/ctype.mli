@@ -71,6 +71,7 @@ module Unification_trace: sig
     | Incompatible_fields of {name:string; diff: type_expr diff }
     | Rec_occur of type_expr * type_expr
     | Bad_layout of type_expr * Type_layout.Violation.t
+    | Bad_layout_sort of type_expr * Type_layout.Violation.t
     | Unequal_univar_layouts of
         type_expr * Type_layout.t * type_expr * Type_layout.t
 
@@ -424,8 +425,8 @@ val get_unboxed_type_representation : Env.t -> type_expr -> type_expr
 val estimate_type_layout : Env.t ->  type_expr -> Type_layout.t
 val type_layout : Env.t -> type_expr -> Type_layout.t
 
-(* Find a type's sort (and raise if it has a layout like "any" that isn't a
-   subtype of any sort). *)
+(* Find a type's sort (constraining it to be an arbitrary sort variable, if
+   needed) *)
 val type_sort : Env.t -> type_expr -> sort
 
 (* Layout checking.  For convenience, on success these functions return the most

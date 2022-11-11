@@ -53,6 +53,10 @@ let declare_probe_handlers lam =
     lam
     !probe_handlers
 
+(* Layout checking may default everything once we reach translcore *)
+let is_void_sort s = Type_layout.Constant.is_void_with_void_default (Sort s)
+let is_void_layout = Type_layout.Constant.is_void_with_void_default
+
 (* Compile an exception/extension definition *)
 
 let prim_fresh_oo_id =
@@ -530,9 +534,9 @@ and transl_exp0 ~in_new_scope ~scopes void_k e =
         (transl_apply ~scopes ~tailcall ~inlined ~specialised
            ~position ~mode (transl_exp ~scopes None funct)
            oargs (of_location ~scopes e.exp_loc))
-  | Texp_match(arg, _sort, pat_expr_list, partial) ->
+  | Texp_match(arg, sort, pat_expr_list, partial) ->
       (* CJC XXX will use sort when I rework translmatch *)
-      transl_match ~scopes e arg pat_expr_list partial void_k
+      transl_match ~scopes e arg sort pat_expr_list partial void_k
   | Texp_try(body, pat_expr_list) ->
       let id = Typecore.name_cases "exn" pat_expr_list in
       let k = value_kind_if_not_void e void_k in
@@ -556,10 +560,9 @@ and transl_exp0 ~in_new_scope ~scopes void_k e =
   | Texp_construct(_, cstr, args) ->
       let transl_arg_list args =
         let args = List.mapi (fun i arg -> (i,arg)) args in
-        let is_void (i,_) =
+        let is_void (i,_) = is_void_layout cstr.cstr_arg_layouts.(i)
           (* Would be wrong for inlined records, but we don't use
              transl_arg_list in that case. *)
-          Type_layout.(equal void cstr.cstr_arg_layouts.(i))
         in
         let value_kind (_,e) = Typeopt.value_kind e.exp_env e.exp_type in
         let transl void_k (_,e) = transl_exp ~scopes void_k e in
@@ -630,7 +633,7 @@ and transl_exp0 ~in_new_scope ~scopes void_k e =
   | Texp_field(arg, _, lbl) -> begin
       match lbl.lbl_repres, void_k with
       | ((Record_unboxed l | Record_inlined (_, Variant_unboxed l)), Some n)
-        when Type_layout.(equal l void) ->
+        when is_void_layout l ->
           (* Special case for projecting from records like
              type t = { t : some_void_type } [@@unboxed]
           *)
@@ -755,7 +758,7 @@ and transl_exp0 ~in_new_scope ~scopes void_k e =
                   Pintval (* unit *))
   | Texp_sequence(expr1, layout, expr2) ->
       (* CJC XXX make test case for the void cases *)
-      if Type_layout.(equal layout void) then
+      if is_void_layout layout then
         (* CR ccasinghino: Could we play a similar game for layout "any"? *)
         let kind2 = value_kind_if_not_void expr2 void_k in
         catch_void (fun void_k -> transl_exp ~scopes void_k expr1)
@@ -772,7 +775,7 @@ and transl_exp0 ~in_new_scope ~scopes void_k e =
          to the condition. *)
       let cond = transl_exp ~scopes None wh_cond in
       let body =
-        if Type_layout.(equal wh_body_layout void) then
+        if is_void_layout wh_body_layout then
           catch_void (fun void_k -> transl_exp ~scopes void_k wh_body)
             lambda_unit Pintval
         else
@@ -802,7 +805,7 @@ and transl_exp0 ~in_new_scope ~scopes void_k e =
   | Texp_for {for_id; for_from; for_to; for_dir; for_body; for_body_layout;
               for_region} ->
       let body =
-        if Type_layout.(equal for_body_layout void) then
+        if is_void_layout for_body_layout then
           catch_void (fun void_k -> transl_exp ~scopes void_k for_body)
             lambda_unit Pintval
         else
@@ -1422,10 +1425,11 @@ and transl_let ~scopes ?(add_regions=false) ?(in_structure=false)
           (* CJC XXX convince myself that everything is defaulted by now.
              let x = assert false in ...
              ???
+
+             or, instead, convince myself it's fine to default that to void
           *)
           let param_void_k =
-            if Type_layout.(equal (Sort sort) void) then
-              Some (next_raise_count ())
+            if is_void_sort sort then Some (next_raise_count ())
             else None
           in
           let lam =
@@ -1454,9 +1458,7 @@ and transl_let ~scopes ?(add_regions=false) ?(in_structure=false)
       let transl_case {vb_expr=expr; vb_sort; vb_attributes; vb_loc; vb_pat}
             id =
         let bound_void_k =
-          if Type_layout.(equal (Sort vb_sort) void) then
-            Some (next_raise_count ())
-          else None
+          if is_void_sort vb_sort then Some (next_raise_count ()) else None
         in
         let lam =
           transl_bound_exp ~scopes ~in_structure bound_void_k vb_pat expr
@@ -1485,7 +1487,7 @@ and transl_record ~scopes void_k kind loc env mode fields repres opt_init_expr =
      functional-style record update *)
   let no_init = match opt_init_expr with None -> true | _ -> false in
   match repres with
-  | Record_unboxed l when Type_layout.(equal l void) -> begin
+  | Record_unboxed l when is_void_layout l -> begin
     let field =
       match fields.(0) with
       | (_, Kept _) -> assert false
@@ -1625,7 +1627,7 @@ and transl_record ~scopes void_k kind loc env mode fields repres opt_init_expr =
     end
   end
 
-and transl_match ~scopes e arg pat_expr_list partial void_k =
+and transl_match ~scopes e arg sort pat_expr_list partial void_k =
   let kind = value_kind_if_not_void e void_k in
   let rewrite_case (val_cases, exn_cases, static_handlers as acc)
         ({ c_lhs; c_guard; c_rhs } as case) =
@@ -1680,55 +1682,83 @@ and transl_match ~scopes e arg pat_expr_list partial void_k =
     let x, y, z = List.fold_left rewrite_case ([], [], []) pat_expr_list in
     List.rev x, List.rev y, List.rev z
   in
-  let static_catch body val_ids handler =
-    let id = Typecore.name_pattern "exn" (List.map fst exn_cases) in
-    let static_exception_id = next_raise_count () in
-    Lstaticcatch
-      (Ltrywith (Lstaticraise (static_exception_id, body), id,
-                 Matching.for_trywith ~scopes kind e.exp_loc (Lvar id) exn_cases,
-                 kind),
-       (static_exception_id, val_ids),
-       handler,
-       kind)
-  in
-  let classic =
-    match arg, exn_cases with
-    | {exp_desc = Texp_tuple argl}, [] ->
-      assert (static_handlers = []);
-      let mode = transl_exp_mode arg in
-      Matching.for_multiple_match ~scopes kind e.exp_loc
-        (transl_list ~scopes argl) mode val_cases partial
-    | {exp_desc = Texp_tuple argl}, _ :: _ ->
-        let val_ids =
-          List.map
-            (fun arg ->
-               Typecore.name_pattern "val" [],
-               (* CJC XXX wrong if we allow void in tuples *)
-               Typeopt.value_kind arg.exp_env arg.exp_type
-            )
-            argl
-        in
-        let lvars = List.map (fun (id, _) -> Lvar id) val_ids in
-        let mode = transl_exp_mode arg in
-        static_catch (transl_list ~scopes argl) val_ids
-          (Matching.for_multiple_match ~scopes kind e.exp_loc
-             lvars mode val_cases partial)
-    | arg, [] ->
-      assert (static_handlers = []);
-      Matching.for_function ~scopes kind e.exp_loc
-        (* CJC XXX None wrong in call to transl_exp for matching on void *)
-        None (transl_exp ~scopes None arg) val_cases partial
-    | arg, _ :: _ ->
-        let val_id = Typecore.name_pattern "val" (List.map fst val_cases) in
-        let k = Typeopt.value_kind arg.exp_env arg.exp_type in
-        (* XXX value_kind wrong for matching on void, as is the None below *)
-        static_catch [transl_exp ~scopes None arg] [val_id, k]
+  let lam_match =
+    if is_void_sort sort then
+      (* CR ccasinghino: The use of [Matching.for_function] here feels a bit
+         sneaky, and results in an unneeded let binding even after simplif.  I'm
+         not going to fix this now, or attempt to fold this code into the
+         non-void cases below, because a) we plan to revise how void is
+         compiled.  But if we keep this, some re-thinking is in order, and b)
+         this structure makes it easier to see that the behavior is unchanged in
+         the non-void case (reviewers: note that code has been nested under an
+         if, but is unchanged) *)
+      match exn_cases with
+      | [] ->
+        catch_void (fun void_k -> transl_exp ~scopes void_k arg)
           (Matching.for_function ~scopes kind e.exp_loc
-             None (Lvar val_id) val_cases partial)
+             None lambda_unit val_cases partial)
+          kind
+      | _ :: _ ->
+        let id = Typecore.name_pattern "exn" (List.map fst exn_cases) in
+        let transl_arg void_k =
+          Ltrywith(
+            transl_exp ~scopes void_k arg, id,
+            Matching.for_trywith ~scopes kind e.exp_loc (Lvar id) exn_cases,
+            kind)
+        in
+        catch_void
+          transl_arg
+          (Matching.for_function ~scopes kind e.exp_loc
+             None lambda_unit val_cases partial)
+          kind
+    else
+      let static_catch body val_ids handler =
+        let id = Typecore.name_pattern "exn" (List.map fst exn_cases) in
+        let static_exception_id = next_raise_count () in
+        Lstaticcatch
+          (Ltrywith (
+             Lstaticraise (static_exception_id, body), id,
+             Matching.for_trywith ~scopes kind e.exp_loc (Lvar id) exn_cases,
+             kind),
+           (static_exception_id, val_ids),
+           handler,
+           kind)
+      in
+      match arg, exn_cases with
+      | {exp_desc = Texp_tuple argl}, [] ->
+        assert (static_handlers = []);
+        let mode = transl_exp_mode arg in
+        Matching.for_multiple_match ~scopes kind e.exp_loc
+          (transl_list ~scopes argl) mode val_cases partial
+      | {exp_desc = Texp_tuple argl}, _ :: _ ->
+          let val_ids =
+            List.map
+              (fun arg ->
+                 Typecore.name_pattern "val" [],
+                 (* CJC XXX wrong if we allow void in tuples *)
+                 Typeopt.value_kind arg.exp_env arg.exp_type
+              )
+              argl
+          in
+          let lvars = List.map (fun (id, _) -> Lvar id) val_ids in
+          let mode = transl_exp_mode arg in
+          static_catch (transl_list ~scopes argl) val_ids
+            (Matching.for_multiple_match ~scopes kind e.exp_loc
+               lvars mode val_cases partial)
+      | arg, [] ->
+        assert (static_handlers = []);
+        Matching.for_function ~scopes kind e.exp_loc
+          None (transl_exp ~scopes None arg) val_cases partial
+      | arg, _ :: _ ->
+          let val_id = Typecore.name_pattern "val" (List.map fst val_cases) in
+          let k = Typeopt.value_kind arg.exp_env arg.exp_type in
+          static_catch [transl_exp ~scopes None arg] [val_id, k]
+            (Matching.for_function ~scopes kind e.exp_loc
+               None (Lvar val_id) val_cases partial)
   in
   List.fold_left (fun body (static_exception_id, val_ids, handler) ->
     Lstaticcatch (body, (static_exception_id, val_ids), handler, kind)
-  ) classic static_handlers
+  ) lam_match static_handlers
 
 and transl_letop ~scopes loc env let_ ands param case partial warnings =
   let rec loop prev_lam = function

@@ -45,7 +45,7 @@ Line 1, characters 26-31:
 1 | type t2_any1 = T2_any1 of t_any
                               ^^^^^
 Error: Constructor argument types must have a representable layout.
-        t_any has layout any, which is not a sublayout of <unification variable>.
+        t_any has layout any, which is not a sublayout of <sort variable>.
 |}];;
 
 type t2_any2 = T2_any2 of t_immediate * t_any
@@ -54,7 +54,7 @@ Line 1, characters 40-45:
 1 | type t2_any2 = T2_any2 of t_immediate * t_any
                                             ^^^^^
 Error: Constructor argument types must have a representable layout.
-        t_any has layout any, which is not a sublayout of <unification variable>.
+        t_any has layout any, which is not a sublayout of <sort variable>.
 |}];;
 
 type t2_any3 = T2_any3 of t_any * t_value
@@ -63,7 +63,7 @@ Line 1, characters 26-31:
 1 | type t2_any3 = T2_any3 of t_any * t_value
                               ^^^^^
 Error: Constructor argument types must have a representable layout.
-        t_any has layout any, which is not a sublayout of <unification variable>.
+        t_any has layout any, which is not a sublayout of <sort variable>.
 |}];;
 
 type 'a t1_constraint = T1_con of 'a constraint 'a = 'b t1_constraint'
@@ -73,7 +73,7 @@ Line 1, characters 34-36:
 1 | type 'a t1_constraint = T1_con of 'a constraint 'a = 'b t1_constraint'
                                       ^^
 Error: Constructor argument types must have a representable layout.
-        'b t1_constraint' has layout any, which is not a sublayout of <unification variable>.
+        'b t1_constraint' has layout any, which is not a sublayout of <sort variable>.
 |}]
 
 (* Test 3: void allowed in records, but not by itself *)
@@ -127,7 +127,7 @@ Line 1, characters 21-26:
 1 | type t4_any1 = { x : t_any }
                          ^^^^^
 Error: Record element types must have a representable layout.
-        t_any has layout any, which is not a sublayout of <unification variable>.
+        t_any has layout any, which is not a sublayout of <sort variable>.
 |}];;
 
 type t4_any2 = { x : t_immediate; y : t_any }
@@ -136,7 +136,7 @@ Line 1, characters 38-43:
 1 | type t4_any2 = { x : t_immediate; y : t_any }
                                           ^^^^^
 Error: Record element types must have a representable layout.
-        t_any has layout any, which is not a sublayout of <unification variable>.
+        t_any has layout any, which is not a sublayout of <sort variable>.
 |}];;
 
 type t4_any3 =  { x : t_any; y : t_value }
@@ -145,7 +145,7 @@ Line 1, characters 22-27:
 1 | type t4_any3 =  { x : t_any; y : t_value }
                           ^^^^^
 Error: Record element types must have a representable layout.
-        t_any has layout any, which is not a sublayout of <unification variable>.
+        t_any has layout any, which is not a sublayout of <sort variable>.
 |}];;
 
 type t4_cany1 = C of { x : t_any }
@@ -154,7 +154,7 @@ Line 1, characters 27-32:
 1 | type t4_cany1 = C of { x : t_any }
                                ^^^^^
 Error: Record element types must have a representable layout.
-        t_any has layout any, which is not a sublayout of <unification variable>.
+        t_any has layout any, which is not a sublayout of <sort variable>.
 |}];;
 
 type t4_cany2 = C of { x : t_immediate; y : t_any }
@@ -163,7 +163,7 @@ Line 1, characters 44-49:
 1 | type t4_cany2 = C of { x : t_immediate; y : t_any }
                                                 ^^^^^
 Error: Record element types must have a representable layout.
-        t_any has layout any, which is not a sublayout of <unification variable>.
+        t_any has layout any, which is not a sublayout of <sort variable>.
 |}];;
 
 type t4_cany3 = C of { x : t_any; y : t_value }
@@ -172,5 +172,5 @@ Line 1, characters 27-32:
 1 | type t4_cany3 = C of { x : t_any; y : t_value }
                                ^^^^^
 Error: Record element types must have a representable layout.
-        t_any has layout any, which is not a sublayout of <unification variable>.
+        t_any has layout any, which is not a sublayout of <sort variable>.
 |}];;

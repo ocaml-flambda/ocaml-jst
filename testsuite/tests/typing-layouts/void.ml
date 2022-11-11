@@ -271,49 +271,48 @@ val z : int = 42
 - : unit = ()
 |}]
 
-(* CJC XXX to be fixed in next commit *)
-(* let () = r := []
- *
- * let local_void_bindings_3 vh1 x y =
- *   let v1 =
- *     cons_r 1;
- *     match vh1 with
- *     | V v -> v
- *   in
- *   let x = cons_r 2; x + y in
- *   let v2 =
- *     cons_r 3;
- *     let _ =
- *       match {v = v1} with
- *       | {v} -> cons_r 4; v
- *     in
- *     match vh2 with
- *     | V v -> cons_r 5; v
- *   in
- *   let vr = {v = (cons_r 6; v2)} in
- *   let {v = v3} : void_rec = cons_r 7; vr in
- *   let z = cons_r 8; y + x in
- *   cons_r 9;
- *   {a1 = {v = v1};
- *    a2 = {v = let V v = vh in v};
- *    x;
- *    v = {v = v2};
- *    z = z;
- *    b1 = vr;
- *    b2 = {v = v3}}
- *
- * let {x;z} = local_void_bindings_3 vh 3 42
- *
- * let () =
- *   assert (x = 45 && z = 87)
- *
- * let _ = assert (List.for_all2 (=) !r [9;8;7;6;5;4;3;2;1]);;
- * [%%expect{|
- * val local_void_bindings_3 : void_holder -> int -> int -> baz = <fun>
- * val x : int = 45
- * val z : int = 87
- * - : unit = ()
- * |}];; *)
+let () = r := []
+
+let local_void_bindings_3 vh1 x y =
+  let v1 =
+    cons_r 1;
+    match vh1 with
+    | V v -> v
+  in
+  let x = cons_r 2; x + y in
+  let v2 =
+    cons_r 3;
+    let _ =
+      match {v = v1} with
+      | {v} -> cons_r 4; v
+    in
+    match vh2 with
+    | V v -> cons_r 5; v
+  in
+  let vr = {v = (cons_r 6; v2)} in
+  let {v = v3} : void_rec = cons_r 7; vr in
+  let z = cons_r 8; y + x in
+  cons_r 9;
+  {a1 = {v = v1};
+   a2 = {v = let V v = vh in v};
+   x;
+   v = {v = v2};
+   z = z;
+   b1 = vr;
+   b2 = {v = v3}}
+
+let {x;z} = local_void_bindings_3 vh 3 42
+
+let () =
+  assert (x = 45 && z = 87)
+
+let _ = assert (List.for_all2 (=) !r [9;8;7;6;5;4;3;2;1]);;
+[%%expect{|
+val local_void_bindings_3 : void_holder -> int -> int -> baz = <fun>
+val x : int = 45
+val z : int = 87
+- : unit = ()
+|}];;
 
 (* CJC XXX need to have tests for all three cases of for let:
    - anon void args

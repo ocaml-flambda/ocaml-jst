@@ -3625,7 +3625,12 @@ and type_expect_
       begin_def ();
       let arg = type_exp env arg_expected_mode sarg in
       end_def ();
-      let sort = type_sort env arg.exp_type in
+      let sort =
+        try type_sort env arg.exp_type with
+        | Unify err -> raise (Error(arg.exp_loc, env,
+                                    Expr_type_clash(err,None,
+                                                    Some (arg.exp_desc))))
+      in
       if maybe_expansive arg then lower_contravariant env arg.exp_type;
       generalize arg.exp_type;
       let cases, partial =

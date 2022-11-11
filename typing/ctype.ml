@@ -99,6 +99,7 @@ module Unification_trace = struct
     | Incompatible_fields of {name:string; diff:type_expr diff }
     | Rec_occur of type_expr * type_expr
     | Bad_layout of type_expr * Type_layout.Violation.t
+    | Bad_layout_sort of type_expr * Type_layout.Violation.t
     | Unequal_univar_layouts of
         type_expr * Type_layout.t * type_expr * Type_layout.t
 
@@ -118,7 +119,7 @@ module Unification_trace = struct
     | Rec_occur (_,_)
     | Escape {kind=(Univ _ | Self|Constructor _ | Module_type _ ); _}
     | Variant _ | Obj _ | Incompatible_fields _
-    | Bad_layout _ | Unequal_univar_layouts _ as x -> x
+    | Bad_layout _ | Bad_layout_sort _ | Unequal_univar_layouts _ as x -> x
   let map f = List.map (map_elt f)
 
 
@@ -1987,10 +1988,13 @@ let type_layout env ty =
 (* CJC XXX am I using this anywhere now? *)
 let type_sort env ty =
   let sort = Type_layout.any_sort () in
-  let _ = check_type_layout env ty sort in
-  match sort with
-  | Sort s -> s
-  | Any | Immediate | Immediate64 -> assert false
+  match constrain_type_layout env ty sort with
+  | Ok _ -> begin
+      match sort with
+      | Sort s -> s
+      | Any | Immediate | Immediate64 -> assert false
+    end
+  | Error err -> raise (Unify [Bad_layout_sort (ty,err)])
 
 
 (* Note: Because [estimate_type_layout] actually returns an upper bound, this
