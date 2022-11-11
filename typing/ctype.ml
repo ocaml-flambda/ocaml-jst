@@ -3732,11 +3732,15 @@ let rec moregen inst_nongen variance type_pairs env t1 t2 =
   if t1 == t2 then () else
   try
     match (t1.desc, t2.desc) with
-      (Tvar _, _) when may_instantiate inst_nongen t1 ->
+      (Tvar {layout}, _) when may_instantiate inst_nongen t1 ->
         moregen_occur env t1.level t2;
         update_scope t1.scope t2;
         occur env t1 t2;
-        link_type t1 t2
+        link_type t1 t2;
+        (* CJC XXX add test cases for this
+             - test cases that show you need it
+             - add similar layout checks in remaining functions *)
+        constrain_type_layout_exn env t2 layout
     | (Tconstr (p1, [], _), Tconstr (p2, [], _)) when Path.same p1 p2 ->
         ()
     | _ ->

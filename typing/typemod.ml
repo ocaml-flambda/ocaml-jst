@@ -1729,36 +1729,6 @@ and check_signature_item env f = function
   | Sig_module(_id, _, md, _, _) -> check_modtype env f md.md_type
   | _ -> true
 
-
-(* CJC XXX In the unlikely event we keep this hack, all this code needs
-   to be reivisted.  Do we need env?  Are handling the right cases? *)
-let rec check_mod {str_items} =
-  List.iter (fun si -> check_str_item si.str_desc) str_items
-
-and check_str_item = function
-  | Tstr_eval (_, l, _) -> Type_layout.default_to_value l
-  | Tstr_value (_, vbs) ->
-    List.iter check_value_binding vbs
-  | Tstr_primitive vd ->
-    Ctype.remove_mode_and_layout_variables vd.val_val.val_type
-  | Tstr_module mb -> check_module_expr mb.mb_expr
-  | Tstr_recmodule mbs ->
-    List.iter (fun mb -> check_module_expr mb.mb_expr) mbs
-  | (Tstr_type _ | Tstr_typext _ | Tstr_exception _ | Tstr_modtype _
-    | Tstr_open _ | Tstr_class _ | Tstr_class_type _ | Tstr_include _
-    | Tstr_attribute _) -> ()
-
-and check_module_expr me =
-  match me.mod_desc with
-  | Tmod_structure m -> check_mod m
-  | Tmod_functor (_, me) -> check_module_expr me
-  | Tmod_constraint (me, _, _, _) -> check_module_expr me
-  | (Tmod_ident _ | Tmod_apply _ | Tmod_unpack _) -> ()
-
-and check_value_binding vb =
-  Ctype.remove_mode_and_layout_variables vb.vb_expr.exp_type
-
-
 let check_nongen_scheme env sig_item =
   let check ty =
     Ctype.remove_mode_and_layout_variables ty; Ctype.closed_schema env ty
@@ -2869,30 +2839,6 @@ let type_implementation sourcefile outputprefix modulename initial_env ast =
               annots (Some sourcefile) initial_env (Some cmi);
             gen_annot outputprefix sourcefile annots
           end;
-          (* CJC XXX: Hacky solution for now to the following problem:
-
-               module M : sig end = struct
-                 let _ = assert false
-               end
-
-             Because [_] isn't in the signature, [check_nongen_schemes] isn't
-             called on its type, so we don't default sort variables in its
-             type.  Same problem if we give it a name.
-
-             This causes trouble in the lambda translation because it expects
-             sort variables to be instantiated.  It checks if they are equal to
-             void, which in this case succeeds.  Maybe this is actually fine in
-             the long term - we can treat this thing as a void.  But, (a) in the
-             short term I'm not handling void correctly so I need to fix it, and
-             (b) in the long term it doesn't feel great to let sort variables
-             escape type checking.
-
-             Mode variables are also not defaulted here.  Can I do anything
-             funny with that?
-
-             My hacky solution for now is just to do an additional defaulting
-             step on everything in the structure at this point. *)
-          check_mod str;
           (str, coercion)
         end
       end
