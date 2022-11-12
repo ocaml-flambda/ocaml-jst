@@ -3710,21 +3710,6 @@ let may_instantiate inst_nongen t1 =
   if inst_nongen then t1.level <> generic_level - 1
                  else t1.level =  generic_level
 
-(* CJC XXX It is tempting to add layout checking in the places where do to a
-   link_type below.  However, this function is called before all the circularity
-   checks that make layout checking safe.
-
-   As a consequence, in examples like:
-
-   module M : sig
-     val x : int
-   end = struct
-     val x = assert false
-   end
-
-   A sort variable escapes all the way to the very hacky sort defaulting at the
-   end of [type_implementation] in typemod.  This seems bad, and maybe unsound.
-*)
 let rec moregen inst_nongen variance type_pairs env t1 t2 =
   if t1 == t2 then () else
   let t1 = repr t1 in
@@ -3737,9 +3722,6 @@ let rec moregen inst_nongen variance type_pairs env t1 t2 =
         update_scope t1.scope t2;
         occur env t1 t2;
         link_type t1 t2;
-        (* CJC XXX add test cases for this
-             - test cases that show you need it
-             - add similar layout checks in remaining functions *)
         constrain_type_layout_exn env t2 layout
     | (Tconstr (p1, [], _), Tconstr (p2, [], _)) when Path.same p1 p2 ->
         ()
@@ -3753,10 +3735,11 @@ let rec moregen inst_nongen variance type_pairs env t1 t2 =
         if not (TypePairs.mem pairs (t1', t2')) then begin
           TypePairs.add pairs (t1', t2');
           match (t1'.desc, t2'.desc) with
-            (Tvar _, _) when may_instantiate inst_nongen t1' ->
+            (Tvar {layout}, _) when may_instantiate inst_nongen t1' ->
               moregen_occur env t1'.level t2;
               update_scope t1'.scope t2;
-              link_type t1' t2
+              link_type t1' t2;
+              constrain_type_layout_exn env t2 layout
           | (Tarrow ((l1,a1,r1), t1, u1, _),
              Tarrow ((l2,a2,r2), t2, u2, _)) when
                (l1 = l2

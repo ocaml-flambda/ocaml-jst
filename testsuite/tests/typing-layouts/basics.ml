@@ -478,6 +478,63 @@ Error: Tuple element types must have layout value.
 |}];;
 
 
+(* Test 9: layouts are checked by "more general" *)
+
+(* This hits the first linktype in moregen (no expansion required to see it's a
+   var *)
+module M9_1 : sig
+  val x : string
+end = struct
+  type ('a : immediate) t = 'a
+
+  let f : 'a t -> 'a = fun x -> x
+
+  let x = f (assert false)
+end;;
+[%%expect {|
+Lines 3-9, characters 6-3:
+3 | ......struct
+4 |   type ('a : immediate) t = 'a
+5 |
+6 |   let f : 'a t -> 'a = fun x -> x
+7 |
+8 |   let x = f (assert false)
+9 | end..
+Error: Signature mismatch:
+       Modules do not match:
+         sig type 'a t = 'a val f : 'a t -> 'a val x : 'a end
+       is not included in
+         sig val x : string end
+       Values do not match: val x : 'a is not included in val x : string
+|}];;
+
+(* This hits the second linktype in moregen (requires expansion to see it's a
+   var *)
+module M9_2 : sig
+  val x : string
+end = struct
+  type ('a : immediate) t = 'a
+
+  let f (x : 'a t) : 'a t = x
+
+  let x = f (assert false)
+end;;
+[%%expect {|
+Lines 3-9, characters 6-3:
+3 | ......struct
+4 |   type ('a : immediate) t = 'a
+5 |
+6 |   let f (x : 'a t) : 'a t = x
+7 |
+8 |   let x = f (assert false)
+9 | end..
+Error: Signature mismatch:
+       Modules do not match:
+         sig type 'a t = 'a val f : 'a t -> 'a t val x : 'a t end
+       is not included in
+         sig val x : string end
+       Values do not match: val x : 'a t is not included in val x : string
+|}]
 
 
 (* CJC XXX add test for top-level module items being default to value, which will require
