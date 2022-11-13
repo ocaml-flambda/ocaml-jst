@@ -414,13 +414,3 @@ val exnmatch4 : void_holder -> int = <fun>
 
    Do we want to allow "empty" modules?
 *)
-
-(* CJC XXX check that we aren;t allowing
-
-   match void1, void2, void3 with ...
-
-   since this isn't quite a tuple *)
-
-(* Now that we require match scrutinees to have a sort,
-   are we still allowing [match assert false with ...] ? *)
-

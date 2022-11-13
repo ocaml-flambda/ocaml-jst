@@ -477,6 +477,22 @@ Error: Tuple element types must have layout value.
         vr has layout void, which is not a sublayout of value.
 |}];;
 
+module M8_9 (X : sig
+    type t = { x : t_void; y : int }
+    val vr : t
+  end) =
+struct
+  match 3, X.vr.x with
+  | _ -> 42
+end;;
+[%%expect {|
+Line 6, characters 11-17:
+6 |   match 3, X.vr.x with
+               ^^^^^^
+Error: This expression has type t_void but an expression was expected of type
+         'a
+       t_void has layout void, which is not a sublayout of value.
+|}];;
 
 (* Test 9: layouts are checked by "more general" *)
 
