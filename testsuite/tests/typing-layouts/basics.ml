@@ -537,5 +537,10 @@ Error: Signature mismatch:
 |}]
 
 
-(* CJC XXX add test for top-level module items being default to value, which will require
-   dealing with moregeneral *)
+(* CR ccasinghino: Once we allow non-value top-level module definitions, add
+   tests showing that things get defaulted to value.
+
+   (CJC XXX actually, once we can annotate universally quantified variables,
+   that's probably enough)
+*)
+

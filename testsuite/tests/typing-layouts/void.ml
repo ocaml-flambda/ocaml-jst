@@ -316,28 +316,103 @@ val z : int = 87
 - : unit = ()
 |}];;
 
-(* CJC XXX add test cases for matching on void that can raise.
+(* Test 5: Compilation of exception patterns in void matches. *)
+exception Ex1 of int
+exception Ex2 of string
+exception Ex3 of bool;;
+[%%expect{|
+exception Ex1 of int
+exception Ex2 of string
+exception Ex3 of bool
+|}];;
 
-   e.g.,
+(* CJC XXX probably just eliminate warning 10 (non-unit statement) for voids *)
+let [@warning "-10"] exnmatch1 (V v) =
+  match
+    {v = (if true then raise (Ex1 42); v)};
+    if true then raise (Ex2 "test");
+    {v = ((if true then raise (Ex3 true)); v)}
+  with
+  | {v} -> 0
+  | exception Ex1 42 -> 1
+  | exception Ex1 _ -> 2
+  | exception Ex2 "test" -> 3
+  | exception Ex2 _ -> 4
+  | exception Ex3 true -> 5
+  | exception Ex3 _ -> 6
 
-   match raise Foo; voidthing with
-   | voidpat -> ...
-   | exception Foo -> ...
+let _ = assert ((exnmatch1 vh) = 1);;
+[%%expect{|
+val exnmatch1 : void_holder -> int = <fun>
+- : unit = ()
+|}];;
 
-   have cases where we hit the void and where we don't
-*)
+let [@warning "-10"] exnmatch2 (V v) =
+  match
+    {v = v};
+    if true then raise (Ex2 "test");
+    {v = ((if true then raise (Ex3 true)); v)}
+  with
+  | {v} -> 0
+  | exception Ex1 42 -> 1
+  | exception Ex1 _ -> 2
+  | exception Ex2 "test" -> 3
+  | exception Ex2 _ -> 4
+  | exception Ex3 true -> 5
+  | exception Ex3 _ -> 6
 
-(* CJC XXX
+let _ = assert ((exnmatch2 vh) = 3);;
+[%%expect{|
+val exnmatch2 : void_holder -> int = <fun>
+- : unit = ()
+|}];;
 
-   write cases for top-level voids.
+let [@warning "-10"] exnmatch3 (V v) =
+  match
+    {v = v};
+    {v = ((if true then raise (Ex3 true)); v)}
+  with
+  | {v} -> 0
+  | exception Ex1 42 -> 1
+  | exception Ex1 _ -> 2
+  | exception Ex2 "test" -> 3
+  | exception Ex2 _ -> 4
+  | exception Ex3 true -> 5
+  | exception Ex3 _ -> 6
 
-   we want some cases where the term has an indeterminate layout, and the signature a)
-   mentions the term and specifies its layout, b) mentions the term and doesn't specify
-   its layout, and c) doesn't mention the term.
+let _ = assert ((exnmatch3 vh) = 5);;
+[%%expect{|
+val exnmatch3 : void_holder -> int = <fun>
+- : unit = ()
+|}];;
 
-   add test that top-level void is banned in stand-alone signatures.
+let [@warning "-10"] exnmatch4 (V v) =
+  match
+    {v = v};
+    {v = v}
+  with
+  | {v} -> 0
+  | exception Ex1 42 -> 1
+  | exception Ex1 _ -> 2
+  | exception Ex2 "test" -> 3
+  | exception Ex2 _ -> 4
+  | exception Ex3 true -> 5
+  | exception Ex3 _ -> 6
 
-   Also is the gross defaulting code I added previously still needed?
+let _ = assert ((exnmatch4 vh) = 0);;
+[%%expect{|
+val exnmatch4 : void_holder -> int = <fun>
+- : unit = ()
+|}];;
+
+
+(* CR ccasinghino: When we allow non-values at the module level, we'll want
+   void-specific test cases, including cases where the term has an indeterminate
+   layout, and the signature a) mentions the term and specifies its layout, b)
+   mentions the term and doesn't specify its layout, and c) doesn't mention the
+   term.
+
+   Do we want to allow "empty" modules?
 *)
 
 (* CJC XXX check that we aren;t allowing
