@@ -5,13 +5,22 @@ type t_any   [@@any]
 type t_value [@@value]
 type t_imm   [@@immediate]
 type t_imm64 [@@immediate64]
-type t_void  [@@void];;
+type t_void  [@@void]
+
+type void_variant = VV of t_void
+type void_record = {vr_void : t_void; vr_int : int}
+type void_unboxed_record = { vur_void : t_void } [@@unboxed]
+
+
 [%%expect{|
 type t_any [@@any]
 type t_value [@@value]
 type t_imm [@@immediate]
 type t_imm64 [@@immediate64]
 type t_void [@@void]
+type void_variant = VV of t_void
+type void_record = { vr_void : t_void; vr_int : int; }
+type void_unboxed_record = { vur_void : t_void; } [@@unboxed]
 |}];;
 
 (* Test 1: Reject non-value function arg/returns *)
@@ -38,27 +47,25 @@ Error: Function return types must have layout value.
 |}];;
 
 module type S = sig
-  type t = { x : t_void } [@@unboxed]
-  val f : t -> int
+  val f : void_unboxed_record -> int
 end
 [%%expect {|
-Line 3, characters 10-11:
-3 |   val f : t -> int
-              ^
+Line 2, characters 10-29:
+2 |   val f : void_unboxed_record -> int
+              ^^^^^^^^^^^^^^^^^^^
 Error: Function argument types must have layout value.
-        t has layout void, which is not a sublayout of value.
+        void_unboxed_record has layout void, which is not a sublayout of value.
 |}];;
 
 module type S = sig
-  type t = { x : t_void } [@@unboxed]
-  val f : int -> t
+  val f : int -> void_unboxed_record
 end
 [%%expect {|
-Line 3, characters 17-18:
-3 |   val f : int -> t
-                     ^
+Line 2, characters 17-36:
+2 |   val f : int -> void_unboxed_record
+                     ^^^^^^^^^^^^^^^^^^^
 Error: Function return types must have layout value.
-        t/2 has layout void, which is not a sublayout of value.
+        void_unboxed_record has layout void, which is not a sublayout of value.
 |}];;
 
 
@@ -76,16 +83,13 @@ Error: This expression has type t_void but an expression was expected of type
        t_void has layout void, which is not a sublayout of value.
 |}];;
 
-type t1 = { x : t_void; y : int }
-
-module F1 (X : sig val f : t1 -> unit end) = struct
-  let g z = X.f { x = z }
+module F1 (X : sig val f : void_record -> unit end) = struct
+  let g z = X.f { vr_void = z; vr_int = 42 }
 end;;
 [%%expect{|
-type t1 = { x : t_void; y : int; }
-Line 4, characters 22-23:
-4 |   let g z = X.f { x = z }
-                          ^
+Line 2, characters 28-29:
+2 |   let g z = X.f { vr_void = z; vr_int = 42 }
+                                ^
 Error: This expression has type 'a but an expression was expected of type
          t_void
        t_void has layout void, which is not a sublayout of value.
@@ -384,15 +388,14 @@ Error: This type t_void should be an instance of type 'a
 |}];;
 
 module M7_4 = struct
-  type vr = { v : t_void } [@@unboxed]
-  type 'a t = [ `Foo of 'a | `Baz of int ] constraint 'a = vr
+  type 'a t = [ `Foo of 'a | `Baz of int ] constraint 'a = void_unboxed_record
 end;;
 [%%expect {|
-Line 3, characters 14-42:
-3 |   type 'a t = [ `Foo of 'a | `Baz of int ] constraint 'a = vr
+Line 2, characters 14-42:
+2 |   type 'a t = [ `Foo of 'a | `Baz of int ] constraint 'a = void_unboxed_record
                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Error: Polymorphic variant argument types must have layout value.
-        vr has layout void, which is not a sublayout of value.
+        void_unboxed_record has layout void, which is not a sublayout of value.
 |}];;
 
 (* Test 8: Tuples only work on values (for now) *)
@@ -408,20 +411,18 @@ Error: Tuple element types must have layout value.
 |}];;
 
 module M8_2 = struct
-  type t = { v : t_void } [@@unboxed]
-  type result = V of (string * t) | I of int
+  type result = V of (string * void_unboxed_record) | I of int
 end;;
 [%%expect {|
-Line 3, characters 22-32:
-3 |   type result = V of (string * t) | I of int
-                          ^^^^^^^^^^
+Line 2, characters 22-50:
+2 |   type result = V of (string * void_unboxed_record) | I of int
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Error: Tuple element types must have layout value.
-        t has layout void, which is not a sublayout of value.
+        void_unboxed_record has layout void, which is not a sublayout of value.
 |}];;
 
 module M8_3 = struct
-  type t = { v : t_void } [@@unboxed]
-  type s = V of t | I of int
+  type s = V of void_unboxed_record | I of int
 
   let foo x =
     match x with
@@ -429,27 +430,26 @@ module M8_3 = struct
     | V t -> t, 27
 end;;
 [%%expect {|
-Line 8, characters 13-14:
-8 |     | V t -> t, 27
+Line 7, characters 13-14:
+7 |     | V t -> t, 27
                  ^
-Error: This expression has type t but an expression was expected of type 'a
-       t has layout void, which is not a sublayout of value.
+Error: This expression has type void_unboxed_record
+       but an expression was expected of type 'a
+       void_unboxed_record has layout void, which is not a sublayout of value.
 |}];;
 
 module M8_4 = struct
-  type t = { v : t_void } [@@unboxed]
-
   let foo x =
     match x with
-    | ({v = _},i) -> i
+    | ({vur_void = _},i) -> i
 end;;
 [%%expect {|
-Line 6, characters 7-14:
-6 |     | ({v = _},i) -> i
-           ^^^^^^^
-Error: This pattern matches values of type t
+Line 4, characters 7-21:
+4 |     | ({vur_void = _},i) -> i
+           ^^^^^^^^^^^^^^
+Error: This pattern matches values of type void_unboxed_record
        but a pattern was expected which matches values of type 'a
-       t has layout void, which is not a sublayout of value.
+       void_unboxed_record has layout void, which is not a sublayout of value.
 |}];;
 
 module M8_5 = struct
@@ -466,29 +466,27 @@ Error: This type t_void should be an instance of type 'a
 |}];;
 
 module M8_6 = struct
-  type vr = { v : t_void } [@@unboxed]
-  type 'a t = int * 'a constraint 'a = vr
+  type 'a t = int * 'a constraint 'a = void_unboxed_record
 end;;
 [%%expect {|
-Line 3, characters 14-22:
-3 |   type 'a t = int * 'a constraint 'a = vr
+Line 2, characters 14-22:
+2 |   type 'a t = int * 'a constraint 'a = void_unboxed_record
                   ^^^^^^^^
 Error: Tuple element types must have layout value.
-        vr has layout void, which is not a sublayout of value.
+        void_unboxed_record has layout void, which is not a sublayout of value.
 |}];;
 
 module M8_9 (X : sig
-    type t = { x : t_void; y : int }
-    val vr : t
+    val vr : void_record
   end) =
 struct
-  match 3, X.vr.x with
+  match 3, X.vr.vr_void with
   | _ -> 42
 end;;
 [%%expect {|
-Line 6, characters 11-17:
-6 |   match 3, X.vr.x with
-               ^^^^^^
+Line 5, characters 11-23:
+5 |   match 3, X.vr.vr_void with
+               ^^^^^^^^^^^^
 Error: This expression has type t_void but an expression was expected of type
          'a
        t_void has layout void, which is not a sublayout of value.
@@ -568,26 +566,28 @@ Error: This expression has type 'a
 |}]
 (* CJC XXX errors *)
 
+(* Test 11: variables bound in classes must have layout value *)
+module M11_1 = struct
+  class foo11 v =
+    let VV v = v in
+    object
+      val bar = VV v
+    end;;
+end
+[%%expect{|
+Line 3, characters 11-12:
+3 |     let VV v = v in
+               ^
+Error: Variables bound in a class must have layout value.
+       V has layout void, which is not a sublayout of value.
+|}];;
+
+
+
+
 (* CR ccasinghino: Once we allow non-value top-level module definitions, add
    tests showing that things get defaulted to value.
 
    (CJC XXX actually, once we can annotate universally quantified variables,
    that's probably enough)
 *)
-
-(* Test 11: variables bound in a class let must have layout value *)
-module M11 = struct
-  type t = V of t_void
-  class foo11 v =
-    let V v = v in
-    object
-      val bar = V v
-    end;;
-end
-[%%expect{|
-Line 4, characters 10-11:
-4 |     let V v = v in
-              ^
-Error: Variables bound in a class must have layout value.
-       V has layout void, which is not a sublayout of value.
-|}];;
