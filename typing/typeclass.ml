@@ -96,6 +96,7 @@ type error =
   | No_overriding of string * string
   | Duplicate of string * string
   | Closing_self_type of type_expr
+  | Non_value_binding of string * Type_layout.Violation.t
 
 exception Error of Location.t * Env.t * error
 exception Error_forward of Location.error
@@ -1211,7 +1212,13 @@ and class_expr_aux cl_num val_env met_env scl =
         List.fold_right
           (fun (id, modes_and_sorts) (vals, met_env) ->
              List.iter
-               (fun (loc, mode, _) -> Typecore.escape ~loc ~env:val_env mode)
+               (fun (loc, mode, sort) ->
+                  Typecore.escape ~loc ~env:val_env mode;
+                  Result.iter_error (fun e ->
+                    raise (Error(loc,met_env,
+                                 Non_value_binding (Ident.name id,e))))
+                    (Type_layout.(sublayout (Sort sort) value))
+               )
                modes_and_sorts;
              let path = Pident id in
              (* do not mark the value as used *)
@@ -2076,6 +2083,11 @@ let report_error env ppf = function
        it has been unified with the self type of a class that is not yet@ \
        completely defined.@]"
       Printtyp.type_scheme self
+  | Non_value_binding (nm, err) ->
+    fprintf ppf
+      "@[Variables bound in a class must have layout value.@ %a@]"
+      (Type_layout.Violation.report_with_name ~name:nm) err
+
 
 let report_error env ppf err =
   Printtyp.wrap_printing_env ~error:true

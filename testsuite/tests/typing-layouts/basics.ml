@@ -575,3 +575,19 @@ Error: This expression has type 'a
    that's probably enough)
 *)
 
+(* Test 11: variables bound in a class let must have layout value *)
+module M11 = struct
+  type t = V of t_void
+  class foo11 v =
+    let V v = v in
+    object
+      val bar = V v
+    end;;
+end
+[%%expect{|
+Line 4, characters 10-11:
+4 |     let V v = v in
+              ^
+Error: Variables bound in a class must have layout value.
+       V has layout void, which is not a sublayout of value.
+|}];;

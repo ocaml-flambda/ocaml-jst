@@ -117,6 +117,7 @@ type error =
   | No_overriding of string * string
   | Duplicate of string * string
   | Closing_self_type of type_expr
+  | Non_value_binding of string * Type_layout.Violation.t
 
 exception Error of Location.t * Env.t * error
 exception Error_forward of Location.error
