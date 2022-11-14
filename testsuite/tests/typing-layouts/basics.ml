@@ -567,6 +567,8 @@ Error: This expression has type 'a
 (* CJC XXX errors *)
 
 (* Test 11: variables bound in classes must have layout value *)
+
+(* Hits `Pcl_let` *)
 module M11_1 = struct
   class foo11 v =
     let VV v = v in
@@ -579,11 +581,34 @@ Line 3, characters 11-12:
 3 |     let VV v = v in
                ^
 Error: Variables bound in a class must have layout value.
-       V has layout void, which is not a sublayout of value.
+       v has layout void, which is not a sublayout of value.
 |}];;
 
+(* Hits the Cfk_concrete case of Pcf_val *)
+class foo v =
+  object
+    val bar = v.vr_void
+  end;;
+[%%expect{|
+Line 3, characters 8-11:
+3 |     val bar = v.vr_void
+            ^^^
+Error: Variables bound in a class must have layout value.
+       bar has layout void, which is not a sublayout of value.
+|}];;
 
-
+(* Hits the Cfk_virtual case of Pcf_val *)
+class virtual foo =
+  object
+    val virtual bar : t_void
+  end;;
+[%%expect{|
+Line 3, characters 16-19:
+3 |     val virtual bar : t_void
+                    ^^^
+Error: Variables bound in a class must have layout value.
+       bar has layout void, which is not a sublayout of value.
+|}];;
 
 (* CR ccasinghino: Once we allow non-value top-level module definitions, add
    tests showing that things get defaulted to value.

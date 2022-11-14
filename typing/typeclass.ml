@@ -665,6 +665,11 @@ and class_field_aux self_loc cl_num self_type meths vars
         Ctype.end_def ();
         Ctype.generalize_structure ty
       end;
+      begin match Ctype.constrain_type_layout val_env ty Type_layout.value with
+      | Ok _ -> ()
+      | Error err ->
+        raise (Error(lab.loc, val_env, Non_value_binding(lab.txt, err)))
+      end;
       let (id, class_env') =
         enter_val cl_num vars false lab.txt mut Virtual ty
         class_env loc
@@ -693,6 +698,12 @@ and class_field_aux self_loc cl_num self_type meths vars
         Ctype.end_def ();
         Ctype.generalize_structure exp.exp_type
        end;
+      begin match Ctype.constrain_type_layout val_env exp.exp_type
+                    Type_layout.value with
+      | Ok _ -> ()
+      | Error err ->
+        raise (Error(lab.loc, val_env, Non_value_binding(lab.txt, err)))
+      end;
       let (id, class_env') =
         enter_val cl_num vars false lab.txt mut Concrete exp.exp_type
         class_env loc
@@ -1214,10 +1225,11 @@ and class_expr_aux cl_num val_env met_env scl =
              List.iter
                (fun (loc, mode, sort) ->
                   Typecore.escape ~loc ~env:val_env mode;
-                  Result.iter_error (fun e ->
+                  match Type_layout.(sublayout (Sort sort) value) with
+                  | Ok _ -> ()
+                  | Error err ->
                     raise (Error(loc,met_env,
-                                 Non_value_binding (Ident.name id,e))))
-                    (Type_layout.(sublayout (Sort sort) value))
+                                 Non_value_binding (Ident.name id,err)))
                )
                modes_and_sorts;
              let path = Pident id in

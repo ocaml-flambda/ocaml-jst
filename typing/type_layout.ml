@@ -101,7 +101,6 @@ module Violation = struct
 
   let report_with_name ~name ppf t =
     let pr fmt = Format.fprintf ppf fmt in
-    let name = StringLabels.capitalize_ascii name in
     match t with
     | Not_a_sublayout (l1,l2) ->
         pr "%s has layout %a, which is not a sublayout of %a." name

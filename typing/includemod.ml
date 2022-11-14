@@ -811,7 +811,7 @@ let include_err env ppf = function
         !Oprint.out_sig_item
         (Printtyp.tree_of_type_declaration id d2 Trec_first)
         (Includecore.report_type_mismatch
-           "the first" "the second" "declaration") err
+           "The first" "The second" "declaration") err
         show_locs (d1.type_loc, d2.type_loc)
   | Extension_constructors(id, x1, x2, err) ->
       fprintf ppf "@[<v>@[<hv>%s:@;<1 2>%a@ %s@;<1 2>%a@]@ %a%a@]"
