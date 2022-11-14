@@ -226,12 +226,36 @@ Error: Top-level module bindings must have layout value, but v has layout
        void.
 |}];;
 
-(* Test 4: local binding of void things is allowed and works sensibly *)
+(* Test 4: Void to left of semicolon *)
 let () = r := []
 
 type void_holder = V of t_void
 type vh_formagic = VM
 let vh : void_holder = Obj.magic VM
+
+(* CJC XXX probably just eliminate warning 10 (non-unit statement) for voids *)
+let [@warning "-10"] f4 (V v) =
+  v;
+  cons_r 1;
+  (cons_r 2; { v = (cons_r 3; v) });
+  cons_r 4;
+  (cons_r 5; v);
+  cons_r 6
+
+let _ = f4 vh
+
+let _ = assert (List.for_all2 (=) !r [6;5;4;3;2;1]);;
+[%%expect{|
+type void_holder = V of t_void
+type vh_formagic = VM
+val vh : void_holder = V <void>
+val f4 : void_holder -> unit = <fun>
+- : unit = ()
+- : unit = ()
+|}];;
+
+(* Test 5: local binding of void things is allowed and works sensibly *)
+let () = r := []
 
 let local_void_bindings_1 vh =
   let V v = cons_r 1; vh in
@@ -247,9 +271,6 @@ let _ = local_void_bindings_1 vh
 
 let _ = assert (List.for_all2 (=) !r [8;7;6;5;4;3;2;1]);;
 [%%expect {|
-type void_holder = V of t_void
-type vh_formagic = VM
-val vh : void_holder = V <void>
 val local_void_bindings_1 : void_holder -> baz = <fun>
 - : baz =
 {a1 = <void>; a2 = <void>; x = 12; v = <void>; z = 13; b1 = <void>;
@@ -316,7 +337,7 @@ val z : int = 87
 - : unit = ()
 |}];;
 
-(* Test 5: Compilation of exception patterns in void matches. *)
+(* Test 6: Compilation of exception patterns in void matches. *)
 exception Ex1 of int
 exception Ex2 of string
 exception Ex3 of bool;;

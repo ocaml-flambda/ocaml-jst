@@ -560,7 +560,9 @@ and transl_exp0 ~in_new_scope ~scopes void_k e =
         let args = List.mapi (fun i arg -> (i,arg)) args in
         let is_void (i,_) = is_void_layout cstr.cstr_arg_layouts.(i)
           (* Would be wrong for inlined records, but we don't use
-             transl_arg_list in that case. *)
+             transl_arg_list in that case.
+
+             CJC XXX revisit after fixing cstr_arg_layouts *)
         in
         let value_kind (_,e) = Typeopt.value_kind e.exp_env e.exp_type in
         let transl void_k (_,e) = transl_exp ~scopes void_k e in
@@ -584,8 +586,10 @@ and transl_exp0 ~in_new_scope ~scopes void_k e =
       | Ordinary {runtime_tag}, Variant_boxed _ -> begin
           let ll, shape = transl_arg_list args in
           try
-            (* CJC XXX is this optimization firing as often as we'd like in the
-               presence of voids? *)
+            (* CR ccasinghino: This optimization won't fire in the presence of
+               voids (because of the way they get compiled with static
+               exceptions).  But it wouldn't be too hard to fix - not doing it
+               for now because we expect to revisit void compilation anyway.  *)
             Lconst(Const_block(runtime_tag, List.map extract_constant ll))
           with Not_constant ->
             Lprim(Pmakeblock(runtime_tag, Immutable, Some shape,
@@ -753,7 +757,6 @@ and transl_exp0 ~in_new_scope ~scopes void_k e =
                   lambda_unit,
                   Pintval (* unit *))
   | Texp_sequence(expr1, layout, expr2) ->
-      (* CJC XXX make test case for the void cases *)
       if is_void_layout layout then
         (* CR ccasinghino: Could we play a similar game for layout "any"? *)
         let kind2 = value_kind_if_not_void expr2 void_k in

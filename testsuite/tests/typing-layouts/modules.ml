@@ -88,22 +88,19 @@ Error: This expression has type string but an expression was expected of type
        string has layout value, which is not a sublayout of immediate.
 |}]
 (*
-type 'a [@value] s2' = private [> `C of 'a]
-type foo = (int list) s2'
-module type T2' = S2 with type 'a t = 'a s2';;
-[%%expect{|
-type !'a s2' = private [> `B of 'a ]
-Line 2, characters 31-33:
-2 | module type T2' = S2 with type 'a t = 'a list;;
-                                   ^^
-Error: The type constraints are not consistent.
-Type 'a is not compatible with type 'b
-'a has layout immediate, which does not overlap with value.
-|}]
+CJC XXX Do I want to allow:
 
-   CJC XXX the above test is broken.  It's modified from the original test.
-   But I think the new version should be failing for different reasons *)
+module type S2 = sig
+  type 'a [@immediate] t
+end
 
+module type S2' = S2 with type 'a t = 'a list
+
+module M : S2' = struct
+  type 'a t = 'a list
+end
+
+   ?  what about with destructive substitution? *)
 
 (* Test 3: Recursive modules, with and without layout annotations *)
 module rec Foo3 : sig

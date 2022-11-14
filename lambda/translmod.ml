@@ -648,7 +648,6 @@ and transl_structure ~scopes loc fields cc rootpath final_env = function
             transl_structure ~scopes loc fields cc rootpath final_env rem
           in
           if Type_layout.Constant.is_void_with_void_default layout then
-            (* CJC XXX what value kind corresponds to a module body? *)
             catch_void (fun void_k -> transl_exp ~scopes void_k expr)
               body Pgenval,
             size
@@ -1106,7 +1105,6 @@ let transl_store_structure ~scopes glob map prims aliases str =
                 (fun void_k -> Lambda.subst no_env_update subst
                                  (transl_exp ~scopes void_k expr))
                 body Pgenval
-                (* CJC XXX what value kind corresponds to a module body? *)
             else
               Lsequence(Lambda.subst no_env_update subst
                           (transl_exp ~scopes None expr),
