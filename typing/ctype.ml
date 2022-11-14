@@ -3607,6 +3607,7 @@ let filter_method env name priv ty =
       let ty' = newobj ty1 in
       update_level env ty.level ty';
       update_scope ty.scope ty';
+      constrain_type_layout_exn env ty Type_layout.value;
       link_type ty ty';
       filter_method_field env name priv ty1
   | Tobject(f, _) ->

@@ -745,6 +745,8 @@ let last_snapshot = s_ref 0
 let log_type ty =
   if ty.id <= !last_snapshot then log_change (Ctype (ty, ty.desc))
 let link_type ty ty' =
+  (* CJC XXX look through all uses of link type and decide which ones need
+     layout checks *)
   log_type ty;
   let desc = ty.desc in
   ty.desc <- Tlink ty';

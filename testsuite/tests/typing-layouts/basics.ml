@@ -552,6 +552,21 @@ Error: Signature mismatch:
        Values do not match: val x : 'a t is not included in val x : string
 |}]
 
+(* Test 10: send works only on values *)
+module M10 = struct
+  type ('a : void) t = { x : int; v : 'a }
+
+  let f t =
+    t.v # baz10
+end;;
+[%%expect{|
+Line 5, characters 4-7:
+5 |     t.v # baz10
+        ^^^
+Error: This expression has type 'a
+       It has no method baz10
+|}]
+(* CJC XXX errors *)
 
 (* CR ccasinghino: Once we allow non-value top-level module definitions, add
    tests showing that things get defaulted to value.
