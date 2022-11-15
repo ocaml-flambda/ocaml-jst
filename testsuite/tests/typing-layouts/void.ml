@@ -454,6 +454,48 @@ val make_uivr_holder : void_holder -> uivr_holder = <fun>
 - : unit = ()
 |}]
 
+(* Test 8: void bindings in or patterns that include both normal and exception
+   patterns *)
+exception Test8 of int * void_holder
+
+type test8_rec = {t8_x : int; t8_v : t_void}
+
+let test8 (f : unit -> test8_rec) : int * void_holder =
+  match cons_r 1; f () with
+  | ({t8_x = x; t8_v = v} | exception (Test8 (x, V v))) ->
+    begin
+      cons_r 3;
+      x, V (cons_r 4; v)
+    end
+
+let () = r := []
+
+let (x, _) = test8 (fun () -> let V v = vh in cons_r 2; {t8_x = 42; t8_v = v})
+
+let () = assert (x = 42)
+let () = assert (List.for_all2 (=) !r [4;3;2;1]);;
+[%%expect{|
+exception Test8 of int * void_holder
+type test8_rec = { t8_x : int; t8_v : t_void; }
+val test8 : (unit -> test8_rec) -> int * void_holder = <fun>
+val x : int = 42
+|}];;
+
+let () = r := []
+
+let (x, _) = test8 (fun () -> cons_r 2; raise (Test8 (3,vh)))
+
+let () = assert (x = 3)
+let () = assert (List.for_all2 (=) !r [4;3;2;1]);;
+[%%expect{|
+val x : int = 3
+|}];;
+
+
+
+
+
+
 (* CR ccasinghino: When we allow non-values at the module level, we'll want
    void-specific test cases, including cases where the term has an indeterminate
    layout, and the signature a) mentions the term and specifies its layout, b)
