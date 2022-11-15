@@ -3072,6 +3072,7 @@ let check_partial_application statement exp =
       match ty with
       | Tconstr (p, _, _)  when Path.same p Predef.path_unit ->
           ()
+      (* CR ccasinghino: when we have unboxed unit, add a case here for it *)
       | _ ->
           if statement then
             let rec loop {exp_loc; exp_desc; exp_extra; _} =
@@ -3761,7 +3762,6 @@ and type_expect_
         let opath = get_path ty_expected in
         match opath with
           None | Some (_, _, false) ->
-            (* CJC XXX layout *)
             let ty =
               if opath = None then newvar (Type_layout.any_sort ())
               else ty_expected
@@ -4507,8 +4507,6 @@ and type_expect_
       re { exp with exp_extra =
              (Texp_poly cty, loc, sexp.pexp_attributes) :: exp.exp_extra }
   | Pexp_newtype({txt=name}, sbody) ->
-    (* CJC XXX Defaulting locally abstract types to value - may revisit in the
-       future *)
       let layout =
         Type_layout.of_layout_annotation ~default:Type_layout.value
           (Builtin_attributes.layout sexp.pexp_attributes)
@@ -5580,7 +5578,6 @@ and type_construct env (expected_mode : expected_mode) loc lid sarg
   let argument_mode =
     match constr.cstr_repr with
     | Variant_unboxed _ -> expected_mode
-    (* CJC XXX Should we have special mode treatment for void stuff? *)
     | Variant_boxed _ | Variant_extensible ->
        register_allocation expected_mode;
        mode_subcomponent expected_mode
@@ -5607,13 +5604,13 @@ and type_statement ?explanation env sexp =
   begin_def();
   let exp = type_exp env (mode_var ()) sexp in
   end_def();
-  (* CJC XXX consider not warning if void *)
   let ty = expand_head env exp.exp_type and tv = newvar Type_layout.any in
   if is_Tvar ty && ty.level > tv.level then
     Location.prerr_warning
       (final_subexpression exp).exp_loc
       Warnings.Nonreturning_statement;
   if !Clflags.strict_sequence then
+    (* CR ccasinghino: when we have unboxed unit, allow it for -strict-sequence *)
     let expected_ty = instance Predef.type_unit in
     with_explanation explanation (fun () ->
       unify_exp env exp expected_ty);

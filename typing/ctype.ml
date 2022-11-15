@@ -1985,7 +1985,6 @@ let estimate_type_layout env typ =
 let type_layout env ty =
   estimate_type_layout env (get_unboxed_type_representation env ty)
 
-(* CJC XXX am I using this anywhere now? *)
 let type_sort env ty =
   let sort = Type_layout.any_sort () in
   match constrain_type_layout env ty sort with
@@ -3860,8 +3859,6 @@ and moregen_row inst_nongen variance type_pairs env row1 row2 =
       moregen_occur env rm1.level ext;
       update_scope rm1.scope ext;
       link_type rm1 ext
-  (* CJC XXX I think we don't need a layout check here because row variables are
-     already value? *)
   | Tconstr _, Tconstr _ ->
       moregen inst_nongen variance type_pairs env rm1 rm2
   | _ -> raise (Unify [])

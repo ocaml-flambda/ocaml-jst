@@ -182,7 +182,7 @@ Error: Signature mismatch:
          type t = string
        is not included in
          type t [@@immediate]
-       The first has layout value, which is not a sublayout of immediate.
+       the first has layout value, which is not a sublayout of immediate.
 |}];;
 
 (* Same as above but with explicit signature *)
@@ -198,7 +198,7 @@ Error: Signature mismatch:
          type t = string
        is not included in
          type t [@@immediate]
-       The first has layout value, which is not a sublayout of immediate.
+       the first has layout value, which is not a sublayout of immediate.
 |}];;
 
 (* Can't use a non-immediate type even if mutually recursive *)
