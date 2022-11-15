@@ -206,7 +206,7 @@ let make_params env params =
     with Already_bound ->
       raise(Error(sty.ptyp_loc, Repeated_parameter))
   in
-  List.map make_param params
+    List.map make_param params
 
 
 let transl_global_flags loc attrs =
@@ -215,23 +215,13 @@ let transl_global_flags loc attrs =
     | Ok b -> b
     | Error () -> raise(Error(loc, Local_not_enabled))
   in
-  let global = transl_global_flag loc (Builtin_attributes.has_global attrs)
-  and nonlocal = transl_global_flag loc (Builtin_attributes.has_nonlocal attrs)
-  in
-  if global then
-    begin
-      if not nonlocal then
-        Types.Global
-      else
-        raise(Error(loc, Global_and_nonlocal))
-    end
-  else
-    begin
-      if not nonlocal then
-        Types.Unrestricted
-      else
-        Types.Nonlocal
-    end
+  let global = transl_global_flag loc (Builtin_attributes.has_global attrs) in 
+  let nonlocal = transl_global_flag loc (Builtin_attributes.has_nonlocal attrs) in 
+  match global, nonlocal with
+  | true, true -> raise(Error(loc, Global_and_nonlocal))
+  | true, false -> Types.Global
+  | false, true -> Types.Nonlocal
+  | false, false -> Types.Unrestricted
 
 let transl_labels env univars closed lbls =
   assert (lbls <> []);

@@ -373,7 +373,8 @@ let report_constructor_mismatch first second decl env ppf err =
         (choose_other ord first second)
   | Nonlocality (i, err) ->
       pr "Locality mismatch at argument position %i : %a"
-        i (report_locality_mismatch first second) err
+        (i + 1) (report_locality_mismatch first second) err
+        (* argument position is one-based; more intuitive *)
 
 let pp_variant_diff first second prefix decl env ppf (x : variant_change) =
   match x with
@@ -481,22 +482,20 @@ let report_type_mismatch first second decl env ppf err =
           pr "%s is not a type that is always immediate on 64 bit platforms."
             first
 
-module Global_Flags_diffing = struct
-  let compare_global_flags flag0 flag1 =
-    match flag0, flag1 with
-    | Global, (Nonlocal | Unrestricted) ->
-      Some {order = First; nonlocal = false}
-    | (Nonlocal | Unrestricted), Global ->
-      Some {order = Second; nonlocal = false}
-    | Nonlocal, Unrestricted ->
-      Some {order = First; nonlocal = true}
-    | Unrestricted, Nonlocal ->
-      Some {order = Second; nonlocal = true}
-    | Global, Global
-    | Nonlocal, Nonlocal
-    | Unrestricted, Unrestricted ->
-      None
-    end   
+let compare_global_flags flag0 flag1 =
+  match flag0, flag1 with
+  | Global, (Nonlocal | Unrestricted) ->
+    Some {order = First; nonlocal = false}
+  | (Nonlocal | Unrestricted), Global ->
+    Some {order = Second; nonlocal = false}
+  | Nonlocal, Unrestricted ->
+    Some {order = First; nonlocal = true}
+  | Unrestricted, Nonlocal ->
+    Some {order = Second; nonlocal = true}
+  | Global, Global
+  | Nonlocal, Nonlocal
+  | Unrestricted, Unrestricted ->
+    None
 
 module Record_diffing = struct
 
@@ -508,7 +507,7 @@ module Record_diffing = struct
           let ord = if ld1.ld_mutable = Asttypes.Mutable then First else Second in
           Some (Mutability ord)
         else begin
-          match Global_Flags_diffing.compare_global_flags ld1.ld_global ld2.ld_global with
+          match compare_global_flags ld1.ld_global ld2.ld_global with
           | None -> 
             let tl1 = params1 @ [ld1.ld_type] in
             let tl2 = params2 @ [ld2.ld_type] in
@@ -662,7 +661,7 @@ module Variant_diffing = struct
           match Ctype.equal env true (params1 @ arg1_tys) (params2 @ arg2_tys) with
           | exception Ctype.Equality err -> Some (Type err)
           | () -> List.combine arg1_gfs arg2_gfs
-                  |> find_map_idx (fun (x,y) -> Global_Flags_diffing.compare_global_flags x y)
+                  |> find_map_idx (fun (x,y) -> compare_global_flags x y)
                   |> Option.map (fun (i, err) -> Nonlocality (i, err))
         end
     | Types.Cstr_record l1, Types.Cstr_record l2 ->

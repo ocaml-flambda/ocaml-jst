@@ -2315,7 +2315,7 @@ Error: Signature mismatch:
          Bar of int * string
        is not the same as:
          Bar of int * global_ string
-       Locality mismatch at argument position 1 : The second is global and the first is not.
+       Locality mismatch at argument position 2 : The second is global and the first is not.
 |}]
 
 
@@ -2342,7 +2342,7 @@ Error: Signature mismatch:
          Bar of int * global_ string
        is not the same as:
          Bar of int * string
-       Locality mismatch at argument position 1 : The first is global and the second is not.
+       Locality mismatch at argument position 2 : The first is global and the second is not.
 |}]
 
 (* Nonlocal argument are preserved in module inclusion *)
@@ -2369,7 +2369,7 @@ Error: Signature mismatch:
          Bar of int * string
        is not the same as:
          Bar of int * nonlocal_ string
-       Locality mismatch at argument position 1 : The second is nonlocal and the first is not.
+       Locality mismatch at argument position 2 : The second is nonlocal and the first is not.
 |}]
 
 
@@ -2396,7 +2396,7 @@ Error: Signature mismatch:
          Bar of int * nonlocal_ string
        is not the same as:
          Bar of int * string
-       Locality mismatch at argument position 1 : The first is nonlocal and the second is not.
+       Locality mismatch at argument position 2 : The first is nonlocal and the second is not.
 |}]
 
 (* global_ and nonlocal_ bind closer than star *)
@@ -2548,7 +2548,7 @@ Error: This value escapes its region
 let f (s : string) =
   let x = RFoo (s, "bar") in
   match x with
-  | RFoo (s', _) -> GFoo(s, "bar")
+  | RFoo (s', _) -> GFoo(s', "bar")
 [%%expect{|
 val f : string -> gfoo = <fun>
 |}]
