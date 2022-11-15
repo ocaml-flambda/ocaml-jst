@@ -20,7 +20,7 @@ type t = Types.layout
 (* The functions in Constant are used after typechecking, including checking
    against module signatures.  At this point, any remaining sort variables
    may be freely defaulted. *)
-module Constant : sig
+module Const : sig
   type t =
     | Any
     | Value
@@ -29,7 +29,7 @@ module Constant : sig
     | Void
 
   val constrain_default_void : Types.layout -> t
-  val is_void_with_void_default : Types.layout -> bool
+  val can_make_void : Types.layout -> bool
   (* CJC XXX at the moment we default to void whenever we can.  But perhaps it
      would be better to default to value before we actually ship. *)
 end

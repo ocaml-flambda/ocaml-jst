@@ -368,7 +368,7 @@ let value_kind env ty =
         end
         | Type_abstract {layout} ->
           let kind =
-            match Type_layout.Constant.constrain_default_void layout with
+            match Type_layout.Const.constrain_default_void layout with
             | Any -> Misc.fatal_error "Typeopt value_kind"
             | Value -> Pgenval
             | Immediate64 -> Pintval

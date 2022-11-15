@@ -647,7 +647,7 @@ and transl_structure ~scopes loc fields cc rootpath final_env = function
           let body, size =
             transl_structure ~scopes loc fields cc rootpath final_env rem
           in
-          if Type_layout.Constant.is_void_with_void_default layout then
+          if Type_layout.Const.can_make_void layout then
             catch_void (fun void_k -> transl_exp ~scopes void_k expr)
               body Pgenval,
             size
@@ -1100,7 +1100,7 @@ let transl_store_structure ~scopes glob map prims aliases str =
         match item.str_desc with
         | Tstr_eval (expr, layout,  _attrs) ->
             let body = transl_store ~scopes rootpath subst cont rem in
-            if Type_layout.Constant.is_void_with_void_default layout then
+            if Type_layout.Const.can_make_void layout then
               catch_void
                 (fun void_k -> Lambda.subst no_env_update subst
                                  (transl_exp ~scopes void_k expr))
@@ -1521,7 +1521,7 @@ let transl_store_gen ~scopes module_name ({ str_items = str }, restr) topl =
       match str with
       | [ { str_desc = Tstr_eval (expr, layout, _attrs) } ] when topl ->
         assert (size = 0);
-        if Type_layout.Constant.is_void_with_void_default layout then
+        if Type_layout.Const.can_make_void layout then
           catch_void (fun void_k ->
             Lambda.subst (fun _ _ env -> env) !transl_store_subst
               (transl_exp ~scopes void_k expr))
@@ -1621,14 +1621,14 @@ let transl_toplevel_item ~scopes item =
          expr", so that Toploop can display the result of the expression.
          Otherwise, the normal compilation would result in a Lsequence returning
          unit. *)
-      if Type_layout.Constant.is_void_with_void_default layout then
+      if Type_layout.Const.can_make_void layout then
         catch_void (fun void_k -> transl_exp ~scopes void_k expr)
           lambda_unit Pintval
       else transl_exp ~scopes None expr
   | Tstr_value(Nonrecursive,
                [{vb_pat = {pat_desc=Tpat_any}; vb_sort = sort;
                  vb_expr = expr}]) ->
-      if Type_layout.Constant.is_void_with_void_default (Sort sort) then
+      if Type_layout.Const.can_make_void (Sort sort) then
         catch_void (fun void_k -> transl_exp ~scopes void_k expr)
           lambda_unit Pintval
       else

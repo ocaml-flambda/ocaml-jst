@@ -16,7 +16,7 @@ open Types
 
 type t = layout
 
-module Constant = struct
+module Const = struct
   type t =
     | Any
     | Value
@@ -38,7 +38,7 @@ module Constant = struct
     | Types.Immediate64 -> Immediate64
     | Types.Immediate -> Immediate
 
-  let is_void_with_void_default l = Void = constrain_default_void l
+  let can_make_void l = Void = constrain_default_void l
 end
 
 

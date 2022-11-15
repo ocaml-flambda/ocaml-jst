@@ -54,8 +54,8 @@ let declare_probe_handlers lam =
     !probe_handlers
 
 (* Layout checking may default everything once we reach translcore *)
-let is_void_sort s = Type_layout.Constant.is_void_with_void_default (Sort s)
-let is_void_layout = Type_layout.Constant.is_void_with_void_default
+let is_void_sort s = Type_layout.Const.can_make_void (Sort s)
+let is_void_layout = Type_layout.Const.can_make_void
 
 (* Compile an exception/extension definition *)
 

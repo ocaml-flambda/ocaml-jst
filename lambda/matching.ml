@@ -1670,13 +1670,14 @@ let get_pat_args_constr p rem =
                                  args) } ->
         (* Here the args list has one element - the record - and
            cstr_arg_layouts has the layout of each field. *)
-        (if Array.for_all (fun l -> Type_layout.(equal void l)) cstr_arg_layouts
+        (if Array.for_all (fun l -> Type_layout.Const.can_make_void l)
+          cstr_arg_layouts
          then []
          else args) @ rem
   | { pat_desc = Tpat_construct (_, {cstr_arg_layouts}, args) } ->
-    (List.filteri (fun i _ -> not Type_layout.(equal void cstr_arg_layouts.(i)))
-       args
-    ) @ rem
+    (List.filteri (fun i _ ->
+       not (Type_layout.Const.can_make_void cstr_arg_layouts.(i)))
+       args) @ rem
   | _ -> assert false
 
 let get_expr_args_constr ~scopes head (arg, _mut) rem =
@@ -1690,7 +1691,9 @@ let get_expr_args_constr ~scopes head (arg, _mut) rem =
     let rec make_args src_pos runtime_pos =
       if src_pos > last_pos then
         argl
-      else if Type_layout.(equal cstr.cstr_arg_layouts.(src_pos) void) then
+      else if
+        Type_layout.Const.(can_make_void cstr.cstr_arg_layouts.(src_pos))
+      then
         make_args (src_pos + 1) runtime_pos
       else
         (Lprim (Pfield (runtime_pos, Reads_agree), [ arg ], loc), binding_kind)
@@ -2711,9 +2714,6 @@ let split_cases tag_lambda_list =
     | ({cstr_tag; cstr_repr; cstr_constant}, act) :: rem -> (
         let consts, nonconsts = split_rec rem in
         match cstr_tag, cstr_repr with
-        | Ordinary _, Variant_unboxed l when Type_layout.(equal void l) ->
-          (* CJC XXX There's no good answer here.  Who are the callers? *)
-          assert false
         | Ordinary _, Variant_unboxed _ -> (consts, (0, act) :: nonconsts)
         | Ordinary {runtime_tag}, Variant_boxed _ when cstr_constant ->
           ((runtime_tag, act) :: consts, nonconsts)
@@ -2743,15 +2743,16 @@ let split_variant_cases tag_lambda_list =
 
 
 let split_extension_cases tag_lambda_list =
-  (* CJC XXX: need to optimize extensible variant constructors with all void
-     args into constant constructors? *)
   let rec split_rec = function
     | [] -> ([], [])
-    | ({cstr_args; cstr_tag}, act) :: rem -> (
+    | ({cstr_arg_layouts; cstr_tag}, act) :: rem -> (
         let consts, nonconsts = split_rec rem in
-        match cstr_args, cstr_tag with
-        | [], Extension path -> ((path,act) :: consts, nonconsts)
-        | _ :: _, Extension path -> (consts, (path, act) :: nonconsts)
+        let all_void =
+          Array.for_all Type_layout.Const.can_make_void cstr_arg_layouts
+        in
+        match all_void, cstr_tag with
+        | true, Extension path -> ((path,act) :: consts, nonconsts)
+        | false, Extension path -> (consts, (path, act) :: nonconsts)
         | _, Ordinary _ -> assert false
       )
   in
@@ -3672,13 +3673,13 @@ let for_let ~scopes loc param_void_k param pat body_kind body =
         let opt = ref false in
         let nraise = next_raise_count () in
         let catch_ids = pat_bound_idents_full pat in
-        (* CJC XXX put void info in the pat, probably *)
+        (* CJC XXX put void info in the pat, probably.  or not.  change
+           pat_bound_idents_full to return the sorts. *)
         let ids_with_kinds =
           List.filter_map
             (fun (id, _, typ) ->
-               if Type_layout.equal Type_layout.void
-                    (Ctype.type_layout pat.pat_env
-                       (Ctype.correct_levels typ))
+               if Type_layout.Const.can_make_void
+                    (Ctype.type_layout pat.pat_env (Ctype.correct_levels typ))
                then None
                else Some (id, Typeopt.value_kind pat.pat_env typ))
             catch_ids
