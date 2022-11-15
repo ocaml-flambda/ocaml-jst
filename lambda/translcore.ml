@@ -569,7 +569,7 @@ and transl_exp0 ~in_new_scope ~scopes void_k e =
         transl_list_with_voids ~is_void ~value_kind ~transl args
       in
       if cstr.cstr_inlined <> None then begin match args with
-        | [e] -> transl_exp ~scopes None e
+        | [e] -> transl_exp ~scopes void_k e
         | _ -> assert false
       end else begin match cstr.cstr_tag, cstr.cstr_repr with
       | Ordinary {runtime_tag}, _ when cstr.cstr_constant ->
@@ -1472,7 +1472,8 @@ and transl_record ~scopes void_k kind loc env mode fields repres opt_init_expr =
      functional-style record update *)
   let no_init = match opt_init_expr with None -> true | _ -> false in
   match repres with
-  | Record_unboxed l when is_void_layout l -> begin
+  | (Record_unboxed l | Record_inlined (_, Variant_unboxed l))
+    when is_void_layout l -> begin
     let field =
       match fields.(0) with
       | (_, Kept _) -> assert false
@@ -1539,8 +1540,6 @@ and transl_record ~scopes void_k kind loc env mode fields repres opt_init_expr =
         | Record_inlined (Ordinary {runtime_tag}, Variant_boxed _) ->
             Lconst(Const_block(runtime_tag, cl))
         | Record_unboxed _ | Record_inlined (_, Variant_unboxed _) ->
-            (* CJC XXX handle the [type t = { x : tvoid } [@@unboxed]] case here
-               and below *)
             Lconst(match cl with [v] -> v | _ -> assert false)
         | Record_float ->
             Lconst(Const_float_block(List.map extract_float cl))
@@ -1570,7 +1569,6 @@ and transl_record ~scopes void_k kind loc env mode fields repres opt_init_expr =
       None -> lam
     | Some init_expr -> Llet(Strict, Pgenval, init_id,
                              transl_exp ~scopes None init_expr, lam)
-      (* CJC XXX None for void_k is wrong here in the unboxed void record case *)
     end
     end
   | _ -> begin

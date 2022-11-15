@@ -233,7 +233,6 @@ type void_holder = V of t_void
 type vh_formagic = VM
 let vh : void_holder = Obj.magic VM
 
-(* CJC XXX probably just eliminate warning 10 (non-unit statement) for voids *)
 let [@warning "-10"] f4 (V v) =
   v;
   cons_r 1;
@@ -347,7 +346,6 @@ exception Ex2 of string
 exception Ex3 of bool
 |}];;
 
-(* CJC XXX probably just eliminate warning 10 (non-unit statement) for voids *)
 let [@warning "-10"] exnmatch1 (V v) =
   match
     {v = (if true then raise (Ex1 42); v)};
@@ -426,6 +424,35 @@ val exnmatch4 : void_holder -> int = <fun>
 - : unit = ()
 |}];;
 
+(* Test 7: compilation of unboxed inlined void records *)
+let () = r := []
+
+type unboxed_inlined_void_rec =
+  | UIVR of { uivr_v : t_void } [@@unboxed]
+
+type uivr_holder = {uivrh_x : int; uivrh_v : unboxed_inlined_void_rec }
+
+let make_uivr_holder vh =
+  let uivrh =
+    cons_r 1;
+    match cons_r 2; vh with
+    | V v -> begin
+        cons_r 3;
+        { uivrh_x = (cons_r 6; 7);
+          uivrh_v = (cons_r 4; UIVR { uivr_v = (cons_r 5; v) }) }
+      end
+  in
+  cons_r uivrh.uivrh_x; uivrh
+
+let _ = make_uivr_holder vh
+let _ = assert (List.for_all2 (=) !r [7;6;5;4;3;2;1]);;
+[%%expect{|
+type unboxed_inlined_void_rec = UIVR of { uivr_v : t_void; } [@@unboxed]
+type uivr_holder = { uivrh_x : int; uivrh_v : unboxed_inlined_void_rec; }
+val make_uivr_holder : void_holder -> uivr_holder = <fun>
+- : uivr_holder = {uivrh_x = 7; uivrh_v = <void>}
+- : unit = ()
+|}]
 
 (* CR ccasinghino: When we allow non-values at the module level, we'll want
    void-specific test cases, including cases where the term has an indeterminate

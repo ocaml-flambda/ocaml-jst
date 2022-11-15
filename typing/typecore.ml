@@ -5255,7 +5255,8 @@ and type_label_exp create env (expected_mode : expected_mode) loc ty_expected
     let snap = if vars = [] then None else Some (Btype.snapshot ()) in
     let rmode =
       match label.lbl_repres with
-      | Record_unboxed _ -> expected_mode
+      | Record_unboxed _ | Record_inlined (_, Variant_unboxed _) ->
+        expected_mode
       | _ -> mode_subcomponent expected_mode
     in
     let arg_mode =

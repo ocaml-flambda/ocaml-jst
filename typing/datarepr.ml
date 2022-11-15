@@ -130,8 +130,7 @@ let constructor_descrs ~current_unit ty_path decl cstrs rep =
     let cstr_existentials, cstr_args, cstr_inlined =
       (* This is the representation of the inner record, IF there is one *)
       let record_repr = match rep with
-        | Variant_unboxed l -> Record_unboxed l
-        | Variant_boxed _ -> Record_inlined (cstr_tag, rep)
+        | Variant_unboxed _ | Variant_boxed _ -> Record_inlined (cstr_tag, rep)
         | Variant_extensible -> assert false
       in
       constructor_args ~current_unit decl.type_private cd_args cd_res
