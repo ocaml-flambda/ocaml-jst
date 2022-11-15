@@ -38,7 +38,6 @@ Error: The type constraints are not consistent.
 Type 'a is not compatible with type 'b
 'a has layout void, which does not overlap with value.
 |}];;
-(* CJC XXX errors: error message *)
 
 module type S1'' = S1 with type s = t_void;;
 
@@ -48,6 +47,45 @@ Line 1, characters 27-42:
                                ^^^^^^^^^^^^^^^
 Error: This type has layout void, which is not a sublayout of value.
 |}]
+
+module type S1_2 = sig
+  type ('a : immediate) t
+end
+
+module type S1_2' = S1_2 with type 'a t = 'a list
+
+module M1_2' : S1_2' = struct
+  type ('a : immediate) t = 'a list
+end;;
+[%%expect{|
+module type S1_2 = sig type 'a t end
+module type S1_2' = sig type 'a t = 'a list end
+module M1_2' : S1_2'
+|}]
+
+(* CR ccasinghino - annoyingly, the immediate annotation on 'a is required.  We
+   can probably relax this so you don't have to label the parameter explcitly
+   and the layout is determined from the signature.  But we anticipate it'll
+   require non-trivial refactoring of eqtype, so we've put it off for now. *)
+module M1_2'': S1_2' = struct
+  type 'a t = 'a list
+end;;
+[%%expect{|
+Lines 1-3, characters 23-3:
+1 | .......................struct
+2 |   type 'a t = 'a list
+3 | end..
+Error: Signature mismatch:
+       Modules do not match:
+         sig type 'a t = 'a list end
+       is not included in
+         S1_2'
+       Type declarations do not match:
+         type 'a t = 'a list
+       is not included in
+         type 'a t = 'a list
+|}]
+(* CJC XXX errors: error message *)
 
 (* Test 2: with type constraints for fixed types (the complicated case of
    Type_mod.merge_constraint) *)
@@ -87,20 +125,6 @@ Error: This expression has type string but an expression was expected of type
          'a
        string has layout value, which is not a sublayout of immediate.
 |}]
-(*
-CJC XXX Do I want to allow:
-
-module type S2 = sig
-  type 'a [@immediate] t
-end
-
-module type S2' = S2 with type 'a t = 'a list
-
-module M : S2' = struct
-  type 'a t = 'a list
-end
-
-   ?  what about with destructive substitution? *)
 
 (* Test 3: Recursive modules, with and without layout annotations *)
 module rec Foo3 : sig
@@ -242,7 +266,6 @@ and Bar3 : sig type 'a t type s = Foo3/2.t t end
 
 (* Test 4: Nondep typedecl layout approximation in the Nondep_cannot_erase
    case. *)
-
 module F4(X : sig type t end) = struct
   type s = Foo of X.t
 end
@@ -296,3 +319,46 @@ Line 1, characters 10-15:
 Error: This type M4'.s should be an instance of type 'a
        M4'.s has layout immediate, which is not a sublayout of void.
 |}];;
+
+(* Test 5: Destructive substitution *)
+module type S3_1 = sig
+  type ('a : immediate) t
+  val f : 'a -> 'a t
+end
+
+module type S3_1' = S3_1 with type 'a t := 'a list
+
+module M3_1 : S3_1' = struct
+  let f x = [x]
+end
+
+let x3 = M3_1.f 42
+
+let x3' = M3_1.f "test";;
+[%%expect{|
+module type S3_1 = sig type 'a t val f : 'a -> 'a t end
+module type S3_1' = sig val f : 'a -> 'a list end
+module M3_1 : S3_1'
+val x3 : int list = [42]
+Line 14, characters 17-23:
+14 | let x3' = M3_1.f "test";;
+                      ^^^^^^
+Error: This expression has type string but an expression was expected of type
+         'a
+       string has layout value, which is not a sublayout of immediate.
+|}]
+
+module type S3_2 = sig
+  type t [@@immediate]
+end
+
+module type S3_2' = S3_2 with type t := string;;
+[%%expect{|
+module type S3_2 = sig type t [@@immediate] end
+Line 5, characters 30-46:
+5 | module type S3_2' = S3_2 with type t := string;;
+                                  ^^^^^^^^^^^^^^^^
+Error: This type has layout value, which is not a sublayout of immediate.
+|}]
+
+
