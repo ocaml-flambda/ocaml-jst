@@ -23,6 +23,7 @@ type void_record = { vr_void : t_void; vr_int : int; }
 type void_unboxed_record = { vur_void : t_void; } [@@unboxed]
 |}];;
 
+(*************************************************)
 (* Test 1: Reject non-value function arg/returns *)
 module type S = sig
   val f : t_any -> int
@@ -95,6 +96,7 @@ Error: This expression has type 'a but an expression was expected of type
        t_void has layout void, which is not a sublayout of value.
 |}];;
 
+(*********************************************)
 (* Test 2: Permit value function arg/returns *)
 module type S = sig
   val f1 : t_value -> t_value
@@ -105,6 +107,7 @@ end;;
 module type S = sig val f1 : t_value -> t_value val f2 : t_imm -> t_imm64 end
 |}];;
 
+(**************************************)
 (* Test 3: basic annotated parameters *)
 type 'a [@immediate] imm_id = 'a
 
@@ -151,6 +154,7 @@ Error: This expression has type string but an expression was expected of type
        string has layout value, which is not a sublayout of immediate.
 |}]
 
+(************************************)
 (* Test 4: parameters and recursion *)
 type 'a [@immediate] t4
 and s4 = string t4;;
@@ -219,6 +223,7 @@ type s4 = string t4
 and 'a t4
 |}];;
 
+(************************************************************)
 (* Test 4: You can touch a void, but not return it directly *)
 type 'a [@void] void4 = Void4  of 'a
 type 'a [@any] any4 = Any4 of 'a
@@ -289,6 +294,7 @@ Error: This expression has type 'a but an expression was expected of type 'a0
 (* CJC XXX errors: understand what's going on with Principal mode here (and improve
    error messages generally *)
 
+(****************************************)
 (* Test 5: explicitly polymorphic types *)
 type ('a : immediate) t5_imm = T5imm of 'a
 type ('a : value) t5_val = T5val of 'a;;
@@ -329,8 +335,8 @@ Error: This method has type 'b -> unit which is less general than
 
 (* CJC XXX add more tests here once you can annotate these types with layouts *)
 
-(* Test 6 *)
-(* This one hits the layout check in unify_var *)
+(*****************************************)
+(* Test 6: the layout check in unify_var *)
 type 'a [@immediate] t6 = Foo6 of 'a
 
 type t6' = (int * int) t6;;
@@ -343,6 +349,7 @@ Error: This type int * int should be an instance of type 'a
        int * int has layout value, which is not a sublayout of immediate.
 |}]
 
+(**********************************************************)
 (* Test 7: Polymorphic variants take value args (for now) *)
 module M7_1 = struct
   type foo1 = [ `Foo1 of int | `Baz1 of t_void | `Bar1 of string ];;
@@ -398,6 +405,7 @@ Error: Polymorphic variant argument types must have layout value.
         void_unboxed_record has layout void, which is not a sublayout of value.
 |}];;
 
+(************************************************)
 (* Test 8: Tuples only work on values (for now) *)
 module M8_1 = struct
   type foo1 = int * t_void * [ `Foo1 of int | `Bar1 of string ];;
@@ -492,6 +500,7 @@ Error: This expression has type t_void but an expression was expected of type
        t_void has layout void, which is not a sublayout of value.
 |}];;
 
+(*************************************************)
 (* Test 9: layouts are checked by "more general" *)
 
 (* This hits the first linktype in moregen (no expansion required to see it's a
@@ -550,6 +559,7 @@ Error: Signature mismatch:
        Values do not match: val x : 'a t is not included in val x : string
 |}]
 
+(**************************************)
 (* Test 10: send works only on values *)
 module M10 = struct
   type ('a : void) t = { x : int; v : 'a }
@@ -566,6 +576,7 @@ Error: This expression has type 'a
 |}]
 (* CJC XXX errors *)
 
+(**************************************************************)
 (* Test 11: variables bound in classes must have layout value *)
 
 (* Hits `Pcl_let` *)
@@ -585,30 +596,169 @@ Error: Variables bound in a class must have layout value.
 |}];;
 
 (* Hits the Cfk_concrete case of Pcf_val *)
-class foo v =
-  object
-    val bar = v.vr_void
-  end;;
+module M11_2 = struct
+  class foo v =
+    object
+      val bar = v.vr_void
+    end
+end;;
 [%%expect{|
-Line 3, characters 8-11:
-3 |     val bar = v.vr_void
-            ^^^
+Line 4, characters 10-13:
+4 |       val bar = v.vr_void
+              ^^^
 Error: Variables bound in a class must have layout value.
        bar has layout void, which is not a sublayout of value.
 |}];;
 
 (* Hits the Cfk_virtual case of Pcf_val *)
-class virtual foo =
-  object
-    val virtual bar : t_void
-  end;;
+module M11_3 = struct
+  class virtual foo =
+    object
+      val virtual bar : t_void
+    end
+end;;
 [%%expect{|
-Line 3, characters 16-19:
-3 |     val virtual bar : t_void
-                    ^^^
+Line 4, characters 18-21:
+4 |       val virtual bar : t_void
+                      ^^^
 Error: Variables bound in a class must have layout value.
        bar has layout void, which is not a sublayout of value.
 |}];;
+
+(***********************************************************)
+(* Test 12: built-in type constructors work only on values *)
+
+(* lazy *)
+type t12 = t_void Lazy.t;;
+[%%expect{|
+Line 1, characters 11-17:
+1 | type t12 = t_void Lazy.t;;
+               ^^^^^^
+Error: This type t_void should be an instance of type 'a
+       t_void has layout void, which is not a sublayout of value.
+|}];;
+
+let x12 (VV v) = lazy v;;
+[%%expect{|
+Line 1, characters 22-23:
+1 | let x12 (VV v) = lazy v;;
+                          ^
+Error: This expression has type t_void but an expression was expected of type
+         'a
+       t_void has layout void, which is not a sublayout of value.
+|}];;
+
+let x12 v =
+  match v with
+  | lazy v -> VV v
+[%%expect{|
+Line 3, characters 17-18:
+3 |   | lazy v -> VV v
+                     ^
+Error: This expression has type 'a but an expression was expected of type
+         t_void
+       t_void has layout void, which is not a sublayout of value.
+|}];;
+
+(* option *)
+type t12 = t_void option;;
+[%%expect{|
+Line 1, characters 11-17:
+1 | type t12 = t_void option;;
+               ^^^^^^
+Error: This type t_void should be an instance of type 'a
+       t_void has layout void, which is not a sublayout of value.
+|}];;
+
+let x12 (VV v) = Some v;;
+[%%expect{|
+Line 1, characters 22-23:
+1 | let x12 (VV v) = Some v;;
+                          ^
+Error: This expression has type t_void but an expression was expected of type
+         'a
+       t_void has layout void, which is not a sublayout of value.
+|}];;
+
+let x12 v =
+  match v with
+  | Some v -> VV v
+  | None -> assert false
+[%%expect{|
+Line 3, characters 17-18:
+3 |   | Some v -> VV v
+                     ^
+Error: This expression has type 'a but an expression was expected of type
+         t_void
+       t_void has layout void, which is not a sublayout of value.
+|}];;
+
+(* list *)
+type t12 = t_void list;;
+[%%expect{|
+Line 1, characters 11-17:
+1 | type t12 = t_void list;;
+               ^^^^^^
+Error: This type t_void should be an instance of type 'a
+       t_void has layout void, which is not a sublayout of value.
+|}];;
+
+let x12 (VV v) = [v];;
+[%%expect{|
+Line 1, characters 18-19:
+1 | let x12 (VV v) = [v];;
+                      ^
+Error: This expression has type t_void but an expression was expected of type
+         'a
+       t_void has layout void, which is not a sublayout of value.
+|}];;
+
+let x12 v =
+  match v with
+  | [v] -> VV v
+  | _ -> assert false
+[%%expect{|
+Line 3, characters 14-15:
+3 |   | [v] -> VV v
+                  ^
+Error: This expression has type 'a but an expression was expected of type
+         t_void
+       t_void has layout void, which is not a sublayout of value.
+|}];;
+
+(* array *)
+type t12 = t_void array;;
+[%%expect{|
+Line 1, characters 11-17:
+1 | type t12 = t_void array;;
+               ^^^^^^
+Error: This type t_void should be an instance of type 'a
+       t_void has layout void, which is not a sublayout of value.
+|}];;
+
+let x12 (VV v) = [| v |];;
+[%%expect{|
+Line 1, characters 20-21:
+1 | let x12 (VV v) = [| v |];;
+                        ^
+Error: This expression has type t_void but an expression was expected of type
+         'a
+       t_void has layout void, which is not a sublayout of value.
+|}];;
+
+let x12 v =
+  match v with
+  | [| v |] -> VV v
+  | _ -> assert false
+[%%expect{|
+Line 3, characters 18-19:
+3 |   | [| v |] -> VV v
+                      ^
+Error: This expression has type 'a but an expression was expected of type
+         t_void
+       t_void has layout void, which is not a sublayout of value.
+|}];;
+
 
 (* CR ccasinghino: Once we allow non-value top-level module definitions, add
    tests showing that things get defaulted to value.
