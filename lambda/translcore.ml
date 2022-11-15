@@ -1650,6 +1650,8 @@ and transl_match ~scopes e arg sort pat_expr_list partial void_k =
         in
         let ids = List.map (fun (id, _) -> id) ids_kinds in
         let vids = List.map Ident.rename ids in
+        (* Note that alpha_pat turns the removed void vars to Tpat_any, which is
+           fine because their uses are compiled away. *)
         let pv = alpha_pat (List.combine ids vids) pv in
         (* Also register the names of the exception so Re-raise happens. *)
         iter_exn_names Translprim.add_exception_ident pe;

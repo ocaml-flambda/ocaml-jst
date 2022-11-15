@@ -1480,11 +1480,13 @@ and precompile_or ~arg_id (cls : Simple.clause list) ors args def k =
             let vars =
               (* bound variables of the or-pattern and used in the orpm
                  actions *)
-              (* CJC XXX void bound idents not safe for value kind *)
               Typedtree.pat_bound_idents_full orp
               |> List.filter (fun (id, _, _) -> Ident.Set.mem id pm_fv)
               |> List.map (fun (id, _, ty) ->
                      (id, Typeopt.value_kind orp.pat_env ty))
+              (* Void variables don't reach value_kind because they are compiled
+                 out of the action, and are therefore filtered out the pm_fv
+                 filter *)
             in
             let or_num = next_raise_count () in
             let new_patl = Patterns.omega_list patl in
@@ -1745,7 +1747,6 @@ let divide_variant ~scopes row ctx { cases = cl; args; default = def } =
           variants
         else
           let tag = Btype.hash_variant lab in
-          (* CJC XXX does this take into account void args correctly? *)
           match pato with
           | None ->
               add_in_div
