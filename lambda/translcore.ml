@@ -819,8 +819,6 @@ and transl_exp0 ~in_new_scope ~scopes void_k e =
                      (if for_region then maybe_region body else body);
         for_region;
       }
-  (* CJC XXX in the next few cases, write test cases checking that the type
-     checker doesn't allow void in any of the relevant places *)
   | Texp_send(_, _, Some exp, _) -> transl_exp ~scopes None exp
   | Texp_send(expr, met, None, pos) ->
       let obj = transl_exp ~scopes None expr in
@@ -1427,10 +1425,6 @@ and transl_let ~scopes ?(add_regions=false) ?(in_structure=false)
           let lam =
             transl_bound_exp ~scopes ~in_structure param_void_k pat expr
           in
-          (* CJC XXX think about whether add_function_attributes makes sense for
-             void things.  I don't think we can inline them, for example,
-             because the handler won't be in the right place - but can you have
-             that attribute on a void in the first place?  *)
           let lam = Translattribute.add_function_attributes lam vb_loc attr in
           let lam = if add_regions then maybe_region lam else lam in
           let mk_body = transl rem in
@@ -1455,7 +1449,6 @@ and transl_let ~scopes ?(add_regions=false) ?(in_structure=false)
         let lam =
           transl_bound_exp ~scopes ~in_structure bound_void_k vb_pat expr
         in
-        (* CJC XXX as above *)
         let lam =
           Translattribute.add_function_attributes lam vb_loc vb_attributes
         in
