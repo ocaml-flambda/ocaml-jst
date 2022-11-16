@@ -777,7 +777,15 @@ Error: Constraints are not satisfied in this type.
        Type foo13 list should be an instance of 'a list
 |}];;
 
-
+(* Test 14: Type aliases need not have layout value *)
+(* (In [transl_type_aux], this hits the layout given to the type variable in the
+   Not_found case of the Ptyp_alias case. *)
+type ('a : void) t14
+type ('a, 'b) foo14 = ('a as 'b) t14 -> 'b t14;;
+[%%expect{|
+type 'a t14
+type ('a, 'b) foo14 = 'a t14 -> 'a t14 constraint 'b = 'a
+|}]
 
 
 (* CR ccasinghino: Once we allow non-value top-level module definitions, add

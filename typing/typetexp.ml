@@ -421,8 +421,7 @@ and transl_type_aux env policy mode styp =
           ty
         with Not_found ->
           if !Clflags.principal then begin_def ();
-          (* CJC XXX value?  Why not any? *)
-          let t = newvar Type_layout.value in
+          let t = newvar Type_layout.any in
           used_variables :=
             TyVarMap.add alias (t, styp.ptyp_loc) !used_variables;
           let ty = transl_type env policy mode st in
