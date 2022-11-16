@@ -109,8 +109,8 @@ let enter_type rec_flag env sdecl (id, uid) =
   in
   let arity = List.length sdecl.ptype_params in
 
-  (* There is some trickiness going on here with the layout.  It relies and
-     expands on an old trick used in the manifest of the below decl.
+  (* There is some trickiness going on here with the layout.  It expands on an
+     old trick used in the manifest of [decl] below.
 
      Consider a declaration like:
 
@@ -118,31 +118,49 @@ let enter_type rec_flag env sdecl (id, uid) =
         and foo = Bar
 
      When [enter_type] is called, we haven't yet analyzed anything about the
-     manifests and kinds of the declarations, so it's natural to give them
-     layout Any.  But, while translating [t]'s manifest, we'll need to know
-     [foo] has layout value, because it is used as a function argument.  And
-     this check will occur before we've looked at [foo] at all.
+     manifests and kinds of the declarations, so it's natural to give [t] and
+     [foo] layout [Any].  But, while translating [t]'s manifest, we'll need to
+     know [foo] has layout [value], because it is used as a function argument.
+     And this check will occur before we've looked at [foo] at all.
 
      One can imagine solutions, like estimating the layout based on the kind
      (tricky for unboxed) or parameterizing the type_expr translation with an
      option to not do full layout checking in some cases and fix it up later
      (ugly).
 
-     Instead, we (CJC XXX explain the pre-existing manifest type var trick, how
-     it solves to solve the problem of allowing:
+     Instead, we build on an old trick that was used to handle constraints.
+     Consider declarations like:
 
        type 'a t = 'a constraint 'a = ('b * 'c)
 
        type s = r t
        and r = int * string
 
-     while rejecting
+     Here we face a similar problem in the context of constraints.  While
+     checking the definition of [s], which is [r t], we'll need to know that
+     [t]'s constraint is satisfied (i.e., that [r] is a tuple).  But we don't
+     know anything about [r] yet!
 
-       ...
-       and r = int list
+     The solution, in three parts:
+     1) [enter_type], here, is used to construct [temp_env], an environment
+        where we set the manifest of recursively defined things like [s]
+        and [t] to just be a fresh type variable.
+     2) [transl_declaration] checks constraints in [temp_env].  This succeeds,
+        because [r]'s type is a variable and therefore unifies with
+        ['b * 'c]
+     3) After we've built the real environment with the actual manifests
+        ([new_env] in [transl_type_decl]), the function [update_type] checks
+        that the manifests from the old environment (here containing the
+        information that [r] must be some pair to satisfy the constraint) are
+        unified with the manifests from the new environment, ensuring the actual
+        definitions satisfy those constraints.
 
-     And how we now do it even if there's not manifest, which solves the layout
-     problem) *)
+     If [r] were, e.g., defined to be [int list], step 3 would fail.
+
+     To handle the layout checks above, we piggyback off that approach - the
+     fresh type variable put in manifests here is updated when constraints are
+     checked and then unified with the real manifest and checked against the
+     kind. *)
   let layout =
     Type_layout.of_attributes ~default:Type_layout.any sdecl.ptype_attributes
   in
@@ -161,7 +179,7 @@ let enter_type rec_flag env sdecl (id, uid) =
       type_arity = arity;
       type_kind = Types.kind_abstract ~layout;
       type_private = sdecl.ptype_private;
-      (* CJC errors: XXX putting layout here, rather than "any", is causing us
+      (* CJC XXX errors: putting layout here, rather than "any", is causing us
          to fail earlier and get bad error messages in some cases.  (e.g.,
          [tests/typing-immediate/immediate.ml], line 149, fails in [update_type]
          rather than at the very end of [transl_type_decl], resulting in a very
