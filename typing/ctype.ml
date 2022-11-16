@@ -3551,10 +3551,12 @@ let filter_arrow env t l =
   match t.desc with
     Tvar {layout} ->
       let lv = t.level in
-      (* Layouts: This is a primary place where we are restricting function
-         arguments / returns to have layout value.  When we decide to drop that
-         restriction, we can probably allow [t1] to be any sort, and [t2] to be
-         just any. *)
+      (* Layouts: This is one of two primary places where we are restricting
+         function arguments / returns to have layout value.  This one handles
+         function types that arise from inference, and the check in
+         [Typetexp.transl_type_aux] handles function types explicitly written in
+         the source program.  When we decide to drop that restriction, we can
+         probably allow [t1] to be any sort, and [t2] to be just any. *)
       let t1 = newvar2 lv Type_layout.value in
       let t2 = newvar2 lv Type_layout.value in
       let marg = Btype.Alloc_mode.newvar () in

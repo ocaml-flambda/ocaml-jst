@@ -411,9 +411,9 @@ module M8_1 = struct
   type foo1 = int * t_void * [ `Foo1 of int | `Bar1 of string ];;
 end
 [%%expect{|
-Line 2, characters 14-63:
+Line 2, characters 20-26:
 2 |   type foo1 = int * t_void * [ `Foo1 of int | `Bar1 of string ];;
-                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        ^^^^^^
 Error: Tuple element types must have layout value.
         t_void has layout void, which is not a sublayout of value.
 |}];;
@@ -422,9 +422,9 @@ module M8_2 = struct
   type result = V of (string * void_unboxed_record) | I of int
 end;;
 [%%expect {|
-Line 2, characters 22-50:
+Line 2, characters 31-50:
 2 |   type result = V of (string * void_unboxed_record) | I of int
-                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                                   ^^^^^^^^^^^^^^^^^^^
 Error: Tuple element types must have layout value.
         void_unboxed_record has layout void, which is not a sublayout of value.
 |}];;
@@ -477,11 +477,23 @@ module M8_6 = struct
   type 'a t = int * 'a constraint 'a = void_unboxed_record
 end;;
 [%%expect {|
-Line 2, characters 14-22:
+Line 2, characters 34-58:
 2 |   type 'a t = int * 'a constraint 'a = void_unboxed_record
-                  ^^^^^^^^
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^
+Error: The type constraints are not consistent.
+Type 'a is not compatible with type void_unboxed_record
+void_unboxed_record has layout void, which is not a sublayout of value.
+|}];;
+
+module type S8_7 = sig
+  val x : int * t_void
+end;;
+[%%expect{|
+Line 2, characters 16-22:
+2 |   val x : int * t_void
+                    ^^^^^^
 Error: Tuple element types must have layout value.
-        void_unboxed_record has layout void, which is not a sublayout of value.
+        t_void has layout void, which is not a sublayout of value.
 |}];;
 
 module M8_9 (X : sig

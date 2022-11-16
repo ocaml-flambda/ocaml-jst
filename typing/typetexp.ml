@@ -27,6 +27,8 @@ module Alloc_mode = Btype.Alloc_mode
 
 exception Already_bound
 
+type value_loc = Fun_arg | Fun_ret | Tuple
+
 type error =
     Unbound_type_variable of string
   | Undefined_type_constructor of Path.t
@@ -48,8 +50,8 @@ type error =
   | Opened_object of Path.t option
   | Not_an_object of type_expr
   | Local_not_enabled
-  | Non_value_function of
-      {is_arg : bool; typ : type_expr; err : Type_layout.Violation.t}
+  | Non_value of
+      {vloc : value_loc; typ : type_expr; err : Type_layout.Violation.t}
 
 exception Error of Location.t * Env.t * error
 exception Error_forward of Location.error
@@ -269,8 +271,7 @@ and transl_type_aux env policy mode styp =
           let arg_mode = Alloc_mode.of_const arg_mode in
           let ret_mode = Alloc_mode.of_const ret_mode in
           (* Layouts: For now, we require function arguments and returns to have
-             layout value. *)
-          (* CJC XXX is this the right place to do that?  remove these error types if not *)
+             layout value.  See comment in [Ctype.filter_arrow].  *)
           begin match
             constrain_type_layout env arg_ty Type_layout.value,
             constrain_type_layout env ret_cty.ctyp_type Type_layout.value
@@ -278,12 +279,11 @@ and transl_type_aux env policy mode styp =
           | Ok _, Ok _ -> ()
           | Error e, _ ->
             raise (Error(arg.ptyp_loc, env,
-                         Non_value_function
-                           {is_arg = true; err = e; typ = arg_ty}))
+                         Non_value {vloc = Fun_arg; err = e; typ = arg_ty}))
           | _, Error e ->
             raise (Error(ret.ptyp_loc, env,
-                         Non_value_function
-                           {is_arg = false; err = e; typ = ret_cty.ctyp_type}))
+                         Non_value
+                           {vloc = Fun_ret; err = e; typ = ret_cty.ctyp_type}))
           end;
           let ty =
             newty
@@ -296,6 +296,13 @@ and transl_type_aux env policy mode styp =
   | Ptyp_tuple stl ->
     assert (List.length stl >= 2);
     let ctys = List.map (transl_type env policy Alloc_mode.Global) stl in
+    List.iter (fun {ctyp_type; ctyp_loc} ->
+      match constrain_type_layout env ctyp_type Type_layout.value with
+      | Ok _ -> ()
+      | Error e ->
+        raise (Error(ctyp_loc, env,
+                     Non_value {vloc = Tuple; err = e; typ = ctyp_type})))
+      ctys;
     let ty = newty (Ttuple (List.map (fun ctyp -> ctyp.ctyp_type) ctys)) in
     ctyp (Ttyp_tuple ctys) ty
   | Ptyp_constr(lid, stl) ->
@@ -896,9 +903,14 @@ let report_error env ppf = function
   | Local_not_enabled ->
       fprintf ppf "@[The local extension is disabled@ \
                      To enable it, pass the '-extension local' flag@]"
-  | Non_value_function {is_arg; typ; err} ->
-    let s = if is_arg then "argument" else "return" in
-    fprintf ppf "@[Function %s types must have layout value.@ \ %a@]"
+  | Non_value {vloc; typ; err} ->
+    let s =
+      match vloc with
+      | Fun_arg -> "Function argument"
+      | Fun_ret -> "Function return"
+      | Tuple -> "Tuple element"
+    in
+    fprintf ppf "@[%s types must have layout value.@ \ %a@]"
       s (Type_layout.Violation.report_with_offender
            ~offender:(fun ppf -> Printtyp.type_expr ppf typ)) err
 

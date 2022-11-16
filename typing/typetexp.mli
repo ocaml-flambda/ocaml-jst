@@ -43,6 +43,8 @@ val widen: variable_context -> unit
 
 exception Already_bound
 
+type value_loc = Fun_arg | Fun_ret | Tuple
+
 type error =
     Unbound_type_variable of string
   | Undefined_type_constructor of Path.t
@@ -64,9 +66,8 @@ type error =
   | Opened_object of Path.t option
   | Not_an_object of type_expr
   | Local_not_enabled
-  | Non_value_function of
-      {is_arg : bool; typ : type_expr; err : Type_layout.Violation.t}
-
+  | Non_value of
+      {vloc : value_loc; typ : type_expr; err : Type_layout.Violation.t}
 
 exception Error of Location.t * Env.t * error
 
