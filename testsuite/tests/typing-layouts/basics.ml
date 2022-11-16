@@ -759,6 +759,26 @@ Error: This expression has type 'a but an expression was expected of type
        t_void has layout void, which is not a sublayout of value.
 |}];;
 
+(* Test 13: Examples motivating the trick with the manifest in [enter_type] *)
+type t13 = foo13 list
+and foo13 = string;;
+[%%expect{|
+type t13 = foo13 list
+and foo13 = string
+|}];;
+
+type t13 = foo13 list
+and foo13 = t_void;;
+[%%expect{|
+Line 1, characters 11-21:
+1 | type t13 = foo13 list
+               ^^^^^^^^^^
+Error: Constraints are not satisfied in this type.
+       Type foo13 list should be an instance of 'a list
+|}];;
+
+
+
 
 (* CR ccasinghino: Once we allow non-value top-level module definitions, add
    tests showing that things get defaulted to value.
