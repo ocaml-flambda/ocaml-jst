@@ -52,6 +52,7 @@ type mapper = {
   include_declaration: mapper -> include_declaration -> include_declaration;
   include_description: mapper -> include_description -> include_description;
   label_declaration: mapper -> label_declaration -> label_declaration;
+  layout_annotation: mapper -> Asttypes.layout_annotation -> Asttypes.layout_annotation;
   location: mapper -> Location.t -> Location.t;
   module_binding: mapper -> module_binding -> module_binding;
   module_declaration: mapper -> module_declaration -> module_declaration;
@@ -85,6 +86,7 @@ let map_tuple3 f1 f2 f3 (x, y, z) = (f1 x, f2 y, f3 z)
 let map_opt f = function None -> None | Some x -> Some (f x)
 
 let map_loc sub {loc; txt} = {loc = sub.location sub loc; txt}
+let map_loc2 sub f {loc; txt} = {loc = sub.location sub loc; txt = f txt}
 
 module C = struct
   (* Constants *)
@@ -153,6 +155,9 @@ module T = struct
         package ~loc ~attrs (map_loc sub lid)
           (List.map (map_tuple (map_loc sub) (sub.typ sub)) l)
     | Ptyp_extension x -> extension ~loc ~attrs (sub.extension sub x)
+    | Ptyp_layout (t, lay) -> layout ~loc ~attrs
+                                (sub.typ sub t)
+                                (map_loc2 sub (sub.layout_annotation sub) lay)
 
   let map_type_declaration sub
       {ptype_name; ptype_params; ptype_cstrs;
@@ -738,6 +743,8 @@ let default_mapper =
          | PTyp x -> PTyp (this.typ this x)
          | PPat (x, g) -> PPat (this.pat this x, map_opt (this.expr this) g)
       );
+
+    layout_annotation = (fun _this l -> l);
   }
 
 let extension_of_error {kind; main; sub} =

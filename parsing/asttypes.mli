@@ -65,3 +65,10 @@ type variance =
 type injectivity =
   | Injective
   | NoInjectivity
+
+type layout_annotation =
+  | Any
+  | Value
+  | Void
+  | Immediate64
+  | Immediate

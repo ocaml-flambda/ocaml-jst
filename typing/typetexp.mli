@@ -70,6 +70,7 @@ type error =
   | Local_not_enabled
   | Non_value of
       {vloc : value_loc; typ : type_expr; err : Type_layout.Violation.t}
+  | Bad_layout_annot of type_expr * Type_layout.Violation.t
 
 exception Error of Location.t * Env.t * error
 

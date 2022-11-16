@@ -26,6 +26,12 @@ let in_file name =
 let none = in_file "_none_";;
 let is_none l = (l = none);;
 
+let combine { loc_start = start1; loc_end = _end1; loc_ghost = g1 }
+            { loc_start = _start2; loc_end = end2; loc_ghost = g2 } =
+  (* can't check ordering of positions, because there is no ordering
+     operator on positions *)
+  { loc_start = start1; loc_end = end2; loc_ghost = g1 && g2 }
+
 let curr lexbuf = {
   loc_start = lexbuf.lex_start_p;
   loc_end = lexbuf.lex_curr_p;
@@ -77,6 +83,7 @@ type 'a loc = {
 
 let mkloc txt loc = { txt ; loc }
 let mknoloc txt = mkloc txt none
+let map f { txt; loc} = {txt = f txt; loc}
 
 (******************************************************************************)
 (* Input info *)

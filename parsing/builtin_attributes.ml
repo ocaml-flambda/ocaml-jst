@@ -265,13 +265,6 @@ let explicit_arity =
        | _ -> false
     )
 
-type layout_annotation =
-  | Any
-  | Value
-  | Void
-  | Immediate64
-  | Immediate
-
 let layout attrs =
   List.find_map
     (fun a -> match a.attr_name.txt with

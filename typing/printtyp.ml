@@ -1289,11 +1289,11 @@ let rec tree_of_type_decl id decl =
   let (name, args) = type_defined decl in
   let constraints = tree_of_constraints params in
   let olayout_of_layout = function
-    | Builtin_attributes.Any -> Olay_any
-    | Builtin_attributes.Value -> Olay_value
-    | Builtin_attributes.Void -> Olay_void
-    | Builtin_attributes.Immediate64 -> Olay_immediate64
-    | Builtin_attributes.Immediate -> Olay_immediate
+    | Asttypes.Any -> Olay_any
+    | Asttypes.Value -> Olay_value
+    | Asttypes.Void -> Olay_void
+    | Asttypes.Immediate64 -> Olay_immediate64
+    | Asttypes.Immediate -> Olay_immediate
   in
   let lay =
     Option.map olayout_of_layout

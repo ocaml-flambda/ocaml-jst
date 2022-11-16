@@ -46,6 +46,7 @@ type iterator = {
   include_declaration: iterator -> include_declaration -> unit;
   include_description: iterator -> include_description -> unit;
   label_declaration: iterator -> label_declaration -> unit;
+  layout_annotation:iterator -> Asttypes.layout_annotation -> unit;
   location: iterator -> Location.t -> unit;
   module_binding: iterator -> module_binding -> unit;
   module_declaration: iterator -> module_declaration -> unit;
@@ -133,6 +134,10 @@ module T = struct
         iter_loc sub lid;
         List.iter (iter_tuple (iter_loc sub) (sub.typ sub)) l
     | Ptyp_extension x -> sub.extension sub x
+    | Ptyp_layout (t, layout) ->
+        sub.typ sub t;
+        iter_loc sub layout;
+        sub.layout_annotation sub layout.txt
 
   let iter_type_declaration sub
       {ptype_name; ptype_params; ptype_cstrs;
@@ -670,4 +675,6 @@ let default_iterator =
          | PTyp x -> this.typ this x
          | PPat (x, g) -> this.pat this x; iter_opt (this.expr this) g
       );
+
+    layout_annotation = (fun _this _l -> ());
   }

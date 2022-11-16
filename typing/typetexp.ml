@@ -53,6 +53,7 @@ type error =
   | Local_not_enabled
   | Non_value of
       {vloc : value_loc; typ : type_expr; err : Type_layout.Violation.t}
+  | Bad_layout_annot of type_expr * Type_layout.Violation.t
 
 exception Error of Location.t * Env.t * error
 exception Error_forward of Location.error
@@ -659,6 +660,17 @@ and transl_type_aux env policy mode styp =
            }) ty
   | Ptyp_extension ext ->
       raise (Error_forward (Builtin_attributes.error_of_extension ext))
+  | Ptyp_layout (inner_type, layout_annot) ->
+      let ctyp = transl_type env policy mode inner_type in
+      let type_expr = ctyp.ctyp_type in
+      let layout = Type_layout.of_layout_annotation layout_annot.txt in
+      begin match constrain_type_layout env type_expr layout with
+             | Ok _ -> ()
+             | Error err ->
+                 raise (Error(styp.ptyp_loc, env,
+                              Bad_layout_annot(type_expr, err)))
+      end;
+      ctyp
 
 and transl_poly_type env policy mode t =
   transl_type env policy mode (Ast_helper.Typ.force_poly t)
@@ -960,6 +972,10 @@ let report_error env ppf = function
     fprintf ppf "@[%s types must have layout value.@ \ %a@]"
       s (Type_layout.Violation.report_with_offender
            ~offender:(fun ppf -> Printtyp.type_expr ppf typ)) err
+  | Bad_layout_annot(ty, violation) ->
+    fprintf ppf "@[<b 2>Bad layout annotation:@ %a@]"
+      (Type_layout.Violation.report_with_offender
+         ~offender:(fun ppf -> Printtyp.type_expr ppf ty)) violation
 
 let () =
   Location.register_error_of_exn

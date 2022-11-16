@@ -19,6 +19,13 @@ open Lexing;;
 open Location;;
 open Parsetree;;
 
+let layout_annotation_to_string = function
+  | Any -> "any"
+  | Value -> "value"
+  | Immediate -> "immediate"
+  | Immediate64 -> "immediate64"
+  | Void -> "void"
+
 let fmt_position with_name f l =
   let fname = if with_name then l.pos_fname else "" in
   if l.pos_lnum = -1
@@ -201,6 +208,10 @@ let rec core_type i ppf x =
   | Ptyp_extension (s, arg) ->
       line i ppf "Ptyp_extension \"%s\"\n" s.txt;
       payload i ppf arg
+  | Ptyp_layout (t, layout) ->
+      line i ppf "Ptyp_layout %s"
+        (layout_annotation_to_string layout.txt);
+      core_type i ppf t
 
 and package_with i ppf (s, t) =
   line i ppf "with type %a\n" fmt_longident_loc s;

@@ -301,8 +301,10 @@ let unclosed opening_name opening_loc closing_name closing_loc =
   raise(Syntaxerr.Error(Syntaxerr.Unclosed(make_loc opening_loc, opening_name,
                                            make_loc closing_loc, closing_name)))
 
-let expecting loc nonterm =
-    raise Syntaxerr.(Error(Expecting(make_loc loc, nonterm)))
+let expecting_loc (loc : Location.t) (nonterm : string) =
+    raise Syntaxerr.(Error(Expecting(loc, nonterm)))
+let expecting (loc : Lexing.position * Lexing.position) nonterm =
+     expecting_loc (make_loc loc) nonterm
 
 let not_expecting loc nonterm =
     raise Syntaxerr.(Error(Not_expecting(make_loc loc, nonterm)))
@@ -659,13 +661,69 @@ let mk_directive ~loc name arg =
       pdir_loc = make_loc loc;
     }
 
-let check_layout loc id =
-  begin
-    match id with
-    | ("any" | "value" | "void" | "immediate64" | "immediate") -> ()
-    | _ -> expecting loc "layout"
-  end;
-  Attr.mk ~loc:Location.none (mknoloc id) (PStr [])
+(* returns both the translated layout and the string, because
+   the string is useful for building an Attribute *)
+let check_layout loc id : (layout_annotation * string) with_loc =
+  let layout_annotation = match id with
+    | "any" -> Any
+    | "value" -> Value
+    | "void" -> Void
+    | "immediate64" -> Immediate64
+    | "immediate" -> Immediate
+    | _ -> expecting_loc loc "layout"
+  in
+  mkloc (layout_annotation, id) loc
+
+(* See Note [Parsing layout annotations in types] *)
+let check_layout_from_type layout_type =
+  match layout_type.ptyp_desc with
+  | Ptyp_constr({ txt = Lident lay_string }, []) ->
+    Location.map fst (check_layout layout_type.ptyp_loc lay_string)
+  | _ -> expecting_loc layout_type.ptyp_loc "layout"
+
+(* Note [Parsing layout annotations in types]
+   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   We wish to be able to parse [(int list : value)] as a layout annotation
+   in a type. This is slightly fraught, though: if we see [(int : value ...]
+   as we're parsing, have we seen the beginning a layout annotation, or have we
+   seen the beginning of a function type whose argument is labeled [int]?
+
+   In order to build a non-conflicting parser with support for these layout
+   annotations, we must keep the productions for layout annotations in line
+   with those for labeled functions. The key action happens in the definition
+   of nonterminal [non_ident_atomic_type]. We have two problems to solve:
+
+   1. Before the COLON
+
+      There are two different productions for layout annotations, one beginning with
+      [LPAREN LIDENT COLON] and the other wish [LPAREN non_ident_atomic_type COLON]. The
+      former nicely overlaps with the production for labeled functions (in
+      [strict_function_type]); this overlap allows menhir to avoid conflicts.
+      We similarly must be careful to avoid conflicts between these two productions,
+      which is why we define non_ident_atomic_type, which parses types that are
+      anything other than a single identifier.
+
+   2. After the COLON
+
+      Because we need to keep the labeled-function parser and the layout-annotations
+      parser lined up until the disambiguator (either an [->] or a [)]), we still
+      must be careful after the colon. Here, we use [tuple_type], which again
+      dovetails with the productions in [strict_function_type].
+
+      Of course, a layout annotation is not quite a [tuple_type], and so
+      [check_layout_from_type] converts, reporting an error if the conversion
+      is impossible.
+
+   The current design works well, but it is not as powerful as it could be.
+   In particular, the "before the colon" part accepts only non_ident_atomic_type,
+   meaning that e.g. [(int * bool * string : value)] cannot be parsed. If we
+   want to, we can extend this treatment to tuples or even function types,
+   but doing so seems under-motivated.
+*)
+
+
+
+
 
 %}
 
@@ -3106,13 +3164,15 @@ type_parameters:
 ;
 
 layout:
-  ident { check_layout $loc($1) $1 }
+  ident { check_layout (make_loc $sloc) $1 }
 ;
 
 parenthesized_type_parameter:
     type_parameter { $1 }
-  | type_variance type_variable COLON layout
-      { {$2 with ptyp_attributes = [$4]}, $1 }
+  | type_variance type_variable COLON layout_annot=layout
+      { let loc = layout_annot.loc in
+        let attr = Attr.mk ~loc (mkloc (snd layout_annot.txt) loc) (PStr []) in
+        Typ.attr $2 attr, $1 }
 ;
 
 type_parameter:
@@ -3484,6 +3544,20 @@ tuple_type:
    - variant types:                       [`A]
  *)
 atomic_type:
+  | mktyp(
+      LIDENT
+        { Ptyp_constr(mkrhs (Lident $1) $sloc, []) }
+    )
+    { $1 }
+  | non_ident_atomic_type
+    { $1 }
+;
+
+(* This accepts types that are anything but a single identifier. Note some
+   care in the Ptyp_constr case to accept both [M.t] and [t1 t2] but not
+   [t]. Why is this separate from [atomic_type]?
+   See Note [Parsing layout annotations in types]. *)
+non_ident_atomic_type:
   | LPAREN core_type RPAREN
       { $2 }
   | LPAREN MODULE ext_attributes package_type RPAREN
@@ -3493,7 +3567,9 @@ atomic_type:
         { Ptyp_var $2 }
     | UNDERSCORE
         { Ptyp_any }
-    | tys = actual_type_parameters
+    | mkrhs(strict_type_longident)
+        { Ptyp_constr($1, []) }
+    | tys = nonempty_actual_type_parameters
       tid = mkrhs(type_longident)
         { Ptyp_constr(tid, tys) }
     | LESS meth_list GREATER
@@ -3521,9 +3597,15 @@ atomic_type:
         { Ptyp_variant($3, Closed, Some $5) }
     | extension
         { Ptyp_extension $1 }
+    | LPAREN id=LIDENT COLON lay=tuple_type RPAREN
+        { let loc = $loc(id) in
+          Ptyp_layout(mktyp ~loc
+                        (Ptyp_constr(mkrhs (Lident id) loc, [])),
+                      check_layout_from_type lay) }
+    | LPAREN ty=non_ident_atomic_type COLON lay=tuple_type RPAREN
+        { Ptyp_layout(ty, check_layout_from_type lay) }
   )
-  { $1 } /* end mktyp group */
-;
+  { $1 }
 
 (* This is the syntax of the actual type parameters in an application of
    a type constructor, such as int, int list, or (int, bool) Hashtbl.t.
@@ -3538,11 +3620,14 @@ atomic_type:
 %inline actual_type_parameters:
   | /* empty */
       { [] }
+  | nonempty_actual_type_parameters
+      { $1 }
+
+%inline nonempty_actual_type_parameters:
   | ty = atomic_type
       { [ty] }
   | LPAREN tys = separated_nontrivial_llist(COMMA, core_type) RPAREN
       { tys }
-;
 
 %inline package_type: module_type
       { let (lid, cstrs, attrs) = package_type_of_module_type $1 in
@@ -3728,6 +3813,13 @@ label_longident:
 type_longident:
     mk_longident(mod_ext_longident, LIDENT)  { $1 }
 ;
+
+(* guaranteed to have at least one module prefix *)
+strict_type_longident:
+  | mod_ext_longident DOT LIDENT
+      { Ldot($1, $3) }
+;
+
 mod_longident:
     mk_longident(mod_longident, UIDENT)  { $1 }
 ;

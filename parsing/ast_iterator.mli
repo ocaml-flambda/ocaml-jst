@@ -48,6 +48,7 @@ type iterator = {
   include_declaration: iterator -> include_declaration -> unit;
   include_description: iterator -> include_description -> unit;
   label_declaration: iterator -> label_declaration -> unit;
+  layout_annotation: iterator -> Asttypes.layout_annotation -> unit;
   location: iterator -> Location.t -> unit;
   module_binding: iterator -> module_binding -> unit;
   module_declaration: iterator -> module_declaration -> unit;

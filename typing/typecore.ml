@@ -4511,7 +4511,7 @@ and type_expect_
              (Texp_poly cty, loc, sexp.pexp_attributes) :: exp.exp_extra }
   | Pexp_newtype({txt=name}, sbody) ->
       let layout =
-        Type_layout.of_layout_annotation ~default:Type_layout.value
+        Type_layout.of_layout_annotation_opt ~default:Type_layout.value
           (Builtin_attributes.layout sexp.pexp_attributes)
       in
       let ty =

@@ -85,14 +85,7 @@ val warning_scope:
 val warn_on_literal_pattern: Parsetree.attributes -> bool
 val explicit_arity: Parsetree.attributes -> bool
 
-type layout_annotation =
-  | Any
-  | Value
-  | Void
-  | Immediate64
-  | Immediate
-
-val layout: Parsetree.attributes -> layout_annotation option
+val layout: Parsetree.attributes -> Asttypes.layout_annotation option
 
 val has_unboxed: Parsetree.attributes -> bool
 val has_boxed: Parsetree.attributes -> bool
