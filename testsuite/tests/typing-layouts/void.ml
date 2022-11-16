@@ -493,9 +493,6 @@ val x : int = 3
 
 
 
-
-
-
 (* CR ccasinghino: When we allow non-values at the module level, we'll want
    void-specific test cases, including cases where the term has an indeterminate
    layout, and the signature a) mentions the term and specifies its layout, b)

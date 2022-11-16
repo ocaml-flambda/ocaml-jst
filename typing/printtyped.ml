@@ -155,14 +155,14 @@ let arg_label i ppf = function
   | Labelled s -> line i ppf "Labelled \"%s\"\n" s
 ;;
 
-let tag ppf = let open Types in function
-  | Ordinary {src_index;runtime_tag} ->
-      fprintf ppf "Ordinary {index: %d; tag: %d}" src_index runtime_tag
-  | Extension p -> fprintf ppf "Extension %a" fmt_path p
-
 let layout_array i ppf layouts =
   array (i+1) (fun _ ppf l -> fprintf ppf "%a;@ " Type_layout.format l)
     ppf layouts
+
+let tag ppf = let open Types in function
+  | Ordinary {src_index;runtime_tag} ->
+      fprintf ppf "Ordinary {index: %d; tag: %d}" src_index runtime_tag
+  | Extension (p,_) -> fprintf ppf "Extension %a" fmt_path p
 
 let variant_representation i ppf = let open Types in function
   | Variant_unboxed l ->

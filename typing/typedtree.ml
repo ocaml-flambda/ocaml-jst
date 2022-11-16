@@ -852,18 +852,22 @@ let let_bound_idents_with_modes_and_sorts bindings =
       (* Cases where we compute the sort of the inner thing from the pattern *)
       | Tpat_construct(_, cstr, patl) ->
           let sorts =
-            match cstr.cstr_inlined, cstr.cstr_repr with
-            | None, _ -> Array.to_list (Array.map Type_layout.sort_of_layout
+            match cstr.cstr_repr with
+            | Variant_unboxed _ -> [ sort ]
+            | Variant_boxed _ | Variant_extensible ->
+              Array.to_list (Array.map Type_layout.sort_of_layout
                                           cstr.cstr_arg_layouts)
-            | Some _, Variant_unboxed _ -> [ sort ]
-            | Some _, (Variant_boxed _ | Variant_extensible) -> [ Types.Value ]
           in
           List.iter2 loop sorts patl
       | Tpat_record (lbl_pat_list, _) ->
           let rec_layouts =
+            (* CJC XXX ditch this whole thing when I put lbl_layout in
+               label_descriptions.  And revisit the choice to make variant
+               representations have an expanded array of layouts for nested
+               records, then, too *)
             match lbl_pat_list with
             | [] -> assert false
-            | (_,lbl,pat) :: _ -> begin
+            | (_,lbl,_) :: _ -> begin
                 match lbl.lbl_repres with
                 | Record_unboxed l
                 | Record_inlined (Ordinary _, Variant_unboxed l) ->
@@ -873,11 +877,8 @@ let let_bound_idents_with_modes_and_sorts bindings =
                 | Record_boxed l -> l
                 | Record_inlined (Ordinary {src_index}, Variant_boxed l) ->
                     l.(src_index)
-                | Record_inlined (Extension p, Variant_extensible) -> begin
-                    match Env.find_constructor p pat.pat_env with
-                    | ({cstr_arg_layouts},_) -> cstr_arg_layouts
-                    | exception Not_found -> assert false
-                  end
+                | Record_inlined (Extension (_,l), Variant_extensible) ->
+                    l
                 | Record_inlined (Extension _,
                                   (Variant_unboxed _ | Variant_boxed _))
                 | Record_inlined (Ordinary _, Variant_extensible) ->

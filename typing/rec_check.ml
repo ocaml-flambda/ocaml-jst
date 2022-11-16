@@ -628,7 +628,7 @@ let rec expression : Typedtree.expression -> term_judg =
     | Texp_construct (_, desc, exprs) ->
       let access_constructor =
         match desc.cstr_tag with
-        | Extension pth ->
+        | Extension (pth,_) ->
           path pth << Dereference
         | _ -> empty
       in

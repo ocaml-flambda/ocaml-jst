@@ -408,7 +408,7 @@ and type_kind =
 
 and tag = Ordinary of {src_index: int;  (* Unique name (per type) *)
                        runtime_tag: int}    (* The runtime tag *)
-        | Extension of Path.t
+        | Extension of Path.t * layout array
 
 and record_representation =
   | Record_unboxed of layout
@@ -589,12 +589,6 @@ type constructor_description =
     cstr_existentials: type_expr list;  (* list of existentials *)
     cstr_args: type_expr list;          (* Type of the arguments *)
     cstr_arg_layouts: layout array;     (* Layouts of the arguments *)
-    (* Note: The lengths of cstr_args and cstr_arg_layouts differ in the case
-       of inline records, where we record the layouts of each field in
-       cstr_arg_layouts (but just the one record type).
-
-       CJC XXX change this?
-    *)
     cstr_arity: int;                    (* Number of arguments *)
     cstr_tag: tag;                      (* Tag for heap blocks *)
     cstr_repr: variant_representation;  (* Repr of the outer variant *)

@@ -273,7 +273,7 @@ and type_kind =
 
 and tag = Ordinary of {src_index: int;     (* Unique name (per type) *)
                        runtime_tag: int}   (* The runtime tag *)
-        | Extension of Path.t
+        | Extension of Path.t * layout array
 
 and record_representation =
   | Record_unboxed of layout
@@ -459,7 +459,7 @@ type constructor_description =
 let equal_tag t1 t2 =
   match (t1, t2) with
   | Ordinary {src_index=i1}, Ordinary {src_index=i2} -> i2 = i1
-  | Extension path1, Extension path2 -> Path.same path1 path2
+  | Extension (path1,_), Extension (path2,_) -> Path.same path1 path2
   | (Ordinary _ | Extension _), _ -> false
 
 let may_equal_constr c1 c2 =

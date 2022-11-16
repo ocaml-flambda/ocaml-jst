@@ -4695,7 +4695,7 @@ and type_expect_
               Env.lookup_constructor Env.Positive ~loc:lid.loc lid.txt env
             in
             match cd.cstr_tag with
-            | Extension path -> path
+            | Extension (path,_) -> path
             | _ -> raise (Error (lid.loc, env, Not_an_extension_constructor))
           in
           rue {

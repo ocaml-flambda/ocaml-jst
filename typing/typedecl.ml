@@ -515,8 +515,7 @@ let transl_declaration env sdecl (id, uid) =
                 match Types.(cstr.cd_args) with
                 | Cstr_tuple args ->
                   Array.make (List.length args) Type_layout.any
-                | Cstr_record args ->
-                  Array.make (List.length args) Type_layout.any)
+                | Cstr_record _ -> [| Type_layout.any |])
                 cstrs)
             )
         in
@@ -868,18 +867,24 @@ let default_decls_layout decls =
    including which fields of a record are void.  This would be hard to do during
    [transl_declaration] due to mutually recursive types.
 *)
-let update_label_layouts env loc lbls layouts =
+let update_label_layouts env loc lbls named =
+  (* "named" distinguishes between top-level records (for which we need to
+     update the kind with the layouts) and inlined records *)
+  (* CJC XXX revisit this after adding lbl_layout.  Maybe we should just have
+     ld_layout and populate it here in both cases. *)
+  (* CR ccasinghino it wouldn't be too hard to support records that are all void.
+     just needs a bit of refactoring in translcore *)
   let _, lbls =
     List.fold_left (fun (idx,lbls) ({Types.ld_type} as lbl) ->
       let layout = Ctype.type_layout env ld_type in
       let ld_void = Type_layout.(equal void layout) in
-      layouts.(idx) <- layout;
+      Option.iter (fun layouts -> layouts.(idx) <- layout) named;
       (idx+1, {lbl with ld_void} :: lbls)
     ) (0,[]) lbls
   in
   if List.for_all (fun l -> l.ld_void) lbls then
-    raise (Error (loc, Layout_empty_record));
-  List.rev lbls
+    raise (Error (loc, Layout_empty_record))
+  else List.rev lbls
 
 let update_constructor_arguments_layouts env loc cd_args layouts =
   match cd_args with
@@ -887,7 +892,8 @@ let update_constructor_arguments_layouts env loc cd_args layouts =
     List.iteri (fun idx ty -> layouts.(idx) <- Ctype.type_layout env ty) tys;
     cd_args
   | Types.Cstr_record lbls ->
-    let lbls = update_label_layouts env loc lbls layouts in
+    let lbls = update_label_layouts env loc lbls None in
+    layouts.(0) <- Type_layout.value;
     Types.Cstr_record lbls
 
 (* CJC XXX I believe this will fail to infer immediate appropriately for
@@ -902,7 +908,7 @@ let update_decl_layout env decl =
         | Error _ -> [lbl], rep
       end
     | _, Record_boxed layouts ->
-      let lbls = update_label_layouts env loc lbls layouts in
+      let lbls = update_label_layouts env loc lbls (Some layouts) in
       lbls, rep
     | _, Record_float -> lbls, rep
     | (([] | (_ :: _)), Record_unboxed _ | _, Record_inlined _) -> assert false
@@ -1413,7 +1419,7 @@ let transl_extension_constructor ~scope env type_path type_params
         end;
         let path =
           match cdescr.cstr_tag with
-            Extension path -> path
+            Extension (path,_) -> path
           | _ -> assert false
         in
         let args =

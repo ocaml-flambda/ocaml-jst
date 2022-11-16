@@ -558,12 +558,7 @@ and transl_exp0 ~in_new_scope ~scopes void_k e =
   | Texp_construct(_, cstr, args) ->
       let transl_arg_list args =
         let args = List.mapi (fun i arg -> (i,arg)) args in
-        let is_void (i,_) = is_void_layout cstr.cstr_arg_layouts.(i)
-          (* Would be wrong for inlined records, but we don't use
-             transl_arg_list in that case.
-
-             CJC XXX revisit after fixing cstr_arg_layouts *)
-        in
+        let is_void (i,_) = is_void_layout cstr.cstr_arg_layouts.(i) in
         let value_kind (_,e) = Typeopt.value_kind e.exp_env e.exp_type in
         let transl void_k (_,e) = transl_exp ~scopes void_k e in
         transl_list_with_voids ~is_void ~value_kind ~transl args
@@ -597,7 +592,7 @@ and transl_exp0 ~in_new_scope ~scopes void_k e =
                   ll,
                   of_location ~scopes e.exp_loc)
           end
-      | Extension path, Variant_extensible ->
+      | Extension (path,_), Variant_extensible ->
           let lam = transl_extension_path
                       (of_location ~scopes e.exp_loc) e.exp_env path in
           if cstr.cstr_constant then lam
@@ -1557,7 +1552,7 @@ and transl_record ~scopes void_k kind loc env mode fields repres opt_init_expr =
             (match ll with [v] -> v | _ -> assert false)
         | Record_float ->
             Lprim(Pmakefloatblock (mut, mode), ll, loc)
-        | Record_inlined (Extension path, Variant_extensible) ->
+        | Record_inlined (Extension (path,_), Variant_extensible) ->
             let slot = transl_extension_path loc env path in
             Lprim(Pmakeblock(0, mut, Some (Pgenval :: shape), mode),
                   slot :: ll, loc)

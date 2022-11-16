@@ -1666,14 +1666,11 @@ let get_key_constr = function
 
 let get_pat_args_constr p rem =
   match p with
-  | { pat_desc = Tpat_construct (_, {cstr_arg_layouts; cstr_inlined=Some _},
-                                 args) } ->
-        (* Here the args list has one element - the record - and
-           cstr_arg_layouts has the layout of each field. *)
-        (if Array.for_all (fun l -> Type_layout.Const.can_make_void l)
-          cstr_arg_layouts
-         then []
-         else args) @ rem
+  | { pat_desc = Tpat_construct (_, {cstr_inlined=Some _}, args) } ->
+    (* Here there is one argument - the record - which may not be all void.
+       CR ccasinghino: relax the "not all void" restriction.
+    *)
+    args @ rem
   | { pat_desc = Tpat_construct (_, {cstr_arg_layouts}, args) } ->
     (List.filteri (fun i _ ->
        not (Type_layout.Const.can_make_void cstr_arg_layouts.(i)))
@@ -2751,8 +2748,8 @@ let split_extension_cases tag_lambda_list =
           Array.for_all Type_layout.Const.can_make_void cstr_arg_layouts
         in
         match all_void, cstr_tag with
-        | true, Extension path -> ((path,act) :: consts, nonconsts)
-        | false, Extension path -> (consts, (path, act) :: nonconsts)
+        | true, Extension (path,_) -> ((path,act) :: consts, nonconsts)
+        | false, Extension (path,_)-> (consts, (path, act) :: nonconsts)
         | _, Ordinary _ -> assert false
       )
   in

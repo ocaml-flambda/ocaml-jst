@@ -239,7 +239,7 @@ let value_kind env ty =
                       (label:Types.label_declaration) ->
                         let num_nodes_visited = num_nodes_visited + 1 in
                         let num_nodes_visited, kinds, field_mutable =
-                          if Type_layout.equal layouts.(idx) Type_layout.void
+                          if label.ld_void
                           then (num_nodes_visited, kinds, Asttypes.Immutable)
                           else
                             let (num_nodes_visited, kind) =
@@ -294,41 +294,21 @@ let value_kind env ty =
         | Type_record (labels, record_representation) -> begin
           let depth = depth + 1 in
           match record_representation with
-          | (Record_unboxed l | (Record_inlined (_,Variant_unboxed l))) -> begin
+          | (Record_unboxed _ | (Record_inlined (_,Variant_unboxed _))) -> begin
               (* Can't be void due to invariant on value_kind *)
-              (* CR ccasinghino remove assert *)
-              assert (not (Type_layout.equal l Type_layout.void));
               match labels with
               | [{ld_type}] ->
                 loop env ~visited ~depth ~num_nodes_visited ld_type
               | [] | _ :: _ :: _ -> assert false
             end
           | _ -> begin
-              let layouts =
-                match record_representation with
-                | Record_boxed layouts -> layouts
-                | Record_inlined (Ordinary {src_index}, (Variant_boxed l)) ->
-                  l.(src_index)
-                | Record_float ->
-                  Array.make (List.length labels) Type_layout.value
-                | Record_inlined (Extension path, Variant_extensible) -> begin
-                    (* CJC XXX maybe just put layouts on Extension tags? *)
-                    match Env.find_constructor path env with
-                    | ({cstr_arg_layouts},_) -> cstr_arg_layouts
-                    | exception Not_found -> assert false
-                  end
-                | Record_inlined (_, Variant_unboxed _) | Record_unboxed _
-                | Record_inlined (Ordinary _, Variant_extensible)
-                | Record_inlined (Extension _, Variant_boxed _) ->
-                  assert false
-              in
               let is_mutable, num_nodes_visited, _, kinds =
                 List.fold_left
                   (fun (is_mutable, num_nodes_visited, idx, kinds)
                   (label:Types.label_declaration) ->
                  let num_nodes_visited = num_nodes_visited + 1 in
                  let num_nodes_visited, kinds, field_mutable =
-                   if Type_layout.(equal layouts.(idx) void) then
+                   if label.ld_void then
                      (num_nodes_visited, kinds, Asttypes.Immutable)
                    else
                      let (num_nodes_visited, kind) =
