@@ -136,10 +136,10 @@ let type_variable loc name =
 let valid_tyvar_name name =
   name <> "" && name.[0] <> '_'
 
-(* Here we take a layout argument and ignore any layout annotations in the styp.  The
-   expectation is most callers will get the layout from the annotation, but in some cases
-   (objects) we don't want to support those annotations, so it makes sense for the caller
-   to do this. *)
+(* Here we take a layout argument and ignore any layout annotations in the styp.
+   The expectation is most callers will get the layout from the annotation, but
+   in some cases (objects) we don't want to support those annotations, so it
+   makes sense for the caller to do this. *)
 let transl_type_param env styp layout =
   let loc = styp.ptyp_loc in
   match styp.ptyp_desc with
@@ -193,6 +193,21 @@ let rec extract_params styp =
 let new_pre_univar ?name layout =
   let v = newvar ?name layout in pre_univars := v :: !pre_univars; v
 
+(* Policy is used to track what to do about type variables and "_" in types.
+
+   Fixed means we're checking in a context where unbound type variables
+   are an error.  E.g, while translating [A]'s argument types in:
+
+     type t = A of int * 'a
+
+   Extensible means we're checking in a context where unbound type variables
+   are allowed.  E.g., while translating A's type in:
+
+     type t = A : int * 'a -> t
+
+   Univars is used while checking method declarations, where ['a] actually means
+   a universal variable, not a unification variable.
+*)
 type policy = Fixed | Extensible | Univars
 
 let rec transl_type env policy mode styp =
@@ -208,7 +223,6 @@ and transl_type_aux env policy mode styp =
   match styp.ptyp_desc with
     Ptyp_any ->
       let ty =
-        (* CJC XXX what is a pre_univar? What is policy? *)
         if policy = Univars then new_pre_univar Type_layout.any else
           if policy = Fixed then
             raise (Error (styp.ptyp_loc, env, Unbound_type_variable "_"))
@@ -225,7 +239,6 @@ and transl_type_aux env policy mode styp =
         instance (fst (TyVarMap.find name !used_variables))
       with Not_found ->
         let v =
-          (* CJC XXX same question about policy *)
           if policy = Univars then new_pre_univar ~name Type_layout.any
           else newvar ~name Type_layout.any
         in
@@ -709,8 +722,6 @@ let globalize_used_variables env fixed =
       with Not_found ->
         if fixed && Btype.is_Tvar (repr ty) then
           raise(Error(loc, env, Unbound_type_variable ("'"^name)));
-        (* CJC XXX Here we're going to want to check for layout
-           annotations, I think.  Anyway this is definitely wrong *)
         let v2 = new_global_var Type_layout.any in
         r := (loc, v, v2) :: !r;
         type_variables := TyVarMap.add name v2 !type_variables)
@@ -724,7 +735,6 @@ let globalize_used_variables env fixed =
       !r
 
 let transl_simple_type env fixed mode styp =
-  (* CJC XXX TODO : Force type to be of kind (sort _) *)
   univars := []; used_variables := TyVarMap.empty;
   let typ = transl_type env (if fixed then Fixed else Extensible) mode styp in
   globalize_used_variables env fixed ();
