@@ -355,10 +355,10 @@ module M7_1 = struct
   type foo1 = [ `Foo1 of int | `Baz1 of t_void | `Bar1 of string ];;
 end
 [%%expect{|
-Line 2, characters 14-66:
+Line 2, characters 40-46:
 2 |   type foo1 = [ `Foo1 of int | `Baz1 of t_void | `Bar1 of string ];;
-                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Error: Polymorphic variant argument types must have layout value.
+                                            ^^^^^^
+Error: Polymorpic variant constructor argument types must have layout value.
         t_void has layout void, which is not a sublayout of value.
 |}];;
 
@@ -398,12 +398,25 @@ module M7_4 = struct
   type 'a t = [ `Foo of 'a | `Baz of int ] constraint 'a = void_unboxed_record
 end;;
 [%%expect {|
-Line 2, characters 14-42:
+Line 2, characters 54-78:
 2 |   type 'a t = [ `Foo of 'a | `Baz of int ] constraint 'a = void_unboxed_record
-                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Error: Polymorphic variant argument types must have layout value.
-        void_unboxed_record has layout void, which is not a sublayout of value.
+                                                          ^^^^^^^^^^^^^^^^^^^^^^^^
+Error: The type constraints are not consistent.
+Type 'a is not compatible with type void_unboxed_record
+void_unboxed_record has layout void, which is not a sublayout of value.
 |}];;
+
+module type S7_5 = sig
+  val x : [`A of t_void]
+end;;
+[%%expect{|
+Line 2, characters 17-23:
+2 |   val x : [`A of t_void]
+                     ^^^^^^
+Error: Polymorpic variant constructor argument types must have layout value.
+        t_void has layout void, which is not a sublayout of value.
+|}]
+
 
 (************************************************)
 (* Test 8: Tuples only work on values (for now) *)

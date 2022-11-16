@@ -27,7 +27,7 @@ module Alloc_mode = Btype.Alloc_mode
 
 exception Already_bound
 
-type value_loc = Fun_arg | Fun_ret | Tuple
+type value_loc = Fun_arg | Fun_ret | Tuple | Poly_variant
 
 type error =
     Unbound_type_variable of string
@@ -497,6 +497,14 @@ and transl_type_aux env policy mode styp =
                 (fun () ->
                    List.map (transl_type env policy Alloc_mode.Global) stl)
             in
+            List.iter (fun {ctyp_type; ctyp_loc} ->
+              match constrain_type_layout env ctyp_type Type_layout.value with
+              | Ok _ -> ()
+              | Error e ->
+                raise (Error(ctyp_loc, env,
+                             Non_value {vloc = Poly_variant; err = e;
+                                        typ = ctyp_type})))
+              tl;
             let f = match present with
               Some present when not (List.mem l.txt present) ->
                 let ty_tl = List.map (fun cty -> cty.ctyp_type) tl in
@@ -909,6 +917,7 @@ let report_error env ppf = function
       | Fun_arg -> "Function argument"
       | Fun_ret -> "Function return"
       | Tuple -> "Tuple element"
+      | Poly_variant -> "Polymorpic variant constructor argument"
     in
     fprintf ppf "@[%s types must have layout value.@ \ %a@]"
       s (Type_layout.Violation.report_with_offender
