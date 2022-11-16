@@ -266,9 +266,9 @@ let transl_labels env univars closed lbls =
       lbls in
   lbls, lbls'
 
-let transl_types_gf env closed tyl =
+let transl_types_gf env univars closed tyl =
   let mk arg =
-    let cty = transl_simple_type env closed Global arg in
+    let cty = transl_simple_type env ?univars closed Global arg in
     let gf = transl_global_flags arg.ptyp_loc arg.ptyp_attributes in
     (cty, gf)
   in
@@ -278,7 +278,7 @@ let transl_types_gf env closed tyl =
 
 let transl_constructor_arguments env univars closed = function
   | Pcstr_tuple l ->
-      let flds, flds' = transl_types_gf env closed l in
+      let flds, flds' = transl_types_gf env univars closed l in
       Types.Cstr_tuple flds',
       Cstr_tuple flds
   | Pcstr_record l ->
