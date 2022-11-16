@@ -302,8 +302,10 @@ let unclosed opening_name opening_loc closing_name closing_loc =
   raise(Syntaxerr.Error(Syntaxerr.Unclosed(make_loc opening_loc, opening_name,
                                            make_loc closing_loc, closing_name)))
 
-let expecting loc nonterm =
-    raise Syntaxerr.(Error(Expecting(make_loc loc, nonterm)))
+let expecting_loc (loc : Location.t) (nonterm : string) =
+    raise Syntaxerr.(Error(Expecting(loc, nonterm)))
+let expecting (loc : Lexing.position * Lexing.position) nonterm =
+     expecting_loc (make_loc loc) nonterm
 
 (* Using the function [not_expecting] in a semantic action means that this
    syntactic form is recognized by the parser but is in fact incorrect. This
@@ -452,20 +454,16 @@ let lapply ~loc p1 p2 =
   else raise (Syntaxerr.Error(
                   Syntaxerr.Applicative_path (make_loc loc)))
 
-(* [loc_map] could be [Location.map]. *)
-let loc_map (f : 'a -> 'b) (x : 'a Location.loc) : 'b Location.loc =
-  { x with txt = f x.txt }
-
 let make_ghost x = { x with loc = { x.loc with loc_ghost = true }}
 
 let loc_last (id : Longident.t Location.loc) : string Location.loc =
-  loc_map Longident.last id
+  Location.map Longident.last id
 
 let loc_lident (id : string Location.loc) : Longident.t Location.loc =
-  loc_map (fun x -> Lident x) id
+  Location.map (fun x -> Lident x) id
 
 let exp_of_longident lid =
-  let lid = loc_map (fun id -> Lident (Longident.last id)) lid in
+  let lid = Location.map (fun id -> Lident (Longident.last id)) lid in
   Exp.mk ~loc:lid.loc (Pexp_ident lid)
 
 let exp_of_label lbl =
@@ -476,7 +474,8 @@ let pat_of_label lbl =
 
 let mk_newtypes ~loc newtypes exp =
   let mkexp = mkexp ~loc in
-  List.fold_right (fun newtype exp -> mkexp (Pexp_newtype (newtype, exp)))
+  List.fold_right (fun (name, layout) exp ->
+                   mkexp (Pexp_newtype (name, exp, layout)))
     newtypes exp
 
 let wrap_type_annotation ~loc newtypes core_type body =
@@ -484,7 +483,8 @@ let wrap_type_annotation ~loc newtypes core_type body =
   let mk_newtypes = mk_newtypes ~loc in
   let exp = mkexp(Pexp_constraint(body,core_type)) in
   let exp = mk_newtypes newtypes exp in
-  (exp, ghtyp(Ptyp_poly(newtypes, Typ.varify_constructors newtypes core_type)))
+  let vars, layouts = List.split newtypes in
+  (exp, ghtyp(Ptyp_poly(vars, Typ.varify_constructors vars core_type, layouts)))
 
 let wrap_exp_attrs ~loc body (ext, attrs) =
   let ghexp = ghexp ~loc in
@@ -698,13 +698,85 @@ let mk_directive ~loc name arg =
       pdir_loc = make_loc loc;
     }
 
-let check_layout loc id =
-  begin
-    match id with
-    | ("any" | "value" | "void" | "immediate64" | "immediate") -> ()
-    | _ -> expecting loc "layout"
-  end;
-  Attr.mk ~loc:Location.none (mknoloc id) (PStr [])
+(* returns both the translated layout and the string, because
+   the string is useful for building an Attribute *)
+let check_layout loc id : (layout_annotation * string) with_loc =
+  let layout_annotation = match id with
+    | "any" -> Any
+    | "value" -> Value
+    | "void" -> Void
+    | "immediate64" -> Immediate64
+    | "immediate" -> Immediate
+    | _ -> expecting_loc loc "layout"
+  in
+  mkloc (layout_annotation, id) loc
+
+(* See Note [Parsing layout annotations in types] *)
+let check_layout_from_type layout_type : layout_annotation with_loc =
+  match layout_type.ptyp_desc with
+  | Ptyp_constr({ txt = Lident lay_string }, []) ->
+    Location.map fst (check_layout layout_type.ptyp_loc lay_string)
+  | _ -> expecting_loc layout_type.ptyp_loc "layout"
+
+(* See Note [Parsing layout annotations in types], the [Similar story] *)
+let check_type_var_from_type tv_type : string with_loc =
+  match tv_type.ptyp_desc with
+  | Ptyp_var name -> mkloc name tv_type.ptyp_loc
+  | _ -> expecting_loc tv_type.ptyp_loc "type variable"
+
+(* Note [Parsing layout annotations in types]
+   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   We wish to be able to parse [(int list : value)] as a layout annotation
+   in a type. This is slightly fraught, though: if we see [(int : value ...]
+   as we're parsing, have we seen the beginning a layout annotation, or have we
+   seen the beginning of a function type whose argument is labeled [int]?
+
+   In order to build a non-conflicting parser with support for these layout
+   annotations, we must keep the productions for layout annotations in line
+   with those for labeled functions. The key action happens in the definition
+   of nonterminal [non_ident_atomic_type]. We have two problems to solve:
+
+   1. Before the COLON
+
+      There are two different productions for layout annotations, one beginning with
+      [LPAREN LIDENT COLON] and the other wish [LPAREN non_ident_atomic_type COLON]. The
+      former nicely overlaps with the production for labeled functions (in
+      [strict_function_type]); this overlap allows menhir to avoid conflicts.
+      We similarly must be careful to avoid conflicts between these two productions,
+      which is why we define non_ident_atomic_type, which parses types that are
+      anything other than a single identifier.
+
+   2. After the COLON
+
+      Because we need to keep the labeled-function parser and the layout-annotations
+      parser lined up until the disambiguator (either an [->] or a [)]), we still
+      must be careful after the colon. Here, we use [tuple_type], which again
+      dovetails with the productions in [strict_function_type].
+
+      Of course, a layout annotation is not quite a [tuple_type], and so
+      [check_layout_from_type] converts, reporting an error if the conversion
+      is impossible.
+
+   The current design works well, but it is not as powerful as it could be.
+   In particular, the "before the colon" part accepts only non_ident_atomic_type,
+   meaning that e.g. [(int * bool * string : value)] cannot be parsed. If we
+   want to, we can extend this treatment to tuples or even function types,
+   but doing so seems under-motivated.
+
+   [Similar story]: There is a similar overlap around [let f : ('a : value) ...].
+   Is that the beginning of, say, a function type where ['a] is the argument?
+   Or is it the beginning of a list of universal variables. To avoid conflicts
+   in this case (the non-terminal of interest is [possibly_poly], which can't
+   know which side to take), we have layout-annotation case of [typevar] parse
+   liberally, lining up with the layout-annotation case of [non_ident_atomic_type],
+   checking that the variable is really a variable and the layout annotation
+   is really a layout annotation in [check_type_var_from_type] and
+   [check_layout_from_type].
+*)
+
+
+
+
 
 %}
 
@@ -2083,7 +2155,7 @@ method_:
           let loc = ($startpos($6), $endpos($8)) in
           ghexp ~loc (Pexp_poly($8, Some $6)) in
         ($4, $3, Cfk_concrete ($1, poly_exp)), $2 }
-  | override_flag attributes private_flag mkrhs(label) COLON TYPE lident_list
+  | override_flag attributes private_flag mkrhs(label) COLON TYPE newtypes
     DOT core_type EQUAL seq_expr
       { let poly_exp_loc = ($startpos($7), $endpos($11)) in
         let poly_exp =
@@ -2431,8 +2503,10 @@ expr:
   | FUN ext_attributes labeled_simple_pattern fun_def
       { let (l,o,p) = $3 in
         Pexp_fun(l, o, p, $4), $2 }
-  | FUN ext_attributes LPAREN TYPE lident_list RPAREN fun_def
+  | FUN ext_attributes LPAREN TYPE newtypes RPAREN fun_def
       { (mk_newtypes ~loc:$sloc $5 $7).pexp_desc, $2 }
+  | FUN ext_attributes LPAREN TYPE mkrhs(LIDENT) COLON layout_annotation RPAREN fun_def
+      { (mk_newtypes ~loc:$sloc [$5, Some $7] $9).pexp_desc, $2 }
   | MATCH ext_attributes seq_expr WITH match_cases
       { Pexp_match($3, $5), $2 }
   | TRY ext_attributes seq_expr WITH match_cases
@@ -2666,7 +2740,7 @@ let_binding_body_no_punning:
         in
         let loc = Location.(t.ptyp_loc.loc_start, t.ptyp_loc.loc_end) in
         let local_loc = $loc($1) in
-        let typ = ghtyp ~loc (Ptyp_poly([],t)) in
+        let typ = ghtyp ~loc (Ptyp_poly([],t,[])) in
         let patloc = ($startpos($2), $endpos($3)) in
         let pat =
           mkpat_local_if $1 (ghpat ~loc:patloc (Ppat_constraint(v, typ)))
@@ -2688,7 +2762,7 @@ let_binding_body_no_punning:
         in
         let exp = mkexp_local_if $1 ~loc:$sloc ~kwd_loc:($loc($1)) $6 in
         (pat, exp) }
-  | let_ident COLON TYPE lident_list DOT core_type EQUAL seq_expr
+  | let_ident COLON TYPE newtypes DOT core_type EQUAL seq_expr
       { let exp, poly =
           wrap_type_annotation ~loc:$sloc $4 $6 $8 in
         let loc = ($startpos($1), $endpos($6)) in
@@ -2775,8 +2849,10 @@ strict_binding:
       { $2 }
   | labeled_simple_pattern fun_binding
       { let (l, o, p) = $1 in ghexp ~loc:$sloc (Pexp_fun(l, o, p, $2)) }
-  | LPAREN TYPE lident_list RPAREN fun_binding
+  | LPAREN TYPE newtypes RPAREN fun_binding
       { mk_newtypes ~loc:$sloc $3 $5 }
+  | LPAREN TYPE mkrhs(LIDENT) COLON layout_annotation RPAREN fun_binding
+      { mk_newtypes ~loc:$sloc [$3, Some $5] $7 }
 ;
 local_fun_binding:
     local_strict_binding
@@ -2789,8 +2865,10 @@ local_strict_binding:
       { $2 }
   | labeled_simple_pattern local_fun_binding
       { let (l, o, p) = $1 in ghexp ~loc:$sloc (Pexp_fun(l, o, p, $2)) }
-  | LPAREN TYPE lident_list RPAREN local_fun_binding
+  | LPAREN TYPE newtypes RPAREN local_fun_binding
       { mk_newtypes ~loc:$sloc $3 $5 }
+  | LPAREN TYPE mkrhs(LIDENT) COLON layout_annotation RPAREN fun_binding
+      { mk_newtypes ~loc:$sloc [$3, Some $5] $7 }
 ;
 %inline match_cases:
   xs = preceded_or_separated_nonempty_llist(BAR, match_case)
@@ -2816,8 +2894,10 @@ fun_def:
        let (l,o,p) = $1 in
        ghexp ~loc:$sloc (Pexp_fun(l, o, p, $2))
       }
-  | LPAREN TYPE lident_list RPAREN fun_def
+  | LPAREN TYPE newtypes RPAREN fun_def
       { mk_newtypes ~loc:$sloc $3 $5 }
+  | LPAREN TYPE mkrhs(LIDENT) COLON layout_annotation RPAREN fun_def
+      { mk_newtypes ~loc:$sloc [$3, Some $5] $7 }
 ;
 %inline expr_comma_list:
   es = separated_nontrivial_llist(COMMA, expr)
@@ -2870,6 +2950,17 @@ type_constraint:
   | COLON error                                 { syntax_error() }
   | COLONGREATER error                          { syntax_error() }
 ;
+
+(* the thing between the [type] and the [.] in
+   [let : type <<here>>. 'a -> 'a = ...] *)
+newtypes: (* : (string with_loc * layout_annotation with_loc option) list *)
+  newtype+
+    { $1 }
+
+newtype: (* : string with_loc * layout_annotation with_loc option *)
+    mkrhs(LIDENT)                     { $1, None }
+  | LPAREN name=mkrhs(LIDENT) COLON layout=layout_annotation RPAREN
+      { name, Some layout }
 
 /* Patterns */
 
@@ -3137,6 +3228,7 @@ generic_type_declaration(flag, kind):
   flag = flag
   params = type_parameters
   id = mkrhs(LIDENT)
+  layout = layout_attr?
   kind_priv_manifest = kind
   cstrs = constraints
   attrs2 = post_item_attributes
@@ -3146,7 +3238,7 @@ generic_type_declaration(flag, kind):
       let attrs = attrs1 @ attrs2 in
       let loc = make_loc $sloc in
       (flag, ext),
-      Type.mk id ~params ~cstrs ~kind ~priv ?manifest ~attrs ~loc ~docs
+      Type.mk id ~params ?layout ~cstrs ~kind ~priv ?manifest ~attrs ~loc ~docs
     }
 ;
 %inline generic_and_type_declaration(kind):
@@ -3154,6 +3246,7 @@ generic_type_declaration(flag, kind):
   attrs1 = attributes
   params = type_parameters
   id = mkrhs(LIDENT)
+  layout = layout_attr?
   kind_priv_manifest = kind
   cstrs = constraints
   attrs2 = post_item_attributes
@@ -3163,7 +3256,7 @@ generic_type_declaration(flag, kind):
       let attrs = attrs1 @ attrs2 in
       let loc = make_loc $sloc in
       let text = symbol_text $symbolstartpos in
-      Type.mk id ~params ~cstrs ~kind ~priv ?manifest ~attrs ~loc ~docs ~text
+      Type.mk id ~params ?layout ~cstrs ~kind ~priv ?manifest ~attrs ~loc ~docs ~text
     }
 ;
 %inline constraints:
@@ -3216,14 +3309,25 @@ type_parameters:
       { ps }
 ;
 
-layout:
-  ident { check_layout $loc($1) $1 }
+layout_annotation: (* : layout_annotation with_loc *)
+  layout { Location.map fst $1 }
+
+layout: (* : (layout_annotation * string) with_loc *)
+  (* this includes the string form of the layout annotation; useful for
+     some clients *)
+  ident { check_layout (make_loc $sloc) $1 }
+;
+
+layout_attr:
+  COLON
+  layout=layout
+    { Attr.mk ~loc:layout.loc (Location.map snd layout) (PStr []) }
 ;
 
 parenthesized_type_parameter:
     type_parameter { $1 }
-  | type_variance type_variable COLON layout
-      { {$2 with ptyp_attributes = [$4]}, $1 }
+  | type_variance type_variable layout_annot=layout_attr
+      { Typ.attr $2 layout_annot, $1 }
 ;
 
 type_parameter:
@@ -3330,15 +3434,15 @@ sig_exception_declaration:
         Te.decl $1 ~vars ~args ?res ~attrs:$3 ~loc:(make_loc $sloc) }
 ;
 generalized_constructor_arguments:
-    /*empty*/                     { ([],Pcstr_tuple [],None) }
-  | OF constructor_arguments      { ([],$2,None) }
+    /*empty*/                     { (([],[]),Pcstr_tuple [],None) }
+  | OF constructor_arguments      { (([],[]),$2,None) }
   | COLON constructor_arguments MINUSGREATER atomic_type %prec below_HASH
-                                  { ([],$2,Some $4) }
+                                  { (([],[]),$2,Some $4) }
   | COLON typevar_list DOT constructor_arguments MINUSGREATER atomic_type
      %prec below_HASH
                                   { ($2,$4,Some $6) }
   | COLON atomic_type %prec below_HASH
-                                  { ([],Pcstr_tuple [],Some $2) }
+                                  { (([],[]),Pcstr_tuple [],Some $2) }
   | COLON typevar_list DOT atomic_type %prec below_HASH
                                   { ($2,Pcstr_tuple [],Some $4) }
 ;
@@ -3473,17 +3577,22 @@ with_type_binder:
 
 /* Polymorphic types */
 
-%inline typevar:
-  QUOTE mkrhs(ident)
-    { $2 }
+%inline typevar: (* : string with_loc * layout_annotation with_loc option *)
+    QUOTE mkrhs(ident)
+      { ($2, None) }
+      (* See Note [Parsing layout annotations in types], the [Similar story],
+         for why this is different than you might expect *)
+    | LPAREN tv=non_ident_atomic_type COLON lay=tuple_type RPAREN
+      { (check_type_var_from_type tv, Some (check_layout_from_type lay)) }
 ;
 %inline typevar_list:
+  (* : string with_loc list * layout_annotation with_loc option list *)
   nonempty_llist(typevar)
-    { $1 }
+    { List.split $1 }
 ;
 %inline poly(X):
   typevar_list DOT X
-    { Ptyp_poly($1, $3) }
+    { let vars, layouts = $1 in Ptyp_poly(vars, $3, layouts) }
 ;
 possibly_poly(X):
   X
@@ -3622,6 +3731,20 @@ tuple_type:
    - variant types:                       [`A]
  *)
 atomic_type:
+  | mktyp(
+      LIDENT
+        { Ptyp_constr(mkrhs (Lident $1) $sloc, []) }
+    )
+    { $1 }
+  | non_ident_atomic_type
+    { $1 }
+;
+
+(* This accepts types that are anything but a single identifier. Note some
+   care in the Ptyp_constr case to accept both [M.t] and [t1 t2] but not
+   [t]. Why is this separate from [atomic_type]?
+   See Note [Parsing layout annotations in types]. *)
+non_ident_atomic_type:
   | LPAREN core_type RPAREN
       { $2 }
   | LPAREN MODULE ext_attributes package_type RPAREN
@@ -3631,7 +3754,9 @@ atomic_type:
         { Ptyp_var $2 }
     | UNDERSCORE
         { Ptyp_any }
-    | tys = actual_type_parameters
+    | mkrhs(strict_type_longident)
+        { Ptyp_constr($1, []) }
+    | tys = nonempty_actual_type_parameters
       tid = mkrhs(type_longident)
         { Ptyp_constr(tid, tys) }
     | LESS meth_list GREATER
@@ -3659,9 +3784,15 @@ atomic_type:
         { Ptyp_variant($3, Closed, Some $5) }
     | extension
         { Ptyp_extension $1 }
+    | LPAREN id=LIDENT COLON lay=tuple_type RPAREN
+        { let loc = $loc(id) in
+          Ptyp_layout(mktyp ~loc
+                        (Ptyp_constr(mkrhs (Lident id) loc, [])),
+                      check_layout_from_type lay) }
+    | LPAREN ty=non_ident_atomic_type COLON lay=tuple_type RPAREN
+        { Ptyp_layout(ty, check_layout_from_type lay) }
   )
-  { $1 } /* end mktyp group */
-;
+  { $1 }
 
 (* This is the syntax of the actual type parameters in an application of
    a type constructor, such as int, int list, or (int, bool) Hashtbl.t.
@@ -3676,11 +3807,14 @@ atomic_type:
 %inline actual_type_parameters:
   | /* empty */
       { [] }
+  | nonempty_actual_type_parameters
+      { $1 }
+
+%inline nonempty_actual_type_parameters:
   | ty = atomic_type
       { [ty] }
   | LPAREN tys = separated_nontrivial_llist(COMMA, core_type) RPAREN
       { tys }
-;
 
 %inline package_type: module_type
       { let (lid, cstrs, attrs) = package_type_of_module_type $1 in
@@ -3866,6 +4000,13 @@ label_longident:
 type_longident:
     mk_longident(mod_ext_longident, LIDENT)  { $1 }
 ;
+
+(* guaranteed to have at least one module prefix *)
+strict_type_longident:
+  | mod_ext_longident DOT LIDENT
+      { Ldot($1, $3) }
+;
+
 mod_longident:
     mk_longident(mod_longident, UIDENT)  { $1 }
 ;

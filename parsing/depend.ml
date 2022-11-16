@@ -115,9 +115,10 @@ let rec add_type bv ty =
           | Rtag(_, _, stl) -> List.iter (add_type bv) stl
           | Rinherit sty -> add_type bv sty)
         fl
-  | Ptyp_poly(_, t) -> add_type bv t
+  | Ptyp_poly(_, t, _) -> add_type bv t
   | Ptyp_package pt -> add_package_type bv pt
   | Ptyp_extension e -> handle_extension e
+  | Ptyp_layout(t, _) -> add_type bv t
 
 and add_package_type bv (lid, l) =
   add bv lid;
@@ -151,7 +152,7 @@ let add_type_declaration bv td =
 
 let add_extension_constructor bv ext =
   match ext.pext_kind with
-    Pext_decl(_, args, rty) ->
+    Pext_decl(_, args, rty, _) ->
       add_constructor_arguments bv args;
       Option.iter (add_type bv) rty
   | Pext_rebind lid -> add bv lid
@@ -252,7 +253,7 @@ let rec add_expr bv exp =
   | Pexp_poly (e, t) -> add_expr bv e; add_opt add_type bv t
   | Pexp_object { pcstr_self = pat; pcstr_fields = fieldl } ->
       let bv = add_pattern bv pat in List.iter (add_class_field bv) fieldl
-  | Pexp_newtype (_, e) -> add_expr bv e
+  | Pexp_newtype (_, e, _) -> add_expr bv e
   | Pexp_pack m -> add_module_expr bv m
   | Pexp_open (o, e) ->
       let bv = open_declaration bv o in

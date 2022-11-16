@@ -46,6 +46,7 @@ type iterator = {
   include_declaration: iterator -> include_declaration -> unit;
   include_description: iterator -> include_description -> unit;
   label_declaration: iterator -> label_declaration -> unit;
+  layout_annotation:iterator -> Asttypes.layout_annotation -> unit;
   location: iterator -> Location.t -> unit;
   module_binding: iterator -> module_binding -> unit;
   module_declaration: iterator -> module_declaration -> unit;
@@ -84,6 +85,9 @@ let iter_tuple3 f1 f2 f3 (x, y, z) = f1 x; f2 y; f3 z
 let iter_opt f = function None -> () | Some x -> f x
 
 let iter_loc sub {loc; txt = _} = sub.location sub loc
+let iter_loc2 sub f { loc; txt } =
+  sub.location sub loc;
+  f sub txt
 
 module T = struct
   (* Type expressions for the core language *)
@@ -110,6 +114,9 @@ module T = struct
     | Otag (_, t) -> sub.typ sub t
     | Oinherit t -> sub.typ sub t
 
+  let type_vars_layouts sub (tvls : type_vars_layouts) =
+    List.iter (iter_opt (iter_loc2 sub sub.layout_annotation)) tvls
+
   let iter sub {ptyp_desc = desc; ptyp_loc = loc; ptyp_attributes = attrs} =
     sub.location sub loc;
     sub.attributes sub attrs;
@@ -128,11 +135,17 @@ module T = struct
     | Ptyp_alias (t, _) -> sub.typ sub t
     | Ptyp_variant (rl, _b, _ll) ->
         List.iter (row_field sub) rl
-    | Ptyp_poly (_, t) -> sub.typ sub t
+    | Ptyp_poly (_, t, lays) ->
+        sub.typ sub t;
+        type_vars_layouts sub lays
     | Ptyp_package (lid, l) ->
         iter_loc sub lid;
         List.iter (iter_tuple (iter_loc sub) (sub.typ sub)) l
     | Ptyp_extension x -> sub.extension sub x
+    | Ptyp_layout (t, layout) ->
+        sub.typ sub t;
+        iter_loc sub layout;
+        sub.layout_annotation sub layout.txt
 
   let iter_type_declaration sub
       {ptype_name; ptype_params; ptype_cstrs;
@@ -182,10 +195,11 @@ module T = struct
     sub.attributes sub ptyexn_attributes
 
   let iter_extension_constructor_kind sub = function
-      Pext_decl(vars, ctl, cto) ->
+      Pext_decl(vars, ctl, cto, layouts) ->
         List.iter (iter_loc sub) vars;
         iter_constructor_arguments sub ctl;
-        iter_opt (sub.typ sub) cto
+        iter_opt (sub.typ sub) cto;
+        type_vars_layouts sub layouts
     | Pext_rebind li ->
         iter_loc sub li
 
@@ -410,7 +424,9 @@ module E = struct
     | Pexp_poly (e, t) ->
         sub.expr sub e; iter_opt (sub.typ sub) t
     | Pexp_object cls -> sub.class_structure sub cls
-    | Pexp_newtype (_s, e) -> sub.expr sub e
+    | Pexp_newtype (_s, e, l) ->
+        iter_opt (iter_loc2 sub sub.layout_annotation) l;
+        sub.expr sub e
     | Pexp_pack me -> sub.module_expr sub me
     | Pexp_open (o, e) ->
         sub.open_declaration sub o; sub.expr sub e
@@ -641,10 +657,11 @@ let default_iterator =
 
 
     constructor_declaration =
-      (fun this {pcd_name; pcd_vars; pcd_args;
+      (fun this {pcd_name; pcd_vars; pcd_layouts; pcd_args;
                  pcd_res; pcd_loc; pcd_attributes} ->
          iter_loc this pcd_name;
          List.iter (iter_loc this) pcd_vars;
+         T.type_vars_layouts this pcd_layouts;
          T.iter_constructor_arguments this pcd_args;
          iter_opt (this.typ this) pcd_res;
          this.location this pcd_loc;
@@ -683,4 +700,6 @@ let default_iterator =
          | PTyp x -> this.typ this x
          | PPat (x, g) -> this.pat this x; iter_opt (this.expr this) g
       );
+
+    layout_annotation = (fun _this _l -> ());
   }

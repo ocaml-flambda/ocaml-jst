@@ -42,17 +42,20 @@ module Const = struct
 end
 
 
-let of_layout_annotation annot ~default =
-  match annot with
+let of_layout_annotation = function
+  | Asttypes.Any         -> Any
+  | Asttypes.Value       -> Sort Value
+  | Asttypes.Void        -> Sort Void
+  | Asttypes.Immediate64 -> Immediate64
+  | Asttypes.Immediate   -> Immediate
+
+let of_layout_annotation_opt annot_opt ~default =
+  match annot_opt with
   | None -> default
-  | Some Builtin_attributes.Any         -> Any
-  | Some Builtin_attributes.Value       -> Sort Value
-  | Some Builtin_attributes.Void        -> Sort Void
-  | Some Builtin_attributes.Immediate64 -> Immediate64
-  | Some Builtin_attributes.Immediate   -> Immediate
+  | Some {Location.txt = annot} -> of_layout_annotation annot
 
 let of_attributes ~default attrs =
-  of_layout_annotation ~default (Builtin_attributes.layout attrs)
+  of_layout_annotation_opt ~default (Builtin_attributes.layout attrs)
 
 let rec sort_to_string = function
   | Var r -> begin

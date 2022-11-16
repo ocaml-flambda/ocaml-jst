@@ -32,6 +32,7 @@ type iterator =
     env: iterator -> Env.t -> unit;
     expr: iterator -> expression -> unit;
     extension_constructor: iterator -> extension_constructor -> unit;
+    layout_annotation: iterator -> layout_annotation -> unit;
     module_binding: iterator -> module_binding -> unit;
     module_coercion: iterator -> module_coercion -> unit;
     module_declaration: iterator -> module_declaration -> unit;
@@ -459,8 +460,11 @@ let typ sub {ctyp_desc; ctyp_env; _} =
   | Ttyp_class (_, _, list) -> List.iter (sub.typ sub) list
   | Ttyp_alias (ct, _) -> sub.typ sub ct
   | Ttyp_variant (list, _, _) -> List.iter (sub.row_field sub) list
-  | Ttyp_poly (_, ct) -> sub.typ sub ct
+  | Ttyp_poly (vars, ct) ->
+      List.iter (fun (_, l) -> Option.iter (sub.layout_annotation sub) l) vars;
+      sub.typ sub ct
   | Ttyp_package pack -> sub.package_type sub pack
+  | Ttyp_layout (ct, l) -> sub.typ sub ct; sub.layout_annotation sub l
 
 let class_structure sub {cstr_self; cstr_fields; _} =
   sub.pat sub cstr_self;
@@ -503,6 +507,8 @@ let value_binding sub {vb_pat; vb_expr; _} =
 
 let env _sub _ = ()
 
+let layout_annotation _sub _ = ()
+
 let default_iterator =
   {
     binding_op;
@@ -519,6 +525,7 @@ let default_iterator =
     env;
     expr;
     extension_constructor;
+    layout_annotation;
     module_binding;
     module_coercion;
     module_declaration;

@@ -53,6 +53,7 @@ type error =
   | Polymorphic_optional_param
   | Non_value of
       {vloc : value_loc; typ : type_expr; err : Type_layout.Violation.t}
+  | Bad_layout_annot of type_expr * Type_layout.Violation.t
 
 exception Error of Location.t * Env.t * error
 exception Error_forward of Location.error
@@ -192,9 +193,19 @@ let rec extract_params styp =
 let new_pre_univar ?name layout =
   let v = newvar ?name layout in pre_univars := v :: !pre_univars; v
 
+let make_typed_univars vars layouts : (string * layout_annotation option) list =
+  List.map2 (fun v l -> v.txt, Option.map Location.txt l) vars layouts
+
 type poly_univars = (string * type_expr) list
-let make_poly_univars vars =
-  List.map (fun name -> name, newvar ~name Type_layout.value) vars
+let make_poly_univars vars layouts =
+  let mk_pair v l =
+    let name = v.txt in
+    let layout = Type_layout.of_layout_annotation_opt l
+                   ~default:Type_layout.value
+    in
+    name, newvar ~name layout
+  in
+  List.map2 mk_pair vars layouts
 
 let check_poly_univars env loc vars =
   vars |> List.iter (fun (_, v) -> generalize v);
@@ -202,6 +213,7 @@ let check_poly_univars env loc vars =
     let v = Btype.proxy ty1 in
     begin match get_desc v with
     | Tvar { name; layout } when get_level v = Btype.generic_level ->
+      (* RAE XXX add layout check here *)
         set_type_desc v (Tunivar { name; layout })
     | _ ->
        raise (Error (loc, env, Cannot_quantify(name, v)))
@@ -597,12 +609,10 @@ and transl_type_aux env policy mode styp =
       in
       let ty = newty (Tvariant (make_row more)) in
       ctyp (Ttyp_variant (tfields, closed, present)) ty
-  | Ptyp_poly(vars, st) ->
-     (* CJC XXX probably some work to do here when we add layout annotations on
-        type parameters *)
-      let vars = List.map (fun v -> v.txt) vars in
+  | Ptyp_poly(vars, st, layouts) ->
+      let typed_vars = make_typed_univars vars layouts in
       begin_def();
-      let new_univars = make_poly_univars vars in
+      let new_univars = make_poly_univars vars layouts in
       let old_univars = !univars in
       univars := new_univars @ !univars;
       let cty = transl_type env policy mode st in
@@ -614,7 +624,7 @@ and transl_type_aux env policy mode styp =
       let ty_list = List.filter (fun v -> deep_occur v ty) ty_list in
       let ty' = Btype.newgenty (Tpoly(ty, ty_list)) in
       unify_var env (newvar Type_layout.any) ty';
-      ctyp (Ttyp_poly (vars, cty)) ty'
+      ctyp (Ttyp_poly (typed_vars, cty)) ty'
   | Ptyp_package (p, l) ->
       (* CJC XXX
 
@@ -666,6 +676,17 @@ and transl_type_aux env policy mode styp =
            }) ty
   | Ptyp_extension ext ->
       raise (Error_forward (Builtin_attributes.error_of_extension ext))
+  | Ptyp_layout (inner_type, layout_annot) ->
+      let cty = transl_type env policy mode inner_type in
+      let cty_expr = cty.ctyp_type in
+      let layout = Type_layout.of_layout_annotation layout_annot.txt in
+      begin match constrain_type_layout env cty_expr layout with
+             | Ok _ -> ()
+             | Error err ->
+                 raise (Error(styp.ptyp_loc, env,
+                              Bad_layout_annot(cty_expr, err)))
+      end;
+      ctyp (Ttyp_layout (cty, layout_annot.txt)) cty.ctyp_type
 
 and transl_fields env policy o fields =
   let hfields = Hashtbl.create 17 in
@@ -846,15 +867,15 @@ let transl_simple_type_delayed env mode styp =
 let transl_type_scheme env styp =
   reset_type_variables();
   match styp.ptyp_desc with
-  | Ptyp_poly (vars, st) ->
+  | Ptyp_poly (vars, st, layouts) ->
+     let typed_vars = make_typed_univars vars layouts in
      begin_def();
-     let vars = List.map (fun v -> v.txt) vars in
-     let univars = make_poly_univars vars in
+     let univars = make_poly_univars vars layouts in
      let typ = transl_simple_type env ~univars true Alloc_mode.Global st in
      end_def();
      generalize typ.ctyp_type;
      let _ = instance_poly_univars env styp.ptyp_loc univars in
-     { ctyp_desc = Ttyp_poly (vars, typ);
+     { ctyp_desc = Ttyp_poly (typed_vars, typ);
        ctyp_type = typ.ctyp_type;
        ctyp_env = env;
        ctyp_loc = styp.ptyp_loc;
@@ -986,6 +1007,10 @@ let report_error env ppf = function
     fprintf ppf "@[%s types must have layout value.@ \ %a@]"
       s (Type_layout.Violation.report_with_offender
            ~offender:(fun ppf -> Printtyp.type_expr ppf typ)) err
+  | Bad_layout_annot(ty, violation) ->
+    fprintf ppf "@[<b 2>Bad layout annotation:@ %a@]"
+      (Type_layout.Violation.report_with_offender
+         ~offender:(fun ppf -> Printtyp.type_expr ppf ty)) violation
 
 let () =
   Location.register_error_of_exn

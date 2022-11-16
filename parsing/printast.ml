@@ -147,8 +147,20 @@ let arg_label i ppf = function
   | Labelled s -> line i ppf "Labelled \"%s\"\n" s
 ;;
 
-let typevars ppf vs =
-  List.iter (fun x -> fprintf ppf " %a" Pprintast.tyvar x.txt) vs
+let var_layout ?(print_quote = true) ppf (v, l) =
+  let pptv ppf =
+    if print_quote
+    then Pprintast.tyvar ppf
+    else fun s -> fprintf ppf "%s" s
+  in
+  match l with
+  | None -> fprintf ppf " %a" pptv v.txt
+  | Some lay -> fprintf ppf " (%a : %a)"
+                  pptv v.txt
+                  Pprintast.layout_annotation lay.txt
+
+let typevars ppf (vs, ls) =
+  List.iter2 (fun v l -> var_layout ppf (v, l)) vs ls
 
 let rec core_type i ppf x =
   line i ppf "core_type %a\n" fmt_location x.ptyp_loc;
@@ -191,8 +203,8 @@ let rec core_type i ppf x =
   | Ptyp_alias (ct, s) ->
       line i ppf "Ptyp_alias \"%s\"\n" s;
       core_type i ppf ct;
-  | Ptyp_poly (sl, ct) ->
-      line i ppf "Ptyp_poly%a\n" typevars sl;
+  | Ptyp_poly (sl, ct, lays) ->
+      line i ppf "Ptyp_poly%a\n" typevars (sl, lays);
       core_type i ppf ct;
   | Ptyp_package (s, l) ->
       line i ppf "Ptyp_package %a\n" fmt_longident_loc s;
@@ -200,6 +212,10 @@ let rec core_type i ppf x =
   | Ptyp_extension (s, arg) ->
       line i ppf "Ptyp_extension \"%s\"\n" s.txt;
       payload i ppf arg
+  | Ptyp_layout (t, layout) ->
+      line i ppf "Ptyp_layout %a"
+        Pprintast.layout_annotation layout.txt;
+      core_type i ppf t
 
 and package_with i ppf (s, t) =
   line i ppf "with type %a\n" fmt_longident_loc s;
@@ -379,8 +395,8 @@ and expression i ppf x =
   | Pexp_object s ->
       line i ppf "Pexp_object\n";
       class_structure i ppf s
-  | Pexp_newtype (s, e) ->
-      line i ppf "Pexp_newtype \"%s\"\n" s.txt;
+  | Pexp_newtype (s, e, l) ->
+      line i ppf "Pexp_newtype %a\n" (var_layout ~print_quote:false) (s, l);
       expression i ppf e
   | Pexp_pack me ->
       line i ppf "Pexp_pack\n";
@@ -488,9 +504,9 @@ and extension_constructor i ppf x =
 
 and extension_constructor_kind i ppf x =
   match x with
-      Pext_decl(v, a, r) ->
+      Pext_decl(v, a, r, l) ->
         line i ppf "Pext_decl\n";
-        if v <> [] then line (i+1) ppf "vars%a\n" typevars v;
+        if v <> [] then line (i+1) ppf "vars%a\n" typevars (v,l);
         constructor_arguments (i+1) ppf a;
         option (i+1) core_type ppf r;
     | Pext_rebind li ->
@@ -887,10 +903,11 @@ and core_type_x_core_type_x_location i ppf (ct1, ct2, l) =
   core_type (i+1) ppf ct2;
 
 and constructor_decl i ppf
-     {pcd_name; pcd_vars; pcd_args; pcd_res; pcd_loc; pcd_attributes} =
+     {pcd_name; pcd_vars; pcd_layouts; pcd_args; pcd_res; pcd_loc; pcd_attributes} =
   line i ppf "%a\n" fmt_location pcd_loc;
   line (i+1) ppf "%a\n" fmt_string_loc pcd_name;
-  if pcd_vars <> [] then line (i+1) ppf "pcd_vars =%a\n" typevars pcd_vars;
+  if pcd_vars <> [] then line (i+1) ppf "pcd_vars =%a\n"
+                           typevars (pcd_vars, pcd_layouts);
   attributes i ppf pcd_attributes;
   constructor_arguments (i+1) ppf pcd_args;
   option (i+1) core_type ppf pcd_res

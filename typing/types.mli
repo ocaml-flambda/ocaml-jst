@@ -162,10 +162,11 @@ and layout =
   | Any
   | Sort of sort
   | Immediate64
-  (** We know for sure that values of this type are always immediate on 64 bit
-      platforms. For other platforms, we know nothing about immediacy. *)
+  (** We know for sure that values of types of this layout are always immediate
+      on 64 bit platforms. For other platforms, we know nothing about immediacy.
+  *)
   | Immediate
-  (** We know for sure that values of this type are always immediate *)
+  (** We know for sure that values of types of this layout are always immediate *)
 
 and fixed_explanation =
   | Univar of type_expr (** The row type was bound to an univar *)

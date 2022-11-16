@@ -69,14 +69,15 @@ module Typ = struct
   let class_ ?loc ?attrs a b = mk ?loc ?attrs (Ptyp_class (a, b))
   let alias ?loc ?attrs a b = mk ?loc ?attrs (Ptyp_alias (a, b))
   let variant ?loc ?attrs a b c = mk ?loc ?attrs (Ptyp_variant (a, b, c))
-  let poly ?loc ?attrs a b = mk ?loc ?attrs (Ptyp_poly (a, b))
+  let poly ?loc ?attrs a b c = mk ?loc ?attrs (Ptyp_poly (a, b, c))
   let package ?loc ?attrs a b = mk ?loc ?attrs (Ptyp_package (a, b))
   let extension ?loc ?attrs a = mk ?loc ?attrs (Ptyp_extension a)
+  let layout ?loc ?attrs a b = mk ?loc ?attrs (Ptyp_layout (a, b))
 
   let force_poly t =
     match t.ptyp_desc with
     | Ptyp_poly _ -> t
-    | _ -> poly ~loc:t.ptyp_loc [] t (* -> ghost? *)
+    | _ -> poly ~loc:t.ptyp_loc [] t [] (* -> ghost? *)
 
   let varify_constructors var_names t =
     let check_variable vl loc v =
@@ -108,14 +109,16 @@ module Typ = struct
         | Ptyp_variant(row_field_list, flag, lbl_lst_option) ->
             Ptyp_variant(List.map loop_row_field row_field_list,
                          flag, lbl_lst_option)
-        | Ptyp_poly(string_lst, core_type) ->
+        | Ptyp_poly(string_lst, core_type, layouts) ->
           List.iter (fun v ->
             check_variable var_names t.ptyp_loc v.txt) string_lst;
-            Ptyp_poly(string_lst, loop core_type)
+            Ptyp_poly(string_lst, loop core_type, layouts)
         | Ptyp_package(longident,lst) ->
             Ptyp_package(longident,List.map (fun (n,typ) -> (n,loop typ) ) lst)
         | Ptyp_extension (s, arg) ->
             Ptyp_extension (s, arg)
+        | Ptyp_layout (t, layout) ->
+            Ptyp_layout (loop t, layout)
       in
       {t with ptyp_desc = desc}
     and loop_row_field field =
@@ -206,7 +209,7 @@ module Exp = struct
   let lazy_ ?loc ?attrs a = mk ?loc ?attrs (Pexp_lazy a)
   let poly ?loc ?attrs a b = mk ?loc ?attrs (Pexp_poly (a, b))
   let object_ ?loc ?attrs a = mk ?loc ?attrs (Pexp_object a)
-  let newtype ?loc ?attrs a b = mk ?loc ?attrs (Pexp_newtype (a, b))
+  let newtype ?loc ?attrs a b c = mk ?loc ?attrs (Pexp_newtype (a, b, c))
   let pack ?loc ?attrs a = mk ?loc ?attrs (Pexp_pack a)
   let open_ ?loc ?attrs a b = mk ?loc ?attrs (Pexp_open (a, b))
   let letop ?loc ?attrs let_ ands body =
@@ -511,11 +514,16 @@ module Type = struct
   let mk ?(loc = !default_loc) ?(attrs = [])
         ?(docs = empty_docs) ?(text = [])
       ?(params = [])
+      ?layout
       ?(cstrs = [])
       ?(kind = Ptype_abstract)
       ?(priv = Public)
       ?manifest
       name =
+    let layout_attrs = match layout with
+      | None -> []
+      | Some layout_annot -> [layout_annot]
+    in
     {
      ptype_name = name;
      ptype_params = params;
@@ -524,15 +532,17 @@ module Type = struct
      ptype_private = priv;
      ptype_manifest = manifest;
      ptype_attributes =
-       add_text_attrs text (add_docs_attrs docs attrs);
+       layout_attrs @ add_text_attrs text (add_docs_attrs docs attrs);
      ptype_loc = loc;
     }
 
   let constructor ?(loc = !default_loc) ?(attrs = []) ?(info = empty_info)
-        ?(vars = []) ?(args = Pcstr_tuple []) ?res name =
+        ?(vars = [],[]) ?(args = Pcstr_tuple []) ?res name =
+    let vars, layouts = vars in
     {
      pcd_name = name;
      pcd_vars = vars;
+     pcd_layouts = layouts;
      pcd_args = args;
      pcd_res = res;
      pcd_loc = loc;
@@ -582,10 +592,11 @@ module Te = struct
     }
 
   let decl ?(loc = !default_loc) ?(attrs = []) ?(docs = empty_docs)
-         ?(info = empty_info) ?(vars = []) ?(args = Pcstr_tuple []) ?res name =
+         ?(info = empty_info) ?(vars = [],[]) ?(args = Pcstr_tuple []) ?res name =
+    let vars, layouts = vars in
     {
      pext_name = name;
-     pext_kind = Pext_decl(vars, args, res);
+     pext_kind = Pext_decl(vars, args, res, layouts);
      pext_loc = loc;
      pext_attributes = add_docs_attrs docs (add_info_attrs info attrs);
     }

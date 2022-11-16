@@ -65,6 +65,16 @@ let value_ident ppf name =
   else
     pp_print_string ppf name
 
+(* Layouts *)
+
+let print_layout ppf : Asttypes.layout_annotation option -> _ = function
+  | None -> ()
+  | Some Any -> fprintf ppf "@ : any"
+  | Some Value -> fprintf ppf "@ : value"
+  | Some Void -> fprintf ppf "@ : void"
+  | Some Immediate64 -> fprintf ppf "@ : immediate64"
+  | Some Immediate -> fprintf ppf "@ : immediate"
+
 (* Values *)
 
 let valid_float_lexeme s =
@@ -463,19 +473,27 @@ let out_type = ref print_out_type
 let print_type_parameter ppf s =
   if s = "_" then fprintf ppf "_" else pr_var ppf s
 
-let type_parameter ppf (ty, (var, inj)) =
+let type_parameter ~in_parens ppf
+      { oparam_name = ty; oparam_variance = var;
+        oparam_injectivity = inj; oparam_layout = lay } =
   let open Asttypes in
-  fprintf ppf "%s%s%a"
+  let format_string : _ format = "%s%s%a%a" in
+  let format_string : _ format = match lay with
+    | Some _ when not in_parens -> "(" ^^ format_string ^^ ")"
+    | _ -> format_string
+  in
+  fprintf ppf format_string
     (match var with Covariant -> "+" | Contravariant -> "-" | NoVariance ->  "")
     (match inj with Injective -> "!" | NoInjectivity -> "")
     print_type_parameter ty
+    print_layout lay
 
 let print_out_class_params ppf =
   function
     [] -> ()
   | tyl ->
       fprintf ppf "@[<1>[%a]@]@ "
-        (print_list type_parameter (fun ppf -> fprintf ppf ", "))
+        (print_list (type_parameter ~in_parens:true) (fun ppf -> fprintf ppf ", "))
         tyl
 
 let rec print_out_class_type ppf =
@@ -713,10 +731,12 @@ and print_out_type_decl kwd ppf td =
   let type_defined ppf =
     match td.otype_params with
       [] -> pp_print_string ppf td.otype_name
-    | [param] -> fprintf ppf "@[%a@ %s@]" type_parameter param td.otype_name
+    | [param] -> fprintf ppf "@[%a@ %s@]"
+                   (type_parameter ~in_parens:false) param td.otype_name
     | _ ->
         fprintf ppf "@[(@[%a)@]@ %s@]"
-          (print_list type_parameter (fun ppf -> fprintf ppf ",@ "))
+          (print_list (type_parameter ~in_parens:true)
+                      (fun ppf -> fprintf ppf ",@ "))
           td.otype_params
           td.otype_name
   in
@@ -736,15 +756,6 @@ and print_out_type_decl kwd ppf td =
   let print_private ppf = function
     Asttypes.Private -> fprintf ppf " private"
   | Asttypes.Public -> ()
-  in
-  let print_layout ppf =
-    match td.otype_layout with
-    | None -> ()
-    | Some Olay_any -> fprintf ppf " [%@%@any]"
-    | Some Olay_value -> fprintf ppf " [%@%@value]"
-    | Some Olay_void -> fprintf ppf " [%@%@void]"
-    | Some Olay_immediate64 -> fprintf ppf " [%@%@immediate64]"
-    | Some Olay_immediate -> fprintf ppf " [%@%@immediate]"
   in
   let print_unboxed ppf =
     if td.otype_unboxed then fprintf ppf " [%@%@unboxed]" else ()
@@ -770,11 +781,11 @@ and print_out_type_decl kwd ppf td =
         print_private td.otype_private
         !out_type ty
   in
-  fprintf ppf "@[<2>@[<hv 2>%t%a@]%t%t%t@]"
+  fprintf ppf "@[<2>@[<hv 2>%t%a%a@]%t%t@]"
     print_name_params
+    print_layout td.otype_layout
     print_out_tkind ty
     print_constraints
-    print_layout
     print_unboxed
 
 and print_simple_out_gf_type ppf (ty, gf) =

@@ -20,8 +20,14 @@ open Types
 val valid_tyvar_name : string -> bool
 
 type poly_univars
-val make_poly_univars : string list -> poly_univars
-  (* Create a set of univars with given names *)
+val make_poly_univars : string Location.loc list ->
+  Asttypes.layout_annotation Location.loc option list ->
+  poly_univars
+  (* Create a set of univars with given names and layouts,
+     returning the layouts of the created univars. Note
+     that any call of this function *must* call [check_poly_univars]
+     when done e.g. translating the type in which the univars
+     are in scope. *)
 val check_poly_univars :
    Env.t -> Location.t -> poly_univars -> type_expr list
   (* Verify that the given univars are universally quantified,
@@ -86,6 +92,7 @@ type error =
   | Polymorphic_optional_param
   | Non_value of
       {vloc : value_loc; typ : type_expr; err : Type_layout.Violation.t}
+  | Bad_layout_annot of type_expr * Type_layout.Violation.t
 
 exception Error of Location.t * Env.t * error
 

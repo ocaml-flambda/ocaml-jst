@@ -19,14 +19,14 @@ type 'a [@void] t1;;
 
 module type S1' = S1 with type 'a t = t_void t1 and type s = t_void t1;;
 [%%expect {|
-type t_any [@@any]
-type t_value [@@value]
-type t_imm [@@immediate]
-type t_imm64 [@@immediate64]
-type t_void [@@void]
-module type S1 = sig type 'a t type s end
-type 'a t1
-module type S1' = sig type 'a t = t_void t1 type s = t_void t1 end
+type t_any : any
+type t_value
+type t_imm : immediate
+type t_imm64 : immediate64
+type t_void : void
+module type S1 = sig type ('a : void) t type s end
+type ('a : void) t1
+module type S1' = sig type ('a : void) t = t_void t1 type s = t_void t1 end
 |}];;
 
 module type S1'' = S1 with type 'a t = 'a list;;
@@ -58,8 +58,8 @@ module M1_2' : S1_2' = struct
   type ('a : immediate) t = 'a list
 end;;
 [%%expect{|
-module type S1_2 = sig type 'a t end
-module type S1_2' = sig type 'a t = 'a list end
+module type S1_2 = sig type ('a : immediate) t end
+module type S1_2' = sig type ('a : immediate) t = 'a list end
 module M1_2' : S1_2'
 |}]
 
@@ -83,7 +83,7 @@ Error: Signature mismatch:
        Type declarations do not match:
          type 'a t = 'a list
        is not included in
-         type 'a t = 'a list
+         type ('a : immediate) t = 'a list
        The type 'a is not equal to the type 'a0
 |}]
 (* CJC XXX errors: error message *)
@@ -103,10 +103,10 @@ module F2 (X : T2) = struct
   let f () : 'a X.t = `A R
 end;;
 [%%expect{|
-module type S2 = sig type 'a t end
-type 'a r2 = R
-type !'a s2 = private [> `A of 'a r2 ]
-module type T2 = sig type 'a t = 'a s2 end
+module type S2 = sig type ('a : immediate) t end
+type ('a : immediate) r2 = R
+type (!'a : immediate) s2 = private [> `A of 'a r2 ]
+module type T2 = sig type ('a : immediate) t = 'a s2 end
 module F2 : functor (X : T2) -> sig val f : unit -> 'a X.t end
 |}]
 
@@ -117,8 +117,8 @@ module F2' (X : T2') = struct
   let f () : 'a X.t = `B "bad"
 end
 [%%expect{|
-type !'a s2' = private [> `B of 'a ]
-module type T2' = sig type 'a t = 'a s2' end
+type (!'a : immediate) s2' = private [> `B of 'a ]
+module type T2' = sig type ('a : immediate) t = 'a s2' end
 Line 5, characters 25-30:
 5 |   let f () : 'a X.t = `B "bad"
                              ^^^^^
@@ -193,8 +193,8 @@ end = struct
   type t = A
 end;;
 [%%expect {|
-module rec Foo3 : sig type t = Bar3.t [@@immediate] end
-and Bar3 : sig type t [@@immediate] end
+module rec Foo3 : sig type t = Bar3.t end
+and Bar3 : sig type t : immediate end
 |}];;
 
 module rec Foo3 : sig
@@ -237,7 +237,7 @@ end = struct
   type s = Foo3.t t
 end;;
 [%%expect {|
-type t3 [@@void]
+type t3 : void
 Line 12, characters 11-17:
 12 |   type s = Foo3.t t
                 ^^^^^^
@@ -261,8 +261,8 @@ end = struct
   type s = Foo3.t t
 end;;
 [%%expect {|
-module rec Foo3 : sig type t = t3 [@@void] end
-and Bar3 : sig type 'a t type s = Foo3.t t end
+module rec Foo3 : sig type t = t3 end
+and Bar3 : sig type ('a : void) t type s = Foo3.t t end
 |}];;
 
 (* Test 4: Nondep typedecl layout approximation in the Nondep_cannot_erase
@@ -281,7 +281,7 @@ type t4 = M4.s t4_val;;
 module F4 : functor (X : sig type t end) -> sig type s = Foo of X.t end
 module M4 : sig type s end
 type 'a t4_val
-type 'a t4_void
+type ('a : void) t4_void
 type t4 = M4.s t4_val
 |}]
 
@@ -305,10 +305,10 @@ type 'a [@immediate] t4_imm
 type t4 = M4'.s t4_imm;;
 [%%expect{|
 module F4' :
-  functor (X : sig type t [@@immediate] end) ->
-    sig type s = Foo of X.t [@@immediate] [@@unboxed] end
-module M4' : sig type s [@@immediate] end
-type 'a t4_imm
+  functor (X : sig type t : immediate end) ->
+    sig type s : immediate = Foo of X.t [@@unboxed] end
+module M4' : sig type s : immediate end
+type ('a : immediate) t4_imm
 type t4 = M4'.s t4_imm
 |}];;
 
@@ -337,7 +337,7 @@ let x3 = M3_1.f 42
 
 let x3' = M3_1.f "test";;
 [%%expect{|
-module type S3_1 = sig type 'a t val f : 'a -> 'a t end
+module type S3_1 = sig type ('a : immediate) t val f : 'a -> 'a t end
 module type S3_1' = sig val f : 'a -> 'a list end
 module M3_1 : S3_1'
 val x3 : int list = [42]
@@ -355,7 +355,7 @@ end
 
 module type S3_2' = S3_2 with type t := string;;
 [%%expect{|
-module type S3_2 = sig type t [@@immediate] end
+module type S3_2 = sig type t : immediate end
 Line 5, characters 30-46:
 5 | module type S3_2' = S3_2 with type t := string;;
                                   ^^^^^^^^^^^^^^^^
@@ -372,7 +372,7 @@ module type S6_2 = sig
   val m : (module S6_1 with type t = int)
 end;;
 [%%expect{|
-module type S6_1 = sig type t [@@void] end
+module type S6_1 = sig type t : void end
 Line 6, characters 10-41:
 6 |   val m : (module S6_1 with type t = int)
               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -381,7 +381,7 @@ Error: In this `with' constraint, the new definition of t
        Type declarations do not match:
          type t
        is not included in
-         type t [@@void]
+         type t : void
        the first has layout value, which is not a sublayout of void.
 |}];;
 
@@ -393,7 +393,7 @@ module type S6_4 = sig
   val m : (module S6_3 with type t = t_void)
 end;;
 [%%expect{|
-module type S6_3 = sig type t [@@value] end
+module type S6_3 = sig type t end
 Line 6, characters 33-34:
 6 |   val m : (module S6_3 with type t = t_void)
                                      ^

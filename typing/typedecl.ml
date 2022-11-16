@@ -372,7 +372,7 @@ let transl_constructor_arguments env univars closed = function
    type declaration to compute accurate layouts in the presence of recursively
    defined types. It is updated later by [update_constructor_arguments_layouts]
 *)
-let make_constructor env loc type_path type_params svars sargs sret_type =
+let make_constructor env loc type_path type_params svars slays sargs sret_type =
   match sret_type with
   | None ->
       let args, targs =
@@ -389,7 +389,7 @@ let make_constructor env loc type_path type_params svars sargs sret_type =
         | [] -> None, false
         | vs ->
            Ctype.begin_def();
-           Some (make_poly_univars (List.map (fun v -> v.txt) vs)), true
+           Some (make_poly_univars vs slays), true
       in
       let args, targs =
         transl_constructor_arguments env univars closed sargs
@@ -501,7 +501,7 @@ let transl_declaration env sdecl (id, uid) =
             then Type_layout.any
             else Type_layout.value
           in
-          Type_layout.of_layout_annotation ~default layout_annotation
+          Type_layout.of_layout_annotation_opt ~default layout_annotation
         in
         Ttype_abstract, Type_abstract {layout}
       | Ptype_variant scstrs ->
@@ -526,12 +526,14 @@ let transl_declaration env sdecl (id, uid) =
           let name = Ident.create_local scstr.pcd_name.txt in
           let targs, tret_type, args, ret_type =
             make_constructor env scstr.pcd_loc (Path.Pident id) params
-                             scstr.pcd_vars scstr.pcd_args scstr.pcd_res
+                             scstr.pcd_vars scstr.pcd_layouts
+                             scstr.pcd_args scstr.pcd_res
           in
+          let mk_var_layout sv sl = sv.txt, Option.map Location.txt sl in
           let tcstr =
             { cd_id = name;
               cd_name = scstr.pcd_name;
-              cd_vars = scstr.pcd_vars;
+              cd_vars = List.map2 mk_var_layout scstr.pcd_vars scstr.pcd_layouts;
               cd_args = targs;
               cd_res = tret_type;
               cd_loc = scstr.pcd_loc;
@@ -555,7 +557,7 @@ let transl_declaration env sdecl (id, uid) =
         let rep =
           if unbox then
             let layout =
-              Type_layout.of_layout_annotation ~default:Type_layout.any
+              Type_layout.of_layout_annotation_opt ~default:Type_layout.any
                 layout_annotation
             in
             Variant_unboxed layout
@@ -577,7 +579,7 @@ let transl_declaration env sdecl (id, uid) =
           let rep =
             if unbox then
               let layout =
-                Type_layout.of_layout_annotation ~default:Type_layout.any
+                Type_layout.of_layout_annotation_opt ~default:Type_layout.any
                   layout_annotation
               in
               Record_unboxed layout
@@ -1360,7 +1362,7 @@ let transl_type_decl env rec_flag sdecl_list =
   (* Check layout annotations *)
   List.iter (fun tdecl ->
     let layout =
-      Type_layout.of_layout_annotation ~default:Type_layout.any
+      Type_layout.of_layout_annotation_opt ~default:Type_layout.any
         tdecl.typ_layout_annotation
     in
     match Ctype.check_decl_layout final_env tdecl.typ_type layout with
@@ -1377,10 +1379,10 @@ let transl_extension_constructor ~scope env type_path type_params
   let id = Ident.create_scoped ~scope sext.pext_name.txt in
   let args, arg_layouts, constant, ret_type, kind =
     match sext.pext_kind with
-      Pext_decl(svars, sargs, sret_type) ->
+      Pext_decl(svars, sargs, sret_type, slays) ->
         let targs, tret_type, args, ret_type =
           make_constructor env sext.pext_loc type_path typext_params
-            svars sargs sret_type
+            svars slays sargs sret_type
         in
         let num_args =
           match targs with
@@ -1391,8 +1393,11 @@ let transl_extension_constructor ~scope env type_path type_params
         let args =
           update_constructor_arguments_layouts env sext.pext_loc args layouts
         in
+        let strip_locs sv sl = sv.txt, Option.map Location.txt sl in
+        let vars = List.map2 strip_locs svars slays in
         let constant = Array.for_all Type_layout.(equal void) layouts in
-          args, layouts, constant, ret_type, Text_decl(svars, targs, tret_type)
+          args, layouts, constant, ret_type,
+          Text_decl(vars, targs, tret_type)
     | Pext_rebind lid ->
         let usage : Env.constructor_usage =
           if priv = Public then Env.Exported else Env.Exported_private
@@ -1746,7 +1751,7 @@ let rec parse_native_repr_attributes env core_type ty rmode ~global_repr =
       parse_native_repr_attributes env ct2 t2 (prim_const_mode mret) ~global_repr
     in
     ((mode,repr_arg) :: repr_args, repr_res)
-  | (Ptyp_poly (_, t) | Ptyp_alias (t, _)), _, _ ->
+  | (Ptyp_poly (_, t, _) | Ptyp_alias (t, _)), _, _ ->
      parse_native_repr_attributes env t ty rmode ~global_repr
   | _ ->
      let rmode =

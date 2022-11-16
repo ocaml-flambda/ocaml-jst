@@ -58,6 +58,11 @@ val none : t
 val is_none : t -> bool
 (** True for [Location.none], false any other location *)
 
+val combine : t -> t -> t
+(** Merge two locations by forming a location that includes both locations
+    passed in. Precondition: the first location indeed comes first. The
+    combined location is a ghost if either of the inputs is. *)
+
 val in_file : string -> t
 (** Return an empty ghost range located in a given file. *)
 
@@ -87,7 +92,8 @@ type 'a loc = {
 
 val mknoloc : 'a -> 'a loc
 val mkloc : 'a -> t -> 'a loc
-
+val map : ('a -> 'b) -> 'a loc -> 'b loc
+val txt : 'a loc -> 'a
 
 (** {1 Input info} *)
 
