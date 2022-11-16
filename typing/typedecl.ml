@@ -626,6 +626,13 @@ let generalize_decl decl =
 module TypeSet = Btype.TypeSet
 module TypeMap = Btype.TypeMap
 
+(* CJC XXX do we actually need the layout checks for arrow, tuple, etc. here?
+   or maybe the checks on type translation and unification are enoug.
+
+   e.g., for function types.  How can you get one?  Either you wrote a function
+   type somewhere, in which case we'll catch it typtexp, or it arises from
+   unification, in which case filter_arrow is called and we catch it there.
+*)
 let rec check_constraints_rec env loc visited ty =
   let check_layout_value ~loc ~layout_loc typ =
     match Ctype.constrain_type_layout env typ Type_layout.value with
