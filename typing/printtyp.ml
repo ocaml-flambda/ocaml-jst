@@ -28,6 +28,63 @@ open Outcometree
 module String = Misc.Stdlib.String
 module Int = Misc.Stdlib.Int
 
+(* Note [When to print layout annotations]
+   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   Layout annotations are only occasionally necessary to write
+   (compilation can often infer layouts), so when should we print
+   them? This Note addresses all the cases.
+
+   Case (C1). The layout on a type declaration, like
+   [type 'a t : <<this one>> = ...].
+
+   We print the layout when it cannot be inferred from the rest of what
+   is printed. Specifically, we print the layout when either of these
+   is the case:
+
+   (C1.1) The type declaration is abstract and has no manifest (i.e.,
+   it's written without any [=]-signs), and the layout is not the default
+   [value]. (* CR layouts reisenberg: update when the default changes *)
+
+   In this case, there is no way to know the layout without the annotation.
+
+   (C1.2) The type is [@@unboxed] and the user wrote a layout annotation.  If an
+   [@@unboxed] type is recursive, it can be impossible to deduce the layout.
+   We thus defer to the user in determining whether to print the layout annotation.
+
+   Case (C2). The layout on a type parameter to a type, like
+   [type ('a : <<this one>>) t = ...].
+
+   This layout is printed if both of the following are true:
+
+   (C2.1) The layout is something other than the default [value].
+   (* CR layouts reisenberg: update when the default changes *)
+
+   (C2.2) The variable has no constraints on it. (If there is a constraint,
+   the constraint determines the layout, so printing the layout is
+   redundant.)
+
+   We *could*, in theory, print this only when it cannot be inferred.
+   But this amounts to repeating inference. The heuristic also runs into
+   trouble when considering the possibility of a recursive type. So, in
+   order to keep the pretty-printer simple, we just always print the
+   (non-default) annotation.
+
+   Another design possibility is to pass in verbosity level as some kind
+   of flag.
+
+   Case (C3). The layout on a universal type variable, like
+   [val f : ('a : <<this one>>). 'a -> 'a].
+
+   We should print this layout annotation whenever it is not the
+   default [value]. (* CR layouts reisenberg: update when the default changes *)
+   This is a challenge, though, because the type in a [val] does not
+   explicitly quantify its free variables. So we must collect the free
+   variables, look to see whether any have interesting layouts, and
+   print the whole set of variables if any of them do. This is all
+   implemented in [extract_qtvs], used also in a number of other places
+   we do quantification (e.g. gadt-syntax constructors).
+*)
+
 (* Print a long identifier *)
 
 let rec longident ppf = function
@@ -1096,6 +1153,25 @@ let add_type_to_preparation = prepare_type
 (* Disabled in classic mode when printing an unification error *)
 let print_labels = ref true
 
+(* Returns a layout annotation if we should print one, according to
+   Note [When to print layout annotations] *)
+let layout_annotation_of_layout layout : Asttypes.layout_annotation option =
+  match Type_layout.repr layout with
+    | Any -> Some Any
+    | Immediate64 -> Some Immediate64
+    | Immediate -> Some Immediate
+    | Sort Value -> None (* this is (C2.1) from the Note *)
+    | Sort Void -> Some Void
+    | Sort (Var _) -> assert false
+    (* by the time we're printing, these should be defaulted *)
+
+let layout_annotation_of_param tv : Asttypes.layout_annotation option =
+  (* This adds a layout annotation according to Case (C2) in
+     Note [When to print layout annotations] *)
+  match get_desc tv with
+  | Tvar { layout } -> layout_annotation_of_layout layout
+  | _ -> None (* this is (C2.2) from the Note *)
+
 let rec tree_of_typexp mode ty =
   let px = proxy ty in
   if List.memq px !printed_aliases && not (List.memq px !delayed) then
@@ -1202,18 +1278,16 @@ let rec tree_of_typexp mode ty =
         (*let print_names () =
           List.iter (fun (_, name) -> prerr_string (name ^ " ")) !names;
           prerr_string "; " in *)
-        if tyl = [] then tree_of_typexp mode ty else begin
-          let tyl = List.map Transient_expr.repr tyl in
-          let old_delayed = !delayed in
-          (* Make the names delayed, so that the real type is
-             printed once when used as proxy *)
-          List.iter add_delayed tyl;
-          let tl = List.map (Names.name_of_type Names.new_name) tyl in
-          let tr = Otyp_poly (tl, tree_of_typexp mode ty) in
-          (* Forget names when we leave scope *)
-          Names.remove_names tyl;
-          delayed := old_delayed; tr
-        end
+        let tyl = List.map Transient_expr.repr tyl in
+        let old_delayed = !delayed in
+        (* Make the names delayed, so that the real type is
+           printed once when used as proxy *)
+        List.iter add_delayed tyl;
+        let tl = tree_of_qtvs tyl in
+        let tr = Otyp_poly (tl, tree_of_typexp mode ty) in
+        (* Forget names when we leave scope *)
+        Names.remove_names tyl;
+        delayed := old_delayed; tr
     | Tunivar _ ->
         Otyp_var (false, Names.name_of_type Names.new_name tty)
     | Tpackage (p, fl) ->
@@ -1230,6 +1304,20 @@ let rec tree_of_typexp mode ty =
     add_printed_alias_proxy px;
     Otyp_alias (pr_typ (), Names.name_of_type Names.new_name px) end
   else pr_typ ()
+
+(* qtvs = quantified type variables *)
+(* this silently drops any arguments that are not generic Tvar or Tunivar *)
+and tree_of_qtvs qtvs =
+  let tree_of_qtv v : (string * Asttypes.layout_annotation option) option =
+    let tree layout = Some (Names.name_of_type Names.new_name v,
+                            layout_annotation_of_layout layout)
+    in
+    match v.desc with
+    | Tvar { layout } when v.level = generic_level -> tree layout
+    | Tunivar { layout } -> tree layout
+    | _ -> None
+  in
+  List.filter_map tree_of_qtv qtvs
 
 and tree_of_row_field mode (l, f) =
   match row_field_repr f with
@@ -1358,9 +1446,23 @@ let filter_params tyl =
       [] tyl
   in List.rev params
 
-let prepare_type_constructor_arguments = function
-  | Cstr_tuple l -> List.iter (fun (ty, _) -> prepare_type ty) l
-  | Cstr_record l -> List.iter (fun l -> prepare_type l.ld_type) l
+let prepare_type_constructor_arguments args =
+  List.iter prepare_type (tys_of_constr_args args)
+
+(* returns an empty list if no variables in the list have a layout annotation *)
+let zap_qtvs_if_boring qtvs =
+  if List.exists (fun (_v, l) -> Option.is_some l) qtvs
+  then qtvs
+  else []
+
+(* get the free variables with their layouts; do this *after* converting the
+   type itself, so that the type names are available.
+   This implements Case (C3) from Note [When to print layout annotations]. *)
+let extract_qtvs tyl =
+  let fvs = Ctype.free_non_row_variables_of_list tyl in
+  let tfvs = List.map Transient_expr.repr fvs in
+  let vars_layouts = tree_of_qtvs tfvs in
+  zap_qtvs_if_boring vars_layouts
 
 let rec tree_of_type_decl id decl =
 
@@ -1453,9 +1555,14 @@ let rec tree_of_type_decl id decl =
           else (NoVariance, NoInjectivity))
         decl.type_params decl.type_variance
     in
+    let mk_param ty (variance, injectivity) =
+      { oparam_name = type_param (tree_of_typexp Type ty);
+        oparam_variance = variance;
+        oparam_injectivity = injectivity;
+        oparam_layout = layout_annotation_of_param ty }
+    in
     (Ident.name id,
-     List.map2 (fun ty cocn -> type_param (tree_of_typexp Type ty), cocn)
-       params vari)
+     List.map2 mk_param params vari)
   in
   let tree_of_manifest ty1 =
     match ty_manifest with
@@ -1464,17 +1571,6 @@ let rec tree_of_type_decl id decl =
   in
   let (name, args) = type_defined decl in
   let constraints = tree_of_constraints params in
-  let olayout_of_layout = function
-    | Builtin_attributes.Any -> Olay_any
-    | Builtin_attributes.Value -> Olay_value
-    | Builtin_attributes.Void -> Olay_void
-    | Builtin_attributes.Immediate64 -> Olay_immediate64
-    | Builtin_attributes.Immediate -> Olay_immediate
-  in
-  let lay =
-    Option.map olayout_of_layout
-      (Builtin_attributes.layout decl.type_attributes)
-  in
   let ty, priv, unboxed =
     match decl.type_kind with
     | Type_abstract _ ->
@@ -1501,11 +1597,25 @@ let rec tree_of_type_decl id decl =
         decl.type_private,
         false
   in
+  (* The algorithm for setting [lay] here is described as Case (C1) in
+     Note [When to print layout annotations] *)
+  let lay = match ty, unboxed with
+    | (Otyp_abstract, _) | (_, true) ->
+        (* (C1.1) from the Note corresponds to Otyp_abstract. Anything
+           but the default must be user-written, so we just look in the
+           attributes. Similarly, look in the attributes for (C1.2), the
+           unboxed case. *)
+      begin match Builtin_attributes.layout decl.type_attributes with
+      | Some {txt = Value} -> None
+      | other -> other
+      end
+    | _ -> None (* other cases have no layout annotation *)
+  in
     { otype_name = name;
       otype_params = args;
       otype_type = ty;
       otype_private = priv;
-      otype_layout = lay;
+      otype_layout = Option.map Location.txt lay;
       otype_unboxed = unboxed;
       otype_cstrs = constraints }
 
@@ -1513,24 +1623,23 @@ and tree_of_constructor_arguments = function
   | Cstr_tuple l -> List.map tree_of_typ_gf l
   | Cstr_record l -> [ Otyp_record (List.map tree_of_label l), Ogf_unrestricted ]
 
-and tree_of_constructor cd =
-  let name = Ident.name cd.cd_id in
-  let arg () = tree_of_constructor_arguments cd.cd_args in
-  match cd.cd_res with
-  | None -> {
-      ocstr_name = name;
-      ocstr_args = arg ();
-      ocstr_return_type = None;
-    }
+and tree_of_constructor_args_and_ret_type args ret_type =
+  match ret_type with
+  | None -> (tree_of_constructor_arguments args, None)
   | Some res ->
       Names.with_local_names (fun () ->
-        let ret = tree_of_typexp Type res in
-        let args = arg () in
-        {
-          ocstr_name = name;
-          ocstr_args = args;
-          ocstr_return_type = Some ret;
-        })
+        let out_ret = tree_of_typexp Type res in
+        let out_args = tree_of_constructor_arguments args in
+        let qtvs = extract_qtvs (res :: tys_of_constr_args args) in
+        (out_args, Some (qtvs, out_ret)))
+
+and tree_of_constructor cd =
+  let name = Ident.name cd.cd_id in
+  let args, ret = tree_of_constructor_args_and_ret_type cd.cd_args cd.cd_res in
+  { ocstr_name = name;
+    ocstr_args = args;
+    ocstr_return_type = ret
+  }
 
 and tree_of_label l =
   let gom =
@@ -1565,15 +1674,6 @@ let constructor_arguments ppf a =
 
 (* Print an extension declaration *)
 
-let extension_constructor_args_and_ret_type_subtree ext_args ext_ret_type =
-  match ext_ret_type with
-  | None -> (tree_of_constructor_arguments ext_args, None)
-  | Some res ->
-      Names.with_local_names (fun () ->
-        let ret = tree_of_typexp Type res in
-        let args = tree_of_constructor_arguments ext_args in
-        (args, Some ret))
-
 let tree_of_extension_constructor id ext es =
   reset_except_context ();
   let ty_name = Path.name ext.ext_type_path in
@@ -1593,7 +1693,7 @@ let tree_of_extension_constructor id ext es =
   in
   let name = Ident.name id in
   let args, ret =
-    extension_constructor_args_and_ret_type_subtree
+    tree_of_constructor_args_and_ret_type
       ext.ext_args
       ext.ext_ret_type
   in
@@ -1622,7 +1722,7 @@ let extension_only_constructor id ppf ext =
   Option.iter prepare_type ext.ext_ret_type;
   let name = Ident.name id in
   let args, ret =
-    extension_constructor_args_and_ret_type_subtree
+    tree_of_constructor_args_and_ret_type
       ext.ext_args
       ext.ext_ret_type
   in
@@ -1639,9 +1739,12 @@ let tree_of_value_description id decl =
   (* Format.eprintf "@[%a@]@." raw_type_expr decl.val_type; *)
   let id = Ident.name id in
   let ty = tree_of_type_scheme decl.val_type in
+  (* Important: process the fvs *after* the type; tree_of_type_scheme
+     resets the naming context *)
+  let qtvs = extract_qtvs [decl.val_type] in
   let vd =
     { oval_name = id;
-      oval_type = ty;
+      oval_type = Otyp_poly(qtvs, ty);
       oval_prims = [];
       oval_attributes = [] }
   in
@@ -1669,10 +1772,13 @@ let prepare_method _lab (priv, _virt, ty) =
 let tree_of_method mode (lab, priv, virt, ty) =
   let (ty, tyl) = method_type priv ty in
   let tty = tree_of_typexp mode ty in
-  Names.remove_names (List.map Transient_expr.repr tyl);
+  let tyl = List.map Transient_expr.repr tyl in
+  let qtvs = tree_of_qtvs tyl in
+  let qtvs = zap_qtvs_if_boring qtvs in
+  Names.remove_names tyl;
   let priv = priv <> Mpublic in
   let virt = virt = Virtual in
-  Ocsg_method (lab, priv, virt, tty)
+  Ocsg_method (lab, priv, virt, Otyp_poly(qtvs, tty))
 
 let rec prepare_class_type params = function
   | Cty_constr (_p, tyl, cty) ->
@@ -1760,12 +1866,21 @@ let class_type ppf cty =
   prepare_class_type [] cty;
   !Oprint.out_class_type ppf (tree_of_class_type Type [] cty)
 
-let tree_of_class_param param variance =
-  (match tree_of_typexp Type_scheme param with
-    Otyp_var (_, s) -> s
-  | _ -> "?"),
-  if is_Tvar param then Asttypes.(NoVariance, NoInjectivity)
-  else variance
+let tree_of_class_param param var_inj =
+  let variance, injectivity =
+    if is_Tvar param
+    then Asttypes.(NoVariance, NoInjectivity)
+    else var_inj
+  in
+  { oparam_name = begin match tree_of_typexp Type_scheme param with
+      | Otyp_var (_, s) -> s
+      | _ -> "?"
+    end;
+    oparam_variance = variance;
+    oparam_injectivity = injectivity;
+    (* CR-soon reisenberg: fix next line when adding support for layout
+       annotations on class type parameters *)
+    oparam_layout = layout_annotation_of_param param }
 
 let class_variance =
   let open Variance in let open Asttypes in

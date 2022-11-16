@@ -28,6 +28,13 @@ open Longident
 open Parsetree
 open Ast_helper
 
+let layout_annotation_to_string = function
+  | Any -> "any"
+  | Value -> "value"
+  | Immediate -> "immediate"
+  | Immediate64 -> "immediate64"
+  | Void -> "void"
+
 let prefix_symbols  = [ '!'; '?'; '~' ] ;;
 let infix_symbols = [ '='; '<'; '>'; '@'; '^'; '|'; '&'; '+'; '-'; '*'; '/';
                       '$'; '%'; '#' ]
@@ -303,7 +310,18 @@ let tyvar ppf s =
   else
     Format.fprintf ppf "'%s" s
 
-let tyvar_loc f str = tyvar f str.txt
+let layout_annotation ppf lay =
+  Format.fprintf ppf "%s" (layout_annotation_to_string lay)
+
+let tyvar_layout_loc ~print_quote f (str,layout) =
+  let pptv =
+    if print_quote
+    then tyvar
+    else fun ppf s -> Format.fprintf ppf "%s" s
+  in
+  match layout with
+  | None -> pptv f str.txt
+  | Some lay -> Format.fprintf f "(%a : %a)" pptv str.txt layout_annotation lay.txt
 let string_quot f x = pp f "`%s" x
 
 let maybe_local_type pty ctxt f c =
@@ -342,16 +360,17 @@ and core_type ctxt f x =
           (type_with_label ctxt) (l,ct1) (return_type ctxt) ct2
     | Ptyp_alias (ct, s) ->
         pp f "@[<2>%a@;as@;%a@]" (core_type1 ctxt) ct tyvar s
-    | Ptyp_poly ([], ct) ->
+    | Ptyp_poly ([], ct, []) ->
         core_type ctxt f ct
-    | Ptyp_poly (sl, ct) ->
+    | Ptyp_poly (sl, ct, lays) ->
         pp f "@[<2>%a%a@]"
-               (fun f l -> match l with
+               (fun f (v,l) -> match v with
                   | [] -> ()
                   | _ ->
                       pp f "%a@;.@;"
-                        (list tyvar_loc ~sep:"@;")  l)
-          sl (core_type ctxt) ct
+                        (list (tyvar_layout_loc ~print_quote:true) ~sep:"@;")
+                        (List.combine v l))
+          (sl,lays) (core_type ctxt) ct
     | _ -> pp f "@[<2>%a@]" (core_type1 ctxt) x
 
 and core_type1 ctxt f x =
@@ -680,8 +699,9 @@ and expression ctxt f x =
         pp f "@[<2>fun@;%a@;%a@]"
           (label_exp ctxt) (l, e0, p)
           (pp_print_pexp_function ctxt "->") e
-    | Pexp_newtype (lid, e) ->
-        pp f "@[<2>fun@;(type@;%s)@;%a@]" lid.txt
+    | Pexp_newtype (lid, e, lay) ->
+        pp f "@[<2>fun@;(type@;%a)@;%a@]"
+          (tyvar_layout_loc ~print_quote:false) (lid, lay)
           (pp_print_pexp_function ctxt "->") e
     | Pexp_function l ->
         pp f "@[<hv>function%a@]" (case_list ctxt) l
@@ -1316,8 +1336,10 @@ and pp_print_pexp_function ctxt sep f x =
     | Pexp_fun (label, eo, p, e) ->
       pp f "%a@ %a"
         (label_exp ctxt) (label,eo,p) (pp_print_pexp_function ctxt sep) e
-    | Pexp_newtype (str,e) ->
-      pp f "(type@ %s)@ %a" str.txt (pp_print_pexp_function ctxt sep) e
+    | Pexp_newtype (str,e,lay) ->
+      pp f "(type@ %a)@ %a"
+        (tyvar_layout_loc ~print_quote:false) (str,lay)
+        (pp_print_pexp_function ctxt sep) e
     | _ ->
        pp f "%s@;%a" sep (expression ctxt) x
 
@@ -1329,13 +1351,15 @@ and binding ctxt f {pvb_pat=p; pvb_expr=x; _} =
     let gadt_pattern =
       match p with
       | {ppat_desc=Ppat_constraint({ppat_desc=Ppat_var _} as pat,
-                                   {ptyp_desc=Ptyp_poly (args_tyvars, rt)});
+                                   {ptyp_desc=Ptyp_poly (args_tyvars, rt, _)});
          ppat_attributes=[]}->
           Some (pat, args_tyvars, rt)
       | _ -> None in
     let rec gadt_exp tyvars e =
       match e with
-      | {pexp_desc=Pexp_newtype (tyvar, e); pexp_attributes=[]} ->
+      (* no need to handle layout annotations here; the extracted variables
+         don't get printed -- they're just used to decide how to print *)
+      | {pexp_desc=Pexp_newtype (tyvar, e, _); pexp_attributes=[]} ->
           gadt_exp (tyvar :: tyvars) e
       | {pexp_desc=Pexp_constraint (e, ct); pexp_attributes=[]} ->
           Some (List.rev tyvars, e, ct)
@@ -1637,7 +1661,7 @@ and type_declaration ctxt f x =
   let constructor_declaration f pcd =
     pp f "|@;";
     constructor_declaration ctxt f
-      (pcd.pcd_name.txt, pcd.pcd_vars,
+      (pcd.pcd_name.txt, pcd.pcd_vars, pcd.pcd_layouts,
        pcd.pcd_args, pcd.pcd_res, pcd.pcd_attributes)
   in
   let repr f =
@@ -1681,15 +1705,17 @@ and type_extension ctxt f x =
     x.ptyext_constructors
     (item_attributes ctxt) x.ptyext_attributes
 
-and constructor_declaration ctxt f (name, vars, args, res, attrs) =
+and constructor_declaration ctxt f (name, vars, layouts, args, res, attrs) =
   let name =
     match name with
     | "::" -> "(::)"
     | s -> s in
-  let pp_vars f vs =
+  let pp_vars f (vs,ls) =
     match vs with
     | [] -> ()
-    | vs -> pp f "%a@;.@;" (list tyvar_loc ~sep:"@;") vs in
+    | vs -> pp f "%a@;.@;" (list (tyvar_layout_loc ~print_quote:true) ~sep:"@;")
+                           (List.combine vs ls)
+  in
   match res with
   | None ->
       pp f "%s%a@;%a" name
@@ -1702,7 +1728,7 @@ and constructor_declaration ctxt f (name, vars, args, res, attrs) =
         (attributes ctxt) attrs
   | Some r ->
       pp f "%s:@;%a%a@;%a" name
-        pp_vars vars
+        pp_vars (vars, layouts)
         (fun f -> function
            | Pcstr_tuple [] -> core_type1 ctxt f r
            | Pcstr_tuple l -> pp f "%a@;->@;%a"
@@ -1717,9 +1743,9 @@ and constructor_declaration ctxt f (name, vars, args, res, attrs) =
 and extension_constructor ctxt f x =
   (* Cf: #7200 *)
   match x.pext_kind with
-  | Pext_decl(v, l, r) ->
+  | Pext_decl(v, l, r, layouts) ->
       constructor_declaration ctxt f
-        (x.pext_name.txt, v, l, r, x.pext_attributes)
+        (x.pext_name.txt, v, layouts, l, r, x.pext_attributes)
   | Pext_rebind li ->
       pp f "%s@;=@;%a%a" x.pext_name.txt
         longident_loc li

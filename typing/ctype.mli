@@ -267,8 +267,6 @@ val deep_occur: type_expr -> type_expr -> bool
 val moregeneral: Env.t -> bool -> type_expr -> type_expr -> unit
         (* Check if the first type scheme is more general than the second. *)
 val is_moregeneral: Env.t -> bool -> type_expr -> type_expr -> bool
-val rigidify: type_expr -> type_expr list
-        (* "Rigidify" a type and return its type variable *)
 val all_distinct_vars: Env.t -> type_expr list -> bool
         (* Check those types are all distinct type variables *)
 val matches: expand_error_trace:bool -> Env.t -> type_expr -> type_expr -> unit
@@ -429,7 +427,11 @@ val nongen_class_declaration: class_declaration -> bool
            Uses the empty environment.  *)
 
 val free_variables: ?env:Env.t -> type_expr -> type_expr list
-        (* If env present, then check for incomplete definitions too *)
+        (* If env present, then check for incomplete definitions too;
+           returns both normal variables and row variables*)
+val free_non_row_variables_of_list: type_expr list -> type_expr list
+        (* gets only non-row variables *)
+
 val closed_type_decl: type_declaration -> type_expr option
 val closed_extension_constructor: extension_constructor -> type_expr option
 val closed_class:
@@ -469,6 +471,9 @@ val get_unboxed_type_representation : Env.t -> type_expr -> type_expr
 (* Cheap upper bound on layout.  Will not expand unboxed types - call
    [type_layout] if that's needed. *)
 val estimate_type_layout : Env.t ->  type_expr -> Type_layout.t
+
+(* Get the layout of a type, expanding it and looking through [[@@unboxed]]
+   types. *)
 val type_layout : Env.t -> type_expr -> Type_layout.t
 
 (* Find a type's sort (constraining it to be an arbitrary sort variable, if

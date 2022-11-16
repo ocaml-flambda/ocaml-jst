@@ -29,6 +29,19 @@ exception Already_bound
 type value_loc =
     Fun_arg | Fun_ret | Tuple | Poly_variant | Package_constraint | Object_field
 
+type cannot_quantify_reason =
+  | Unified of type_expr
+  | Univar
+  | Scope_escape
+
+(* a description of the layout on an explicitly quantified universal
+   variable, containing whether the layout was a default
+   (e.g. [let f : 'a. 'a -> 'a = ...]) or explicit
+   (e.g. [let f : ('a : immediate). ...]) and what the layout was;
+   it is original as compared to the inferred layout after processing
+   the body of the type *)
+type layout_info = { original_layout : layout; defaulted : bool }
+
 type error =
     Unbound_type_variable of string
   | Undefined_type_constructor of Path.t
@@ -44,7 +57,9 @@ type error =
   | Not_a_variant of type_expr
   | Variant_tags of string * string
   | Invalid_variable_name of string
-  | Cannot_quantify of string * type_expr
+  | Cannot_quantify of string * cannot_quantify_reason
+  | Bad_univar_layout of
+      { name : string; layout_info : layout_info; inferred_layout : layout }
   | Multiple_constraints_on_type of Longident.t
   | Method_mismatch of string * type_expr * type_expr
   | Opened_object of Path.t option
@@ -53,9 +68,19 @@ type error =
   | Polymorphic_optional_param
   | Non_value of
       {vloc : value_loc; typ : type_expr; err : Type_layout.Violation.t}
+  | Bad_layout_annot of type_expr * Type_layout.Violation.t
 
 exception Error of Location.t * Env.t * error
 exception Error_forward of Location.error
+
+type poly_univars = (string * type_expr * layout_info) list
+
+let rec find_poly_univars name = function
+  | [] -> raise Not_found
+  | (n, t, _) :: rest ->
+    if String.equal name n
+    then t
+    else find_poly_univars name rest
 
 (** Map indexed by type variable names. *)
 module TyVarMap = Misc.Stdlib.String.Map
@@ -98,7 +123,7 @@ let create_package_mty fake loc env (p, l) =
 (* type_variables: all current type variable.  Narrow and widen create scopes
    for these *)
 let type_variables = ref (TyVarMap.empty : type_expr TyVarMap.t)
-let univars        = ref ([] : (string * type_expr) list)
+let univars        = ref ([] : poly_univars)
 let pre_univars    = ref ([] : type_expr list)
 let used_variables = ref (TyVarMap.empty : (type_expr * Location.t) TyVarMap.t)
 
@@ -192,19 +217,42 @@ let rec extract_params styp =
 let new_pre_univar ?name layout =
   let v = newvar ?name layout in pre_univars := v :: !pre_univars; v
 
-type poly_univars = (string * type_expr) list
-let make_poly_univars vars =
-  List.map (fun name -> name, newvar ~name Type_layout.value) vars
+let make_typed_univars vars layouts : (string * layout_annotation option) list =
+  List.map2 (fun v l -> v.txt, Option.map Location.txt l) vars layouts
+
+let make_poly_univars vars layouts =
+  let mk_pair v l =
+    let name = v.txt in
+    let original_layout = Type_layout.of_layout_annotation_opt l
+                            ~default:Type_layout.value
+    in
+    let layout_info = { original_layout; defaulted = Option.is_none l } in
+    name, newvar ~name original_layout, layout_info
+  in
+  List.map2 mk_pair vars layouts
 
 let check_poly_univars env loc vars =
-  vars |> List.iter (fun (_, v) -> generalize v);
-  vars |> List.map (fun (name, ty1) ->
+  vars |> List.iter (fun (_, v, _) -> generalize v);
+  vars |> List.map (fun (name, ty1,
+                         ({ original_layout; _ } as layout_info)) ->
     let v = Btype.proxy ty1 in
+    let cant_quantify reason =
+      raise (Error (loc, env, Cannot_quantify(name, reason)))
+    in
     begin match get_desc v with
-    | Tvar { name; layout } when get_level v = Btype.generic_level ->
+    | Tvar { layout } when not (Type_layout.equal layout original_layout) ->
+        let reason = Bad_univar_layout { name; layout_info;
+                                         inferred_layout = layout }
+        in
+        raise (Error (loc, env, reason))
+    | Tvar _ when get_level v <> Btype.generic_level ->
+        cant_quantify Scope_escape
+    | Tvar { name; layout } ->
         set_type_desc v (Tunivar { name; layout })
+    | Tunivar _ ->
+        cant_quantify Univar
     | _ ->
-       raise (Error (loc, env, Cannot_quantify(name, v)))
+        cant_quantify (Unified v)
     end;
     v)
 
@@ -267,7 +315,7 @@ and transl_type_aux env policy mode styp =
       if not (valid_tyvar_name name) then
         raise (Error (styp.ptyp_loc, env, Invalid_variable_name ("'" ^ name)));
       begin try
-        instance (List.assoc name !univars)
+        instance (find_poly_univars name !univars)
       with Not_found -> try
         instance (fst (TyVarMap.find name !used_variables))
       with Not_found ->
@@ -454,7 +502,7 @@ and transl_type_aux env policy mode styp =
       let cty =
         try
           let t =
-            try List.assoc alias !univars
+            try find_poly_univars alias !univars
             with Not_found ->
               instance (fst(TyVarMap.find alias !used_variables))
           in
@@ -597,12 +645,10 @@ and transl_type_aux env policy mode styp =
       in
       let ty = newty (Tvariant (make_row more)) in
       ctyp (Ttyp_variant (tfields, closed, present)) ty
-  | Ptyp_poly(vars, st) ->
-     (* CJC XXX probably some work to do here when we add layout annotations on
-        type parameters *)
-      let vars = List.map (fun v -> v.txt) vars in
+  | Ptyp_poly(vars, st, layouts) ->
+      let typed_vars = make_typed_univars vars layouts in
       begin_def();
-      let new_univars = make_poly_univars vars in
+      let new_univars = make_poly_univars vars layouts in
       let old_univars = !univars in
       univars := new_univars @ !univars;
       let cty = transl_type env policy mode st in
@@ -614,7 +660,7 @@ and transl_type_aux env policy mode styp =
       let ty_list = List.filter (fun v -> deep_occur v ty) ty_list in
       let ty' = Btype.newgenty (Tpoly(ty, ty_list)) in
       unify_var env (newvar Type_layout.any) ty';
-      ctyp (Ttyp_poly (vars, cty)) ty'
+      ctyp (Ttyp_poly (typed_vars, cty)) ty'
   | Ptyp_package (p, l) ->
       (* CJC XXX
 
@@ -666,6 +712,17 @@ and transl_type_aux env policy mode styp =
            }) ty
   | Ptyp_extension ext ->
       raise (Error_forward (Builtin_attributes.error_of_extension ext))
+  | Ptyp_layout (inner_type, layout_annot) ->
+      let cty = transl_type env policy mode inner_type in
+      let cty_expr = cty.ctyp_type in
+      let layout = Type_layout.of_layout_annotation layout_annot.txt in
+      begin match constrain_type_layout env cty_expr layout with
+             | Ok _ -> ()
+             | Error err ->
+                 raise (Error(styp.ptyp_loc, env,
+                              Bad_layout_annot(cty_expr, err)))
+      end;
+      ctyp (Ttyp_layout (cty, layout_annot.txt)) cty.ctyp_type
 
 and transl_fields env policy o fields =
   let hfields = Hashtbl.create 17 in
@@ -846,15 +903,15 @@ let transl_simple_type_delayed env mode styp =
 let transl_type_scheme env styp =
   reset_type_variables();
   match styp.ptyp_desc with
-  | Ptyp_poly (vars, st) ->
+  | Ptyp_poly (vars, st, layouts) ->
+     let typed_vars = make_typed_univars vars layouts in
      begin_def();
-     let vars = List.map (fun v -> v.txt) vars in
-     let univars = make_poly_univars vars in
+     let univars = make_poly_univars vars layouts in
      let typ = transl_simple_type env ~univars true Alloc_mode.Global st in
      end_def();
      generalize typ.ctyp_type;
      let _ = instance_poly_univars env styp.ptyp_loc univars in
-     { ctyp_desc = Ttyp_poly (vars, typ);
+     { ctyp_desc = Ttyp_poly (typed_vars, typ);
        ctyp_type = typ.ctyp_type;
        ctyp_env = env;
        ctyp_loc = styp.ptyp_loc;
@@ -941,17 +998,27 @@ let report_error env ppf = function
         lab1 lab2 "Change one of them."
   | Invalid_variable_name name ->
       fprintf ppf "The type variable name %s is not allowed in programs" name
-  | Cannot_quantify (name, v) ->
+  | Cannot_quantify (name, reason) ->
       fprintf ppf
         "@[<hov>The universal type variable %a cannot be generalized:@ "
         Pprintast.tyvar name;
-      if Btype.is_Tvar v then
-        fprintf ppf "it escapes its scope"
-      else if Btype.is_Tunivar v then
+      begin match reason with
+      | Unified v ->
+        fprintf ppf "it is bound to@ %a" Printtyp.type_expr v
+      | Univar ->
         fprintf ppf "it is already bound to another variable"
-      else
-        fprintf ppf "it is bound to@ %a" Printtyp.type_expr v;
+      | Scope_escape ->
+        fprintf ppf "it escapes its scope"
+      end;
       fprintf ppf ".@]";
+  | Bad_univar_layout { name; layout_info; inferred_layout } ->
+      fprintf ppf
+        "@[<hov>The universal type variable %a was %s to have@ \
+         layout %a, but was inferred to have layout %a.@]"
+        Pprintast.tyvar name
+        (if layout_info.defaulted then "defaulted" else "declared")
+        Type_layout.format layout_info.original_layout
+        Type_layout.format inferred_layout
   | Multiple_constraints_on_type s ->
       fprintf ppf "Multiple constraints for type %a" longident s
   | Method_mismatch (l, ty, ty') ->
@@ -986,6 +1053,10 @@ let report_error env ppf = function
     fprintf ppf "@[%s types must have layout value.@ \ %a@]"
       s (Type_layout.Violation.report_with_offender
            ~offender:(fun ppf -> Printtyp.type_expr ppf typ)) err
+  | Bad_layout_annot(ty, violation) ->
+    fprintf ppf "@[<b 2>Bad layout annotation:@ %a@]"
+      (Type_layout.Violation.report_with_offender
+         ~offender:(fun ppf -> Printtyp.type_expr ppf ty)) violation
 
 let () =
   Location.register_error_of_exn

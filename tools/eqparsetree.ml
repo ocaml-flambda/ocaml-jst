@@ -124,6 +124,14 @@ module Asttypes = struct
     fun mf_a ({ txt = a0; loc = a1 }, { txt = b0; loc = b1 }) ->
       (mf_a (a0, b0)) && (Location.eq_t (a1, b1))
 
+  let eq_layout_annotation : (layout_annotation * layout_annotation) -> 'result =
+    function
+    | (Any, Any) -> true
+    | (Value, Value) -> true
+    | (Void, Void) -> true
+    | (Immediate64, Immediate64) -> true
+    | (Immediate, Immediate) -> true
+    | (Any | Value | Void | Immediate64 | Immediate, _) -> false
 end
 
 let rec eq_row_field : (row_field * row_field) -> 'result =
@@ -179,9 +187,12 @@ and eq_core_type_desc :
   | (Ptyp_variant (a0, a1, a2), Ptyp_variant (b0, b1, b2)) ->
       ((eq_list eq_row_field (a0, b0)) && (eq_bool (a1, b1))) &&
         (eq_option (eq_list Asttypes.eq_label) (a2, b2))
-  | (Ptyp_poly (a0, a1), Ptyp_poly (b0, b1)) ->
-      (eq_list eq_string (a0, b0)) && (eq_core_type (a1, b1))
+  | (Ptyp_poly (a0, a1, a2), Ptyp_poly (b0, b1, b2)) ->
+     (eq_list eq_string (a0, b0)) && (eq_core_type (a1, b1)) &&
+     (eq_list (eq_option (Asttypes.eq_loc Asttypes.eq_layout_annotation)) (a2, b2))
   | (Ptyp_package a0, Ptyp_package b0) -> eq_package_type (a0, b0)
+  | (Ptyp_layout (a0, a1), Ptyp_layout (b0, b1)) ->
+       (eq_core_type (a0, b0)) && (Asttypes.eq_layout_annotation (a1, b1))
   | (_, _) -> false
 and eq_core_type : (core_type * core_type) -> 'result =
   fun
@@ -753,8 +764,9 @@ and eq_expression_desc :
   | (Pexp_poly (a0, a1), Pexp_poly (b0, b1)) ->
       (eq_expression (a0, b0)) && (eq_option eq_core_type (a1, b1))
   | (Pexp_object a0, Pexp_object b0) -> eq_class_structure (a0, b0)
-  | (Pexp_newtype (a0, a1), Pexp_newtype (b0, b1)) ->
-      (eq_string (a0, b0)) && (eq_expression (a1, b1))
+  | (Pexp_newtype (a0, a1, a2), Pexp_newtype (b0, b1, b2)) ->
+      (eq_string (a0, b0)) && (eq_expression (a1, b1)) &&
+      (eq_option eq_layout_annotation (a2, b2))
   | (Pexp_pack a0, Pexp_pack b0) -> eq_module_expr (a0, b0)
   | (Pexp_open (a0, a1), Pexp_open (b0, b1)) ->
       (Asttypes.eq_loc Longident.eq_t (a0, b0)) &&

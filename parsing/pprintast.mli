@@ -53,3 +53,8 @@ val payload: Format.formatter -> Parsetree.payload -> unit
 val tyvar: Format.formatter -> string -> unit
   (** Print a type variable name, taking care of the special treatment
       required for the single quote character in second position. *)
+
+val layout_annotation: Format.formatter -> Asttypes.layout_annotation -> unit
+
+(* CR layouts RAE: where should this go? *)
+val layout_annotation_to_string : Asttypes.layout_annotation -> string

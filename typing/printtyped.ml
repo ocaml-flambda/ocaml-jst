@@ -155,8 +155,20 @@ let arg_label i ppf = function
   | Labelled s -> line i ppf "Labelled \"%s\"\n" s
 ;;
 
+let typevar_layout ~print_quote ppf (v, l) =
+  let pptv =
+    if print_quote
+    then Pprintast.tyvar
+    else fun ppf s -> fprintf ppf "%s" s
+  in
+  match l with
+  | None -> fprintf ppf " %a" pptv v
+  | Some lay -> fprintf ppf " (%a : %a)"
+                    pptv v
+                    Pprintast.layout_annotation lay
+
 let typevars ppf vs =
-  List.iter (fun x -> fprintf ppf " %a" Pprintast.tyvar x.txt) vs
+  List.iter (typevar_layout ~print_quote:true ppf) vs
 ;;
 
 let layout_array i ppf layouts =
@@ -239,11 +251,14 @@ let rec core_type i ppf x =
       core_type i ppf ct;
   | Ttyp_poly (sl, ct) ->
       line i ppf "Ttyp_poly%a\n"
-        (fun ppf -> List.iter (fun x -> fprintf ppf " '%s" x)) sl;
+        (fun ppf -> List.iter (typevar_layout ~print_quote:true ppf)) sl;
       core_type i ppf ct;
   | Ttyp_package { pack_path = s; pack_fields = l } ->
       line i ppf "Ttyp_package %a\n" fmt_path s;
       list i package_with ppf l;
+  | Ttyp_layout (inner_ty, layout) ->
+      line i ppf "Ttyp_layout %s\n" (Pprintast.layout_annotation_to_string layout);
+      core_type i ppf inner_ty;
 
 and package_with i ppf (s, t) =
   line i ppf "with type %a\n" fmt_longident s;
@@ -332,8 +347,8 @@ and expression_extra i ppf (x,_,attrs) =
       line i ppf "Texp_poly\n";
       attributes i ppf attrs;
       option i core_type ppf cto;
-  | Texp_newtype s ->
-      line i ppf "Texp_newtype \"%s\"\n" s;
+  | Texp_newtype (s, lay) ->
+      line i ppf "Texp_newtype %a\n" (typevar_layout ~print_quote:false) (s, lay);
       attributes i ppf attrs;
 
 and comprehension i ppf comp_types=

@@ -3084,7 +3084,7 @@ let is_local_returning_expr e =
         false, e.pexp_loc
     | Pexp_let(_, _, e) | Pexp_sequence(_, e) | Pexp_constraint(e, _)
     | Pexp_coerce(e, _, _) | Pexp_letmodule(_, _, e) | Pexp_letexception(_, e)
-    | Pexp_poly(e, _) | Pexp_newtype(_, e) | Pexp_open(_, e)
+    | Pexp_poly(e, _) | Pexp_newtype(_, e, _) | Pexp_open(_, e)
     | Pexp_ifthenelse(_, e, None)->
         loop e
     | Pexp_ifthenelse(_, e1, Some e2)-> combine (loop e1) (loop e2)
@@ -3110,7 +3110,7 @@ let rec is_an_uncurried_function e =
     match e.pexp_desc, e.pexp_attributes with
     | (Pexp_fun _ | Pexp_function _), _ -> true
     | Pexp_poly (e, _), _
-    | Pexp_newtype (_, e), _
+    | Pexp_newtype (_, e, _), _
     | Pexp_coerce (e, _, _), _
     | Pexp_constraint (e, _), _ -> is_an_uncurried_function e
     | Pexp_let (Nonrecursive, _, e),
@@ -4860,10 +4860,9 @@ and type_expect_
       in
       re { exp with exp_extra =
              (Texp_poly cty, loc, sexp.pexp_attributes) :: exp.exp_extra }
-  | Pexp_newtype({txt=name}, sbody) ->
+  | Pexp_newtype({txt=name}, sbody, lay) ->
       let layout =
-        Type_layout.of_layout_annotation ~default:Type_layout.value
-          (Builtin_attributes.layout sexp.pexp_attributes)
+        Type_layout.of_layout_annotation_opt ~default:Type_layout.value lay
       in
       let ty =
         if Typetexp.valid_tyvar_name name then
@@ -4902,7 +4901,8 @@ and type_expect_
          any new extra node in the typed AST. *)
       rue { body with exp_loc = loc; exp_type = ety;
             exp_extra =
-            (Texp_newtype name, loc, sexp.pexp_attributes) :: body.exp_extra }
+            (Texp_newtype (name, Option.map Location.txt lay),
+             loc, sexp.pexp_attributes) :: body.exp_extra }
   | Pexp_pack m ->
       let (p, fl) =
         match get_desc (Ctype.expand_head env (instance ty_expected)) with
@@ -6409,7 +6409,7 @@ and type_let
     match e.pexp_desc with
     | Pexp_fun _ | Pexp_function _ -> true
     | Pexp_constraint (e, _)
-    | Pexp_newtype (_, e)
+    | Pexp_newtype (_, e, _)
     | Pexp_apply
       ({ pexp_desc = Pexp_extension(
           {txt = "extension.local"|"ocaml.local"|"local"}, PStr []) },

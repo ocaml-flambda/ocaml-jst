@@ -162,10 +162,11 @@ and layout =
   | Any
   | Sort of sort
   | Immediate64
-  (** We know for sure that values of this type are always immediate on 64 bit
-      platforms. For other platforms, we know nothing about immediacy. *)
+  (** We know for sure that values of types of this layout are always immediate
+      on 64 bit platforms. For other platforms, we know nothing about immediacy.
+  *)
   | Immediate
-  (** We know for sure that values of this type are always immediate *)
+  (** We know for sure that values of types of this layout are always immediate *)
 
 and fixed_explanation =
   | Univar of type_expr (** The row type was bound to an univar *)
@@ -576,6 +577,8 @@ and constructor_declaration =
 and constructor_arguments =
   | Cstr_tuple of (type_expr * global_flag) list
   | Cstr_record of label_declaration list
+
+val tys_of_constr_args : constructor_arguments -> type_expr list
 
 val kind_abstract : layout:layout -> ('a,'b) type_kind
 val kind_abstract_value : ('a,'b) type_kind

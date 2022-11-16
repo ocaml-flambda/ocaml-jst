@@ -296,7 +296,7 @@ and rw_exp iflag sexp =
   | Pexp_object cl ->
       List.iter (rewrite_class_field iflag) cl.pcstr_fields
 
-  | Pexp_newtype (_, sexp) -> rewrite_exp iflag sexp
+  | Pexp_newtype (_, sexp, _) -> rewrite_exp iflag sexp
   | Pexp_open (_, e) -> rewrite_exp iflag e
   | Pexp_pack (smod) -> rewrite_mod iflag smod
   | Pexp_letop {let_; ands; body; _} ->

@@ -282,14 +282,17 @@ parsing/ast_invariants.cmi : \
 parsing/ast_iterator.cmo : \
     parsing/parsetree.cmi \
     parsing/location.cmi \
+    parsing/asttypes.cmi \
     parsing/ast_iterator.cmi
 parsing/ast_iterator.cmx : \
     parsing/parsetree.cmi \
     parsing/location.cmx \
+    parsing/asttypes.cmi \
     parsing/ast_iterator.cmi
 parsing/ast_iterator.cmi : \
     parsing/parsetree.cmi \
-    parsing/location.cmi
+    parsing/location.cmi \
+    parsing/asttypes.cmi
 parsing/ast_mapper.cmo : \
     parsing/parsetree.cmi \
     utils/misc.cmi \
@@ -316,7 +319,8 @@ parsing/ast_mapper.cmx : \
     parsing/ast_mapper.cmi
 parsing/ast_mapper.cmi : \
     parsing/parsetree.cmi \
-    parsing/location.cmi
+    parsing/location.cmi \
+    parsing/asttypes.cmi
 parsing/asttypes.cmi : \
     parsing/location.cmi
 parsing/attr_helper.cmo : \
@@ -360,7 +364,8 @@ parsing/builtin_attributes.cmx : \
 parsing/builtin_attributes.cmi : \
     parsing/parsetree.cmi \
     utils/misc.cmi \
-    parsing/location.cmi
+    parsing/location.cmi \
+    parsing/asttypes.cmi
 parsing/camlinternalMenhirLib.cmo : \
     parsing/camlinternalMenhirLib.cmi
 parsing/camlinternalMenhirLib.cmx : \
@@ -1405,16 +1410,18 @@ typing/type_layout.cmo : \
     typing/types.cmi \
     utils/misc.cmi \
     parsing/builtin_attributes.cmi \
+    parsing/asttypes.cmi \
     typing/type_layout.cmi
 typing/type_layout.cmx : \
     typing/types.cmx \
     utils/misc.cmx \
     parsing/builtin_attributes.cmx \
+    parsing/asttypes.cmi \
     typing/type_layout.cmi
 typing/type_layout.cmi : \
     typing/types.cmi \
     parsing/parsetree.cmi \
-    parsing/builtin_attributes.cmi
+    parsing/asttypes.cmi
 typing/typeclass.cmo : \
     utils/warnings.cmi \
     typing/typetexp.cmi \
@@ -1558,6 +1565,7 @@ typing/typecore.cmx : \
 typing/typecore.cmi : \
     typing/types.cmi \
     typing/typedtree.cmi \
+    typing/type_layout.cmi \
     typing/shape.cmi \
     typing/path.cmi \
     parsing/parsetree.cmi \
@@ -1736,7 +1744,6 @@ typing/typedtree.cmo : \
     parsing/location.cmi \
     typing/ident.cmi \
     typing/env.cmi \
-    parsing/builtin_attributes.cmi \
     parsing/asttypes.cmi \
     typing/typedtree.cmi
 typing/typedtree.cmx : \
@@ -1751,7 +1758,6 @@ typing/typedtree.cmx : \
     parsing/location.cmx \
     typing/ident.cmx \
     typing/env.cmx \
-    parsing/builtin_attributes.cmx \
     parsing/asttypes.cmi \
     typing/typedtree.cmi
 typing/typedtree.cmi : \
@@ -1765,7 +1771,6 @@ typing/typedtree.cmi : \
     parsing/location.cmi \
     typing/ident.cmi \
     typing/env.cmi \
-    parsing/builtin_attributes.cmi \
     parsing/asttypes.cmi
 typing/typemod.cmo : \
     utils/warnings.cmi \
@@ -1866,12 +1871,12 @@ typing/typeopt.cmo : \
     typing/predef.cmi \
     typing/path.cmi \
     utils/numbers.cmi \
-    utils/misc.cmi \
     lambda/lambda.cmi \
     typing/ident.cmi \
     typing/env.cmi \
     typing/ctype.cmi \
     utils/config.cmi \
+    utils/clflags.cmi \
     parsing/asttypes.cmi \
     typing/typeopt.cmi
 typing/typeopt.cmx : \
@@ -1881,12 +1886,12 @@ typing/typeopt.cmx : \
     typing/predef.cmx \
     typing/path.cmx \
     utils/numbers.cmx \
-    utils/misc.cmx \
     lambda/lambda.cmx \
     typing/ident.cmx \
     typing/env.cmx \
     typing/ctype.cmx \
     utils/config.cmx \
+    utils/clflags.cmx \
     parsing/asttypes.cmi \
     typing/typeopt.cmi
 typing/typeopt.cmi : \

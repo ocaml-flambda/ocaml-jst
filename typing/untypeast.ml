@@ -251,8 +251,10 @@ let constructor_arguments sub = function
 let constructor_declaration sub cd =
   let loc = sub.location sub cd.cd_loc in
   let attrs = sub.attributes sub cd.cd_attributes in
+  let vars, layouts = List.split cd.cd_vars in
+  let add_loc x = mkloc x loc in
   Type.constructor ~loc ~attrs
-    ~vars:cd.cd_vars
+    ~vars:(List.map add_loc vars, List.map (Option.map add_loc) layouts)
     ~args:(constructor_arguments sub cd.cd_args)
     ?res:(Option.map (sub.typ sub) cd.cd_res)
     (map_loc sub cd.cd_name)
@@ -280,13 +282,15 @@ let type_exception sub tyexn =
 
 let extension_constructor sub ext =
   let loc = sub.location sub ext.ext_loc in
+  let add_loc x = mkloc x loc in
   let attrs = sub.attributes sub ext.ext_attributes in
   Te.constructor ~loc ~attrs
     (map_loc sub ext.ext_name)
     (match ext.ext_kind with
       | Text_decl (vs, args, ret) ->
-          Pext_decl (vs, constructor_arguments sub args,
-                     Option.map (sub.typ sub) ret)
+          let vs, ls = List.split vs in
+          Pext_decl (List.map add_loc vs, constructor_arguments sub args,
+                     Option.map (sub.typ sub) ret, List.map (Option.map add_loc) ls)
       | Text_rebind (_p, lid) -> Pext_rebind (map_loc sub lid)
     )
 
@@ -369,6 +373,7 @@ let pattern : type k . _ -> k T.general_pattern -> _ = fun sub pat ->
 let exp_extra sub (extra, loc, attrs) sexp =
   let loc = sub.location sub loc in
   let attrs = sub.attributes sub attrs in
+  let add_loc x = mkloc x loc in
   let desc =
     match extra with
       Texp_coerce (cty1, cty2) ->
@@ -378,7 +383,8 @@ let exp_extra sub (extra, loc, attrs) sexp =
     | Texp_constraint cty ->
         Pexp_constraint (sexp, sub.typ sub cty)
     | Texp_poly cto -> Pexp_poly (sexp, Option.map (sub.typ sub) cto)
-    | Texp_newtype s -> Pexp_newtype (mkloc s loc, sexp)
+    | Texp_newtype (s, lay) ->
+        Pexp_newtype (add_loc s, sexp, Option.map add_loc lay)
   in
   Exp.mk ~loc ~attrs desc
 
@@ -833,9 +839,14 @@ let core_type sub ct =
     | Ttyp_variant (list, bool, labels) ->
         Ptyp_variant (List.map (sub.row_field sub) list, bool, labels)
     | Ttyp_poly (list, ct) ->
-        let list = List.map (fun v -> mkloc v loc) list in
-        Ptyp_poly (list, sub.typ sub ct)
+        let vars, layouts = List.split list in
+        let add_loc x = mkloc x loc in
+        let vars = List.map add_loc vars in
+        let layouts = List.map (fun lay -> Option.map add_loc lay) layouts in
+        Ptyp_poly (vars, sub.typ sub ct, layouts)
     | Ttyp_package pack -> Ptyp_package (sub.package_type sub pack)
+    | Ttyp_layout (ct, l) ->
+        Ptyp_layout (sub.typ sub ct, mkloc l loc)
   in
   Typ.mk ~loc ~attrs desc
 

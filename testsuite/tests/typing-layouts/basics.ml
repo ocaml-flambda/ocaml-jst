@@ -13,11 +13,11 @@ type void_unboxed_record = { vur_void : t_void } [@@unboxed]
 
 
 [%%expect{|
-type t_any [@@any]
-type t_value [@@value]
-type t_imm [@@immediate]
-type t_imm64 [@@immediate64]
-type t_void [@@void]
+type t_any : any
+type t_value
+type t_imm : immediate
+type t_imm64 : immediate64
+type t_void : void
 type void_variant = VV of t_void
 type void_record = { vr_void : t_void; vr_int : int; }
 type void_unboxed_record = { vur_void : t_void; } [@@unboxed]
@@ -139,7 +139,7 @@ module type S = sig val f1 : t_value -> t_value val f2 : t_imm -> t_imm64 end
 type 'a [@immediate] imm_id = 'a
 
 [%%expect{|
-type 'a imm_id = 'a
+type ('a : immediate) imm_id = 'a
 |}];;
 
 type my_int = int imm_id
@@ -166,7 +166,7 @@ let id_for_imms (x : 'a imm_id) = x
 let three = id_for_imms 3
 let true_ = id_for_imms true;;
 [%%expect{|
-val id_for_imms : 'a imm_id -> 'a imm_id = <fun>
+val id_for_imms : ('a : immediate). 'a imm_id -> 'a imm_id = <fun>
 val three : int imm_id = 3
 val true_ : bool imm_id = true
 |}]
@@ -210,7 +210,7 @@ and 'a [@immediate] t4;;
 
 [%%expect{|
 type s4 = int t4
-and 'a t4
+and ('a : immediate) t4
 |}]
 
 type s4 = s5 t4
@@ -219,7 +219,7 @@ and s5 = int;;
 
 [%%expect{|
 type s4 = s5 t4
-and 'a t4
+and ('a : immediate) t4
 and s5 = int
 |}]
 
@@ -239,7 +239,7 @@ Error:
 type 'a [@any] t4 = 'a
 and s4 = string t4;;
 [%%expect{|
-type 'a t4 = 'a
+type ('a : any) t4 = 'a
 and s4 = string t4
 |}];;
 
@@ -247,7 +247,7 @@ type s4 = string t4
 and 'a [@any] t4;;
 [%%expect{|
 type s4 = string t4
-and 'a t4
+and ('a : any) t4
 |}];;
 
 (************************************************************)
@@ -274,9 +274,9 @@ let id4 : 'a void4 -> 'a void4 = function
  * ;; *)
 
 [%%expect{|
-type 'a void4 = Void4 of 'a
+type ('a : void) void4 = Void4 of 'a
 type 'a any4 = Any4 of 'a
-val id4 : 'a void4 -> 'a void4 = <fun>
+val id4 : ('a : void). 'a void4 -> 'a void4 = <fun>
 |}];;
 
 
@@ -326,7 +326,7 @@ Error: This expression has type 'a but an expression was expected of type 'b
 type ('a : immediate) t5_imm = T5imm of 'a
 type ('a : value) t5_val = T5val of 'a;;
 [%%expect{|
-type 'a t5_imm = T5imm of 'a
+type ('a : immediate) t5_imm = T5imm of 'a
 type 'a t5_val = T5val of 'a
 |}];;
 
@@ -368,7 +368,7 @@ type 'a [@immediate] t6 = Foo6 of 'a
 
 type t6' = (int * int) t6;;
 [%%expect{|
-type 'a t6 = Foo6 of 'a
+type ('a : immediate) t6 = Foo6 of 'a
 Line 3, characters 12-21:
 3 | type t6' = (int * int) t6;;
                 ^^^^^^^^^
@@ -582,10 +582,17 @@ Lines 3-9, characters 6-3:
 9 | end..
 Error: Signature mismatch:
        Modules do not match:
-         sig type 'a t = 'a val f : 'a t -> 'a val x : 'a end
+         sig
+           type ('a : immediate) t = 'a
+           val f : ('a : immediate). 'a t -> 'a
+           val x : ('a : immediate). 'a
+         end
        is not included in
          sig val x : string end
-       Values do not match: val x : 'a is not included in val x : string
+       Values do not match:
+         val x : ('a : immediate). 'a
+       is not included in
+         val x : string
        The type string is not compatible with the type string
        string has layout value, which is not a sublayout of immediate.
 |}];;
@@ -612,10 +619,17 @@ Lines 3-9, characters 6-3:
 9 | end..
 Error: Signature mismatch:
        Modules do not match:
-         sig type 'a t = 'a val f : 'a t -> 'a t val x : 'a t end
+         sig
+           type ('a : immediate) t = 'a
+           val f : ('a : immediate). 'a t -> 'a t
+           val x : ('a : immediate). 'a t
+         end
        is not included in
          sig val x : string end
-       Values do not match: val x : 'a t is not included in val x : string
+       Values do not match:
+         val x : ('a : immediate). 'a t
+       is not included in
+         val x : string
        The type string t = string is not compatible with the type string
        string has layout value, which is not a sublayout of immediate.
 |}]
@@ -968,8 +982,8 @@ Error:
 type ('a : void) t14
 type ('a, 'b) foo14 = ('a as 'b) t14 -> 'b t14;;
 [%%expect{|
-type 'a t14
-type ('a, 'b) foo14 = 'a t14 -> 'a t14 constraint 'b = 'a
+type ('a : void) t14
+type ('a : void, 'b) foo14 = 'a t14 -> 'a t14 constraint 'b = 'a
 |}]
 
 (* Test 15: seperability: [msig_of_external_type] logic *)
@@ -977,7 +991,7 @@ type 'a t_void_15 [@@void]
 
 type t_15 = T_15 : 'a t_void_15 -> t_15 [@@unboxed];;
 [%%expect{|
-type 'a t_void_15 [@@void]
+type 'a t_void_15 : void
 type t_15 = T_15 : 'a t_void_15 -> t_15 [@@unboxed]
 |}];;
 

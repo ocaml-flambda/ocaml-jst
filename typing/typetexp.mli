@@ -20,8 +20,12 @@ open Types
 val valid_tyvar_name : string -> bool
 
 type poly_univars
-val make_poly_univars : string list -> poly_univars
-  (* Create a set of univars with given names *)
+val make_poly_univars : string Location.loc list ->
+  Asttypes.layout_annotation Location.loc option list ->
+  poly_univars
+  (* Create a set of univars with given names and layouts. Any call
+     of this function *must* call [check_poly_univars] when done
+     e.g. translating the type in which the univars are in scope. *)
 val check_poly_univars :
    Env.t -> Location.t -> poly_univars -> type_expr list
   (* Verify that the given univars are universally quantified,
@@ -62,6 +66,8 @@ exception Already_bound
 type value_loc =
     Fun_arg | Fun_ret | Tuple | Poly_variant | Package_constraint | Object_field
 
+type cannot_quantify_reason
+type layout_info
 type error =
     Unbound_type_variable of string
   | Undefined_type_constructor of Path.t
@@ -77,7 +83,9 @@ type error =
   | Not_a_variant of type_expr
   | Variant_tags of string * string
   | Invalid_variable_name of string
-  | Cannot_quantify of string * type_expr
+  | Cannot_quantify of string * cannot_quantify_reason
+  | Bad_univar_layout of
+      { name : string; layout_info : layout_info; inferred_layout : layout }
   | Multiple_constraints_on_type of Longident.t
   | Method_mismatch of string * type_expr * type_expr
   | Opened_object of Path.t option
@@ -86,6 +94,7 @@ type error =
   | Polymorphic_optional_param
   | Non_value of
       {vloc : value_loc; typ : type_expr; err : Type_layout.Violation.t}
+  | Bad_layout_annot of type_expr * Type_layout.Violation.t
 
 exception Error of Location.t * Env.t * error
 

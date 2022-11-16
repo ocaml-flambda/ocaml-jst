@@ -388,26 +388,19 @@ let warn_on_literal_pattern attrs =
 let explicit_arity attrs =
   has_attribute ["ocaml.explicit_arity"; "explicit_arity"] attrs
 
-type layout_annotation =
-  | Any
-  | Value
-  | Void
-  | Immediate64
-  | Immediate
-
 let layout attrs =
   List.find_map
-    (fun a -> match a.attr_name.txt with
+    (fun {attr_name = { loc; txt } as name} -> match txt with
        | "ocaml.immediate"|"immediate" ->
-         (mark_used a.attr_name; Some Immediate)
+         (mark_used name; Some { loc; txt = Immediate })
        | "ocaml.immediate64"|"immediate64" ->
-         (mark_used a.attr_name; Some Immediate64)
+         (mark_used name; Some { loc; txt = Immediate64 })
        | "ocaml.void"|"void" ->
-         (mark_used a.attr_name; Some Void)
+         (mark_used name; Some { loc; txt = Void })
        | "ocaml.value"|"value" ->
-         (mark_used a.attr_name; Some Value)
+         (mark_used name; Some { loc; txt = Value })
        | "ocaml.any"|"any" ->
-         (mark_used a.attr_name; Some Any)
+         (mark_used name; Some { loc; txt = Any })
        | _ -> None
     ) attrs
 

@@ -317,7 +317,7 @@ let rec class_type_field env sign self_scope ctf =
         (fun () ->
            let sty = Ast_helper.Typ.force_poly sty in
            match sty.ptyp_desc, priv with
-           | Ptyp_poly ([],sty'), Public ->
+           | Ptyp_poly ([],sty',[]), Public ->
                let expected_ty = Ctype.newvar Type_layout.value in
                add_method loc env lab priv virt expected_ty sign;
                let returned_cty = ctyp Ttyp_any (Ctype.newty Tnil) env loc in
@@ -1581,6 +1581,8 @@ let class_infos define_class kind
   let ci_params =
     let make_param (sty, v) =
       try
+          (* CR-soon reisenberg: That should probably allow [any], not just
+             [value] *)
           (transl_type_param env sty Type_layout.value, v)
       with Already_bound ->
         raise(Error(sty.ptyp_loc, env, Repeated_parameter))

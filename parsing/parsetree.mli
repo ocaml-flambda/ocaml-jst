@@ -137,7 +137,9 @@ and core_type_desc =
                       when [flag]   is {{!Asttypes.closed_flag.Closed}[Closed]},
                        and [labels] is [Some ["X";"Y"]].
          *)
-  | Ptyp_poly of string loc list * core_type
+  | Ptyp_poly of string loc list * core_type * type_vars_layouts
+           (* XXX layouts RAE: move the layout annotations to use the extensions
+              mechanism *)
       (** ['a1 ... 'an. T]
 
            Can only appear in the following context:
@@ -167,6 +169,14 @@ and core_type_desc =
          *)
   | Ptyp_package of package_type  (** [(module S)]. *)
   | Ptyp_extension of extension  (** [[%id]]. *)
+
+  (* XXX layouts RAE: use extension instead *)
+  | Ptyp_layout of core_type * layout_annotation loc
+
+and type_vars_layouts = layout_annotation loc option list
+  (* the layout annotations associated with a type-variable list,
+     typically a nearby [string loc list]; this list will always
+     be the same length as that one *)
 
 and package_type = Longident.t loc * (Longident.t loc * core_type) list
 (** As {!package_type} typed values:
@@ -401,7 +411,10 @@ and expression_desc =
            {{!class_field_kind.Cfk_concrete}[Cfk_concrete]} for methods (not
            values). *)
   | Pexp_object of class_structure  (** [object ... end] *)
-  | Pexp_newtype of string loc * expression  (** [fun (type t) -> E] *)
+
+      (* XXX layouts RAE: move the layout_annotation to an extension *)
+  | Pexp_newtype of string loc * expression * layout_annotation loc option
+      (** [fun (type t : immediate) -> E] *)
   | Pexp_pack of module_expr
       (** [(module ME)].
 
@@ -527,6 +540,7 @@ and constructor_declaration =
     {
      pcd_name: string loc;
      pcd_vars: string loc list;
+     pcd_layouts: type_vars_layouts;
      pcd_args: constructor_arguments;
      pcd_res: core_type option;
      pcd_loc: Location.t;
@@ -581,7 +595,9 @@ and type_exception =
 (** Definition of a new exception ([exception E]). *)
 
 and extension_constructor_kind =
+  (* XXX layouts RAE: use extensions for the type_vars_layouts *)
   | Pext_decl of string loc list * constructor_arguments * core_type option
+                          * type_vars_layouts
       (** [Pext_decl(existentials, c_args, t_opt)]
           describes a new extension constructor. It can be:
           - [C of T1 * ... * Tn] when:
