@@ -2768,6 +2768,29 @@ let add_layout_equation env destination layout1 =
      abstract, we can improve type checking by assigning destination that
      layout.  If destination is not abstract, we can't locally improve its
      layout, so we're slightly incomplete.  *)
+  (* CR ccasinghino:
+
+     Stephen pointed out the following weird example:
+
+       module M : sig type t [@@immediate] end = struct type t = int end
+       type (_,_) eq = Refl : ('a, 'a) eq
+       let f (Refl : (M.t, string) eq) = (Refl : (M.t, string) eq)
+
+     This type checks, both with layouts and with the old [@@immediate].
+     After pattern matching on Refl, you're in dead code, but it
+     could get compiled very weirdly.
+
+     He suggested the following alternative strategy:
+
+     Rather than this intersection, constrain the destination to have the
+     appropriate layout:
+
+       constrain_type_layout env destination layout1
+
+     Then this layout gets used as the intersection does below.
+
+     This would break some existing programs, but probably only bad ones?
+  *)
   match intersect_type_layout !env destination layout1 with
   | Error err -> raise (Unify [Bad_layout (destination,err)])
   | Ok layout -> begin
