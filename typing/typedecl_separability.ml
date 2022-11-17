@@ -90,10 +90,6 @@ let structure : type_definition -> type_structure = fun def ->
       | Some type_expr -> Synonym type_expr
       end
   | Type_record (labels, repr) ->
-      let labels =
-        List.filter
-          (fun {ld_layout} -> not (Type_layout.(equal ld_layout void))) labels
-      in
       let constructors = One (
         demultiply_list labels @@ fun ld -> {
           location = ld.ld_loc;
@@ -121,18 +117,6 @@ let structure : type_definition -> type_structure = fun def ->
           in
           begin match cd.cd_args with
           | Cstr_tuple tys ->
-              (* CJC XXX come up with a test case that hits this with voids *)
-              let layouts =
-                match repr with
-                | Variant_boxed layouts -> layouts.(0)
-                | Variant_unboxed layout -> [| layout |]
-                | Variant_extensible -> assert false
-              in
-              let tys =
-                List.filteri
-                  (fun i _ -> not Type_layout.(equal void layouts.(i)))
-                  tys
-              in
               demultiply_list tys @@ fun argument_type -> {
                 location = cd.cd_loc;
                 kind = Constructor_parameter;

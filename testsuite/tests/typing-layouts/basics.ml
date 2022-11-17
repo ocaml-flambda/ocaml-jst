@@ -812,6 +812,16 @@ type 'a t14
 type ('a, 'b) foo14 = 'a t14 -> 'a t14 constraint 'b = 'a
 |}]
 
+(* Test 15: seperability: [msig_of_external_type] logic *)
+type 'a t_void_15 [@@void]
+
+type t_15 = T_15 : 'a t_void_15 -> t_15 [@@unboxed];;
+[%%expect{|
+type 'a t_void_15 [@@void]
+type t_15 = T_15 : 'a t_void_15 -> t_15 [@@unboxed]
+|}];;
+
+
 
 (* CR ccasinghino: Once we allow non-value top-level module definitions, add
    tests showing that things get defaulted to value.
