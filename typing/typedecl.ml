@@ -26,7 +26,6 @@ module String = Misc.Stdlib.String
 
 type native_repr_kind = Unboxed | Untagged
 
-type layout_value_loc = Fun_arg | Fun_ret | Tuple | Field | Poly_variant
 type layout_sort_loc = Cstr_tuple | Record
 
 type error =
@@ -64,8 +63,6 @@ type error =
   | Cannot_unbox_or_untag_type of native_repr_kind
   | Deep_unbox_or_untag_attribute of native_repr_kind
   | Layout of Type_layout.Violation.t
-  | Layout_value of
-      {lloc : layout_value_loc; typ : type_expr; err : Type_layout.Violation.t}
   | Layout_sort of
       {lloc : layout_sort_loc; typ : type_expr; err : Type_layout.Violation.t}
   | Layout_empty_record
@@ -205,7 +202,8 @@ let update_type temp_env env id loc =
       let params =
         List.map (fun _ -> Ctype.newvar Type_layout.any) decl.type_params
       in
-      try Ctype.unify_ignoring_layouts env (Ctype.newconstr path params) ty
+      try
+        Ctype.unify_delaying_layout_checks env (Ctype.newconstr path params) ty
       with Ctype.Unify trace ->
         raise (Error(loc, Type_clash (env, trace)))
 
@@ -624,11 +622,6 @@ module TypeMap = Btype.TypeMap
    unification, in which case filter_arrow is called and we catch it there.
 *)
 let rec check_constraints_rec env loc visited ty =
-  let check_layout_value ~loc ~layout_loc typ =
-    match Ctype.constrain_type_layout env typ Type_layout.value with
-    | Ok _ -> ()
-    | Error err -> raise(Error(loc, Layout_value {lloc=layout_loc; typ; err}))
-  in
   let ty = Ctype.repr ty in
   if TypeSet.mem ty !visited then () else begin
   visited := TypeSet.add ty !visited;
@@ -646,25 +639,6 @@ let rec check_constraints_rec env loc visited ty =
   | Tpoly (ty, tl) ->
       let _, ty = Ctype.instance_poly false tl ty in
       check_constraints_rec env loc visited ty
-  | Tarrow (_, ty1, ty2, _) ->
-      check_layout_value ~layout_loc:Fun_arg ~loc ty1;
-      check_layout_value ~layout_loc:Fun_ret ~loc ty2;
-      List.iter (check_constraints_rec env loc visited) [ty1;ty2]
-  | Ttuple tys ->
-      List.iter (check_layout_value ~loc ~layout_loc:Tuple) tys;
-      List.iter (check_constraints_rec env loc visited) tys
-  | Tfield (_,_,ty,tys) ->
-      check_layout_value ~loc ~layout_loc:Field ty;
-      check_constraints_rec env loc visited tys
-  | Tvariant row ->
-    Btype.iter_row
-      (fun ty ->
-         check_layout_value ~loc ~layout_loc:Poly_variant ty;
-         check_constraints_rec env loc visited ty)
-      row;
-    check_layout_value ~loc ~layout_loc:Poly_variant row.row_more;
-    check_constraints_rec env loc visited row.row_more
-  (* CJC XXX do something for package *)
   | _ ->
       Btype.iter_type_expr (check_constraints_rec env loc visited) ty
   end
@@ -1246,13 +1220,16 @@ let transl_type_decl env rec_flag sdecl_list =
   (* Build the final env. *)
   let new_env = add_types_to_env decls env in
   (* Update stubs *)
-  begin match rec_flag with
-    | Asttypes.Nonrecursive -> ()
+  let delayed_layout_checks =
+    match rec_flag with
+    | Asttypes.Nonrecursive -> []
     | Asttypes.Recursive ->
-      List.iter2
-        (fun (id, _) sdecl -> update_type temp_env new_env id sdecl.ptype_loc)
+      List.map2
+        (fun (id, _) sdecl ->
+           (update_type temp_env new_env id sdecl.ptype_loc,
+            sdecl.ptype_loc))
         ids_list sdecl_list
-  end;
+  in
   (* Generalize type declarations. *)
   Ctype.end_def();
   List.iter (fun (_, decl) -> generalize_decl decl) decls;
@@ -1273,6 +1250,16 @@ let transl_type_decl env rec_flag sdecl_list =
     decls;
   List.iter
     (check_abbrev_recursion ~orig_env:env new_env id_loc_list to_check) tdecls;
+  (* Now that we've ruled out ill-formed types, we can perform the delayed
+     layout checks *)
+  List.iter (fun (checks,loc) ->
+    List.iter (fun (ty,layout) ->
+      match Ctype.constrain_type_layout new_env ty layout with
+      | Ok _ -> ()
+      | Error err ->
+        raise (Error (loc, Type_clash (new_env, [Bad_layout (ty,err)]))))
+      checks)
+    delayed_layout_checks;
   (* Check that all type variables are closed *)
   List.iter2
     (fun sdecl tdecl ->
@@ -2268,18 +2255,6 @@ let report_error ppf = function
          it should not occur deeply into its type.@]"
         (match kind with Unboxed -> "@unboxed" | Untagged -> "@untagged")
   | Layout v -> Type_layout.Violation.report_with_name ~name:"This type" ppf v
-  | Layout_value {lloc; typ; err} ->
-    let s =
-      match lloc with
-      | Fun_arg -> "Function argument"
-      | Fun_ret -> "Function return"
-      | Tuple -> "Tuple element"
-      | Field -> "Field"
-      | Poly_variant -> "Polymorphic variant argument"
-    in
-    fprintf ppf "@[%s types must have layout value.@ \ %a@]" s
-      (Type_layout.Violation.report_with_offender
-         ~offender:(fun ppf -> Printtyp.type_expr ppf typ)) err
   | Layout_sort {lloc; typ; err} ->
     let s =
       match lloc with

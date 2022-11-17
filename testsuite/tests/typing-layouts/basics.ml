@@ -69,6 +69,33 @@ Error: Function return types must have layout value.
         void_unboxed_record has layout void, which is not a sublayout of value.
 |}];;
 
+module type S = sig
+  type t [@@void]
+
+  type s = r -> int
+  and r = t
+end;;
+[%%expect{|
+Line 5, characters 2-11:
+5 |   and r = t
+      ^^^^^^^^^
+Error:
+       r has layout void, which is not a sublayout of value.
+|}]
+
+module type S = sig
+  type t [@@void]
+
+  type 'a s = 'a -> int constraint 'a = t
+end;;
+[%%expect{|
+Line 4, characters 35-41:
+4 |   type 'a s = 'a -> int constraint 'a = t
+                                       ^^^^^^
+Error: The type constraints are not consistent.
+Type 'a is not compatible with type t
+t has layout void, which is not a sublayout of value.
+|}]
 
 (* CJC XXX errors: the F1 and F1' errors should ideally mention that the layout
    restriction is coming from the function type *)
@@ -201,11 +228,11 @@ and 'a [@immediate] t4
 and s5 = string;;
 
 [%%expect{|
-Line 1, characters 10-15:
-1 | type s4 = s5 t4
-              ^^^^^
-Error: Constraints are not satisfied in this type.
-       Type s5 t4 should be an instance of 'a t4
+Line 3, characters 0-15:
+3 | and s5 = string;;
+    ^^^^^^^^^^^^^^^
+Error:
+       s5 has layout value, which is not a sublayout of immediate.
 |}]
 (* CJC XXX errors: improve error *)
 
@@ -795,11 +822,11 @@ and foo13 = string
 type t13 = foo13 list
 and foo13 = t_void;;
 [%%expect{|
-Line 1, characters 11-21:
-1 | type t13 = foo13 list
-               ^^^^^^^^^^
-Error: Constraints are not satisfied in this type.
-       Type foo13 list should be an instance of 'a list
+Line 2, characters 0-18:
+2 | and foo13 = t_void;;
+    ^^^^^^^^^^^^^^^^^^
+Error:
+       foo13 has layout void, which is not a sublayout of value.
 |}];;
 
 (* Test 14: Type aliases need not have layout value *)

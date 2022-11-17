@@ -69,11 +69,11 @@ Error: Constructor argument types must have a representable layout.
 type 'a t1_constraint = T1_con of 'a constraint 'a = 'b t1_constraint'
 and 'b t1_constraint' = t_any
 [%%expect {|
-Line 1, characters 24-36:
-1 | type 'a t1_constraint = T1_con of 'a constraint 'a = 'b t1_constraint'
-                            ^^^^^^^^^^^^
-Error: Constructor argument types must have a representable layout.
-        'b t1_constraint' has layout any, which is not a sublayout of <sort variable>.
+Line 2, characters 0-29:
+2 | and 'b t1_constraint' = t_any
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error:
+       'a t1_constraint' has layout any, which is not a sublayout of <sort variable>.
 |}]
 
 (* Test 3: void allowed in records, but not by itself *)

@@ -281,8 +281,10 @@ val unify_gadt:
 val unify_var: Env.t -> type_expr -> type_expr -> unit
         (* Same as [unify], but allow free univars when first type
            is a variable. *)
-val unify_ignoring_layouts : Env.t -> type_expr -> type_expr -> unit
-        (* Same as [unify], but don't check layout compatibility.  For use in
+val unify_delaying_layout_checks :
+  Env.t -> type_expr -> type_expr -> (type_expr * Type_layout.t) list
+        (* Same as [unify], but don't check layout compatibility.  Instead,
+           return the checks that would have been performed.  For use in
            typedecl before well-foundedness checks have made layout checking
            safe. *)
 
