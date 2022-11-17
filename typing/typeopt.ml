@@ -239,7 +239,7 @@ let value_kind env ty =
                       (label:Types.label_declaration) ->
                         let num_nodes_visited = num_nodes_visited + 1 in
                         let num_nodes_visited, kinds, field_mutable =
-                          if label.ld_void
+                          if Type_layout.(equal void label.ld_layout)
                           then (num_nodes_visited, kinds, Asttypes.Immutable)
                           else
                             let (num_nodes_visited, kind) =
@@ -308,7 +308,7 @@ let value_kind env ty =
                   (label:Types.label_declaration) ->
                  let num_nodes_visited = num_nodes_visited + 1 in
                  let num_nodes_visited, kinds, field_mutable =
-                   if label.ld_void then
+                   if Type_layout.(equal void label.ld_layout) then
                      (num_nodes_visited, kinds, Asttypes.Immutable)
                    else
                      let (num_nodes_visited, kind) =

@@ -860,33 +860,8 @@ let let_bound_idents_with_modes_and_sorts bindings =
           in
           List.iter2 loop sorts patl
       | Tpat_record (lbl_pat_list, _) ->
-          let rec_layouts =
-            (* CJC XXX ditch this whole thing when I put lbl_layout in
-               label_descriptions.  And revisit the choice to make variant
-               representations have an expanded array of layouts for nested
-               records, then, too *)
-            match lbl_pat_list with
-            | [] -> assert false
-            | (_,lbl,_) :: _ -> begin
-                match lbl.lbl_repres with
-                | Record_unboxed l
-                | Record_inlined (Ordinary _, Variant_unboxed l) ->
-                    [| l |]
-                | Record_float ->
-                    Array.map (fun _ -> Type_layout.value) lbl.lbl_all
-                | Record_boxed l -> l
-                | Record_inlined (Ordinary {src_index}, Variant_boxed l) ->
-                    l.(src_index)
-                | Record_inlined (Extension (_,l), Variant_extensible) ->
-                    l
-                | Record_inlined (Extension _,
-                                  (Variant_unboxed _ | Variant_boxed _))
-                | Record_inlined (Ordinary _, Variant_extensible) ->
-                    assert false
-              end
-          in
           List.iter (fun (_, lbl, pat) ->
-            loop (Type_layout.sort_of_layout (rec_layouts.(lbl.lbl_num))) pat)
+            loop (Type_layout.sort_of_layout lbl.lbl_layout) pat)
             lbl_pat_list
       (* Cases where the inner things must be value: *)
       | Tpat_variant (_, pat, _) -> Option.iter (loop Types.Value) pat

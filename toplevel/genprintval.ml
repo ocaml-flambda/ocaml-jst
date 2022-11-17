@@ -512,17 +512,17 @@ module Make(O : OBJ)(EVP : EVALPATH with type valu = O.t) = struct
           lbl_list pos obj unboxed =
         let rec tree_of_fields first pos = function
           | [] -> []
-          | {ld_id; ld_type; ld_void} :: remainder ->
+          | {ld_id; ld_type; ld_layout} :: remainder ->
               let ty_arg = instantiate_type env type_params ty_list ld_type in
               let name = Ident.name ld_id in
               (* PR#5722: print full module path only
                  for first record field *)
+              let is_void = Type_layout.(equal void ld_layout) in
               let lid =
                 if first then tree_of_label env path (Out_name.create name)
                 else Oide_ident (Out_name.create name)
               and v =
-                if ld_void then
-                  Oval_stuff "<void>"
+                if is_void then Oval_stuff "<void>"
                 else if unboxed then
                   tree_of_val (depth - 1) obj ty_arg
                 else begin
@@ -535,7 +535,7 @@ module Make(O : OBJ)(EVP : EVALPATH with type valu = O.t) = struct
                   nest tree_of_val (depth - 1) fld ty_arg
                 end
               in
-              let pos = if ld_void then pos else pos + 1 in
+              let pos = if is_void then pos else pos + 1 in
               (lid, v) :: tree_of_fields false pos remainder
         in
         Oval_record (tree_of_fields (pos = 0) pos lbl_list)

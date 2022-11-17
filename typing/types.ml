@@ -37,7 +37,6 @@ and type_desc =
   | Tsubst of type_expr         (* for copying *)
   | Tvariant of row_desc
   | Tunivar of { name : string option; layout : layout }
-  (*  | Tunivar of { name : string option; layout : Type_layout.t } *)
   | Tpoly of type_expr * type_expr list
   | Tpackage of Path.t * Longident.t list * type_expr list
 
@@ -296,10 +295,8 @@ and label_declaration =
     ld_id: Ident.t;
     ld_mutable: mutable_flag;
     ld_global: global_flag;
-    (* CJC XXX this feels like it belongs in the description more than the
-       declaration *)
-    ld_void: bool;
     ld_type: type_expr;
+    ld_layout : layout;
     ld_loc: Location.t;
     ld_attributes: Parsetree.attributes;
     ld_uid: Uid.t;
@@ -487,6 +484,7 @@ type label_description =
     lbl_arg: type_expr;                 (* Type of the argument *)
     lbl_mut: mutable_flag;              (* Is this a mutable field? *)
     lbl_global: global_flag;            (* Is this a global field? *)
+    lbl_layout : layout;                (* Layout of the argument *)
     lbl_pos: int;                       (* Position in block *)
     lbl_num: int;                       (* Position in type *)
     lbl_all: label_description array;   (* All the labels in this type *)

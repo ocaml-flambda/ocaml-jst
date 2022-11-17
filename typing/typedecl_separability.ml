@@ -91,7 +91,8 @@ let structure : type_definition -> type_structure = fun def ->
       end
   | Type_record (labels, repr) ->
       let labels =
-        List.filter (fun {ld_void; _} -> ld_void) labels
+        List.filter
+          (fun {ld_layout} -> not (Type_layout.(equal ld_layout void))) labels
       in
       let constructors = One (
         demultiply_list labels @@ fun ld -> {
@@ -141,7 +142,8 @@ let structure : type_definition -> type_structure = fun def ->
               }
           | Cstr_record labels ->
               let labels =
-                List.filter (fun {ld_void; _} -> ld_void) labels
+                List.filter (fun {ld_layout} ->
+                  Type_layout.(equal void ld_layout)) labels
               in
               demultiply_list labels @@ fun ld ->
                 let argument_type = ld.ld_type in

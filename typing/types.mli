@@ -438,8 +438,8 @@ and label_declaration =
     ld_id: Ident.t;
     ld_mutable: mutable_flag;
     ld_global: global_flag;
-    ld_void : bool;
     ld_type: type_expr;
+    ld_layout : layout;
     ld_loc: Location.t;
     ld_attributes: Parsetree.attributes;
     ld_uid: Uid.t;
@@ -617,6 +617,7 @@ type label_description =
     lbl_arg: type_expr;                 (* Type of the argument *)
     lbl_mut: mutable_flag;              (* Is this a mutable field? *)
     lbl_global: global_flag;        (* Is this a nonlocal field? *)
+    lbl_layout : layout;                (* Layout of the argument *)
     lbl_pos: int;                       (* Position in block *)
     lbl_num: int;                       (* Position in the type *)
     lbl_all: label_description array;   (* All the labels in this type *)

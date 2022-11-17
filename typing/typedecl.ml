@@ -327,7 +327,7 @@ let transl_labels env closed lbls =
          {Types.ld_id = ld.ld_id;
           ld_mutable = ld.ld_mutable;
           ld_global = gbl;
-          ld_void = false; (* Updated later *)
+          ld_layout = Type_layout.any; (* Updated later *)
           ld_type = ty;
           ld_loc = ld.ld_loc;
           ld_attributes = ld.ld_attributes;
@@ -870,19 +870,16 @@ let default_decls_layout decls =
 let update_label_layouts env loc lbls named =
   (* "named" distinguishes between top-level records (for which we need to
      update the kind with the layouts) and inlined records *)
-  (* CJC XXX revisit this after adding lbl_layout.  Maybe we should just have
-     ld_layout and populate it here in both cases. *)
-  (* CR ccasinghino it wouldn't be too hard to support records that are all void.
-     just needs a bit of refactoring in translcore *)
+  (* CR ccasinghino it wouldn't be too hard to support records that are all
+     void.  just needs a bit of refactoring in translcore *)
   let _, lbls =
     List.fold_left (fun (idx,lbls) ({Types.ld_type} as lbl) ->
-      let layout = Ctype.type_layout env ld_type in
-      let ld_void = Type_layout.(equal void layout) in
-      Option.iter (fun layouts -> layouts.(idx) <- layout) named;
-      (idx+1, {lbl with ld_void} :: lbls)
+      let ld_layout = Ctype.type_layout env ld_type in
+      Option.iter (fun layouts -> layouts.(idx) <- ld_layout) named;
+      (idx+1, {lbl with ld_layout} :: lbls)
     ) (0,[]) lbls
   in
-  if List.for_all (fun l -> l.ld_void) lbls then
+  if List.for_all (fun l -> Type_layout.(equal void l.ld_layout)) lbls then
     raise (Error (loc, Layout_empty_record))
   else List.rev lbls
 
@@ -901,12 +898,9 @@ let update_constructor_arguments_layouts env loc cd_args layouts =
 let update_decl_layout env decl =
   let update_record_kind loc lbls rep =
     match lbls, rep with
-    | [{Types.ld_type} as lbl], Record_unboxed _ -> begin
-        match Ctype.check_type_layout env ld_type Type_layout.void with
-        | Ok _ -> [{lbl with ld_void = true}],
-                  Record_unboxed Type_layout.void
-        | Error _ -> [lbl], rep
-      end
+    | [{Types.ld_type} as lbl], Record_unboxed _ ->
+      let ld_layout = Ctype.type_layout env ld_type in
+      [{lbl with ld_layout}], Record_unboxed ld_layout
     | _, Record_boxed layouts ->
       let lbls = update_label_layouts env loc lbls (Some layouts) in
       lbls, rep
@@ -925,12 +919,10 @@ let update_decl_layout env decl =
             | Error _ -> cstrs, rep
           end
         | Cstr_record [{ld_type} as lbl] -> begin
-            match Ctype.check_type_layout env ld_type Type_layout.void with
-            | Ok _ ->
-              [{ cstr with Types.cd_args =
-                             Cstr_record [{ lbl with ld_void = true }] }],
-              Variant_unboxed Type_layout.void
-            | Error _ -> cstrs, rep
+            let ld_layout = Ctype.type_layout env ld_type in
+            [{ cstr with Types.cd_args =
+                           Cstr_record [{ lbl with ld_layout }] }],
+            Variant_unboxed ld_layout
           end
         | (Cstr_tuple ([] | _ :: _ :: _) | Cstr_record ([] | _ :: _ :: _)) ->
           assert false
@@ -1287,10 +1279,12 @@ let transl_type_decl env rec_flag sdecl_list =
     sdecl_list tdecls;
   (* Check that constraints are enforced *)
   List.iter2 (check_constraints new_env) sdecl_list decls;
-  (* Default away sort variables.  Must happen after check_constraints (which
-     creates sort variables to check layouts of constructor args), and before
-     update_decls_layout and Typedecl_seperability.update_decls, which would
-     modify sort variables by checking if things are void.
+  (* Default away sort variables.  Must happen after check_constraints, which
+     creates sort variables to check layouts of constructor args.  Further, it
+     must happen before update_decls_layout, Typedecl_seperability.update_decls,
+     and add_types_to_env, all of which need to check whether parts of the type
+     are void (and currently use Type_layout.equal to do this which would set
+     any remaining sort variables to void).
 
      CR ccasinghino: In the future, it may be the case that check_constraints
      doesn't need to create sort variables because we want to allow

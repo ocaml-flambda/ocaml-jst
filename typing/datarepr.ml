@@ -197,6 +197,7 @@ let none = {desc = Ttuple []; level = -1; scope = Btype.generic_level; id = -1}
 let dummy_label =
   { lbl_name = ""; lbl_res = none; lbl_arg = none;
     lbl_mut = Immutable; lbl_global = Unrestricted;
+    lbl_layout = Type_layout.any;
     lbl_num = -1; lbl_pos = -1; lbl_all = [||];
     lbl_repres = Record_unboxed Type_layout.any;
     lbl_private = Public;
@@ -211,14 +212,16 @@ let label_descrs ~inlined ty_res lbls repres priv =
   let rec describe_labels num pos = function
       [] -> []
     | l :: rest ->
+        let is_void = Type_layout.(equal l.ld_layout void) in
         let lbl =
           { lbl_name = Ident.name l.ld_id;
             lbl_res = ty_res;
             lbl_arg = l.ld_type;
             lbl_mut = l.ld_mutable;
             lbl_global = l.ld_global;
+            lbl_layout = l.ld_layout;
+            lbl_pos = if is_void then lbl_pos_void else pos;
             lbl_num = num;
-            lbl_pos = if l.ld_void then lbl_pos_void else pos;
             lbl_all = all_labels;
             lbl_repres = repres;
             lbl_private = priv;
@@ -228,7 +231,7 @@ let label_descrs ~inlined ty_res lbls repres priv =
             lbl_uid = l.ld_uid;
           } in
         all_labels.(num) <- lbl;
-        let pos = if l.ld_void then pos else pos+1 in
+        let pos = if is_void then pos else pos+1 in
         (l.ld_id, lbl) :: describe_labels (num+1) pos rest in
   describe_labels 0 0 lbls
 
