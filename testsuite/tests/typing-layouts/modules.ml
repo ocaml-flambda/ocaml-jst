@@ -384,11 +384,6 @@ Error: In this `with' constraint, the new definition of t
        the first has layout value, which is not a sublayout of void.
 |}];;
 
-(* CJC XXX this example is still a problem
-
-   could we calculate the layout of the manifest and turn it into an
-   attribute?  Can it be a sort variable?  Maybe we can default it...
-
 module type S6_3 = sig
   type t [@@value]
 end
@@ -396,6 +391,11 @@ end
 module type S6_4 = sig
   val m : (module S6_3 with type t = t_void)
 end;;
-[%%expect{| |}];;
-
-*)
+[%%expect{|
+module type S6_3 = sig type t [@@value] end
+Line 6, characters 33-34:
+6 |   val m : (module S6_3 with type t = t_void)
+                                     ^
+Error: Signature package constraint types must have layout value.
+        t_void has layout void, which is not a sublayout of value.
+|}];;

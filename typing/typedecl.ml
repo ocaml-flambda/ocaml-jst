@@ -347,7 +347,7 @@ let transl_constructor_arguments env closed = function
       Types.Cstr_record lbls',
       Cstr_record lbls
 
-(* Note that [make_constructor] does not fill in the [ld_void] field of any
+(* Note that [make_constructor] does not fill in the [ld_layout] field of any
    computed record types, because it's called too early in the translation of a
    type declaration to compute accurate layouts in the presence of recursively
    defined types. It is updated later by [update_constructor_arguments_layouts]
@@ -1873,9 +1873,10 @@ let transl_with_constraint id row_path ~sig_env ~sig_decl ~outer_env sdecl =
     if arity_ok && man <> None then
       sig_decl.type_kind, sig_decl.type_unboxed_default
     else
-      let layout =
-        Type_layout.(of_attributes ~default:value sdecl.ptype_attributes)
-      in
+      (* CJC XXX: this is a gross hack.  See the comments in the [Ptyp_package]
+         case of [Typetexp.transl_type_aux]. *)
+      let layout = Type_layout.value in
+        (* Type_layout.(of_attributes ~default:value sdecl.ptype_attributes) *)
       Types.kind_abstract ~layout, false
   in
   let new_sig_decl =

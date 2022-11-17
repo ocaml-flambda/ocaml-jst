@@ -27,7 +27,7 @@ module Alloc_mode = Btype.Alloc_mode
 
 exception Already_bound
 
-type value_loc = Fun_arg | Fun_ret | Tuple | Poly_variant
+type value_loc = Fun_arg | Fun_ret | Tuple | Poly_variant | Package_constraint
 
 type error =
     Unbound_type_variable of string
@@ -625,7 +625,16 @@ and transl_type_aux env policy mode styp =
          work.  (Note we need : void not an attr on the package, because
          the parser doesn't handle attributes in the right spot).
       *)
-      (* CR ccasinghino: and in the long term, rewrite all of this *)
+    (* CJC XXX right now we're doing a real gross hack where we demand
+       everything in a package type with constraint be value.
+
+       An alternative is to walk into the constrained module, using the
+       longidents, and find the actual things that need layout checking.
+       See [Typemod.package_constraints_sig] for code that does a
+       similar traversal from a longident.
+    *)
+    (* CR ccasinghino: and in the long term, rewrite all of this to eliminate
+       the [create_package_mty] hack that constructs fake source code. *)
       let l, mty = create_package_mty true styp.ptyp_loc env (p, l) in
       let z = narrow () in
       let mty = !transl_modtype env mty in
@@ -633,6 +642,13 @@ and transl_type_aux env policy mode styp =
       let ptys = List.map (fun (s, pty) ->
                              s, transl_type env policy Alloc_mode.Global pty
                           ) l in
+      List.iter (fun (s,{ctyp_type=ty}) ->
+        match Ctype.constrain_type_layout env ty Type_layout.value with
+        | Ok _ -> ()
+        | Error e ->
+          raise (Error(s.loc,env,
+                       Non_value {vloc=Package_constraint; typ=ty; err=e})))
+        ptys;
       let path = !transl_modtype_longident styp.ptyp_loc env p.txt in
       let ty = newty (Tpackage (path,
                        List.map (fun (s, _pty) -> s.txt) l,
@@ -933,6 +949,7 @@ let report_error env ppf = function
       | Fun_ret -> "Function return"
       | Tuple -> "Tuple element"
       | Poly_variant -> "Polymorpic variant constructor argument"
+      | Package_constraint -> "Signature package constraint"
     in
     fprintf ppf "@[%s types must have layout value.@ \ %a@]"
       s (Type_layout.Violation.report_with_offender
