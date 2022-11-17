@@ -1985,15 +1985,17 @@ let estimate_type_layout env typ =
 let type_layout env ty =
   estimate_type_layout env (get_unboxed_type_representation env ty)
 
+(* CR ccasinghino perhaps this should take in some information about why
+   we think a sort is required, to put in the error. *)
 let type_sort env ty =
   let sort = Type_layout.any_sort () in
   match constrain_type_layout env ty sort with
   | Ok _ -> begin
       match sort with
-      | Sort s -> s
+      | Sort s -> Ok s
       | Any | Immediate | Immediate64 -> assert false
     end
-  | Error err -> raise (Unify [Bad_layout_sort (ty,err)])
+  | Error _ as e -> e
 
 
 (* Note: Because [estimate_type_layout] actually returns an upper bound, this

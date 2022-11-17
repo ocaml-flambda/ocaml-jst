@@ -278,15 +278,6 @@ let make_params env params =
   in
     List.map make_param params
 
-(* Makes sure a type is representable.  Note that anywhere this is called, you
-   may be creating a sort variable, and you must later check to see if its been
-   filled in and default it to value if not (see default_decl_layout) *)
-let check_layout_sort env loc lloc typ =
-  match Ctype.constrain_type_layout env typ (Type_layout.any_sort ()) with
-  | Ok _ -> ()
-  | Error err ->
-    raise (Error (loc, Layout_sort {lloc; typ; err}))
-
 let transl_labels env closed lbls =
   assert (lbls <> []);
   let all_labels = ref String.Set.empty in
@@ -687,9 +678,7 @@ let check_constraints_labels env visited l pl =
   in
   List.iter
     (fun {Types.ld_id=name; ld_type=ty} ->
-       let loc = get_loc (Ident.name name) pl in
-       check_layout_sort env loc Record ty;
-       check_constraints_rec env loc visited ty)
+       check_constraints_rec env (get_loc (Ident.name name) pl) visited ty)
     l
 
 let check_constraints env sdecl (_, decl) =
@@ -722,7 +711,6 @@ let check_constraints env sdecl (_, decl) =
           | Cstr_tuple tyl, Pcstr_tuple styl -> begin
               List.iter2
                 (fun sty ty ->
-                   check_layout_sort env sty.ptyp_loc Cstr_tuple ty;
                    check_constraints_rec env sty.ptyp_loc visited ty)
                 styl tyl
             end
@@ -863,6 +851,17 @@ let default_decl_layout decl =
 let default_decls_layout decls =
   List.iter (fun (_, decl) -> default_decl_layout decl) decls
 
+
+(* Makes sure a type is representable.  Will lower "any" to "value". *)
+(* CR ccasinghino: In the places where this is used, we first call this to
+   ensure a type is representable, and then call [Ctype.type_layout] to get the
+   most precise layout.  These could be combined into some new function
+   [Ctype.type_layout_representable] that avoids duplicated work *)
+let check_representable env loc lloc typ =
+  match Ctype.type_sort env typ with
+  | Ok s -> Type_layout.default_to_value (Sort s)
+  | Error err -> raise (Error (loc,Layout_sort {lloc; typ; err}))
+
 (* The [update_x_layouts] functions infer more precise layouts in the type kind,
    including which fields of a record are void.  This would be hard to do during
    [transl_declaration] due to mutually recursive types.
@@ -873,7 +872,8 @@ let update_label_layouts env loc lbls named =
   (* CR ccasinghino it wouldn't be too hard to support records that are all
      void.  just needs a bit of refactoring in translcore *)
   let _, lbls =
-    List.fold_left (fun (idx,lbls) ({Types.ld_type} as lbl) ->
+    List.fold_left (fun (idx,lbls) ({Types.ld_type;ld_loc} as lbl) ->
+      check_representable env ld_loc Record ld_type;
       let ld_layout = Ctype.type_layout env ld_type in
       Option.iter (fun layouts -> layouts.(idx) <- ld_layout) named;
       (idx+1, {lbl with ld_layout} :: lbls)
@@ -886,7 +886,9 @@ let update_label_layouts env loc lbls named =
 let update_constructor_arguments_layouts env loc cd_args layouts =
   match cd_args with
   | Types.Cstr_tuple tys ->
-    List.iteri (fun idx ty -> layouts.(idx) <- Ctype.type_layout env ty) tys;
+    List.iteri (fun idx ty ->
+      check_representable env loc Cstr_tuple ty;
+      layouts.(idx) <- Ctype.type_layout env ty) tys;
     cd_args
   | Types.Cstr_record lbls ->
     let lbls = update_label_layouts env loc lbls None in
@@ -898,7 +900,8 @@ let update_constructor_arguments_layouts env loc cd_args layouts =
 let update_decl_layout env decl =
   let update_record_kind loc lbls rep =
     match lbls, rep with
-    | [{Types.ld_type} as lbl], Record_unboxed _ ->
+    | [{Types.ld_type;ld_loc} as lbl], Record_unboxed _ ->
+      check_representable env ld_loc Record ld_type;
       let ld_layout = Ctype.type_layout env ld_type in
       [{lbl with ld_layout}], Record_unboxed ld_layout
     | _, Record_boxed layouts ->
@@ -911,14 +914,15 @@ let update_decl_layout env decl =
   let update_variant_kind cstrs rep =
     (* CR ccasinghino factor out duplication *)
     match cstrs, rep with
-    | [{Types.cd_args} as cstr], Variant_unboxed _ -> begin
+    | [{Types.cd_args;cd_loc} as cstr], Variant_unboxed _ -> begin
         match cd_args with
         | Cstr_tuple [ty] -> begin
-            match Ctype.check_type_layout env ty Type_layout.void with
-            | Ok _ -> cstrs, Variant_unboxed Type_layout.void
-            | Error _ -> cstrs, rep
+            check_representable env cd_loc Cstr_tuple ty;
+            let layout = Ctype.type_layout env ty in
+            cstrs, Variant_unboxed layout
           end
-        | Cstr_record [{ld_type} as lbl] -> begin
+        | Cstr_record [{ld_type;ld_loc} as lbl] -> begin
+            check_representable env ld_loc Record ld_type;
             let ld_layout = Ctype.type_layout env ld_type in
             [{ cstr with Types.cd_args =
                            Cstr_record [{ lbl with ld_layout }] }],

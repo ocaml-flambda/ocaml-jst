@@ -41,27 +41,27 @@ and 'b t1_constraint' = t_void
 (* Test 2: but not the "any" layout *)
 type t2_any1 = T2_any1 of t_any
 [%%expect {|
-Line 1, characters 26-31:
+Line 1, characters 15-31:
 1 | type t2_any1 = T2_any1 of t_any
-                              ^^^^^
+                   ^^^^^^^^^^^^^^^^
 Error: Constructor argument types must have a representable layout.
         t_any has layout any, which is not a sublayout of <sort variable>.
 |}];;
 
 type t2_any2 = T2_any2 of t_immediate * t_any
 [%%expect {|
-Line 1, characters 40-45:
+Line 1, characters 15-45:
 1 | type t2_any2 = T2_any2 of t_immediate * t_any
-                                            ^^^^^
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Error: Constructor argument types must have a representable layout.
         t_any has layout any, which is not a sublayout of <sort variable>.
 |}];;
 
 type t2_any3 = T2_any3 of t_any * t_value
 [%%expect {|
-Line 1, characters 26-31:
+Line 1, characters 15-41:
 1 | type t2_any3 = T2_any3 of t_any * t_value
-                              ^^^^^
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
 Error: Constructor argument types must have a representable layout.
         t_any has layout any, which is not a sublayout of <sort variable>.
 |}];;
@@ -69,9 +69,9 @@ Error: Constructor argument types must have a representable layout.
 type 'a t1_constraint = T1_con of 'a constraint 'a = 'b t1_constraint'
 and 'b t1_constraint' = t_any
 [%%expect {|
-Line 1, characters 34-36:
+Line 1, characters 24-36:
 1 | type 'a t1_constraint = T1_con of 'a constraint 'a = 'b t1_constraint'
-                                      ^^
+                            ^^^^^^^^^^^^
 Error: Constructor argument types must have a representable layout.
         'b t1_constraint' has layout any, which is not a sublayout of <sort variable>.
 |}]
@@ -123,54 +123,135 @@ Error: Records must contain at least one runtime value.
 (* Test 4: but any is not *)
 type t4_any1 = { x : t_any }
 [%%expect {|
-Line 1, characters 21-26:
+Line 1, characters 17-26:
 1 | type t4_any1 = { x : t_any }
-                         ^^^^^
+                     ^^^^^^^^^
 Error: Record element types must have a representable layout.
         t_any has layout any, which is not a sublayout of <sort variable>.
 |}];;
 
 type t4_any2 = { x : t_immediate; y : t_any }
 [%%expect {|
-Line 1, characters 38-43:
+Line 1, characters 34-43:
 1 | type t4_any2 = { x : t_immediate; y : t_any }
-                                          ^^^^^
+                                      ^^^^^^^^^
 Error: Record element types must have a representable layout.
         t_any has layout any, which is not a sublayout of <sort variable>.
 |}];;
 
 type t4_any3 =  { x : t_any; y : t_value }
 [%%expect {|
-Line 1, characters 22-27:
+Line 1, characters 18-28:
 1 | type t4_any3 =  { x : t_any; y : t_value }
-                          ^^^^^
+                      ^^^^^^^^^^
 Error: Record element types must have a representable layout.
         t_any has layout any, which is not a sublayout of <sort variable>.
 |}];;
 
 type t4_cany1 = C of { x : t_any }
 [%%expect {|
-Line 1, characters 27-32:
+Line 1, characters 23-32:
 1 | type t4_cany1 = C of { x : t_any }
-                               ^^^^^
+                           ^^^^^^^^^
 Error: Record element types must have a representable layout.
         t_any has layout any, which is not a sublayout of <sort variable>.
 |}];;
 
 type t4_cany2 = C of { x : t_immediate; y : t_any }
 [%%expect {|
-Line 1, characters 44-49:
+Line 1, characters 40-49:
 1 | type t4_cany2 = C of { x : t_immediate; y : t_any }
-                                                ^^^^^
+                                            ^^^^^^^^^
 Error: Record element types must have a representable layout.
         t_any has layout any, which is not a sublayout of <sort variable>.
 |}];;
 
 type t4_cany3 = C of { x : t_any; y : t_value }
 [%%expect {|
-Line 1, characters 27-32:
+Line 1, characters 23-33:
 1 | type t4_cany3 = C of { x : t_any; y : t_value }
-                               ^^^^^
+                           ^^^^^^^^^^
 Error: Record element types must have a representable layout.
         t_any has layout any, which is not a sublayout of <sort variable>.
 |}];;
+
+(* Test 5: These same rules apply to extensible variants *)
+type t5 = ..
+
+type t5 += T5_1 of t_void
+type t5 += T5_2 of t_value
+type t5 += T5_3 of t_immediate
+
+type t5 += T5_4 of t_void * t_immediate
+type t5 += T5_5 of t_immediate * t_value * t_void
+type t5 += T5_6 of t_value * t_immediate;;
+[%%expect{|
+type t5 = ..
+type t5 += T5_1 of t_void
+type t5 += T5_2 of t_value
+type t5 += T5_3 of t_immediate
+type t5 += T5_4 of t_void * t_immediate
+type t5 += T5_5 of t_immediate * t_value * t_void
+type t5 += T5_6 of t_value * t_immediate
+|}]
+
+
+type t5 += T5_7 of t_any
+[%%expect {|
+Line 1, characters 11-24:
+1 | type t5 += T5_7 of t_any
+               ^^^^^^^^^^^^^
+Error: Constructor argument types must have a representable layout.
+        t_any has layout any, which is not a sublayout of <sort variable>.
+|}];;
+
+type t5 += T5_8 of t_immediate * t_any
+[%%expect {|
+Line 1, characters 11-38:
+1 | type t5 += T5_8 of t_immediate * t_any
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Constructor argument types must have a representable layout.
+        t_any has layout any, which is not a sublayout of <sort variable>.
+|}];;
+
+type t5 += T5_9 of t_any * t_value
+[%%expect {|
+Line 1, characters 11-34:
+1 | type t5 += T5_9 of t_any * t_value
+               ^^^^^^^^^^^^^^^^^^^^^^^
+Error: Constructor argument types must have a representable layout.
+        t_any has layout any, which is not a sublayout of <sort variable>.
+|}];;
+
+type t5 += T5_11 of { x : t_value }
+type t5 += T5_12 of { x : t_immediate }
+
+type t5 += T5_13 of { x : t_void; y : t_immediate }
+type t5 += T5_14 of { x : t_immediate; y : t_value; z : t_void }
+type t5 += T5_15 of { x : t_value; y : t_immediate };;
+[%%expect{|
+type t5 += T5_11 of { x : t_value; }
+type t5 += T5_12 of { x : t_immediate; }
+type t5 += T5_13 of { x : t_void; y : t_immediate; }
+type t5 += T5_14 of { x : t_immediate; y : t_value; z : t_void; }
+type t5 += T5_15 of { x : t_value; y : t_immediate; }
+|}];;
+
+type t5 += T5_16 of { x : t_void }
+[%%expect{|
+Line 1, characters 11-34:
+1 | type t5 += T5_16 of { x : t_void }
+               ^^^^^^^^^^^^^^^^^^^^^^^
+Error: Records must contain at least one runtime value.
+|}]
+
+type t5 += T5_17 of { x : t_immediate; y : t_any }
+[%%expect {|
+Line 1, characters 39-48:
+1 | type t5 += T5_17 of { x : t_immediate; y : t_any }
+                                           ^^^^^^^^^
+Error: Record element types must have a representable layout.
+        t_any has layout any, which is not a sublayout of <sort variable>.
+|}];;
+
+

@@ -427,7 +427,7 @@ val type_layout : Env.t -> type_expr -> Type_layout.t
 
 (* Find a type's sort (constraining it to be an arbitrary sort variable, if
    needed) *)
-val type_sort : Env.t -> type_expr -> sort
+val type_sort : Env.t -> type_expr -> (sort, Type_layout.Violation.t) result
 
 (* Layout checking.  For convenience, on success these functions return the most
    precise layout we found for the given type during checking (which may be an

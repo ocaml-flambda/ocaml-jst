@@ -3627,10 +3627,13 @@ and type_expect_
       let arg = type_exp env arg_expected_mode sarg in
       end_def ();
       let sort =
-        try type_sort env arg.exp_type with
-        | Unify err -> raise (Error(arg.exp_loc, env,
-                                    Expr_type_clash(err,None,
-                                                    Some (arg.exp_desc))))
+        match type_sort env arg.exp_type with
+        | Ok s -> s
+        | Error err ->
+          (* CJC XXX errors: gross *)
+          let err = [Unification_trace.Bad_layout_sort (arg.exp_type,err)] in
+          raise (Error(arg.exp_loc, env,
+                       Expr_type_clash(err, None, Some (arg.exp_desc))))
       in
       if maybe_expansive arg then lower_contravariant env arg.exp_type;
       generalize arg.exp_type;
