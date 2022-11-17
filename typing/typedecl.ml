@@ -1344,7 +1344,7 @@ let transl_extension_constructor ~scope env type_path type_params
         let num_args =
           match targs with
           | Cstr_tuple args -> List.length args
-          | Cstr_record args -> List.length args
+          | Cstr_record _ -> 1
         in
         let layouts = Array.make num_args Type_layout.any in
         let args =
