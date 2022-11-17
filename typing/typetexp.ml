@@ -611,6 +611,21 @@ and transl_type_aux env policy mode styp =
       unify_var env (newvar Type_layout.any) ty';
       ctyp (Ttyp_poly (vars, cty)) ty'
   | Ptyp_package (p, l) ->
+      (* CJC XXX
+
+         In the short term, we'd like to make
+         module type S1 = sig
+           type t : void
+         end
+
+         module type S2 = sig
+           val m : (module S1 with type t : void = int)
+         end
+
+         work.  (Note we need : void not an attr on the package, because
+         the parser doesn't handle attributes in the right spot).
+      *)
+      (* CR ccasinghino: and in the long term, rewrite all of this *)
       let l, mty = create_package_mty true styp.ptyp_loc env (p, l) in
       let z = narrow () in
       let mty = !transl_modtype env mty in

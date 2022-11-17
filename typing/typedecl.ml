@@ -1873,7 +1873,9 @@ let transl_with_constraint id row_path ~sig_env ~sig_decl ~outer_env sdecl =
     if arity_ok && man <> None then
       sig_decl.type_kind, sig_decl.type_unboxed_default
     else
-      let layout = Type_layout.layout_bound_of_kind sig_decl.type_kind in
+      let layout =
+        Type_layout.(of_attributes ~default:value sdecl.ptype_attributes)
+      in
       Types.kind_abstract ~layout, false
   in
   let new_sig_decl =

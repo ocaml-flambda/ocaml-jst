@@ -362,3 +362,40 @@ Error: This type has layout value, which is not a sublayout of immediate.
 |}]
 
 
+(* Test 6: With constraints on packages. *)
+module type S6_1 = sig
+  type t [@@void]
+end
+
+module type S6_2 = sig
+  val m : (module S6_1 with type t = int)
+end;;
+[%%expect{|
+module type S6_1 = sig type t [@@void] end
+Line 6, characters 10-41:
+6 |   val m : (module S6_1 with type t = int)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: In this `with' constraint, the new definition of t
+       does not match its original definition in the constrained signature:
+       Type declarations do not match:
+         type t
+       is not included in
+         type t [@@void]
+       the first has layout value, which is not a sublayout of void.
+|}];;
+
+(* CJC XXX this example is still a problem
+
+   could we calculate the layout of the manifest and turn it into an
+   attribute?  Can it be a sort variable?  Maybe we can default it...
+
+module type S6_3 = sig
+  type t [@@value]
+end
+
+module type S6_4 = sig
+  val m : (module S6_3 with type t = t_void)
+end;;
+[%%expect{| |}];;
+
+*)
