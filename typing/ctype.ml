@@ -3089,8 +3089,17 @@ and unify3 env t1 t1' t2 t2' =
   let create_recursion = (t2 != t2') && (deep_occur t1' t2) in
 
   begin match (d1, d2) with (* handle vars and univars specially *)
-    (Tunivar _, Tunivar _) ->
+    (Tunivar {layout=l1}, Tunivar {layout=l2}) ->
       unify_univar t1' t2' !univar_pairs;
+      (* CJC XXX make a test case for this ince we have annotations on univars
+
+        type ('a : any) foo = 'a
+        type ('a : any) bar
+
+        let f (x : < foo : ('a : void) . 'a foo bar >) : < foo : 'a . 'a foo bar > = x
+      *)
+      if not (Type_layout.equal l1 l2) then
+        raise (Unify [Trace.Unequal_univar_layouts (t1, l1, t2, l2)]);
       link_type t1' t2'
   | (Tvar { layout; _}, _) ->
       occur !env t1' t2;
