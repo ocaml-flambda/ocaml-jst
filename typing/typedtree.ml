@@ -803,11 +803,10 @@ let rec iter_bound_idents
   : type k . _ -> k general_pattern -> _
   = fun f pat ->
   match pat.pat_desc with
-  | Tpat_var (id, s) ->
-     f (id,s,pat.pat_type)
-  | Tpat_alias(p, id, s) ->
+  | Tpat_var (id, _) -> f id
+  | Tpat_alias(p, id, _) ->
       iter_bound_idents f p;
-      f (id,s,pat.pat_type)
+      f id
   | Tpat_or(p1, _, _) ->
       (* Invariant : both arguments bind the same variables *)
       iter_bound_idents f p1
@@ -816,39 +815,24 @@ let rec iter_bound_idents
        { f = fun p -> iter_bound_idents f p }
        d
 
-let rev_pat_bound_idents_full pat =
-  let idents_full = ref [] in
-  let add id_full = idents_full := id_full :: !idents_full in
-  iter_bound_idents add pat;
-  !idents_full
+type full_bound_ident_action =
+  Ident.t -> string loc -> type_expr -> value_mode -> sort -> unit
 
-let rev_only_idents idents_full =
-  List.rev_map (fun (id,_,_) -> id) idents_full
-
-let pat_bound_idents_full pat =
-  List.rev (rev_pat_bound_idents_full pat)
-let pat_bound_idents pat =
-  rev_only_idents (rev_pat_bound_idents_full pat)
-
-let rev_let_bound_idents_full bindings =
-  let idents_full = ref [] in
-  let add id_full = idents_full := id_full :: !idents_full in
-  List.iter (fun vb -> iter_bound_idents add vb.vb_pat) bindings;
-  !idents_full
-
-let let_bound_idents_with_modes_and_sorts bindings =
-  let modes_and_sorts = Ident.Tbl.create 3 in
-  let rec loop : type k . sort -> k general_pattern -> _ =
-    fun sort pat ->
+let iter_pattern_full ~both_sides_of_or f sort pat =
+  let rec loop :
+    type k . full_bound_ident_action -> sort -> k general_pattern -> _ =
+    fun f sort pat ->
       match pat.pat_desc with
       (* Cases where we push the sort inwards: *)
-      | Tpat_var (id, { loc }) ->
-          Ident.Tbl.add modes_and_sorts id (loc, pat.pat_mode, sort)
-      | Tpat_alias(p, id, { loc }) ->
-          loop sort p;
-          Ident.Tbl.add modes_and_sorts id (loc, pat.pat_mode, sort)
-      | Tpat_or (p1, p2, _) -> loop sort p1; loop sort p2
-      | Tpat_value p -> loop sort p
+      | Tpat_var (id, s) ->
+          f id s pat.pat_type pat.pat_mode sort
+      | Tpat_alias(p, id, s) ->
+          loop f sort p;
+          f id s pat.pat_type pat.pat_mode sort
+      | Tpat_or (p1, p2, _) ->
+        if both_sides_of_or then (loop f sort p1; loop f sort p2)
+        else loop f sort p1
+      | Tpat_value p -> loop f sort p
       (* Cases where we compute the sort of the inner thing from the pattern *)
       | Tpat_construct(_, cstr, patl) ->
           let sorts =
@@ -858,30 +842,66 @@ let let_bound_idents_with_modes_and_sorts bindings =
               Array.to_list (Array.map Type_layout.sort_of_layout
                                           cstr.cstr_arg_layouts)
           in
-          List.iter2 loop sorts patl
+          List.iter2 (loop f) sorts patl
       | Tpat_record (lbl_pat_list, _) ->
           List.iter (fun (_, lbl, pat) ->
-            loop (Type_layout.sort_of_layout lbl.lbl_layout) pat)
+            (loop f) (Type_layout.sort_of_layout lbl.lbl_layout) pat)
             lbl_pat_list
       (* Cases where the inner things must be value: *)
-      | Tpat_variant (_, pat, _) -> Option.iter (loop Types.Value) pat
-      | Tpat_tuple patl -> List.iter (loop Types.Value) patl
+      | Tpat_variant (_, pat, _) -> Option.iter (loop f Types.Value) pat
+      | Tpat_tuple patl -> List.iter (loop f Types.Value) patl
         (* CR ccasinghino: tuple case to change when we allow non-values in
            tuples *)
-      | Tpat_array patl -> List.iter (loop Types.Value) patl
-      | Tpat_lazy p | Tpat_exception p -> loop Types.Value p
+      | Tpat_array patl -> List.iter (loop f Types.Value) patl
+      | Tpat_lazy p | Tpat_exception p -> loop f Types.Value p
       (* Cases without variables: *)
       | Tpat_any | Tpat_constant _ -> ()
   in
-  List.iter (fun vb -> loop vb.vb_sort vb.vb_pat) bindings;
-  List.rev_map
-    (fun (id, _, _) -> id, List.rev (Ident.Tbl.find_all modes_and_sorts id))
-    (rev_let_bound_idents_full bindings)
+  loop f sort pat
 
-let let_bound_idents_full bindings =
-  List.rev (rev_let_bound_idents_full bindings)
-let let_bound_idents pat =
-  rev_only_idents (rev_let_bound_idents_full pat)
+let rev_pat_bound_idents_full sort pat =
+  let idents_full = ref [] in
+  let add id sloc typ _ sort =
+    idents_full := (id, sloc, typ, sort) :: !idents_full
+  in
+  iter_pattern_full ~both_sides_of_or:false add sort pat;
+  !idents_full
+
+let rev_only_idents idents_full =
+  List.rev_map (fun (id,_,_,_) -> id) idents_full
+
+let rev_only_idents_and_types idents_full =
+  List.rev_map (fun (id,_,ty,_) -> (id,ty)) idents_full
+
+let pat_bound_idents_full sort pat =
+  List.rev (rev_pat_bound_idents_full sort pat)
+
+(* In these two, we don't know the sort, but the sort information isn't used so
+   it's fine to lie. *)
+let pat_bound_idents_with_types pat =
+  rev_only_idents_and_types (rev_pat_bound_idents_full Value pat)
+let pat_bound_idents pat =
+  rev_only_idents (rev_pat_bound_idents_full Value pat)
+
+let rev_let_bound_idents bindings =
+  let idents = ref [] in
+  let add id = idents := id :: !idents in
+  List.iter (fun vb -> iter_bound_idents add vb.vb_pat) bindings;
+  !idents
+
+let let_bound_idents_with_modes_and_sorts bindings =
+  let modes_and_sorts = Ident.Tbl.create 3 in
+  let f id sloc _ mode sort =
+    Ident.Tbl.add modes_and_sorts id (sloc.loc, mode, sort)
+  in
+  List.iter (fun vb ->
+    iter_pattern_full ~both_sides_of_or:true f vb.vb_sort vb.vb_pat)
+    bindings;
+  List.rev_map
+    (fun id -> id, List.rev (Ident.Tbl.find_all modes_and_sorts id))
+    (rev_let_bound_idents bindings)
+
+let let_bound_idents pat = List.rev (rev_let_bound_idents pat)
 
 let alpha_var env id = List.assoc id env
 

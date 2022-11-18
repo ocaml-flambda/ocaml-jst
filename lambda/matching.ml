@@ -1480,9 +1480,9 @@ and precompile_or ~arg_id (cls : Simple.clause list) ors args def k =
             let vars =
               (* bound variables of the or-pattern and used in the orpm
                  actions *)
-              Typedtree.pat_bound_idents_full orp
-              |> List.filter (fun (id, _, _) -> Ident.Set.mem id pm_fv)
-              |> List.map (fun (id, _, ty) ->
+              Typedtree.pat_bound_idents_with_types orp
+              |> List.filter (fun (id, _) -> Ident.Set.mem id pm_fv)
+              |> List.map (fun (id, ty) ->
                      (id, Typeopt.value_kind orp.pat_env ty))
               (* Void variables don't reach value_kind because they are compiled
                  out of the action, and are therefore filtered out the pm_fv
@@ -3649,7 +3649,7 @@ let assign_pat ~scopes value_kind opt nraise catch_ids loc pat lam =
     simple_for_let ~scopes value_kind loc lam pat code in
   List.fold_left push_sublet exit rev_sublets
 
-let for_let ~scopes loc param_void_k param pat body_kind body =
+let for_let ~scopes loc param_void_k param param_sort pat body_kind body =
   match param_void_k with
   | Some k ->
     (* the param is void.  Any variables bound by the pattern must also be void,
@@ -3669,19 +3669,16 @@ let for_let ~scopes loc param_void_k param pat body_kind body =
       | _ ->
         let opt = ref false in
         let nraise = next_raise_count () in
-        let catch_ids = pat_bound_idents_full pat in
-        (* CJC XXX put void info in the pat, probably.  or not.  change
-           pat_bound_idents_full to return the sorts. *)
+        let catch_ids = pat_bound_idents_full param_sort pat in
         let ids_with_kinds =
           List.filter_map
-            (fun (id, _, typ) ->
-               if Type_layout.Const.can_make_void
-                    (Ctype.type_layout pat.pat_env (Ctype.correct_levels typ))
+            (fun (id, _, typ, sort) ->
+               if Type_layout.Const.can_make_void (Sort sort)
                then None
                else Some (id, Typeopt.value_kind pat.pat_env typ))
             catch_ids
         in
-        let ids = List.map (fun (id, _, _) -> id) catch_ids in
+        let ids = List.map (fun (id, _, _, _) -> id) catch_ids in
         let bind =
           map_return (assign_pat ~scopes body_kind opt nraise ids loc pat) param in
         if !opt then

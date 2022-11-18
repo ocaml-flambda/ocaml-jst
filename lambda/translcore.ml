@@ -1424,8 +1424,8 @@ and transl_let ~scopes ?(add_regions=false) ?(in_structure=false)
           let lam = if add_regions then maybe_region lam else lam in
           let mk_body = transl rem in
           fun body ->
-            Matching.for_let ~scopes pat.pat_loc param_void_k lam pat body_kind
-              (mk_body body)
+            Matching.for_let ~scopes pat.pat_loc param_void_k lam sort pat
+              body_kind (mk_body body)
       in
       transl pat_expr_list
   | Recursive ->
@@ -1631,16 +1631,12 @@ and transl_match ~scopes e arg sort pat_expr_list partial void_k =
         in
         (* Simplif doesn't like it if binders are not uniq, so we make sure to
            use different names in the value and the exception branches. *)
-        let ids_full = Typedtree.pat_bound_idents_full pv in
+        let ids_full = Typedtree.pat_bound_idents_full sort pv in
         let ids_kinds =
-          List.filter_map (fun (id, _, ty) ->
-            (* CJC XXX Really, I should rework pat_bound_idents_full to return
-               sort info.  And, while I'm at it, I think the way I'm using
-               let_bound_idents_with_modes_and_sorts is silly - maybe modes can
-               differ on each side of an or pattern, but sorts can not. *)
-            match Ctype.check_type_layout c_lhs.pat_env ty Type_layout.void with
-            | Ok _ -> None
-            | _ -> Some (id, Typeopt.value_kind pv.pat_env ty))
+          List.filter_map (fun (id, _, ty, sort) ->
+            if Type_layout.Const.can_make_void (Sort sort)
+            then None
+            else Some (id, Typeopt.value_kind pv.pat_env ty))
             ids_full
         in
         let ids = List.map (fun (id, _) -> id) ids_kinds in
