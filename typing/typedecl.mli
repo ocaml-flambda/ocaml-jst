@@ -59,7 +59,6 @@ val is_fixed_type : Parsetree.type_declaration -> bool
 
 type native_repr_kind = Unboxed | Untagged
 
-type layout_value_loc = Fun_arg | Fun_ret | Tuple | Field | Poly_variant
 type layout_sort_loc = Cstr_tuple | Record
 
 type error =
@@ -97,8 +96,6 @@ type error =
   | Cannot_unbox_or_untag_type of native_repr_kind
   | Deep_unbox_or_untag_attribute of native_repr_kind
   | Layout of Type_layout.Violation.t
-  | Layout_value of
-      {lloc : layout_value_loc; typ : type_expr; err : Type_layout.Violation.t}
   | Layout_sort of
       {lloc : layout_sort_loc; typ : type_expr; err : Type_layout.Violation.t}
   | Layout_empty_record
