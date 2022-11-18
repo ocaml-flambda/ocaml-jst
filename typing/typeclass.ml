@@ -458,9 +458,14 @@ and class_type_field_aux env self_type meths
       (mkctf (Tctf_inherit parent) :: fields,
        val_sig, concr_meths, inher)
 
-  | Pctf_val ({txt=lab}, mut, virt, sty) ->
+  | Pctf_val ({txt=lab;loc}, mut, virt, sty) ->
       let cty = transl_simple_type env false Global sty in
       let ty = cty.ctyp_type in
+      begin match Ctype.constrain_type_layout env ty Type_layout.value with
+      | Ok _ -> ()
+      | Error err ->
+        raise (Error(loc, env, Non_value_binding(lab, err)))
+      end;
       (mkctf (Tctf_val (lab, mut, virt, cty)) :: fields,
       add_val lab (mut, virt, ty) val_sig, concr_meths, inher)
 

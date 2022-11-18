@@ -611,9 +611,9 @@ Error: Signature mismatch:
        Values do not match: val x : 'a t is not included in val x : string
 |}]
 
-(**************************************)
-(* Test 10: send works only on values *)
-module M10 = struct
+(**************************************************************)
+(* Test 10: objects are values and methods take/return values *)
+module M10_1 = struct
   type ('a : void) t = { x : int; v : 'a }
 
   let f t =
@@ -626,10 +626,35 @@ Line 5, characters 4-7:
 Error: This expression has type 'a
        It has no method baz10
 |}]
+
+module M10_2 = struct
+  let foo x = VV (x # getvoid)
+end;;
+[%%expect{|
+Line 2, characters 17-30:
+2 |   let foo x = VV (x # getvoid)
+                     ^^^^^^^^^^^^^
+Error: This expression has type 'a but an expression was expected of type
+         t_void
+       t_void has layout void, which is not a sublayout of value.
+|}];;
+
+module M10_3 = struct
+  type ('a : void) t = A of 'a
+
+  let foo o (A x) = o # usevoid x
+end;;
+[%%expect{|
+Line 4, characters 32-33:
+4 |   let foo o (A x) = o # usevoid x
+                                    ^
+Error: This expression has type 'a but an expression was expected of type 'b
+       'a has layout value, which does not overlap with void.
+|}];;
 (* CJC XXX errors *)
 
-(**************************************************************)
-(* Test 11: variables bound in classes must have layout value *)
+(*******************************************************************)
+(* Test 11: class parameters and bound vars must have layout value *)
 
 (* Hits `Pcl_let` *)
 module M11_1 = struct
@@ -676,6 +701,70 @@ Line 4, characters 18-21:
 Error: Variables bound in a class must have layout value.
        bar has layout void, which is not a sublayout of value.
 |}];;
+
+module M11_4 = struct
+  type ('a : void) t
+
+  class virtual ['a] foo =
+    object
+      val virtual baz : 'a t
+    end
+end
+[%%expect{|
+Line 6, characters 24-26:
+6 |       val virtual baz : 'a t
+                            ^^
+Error: This type 'a should be an instance of type 'a0
+       'a has layout value, which does not overlap with void.
+|}];;
+
+module M11_5 = struct
+  type ('a : void) t = A of 'a
+
+  class ['a] foo =
+    object
+      method void_id (A a) : 'a t = a
+    end
+end;;
+[%%expect{|
+Line 6, characters 29-31:
+6 |       method void_id (A a) : 'a t = a
+                                 ^^
+Error: This type 'a should be an instance of type 'a0
+       'a has layout value, which does not overlap with void.
+|}];;
+
+module type S11_6 = sig
+  type ('a : void) t = A of 'a
+
+  class ['a] foo :
+    'a t ->
+    object
+      method baz : int
+    end
+end;;
+[%%expect{|
+Line 5, characters 4-6:
+5 |     'a t ->
+        ^^
+Error: This type 'a should be an instance of type 'a0
+       'a has layout value, which does not overlap with void.
+|}];;
+
+module type S11_7 = sig
+  class foo :
+    object
+      val baz : t_void
+    end
+end;;
+[%%expect{|
+Line 4, characters 10-13:
+4 |       val baz : t_void
+              ^^^
+Error: Variables bound in a class must have layout value.
+       baz has layout void, which is not a sublayout of value.
+|}];;
+
 
 (***********************************************************)
 (* Test 12: built-in type constructors work only on values *)

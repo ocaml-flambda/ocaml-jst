@@ -253,7 +253,6 @@ module Make(O : OBJ)(EVP : EVALPATH with type valu = O.t) = struct
 
       let nest f = nest_gen (Oval_stuff "<cycle>") f in
 
-      (* CJC XXX many more void cases to handle here *)
       let rec tree_of_val depth obj ty =
         decr printer_steps;
         if !printer_steps < 0 || depth < 0 then Oval_ellipsis
