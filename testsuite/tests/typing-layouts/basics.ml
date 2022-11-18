@@ -651,6 +651,41 @@ Line 4, characters 32-33:
 Error: This expression has type 'a but an expression was expected of type 'b
        'a has layout value, which does not overlap with void.
 |}];;
+
+module M10_4 = struct
+  val x : < l : t_void >
+end;;
+[%%expect{|
+Line 2, characters 12-22:
+2 |   val x : < l : t_void >
+                ^^^^^^^^^^
+Error: Object field types must have layout value.
+        t_void has layout void, which is not a sublayout of value.
+|}];;
+
+module M10_5 = struct
+  type 'a t = < l : 'a s >
+  and ('a : void) s = 'a
+end;;
+[%%expect{|
+Line 3, characters 2-24:
+3 |   and ('a : void) s = 'a
+      ^^^^^^^^^^^^^^^^^^^^^^
+Error:
+       'a s has layout void, which does not overlap with value.
+|}];;
+
+module M10_6 = struct
+  type 'a t = < l : 'a > constraint 'a = t_void
+end;;
+[%%expect{|
+Line 2, characters 36-47:
+2 |   type 'a t = < l : 'a > constraint 'a = t_void
+                                        ^^^^^^^^^^^
+Error: The type constraints are not consistent.
+Type 'a is not compatible with type t_void
+t_void has layout void, which is not a sublayout of value.
+|}];;
 (* CJC XXX errors *)
 
 (*******************************************************************)

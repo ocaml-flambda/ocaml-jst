@@ -43,7 +43,8 @@ val widen: variable_context -> unit
 
 exception Already_bound
 
-type value_loc = Fun_arg | Fun_ret | Tuple | Poly_variant | Package_constraint
+type value_loc =
+    Fun_arg | Fun_ret | Tuple | Poly_variant | Package_constraint | Object_field
 
 type error =
     Unbound_type_variable of string

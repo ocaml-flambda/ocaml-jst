@@ -27,7 +27,8 @@ module Alloc_mode = Btype.Alloc_mode
 
 exception Already_bound
 
-type value_loc = Fun_arg | Fun_ret | Tuple | Poly_variant | Package_constraint
+type value_loc =
+    Fun_arg | Fun_ret | Tuple | Poly_variant | Package_constraint | Object_field
 
 type error =
     Unbound_type_variable of string
@@ -686,6 +687,14 @@ and transl_fields env policy o fields =
           Builtin_attributes.warning_scope of_attributes
             (fun () -> transl_poly_type env policy Alloc_mode.Global ty1)
         in
+        begin
+          match constrain_type_layout env ty1.ctyp_type Type_layout.value with
+          | Ok _ -> ()
+          | Error e ->
+            raise (Error(of_loc, env,
+                         Non_value {vloc = Object_field; err = e;
+                                    typ = ty1.ctyp_type}))
+        end;
         let field = OTtag (s, ty1) in
         add_typed_field ty1.ctyp_loc s.txt ty1.ctyp_type;
         field
@@ -950,6 +959,7 @@ let report_error env ppf = function
       | Tuple -> "Tuple element"
       | Poly_variant -> "Polymorpic variant constructor argument"
       | Package_constraint -> "Signature package constraint"
+      | Object_field -> "Object field"
     in
     fprintf ppf "@[%s types must have layout value.@ \ %a@]"
       s (Type_layout.Violation.report_with_offender
