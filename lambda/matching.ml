@@ -230,8 +230,9 @@ end = struct
       | `Var (id, s) -> continue p (`Alias (Patterns.omega, id, s))
       | `Alias (p, id, _) ->
           let k = Typeopt.value_kind p.pat_env p.pat_type in
-          let action = bind_with_value_kind Alias (id,k) arg action in
-          aux ((General.view p, patl), action)
+          aux
+            ( (General.view p, patl),
+              bind_with_value_kind Alias (id, k) arg action )
       | `Record ([], _) as view -> stop p view
       | `Record (lbls, closed) ->
           let full_view = `Record (all_record_args lbls, closed) in
@@ -884,7 +885,7 @@ type 'row pattern_matching = {
 type handler = {
   provenance : matrix;
   exit : int;
-  vars : (Ident.t * value_kind) list;
+  vars : (Ident.t * Lambda.value_kind) list;
   pm : initial_clause pattern_matching
 }
 
@@ -1485,7 +1486,7 @@ and precompile_or ~arg_id (cls : Simple.clause list) ors args def k =
               |> List.map (fun (id, ty) ->
                      (id, Typeopt.value_kind orp.pat_env ty))
               (* Void variables don't reach value_kind because they are compiled
-                 out of the action, and are therefore filtered out the pm_fv
+                 out of the action, and are therefore filtered out by the pm_fv
                  filter *)
             in
             let or_num = next_raise_count () in
@@ -2725,7 +2726,7 @@ let split_cases tag_lambda_list =
 
 (* The bool tracks whether the constructor is constant, because we don't have a
    constructor_description available for polymorphic variants *)
-let split_variant_cases tag_lambda_list =
+let split_variant_cases (tag_lambda_list : ((int * bool) * lambda) list) =
   let rec split_rec = function
     | [] -> ([], [])
     | (tag, act) :: rem -> (
@@ -3652,10 +3653,10 @@ let assign_pat ~scopes value_kind opt nraise catch_ids loc pat lam =
 let for_let ~scopes loc param_void_k param param_sort pat body_kind body =
   match param_void_k with
   | Some k ->
-    (* the param is void.  Any variables bound by the pattern must also be void,
-       so we can just skip the whole pattern matching compiler and evaluate the
-       param. *)
-    Lstaticcatch(param, (k,[]), body, body_kind)
+      (* the param is void.  Any variables bound by the pattern must also be
+         void, so we can just skip the whole pattern matching compiler and
+         evaluate the param. *)
+      Lstaticcatch(param, (k,[]), body, body_kind)
   | None -> begin
       match pat.pat_desc with
       | Tpat_any ->

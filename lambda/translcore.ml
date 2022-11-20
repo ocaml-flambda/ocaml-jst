@@ -339,19 +339,25 @@ let fun_arg_value_kind pat =
    the thing it's about to evaluate is a void and sets up a handler
    (Lstaticcatch) for this throw if so.
 
-   But the lambda syntax has [value_kinds] in several places - mainly control
-   flow join points - that are inconvenient for this trick.  E.g.,:
+   Many translation functions take an argument (void_k : int option) argument.
+   This represents a continuation to be used if the thing being translated is
+   void.  The int is the name of a static exception handler that they will raise
+   to in that case.  [void_k] must be [Some] iff the thing being translated is
+   void.
+
+   Annnoyingly, the lambda syntax has [value_kinds] in several places - mainly
+   control flow join points - that are inconvenient for this trick.  E.g.,:
 
    | Lifthenelse of lambda * lambda * lambda * value_kind
 
    Here the value_kind is for the result of the ite.  That result can have a
    type whose layout is void, in which case there is no actual runtime value.
    In that case, each branch will Lstaticraise after running the relevant
-   computation, so the value_kind is kind of irrelevant - we never actually
-   return a value.  We put in [Pintval] in those cases.
+   computation, so the value_kind is irrelevant - we never actually return a
+   value.  We use [Pintval] in those cases.
 
    In the future, we'll add another type that tracks runtime layouts more fully,
-   where [value_kind] just appear in the value case.  But that requires more
+   where [value_kind] just appears in the value case.  But that requires more
    reworks in the middle end, so we're using this Lstaticraise/Lstaticcatch
    trick for now. *)
 let value_kind_if_not_void e void_k =

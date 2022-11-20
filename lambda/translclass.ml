@@ -214,8 +214,7 @@ let rec build_object_init ~scopes cl_table obj params inh_init obj_init cl =
         build_object_init ~scopes cl_table obj (vals @ params)
           inh_init obj_init cl
       in
-      (inh_init,
-       Translcore.transl_let ~scopes rec_flag defs Pgenval obj_init)
+      (inh_init, Translcore.transl_let ~scopes rec_flag defs Pgenval obj_init)
   | Tcl_open (_, cl)
   | Tcl_constraint (cl, _, _, _, _) ->
       build_object_init ~scopes cl_table obj params inh_init obj_init cl
