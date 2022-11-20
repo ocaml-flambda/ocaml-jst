@@ -25,8 +25,8 @@ val pure_module : module_expr -> let_kind
 
 (* Used for translating Alloc_heap values in classes and modules.  The [int
    option] must be [Some n] iff the expression's type has layout void.  In that
-   case, the result will [Lstaticraise] to handler [transl_exp] after evaluating
-   the expression. *)
+   case, the result will [Lstaticraise] to handler [n] after evaluating the
+   expression. *)
 val transl_exp: scopes:scopes -> int option -> expression -> lambda
 val transl_apply: scopes:scopes
                   -> ?tailcall:tailcall_attribute

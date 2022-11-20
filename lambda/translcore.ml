@@ -1675,8 +1675,8 @@ and transl_match ~scopes e arg sort pat_expr_list partial void_k =
          non-void cases below, because a) we plan to revise how void is
          compiled.  But if we keep this, some re-thinking is in order, and b)
          this structure makes it easier to see that the behavior is unchanged in
-         the non-void case (reviewers: note that code has been nested under an
-         if, but is unchanged) *)
+         the non-void case (reviewers: note that the original code for the
+         non-void has been nested under an if, but is essentially unchanged) *)
       match exn_cases with
       | [] ->
         catch_void (fun void_k -> transl_exp ~scopes void_k arg)
@@ -1779,8 +1779,7 @@ and transl_letop ~scopes loc env let_ ands param case partial warnings =
   in
   let exp = loop (transl_exp ~scopes None let_.bop_exp) ands in
   let func =
-    let return_kind = value_kind case.c_rhs.exp_env case.c_rhs.exp_type
-    in
+    let return_kind = value_kind case.c_rhs.exp_env case.c_rhs.exp_type in
     let (kind, params, return, _region), body =
       event_function ~scopes case.c_rhs
         (function repr ->
