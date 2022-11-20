@@ -168,6 +168,19 @@ and exp_extra =
   | Texp_newtype of string
         (** fun (type t) ->  *)
 
+(** Layouts in the typed tree: Compilation of the typed tree to lambda sometimes
+    requires layout information.  Our approach is to propagate layout
+    information inward during compilation.  This requires us to annotate places
+    in the typed tree where the layout of a subexpression is not determined by
+    the layout of the expression containing it.  For example, to the left of a
+    semicolon, or in value_bindings.
+
+    CR ccasinghino: Some of these are mainly needed for void (e.g., left of a
+    semicolon).  If we redo how void is compiled, perhaps we can drop those.  On
+    the other hand, there are some places we're not annotating now (e.g.,
+    function arguments) that will need annotations in the future because we'll
+    allow other layouts there.
+*)
 and expression_desc =
     Texp_ident of
       Path.t * Longident.t loc * Types.value_description * ident_kind

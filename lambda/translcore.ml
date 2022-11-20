@@ -1293,7 +1293,7 @@ and transl_curried_function
 
 and transl_tupled_function
       ~scopes ~arity ~mode ~region loc return
-      repr partial (param:Ident.t) cases : (_ * (Ident.t * value_kind) list * _ * _) * _ =
+      repr partial (param:Ident.t) cases =
   match cases with
   | {c_lhs={pat_desc = Tpat_tuple pl; pat_mode }} :: _
     when !Clflags.native_code
@@ -1308,7 +1308,7 @@ and transl_tupled_function
             (fun {c_lhs; c_guard; c_rhs} ->
               (Matching.flatten_pattern size c_lhs, c_guard, c_rhs))
             cases in
-        let kinds : value_kind list =
+        let kinds =
           (* All the patterns might not share the same types. We must take the
              union of the patterns types *)
           match pats_expr_list with
