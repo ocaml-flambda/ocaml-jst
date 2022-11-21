@@ -262,7 +262,7 @@ type type_declaration =
     type_attributes: Parsetree.attributes;
     type_unboxed_default: bool;
     type_uid: Uid.t;
-  }
+ }
 
 and type_kind =
     Type_abstract of {layout: layout}

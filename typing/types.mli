@@ -421,8 +421,8 @@ and record_representation =
 
 (* For unboxed variants, we record the layout of the mandatory single argument.
    For boxed variants, we record the layouts for the arguments of each
-   constructor.  For inlined records, we record the layouts of each element of
-   the record, not the record as a whole. *)
+   constructor.  For boxed inlined records, this is just a length 1 array with
+   the layout of the record itself, not the layouts of each field.  *)
 and variant_representation =
   | Variant_unboxed of layout
   | Variant_boxed of layout array array

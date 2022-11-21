@@ -95,12 +95,8 @@ let create_package_mty fake loc env (p, l) =
 
 (* Translation of type expressions *)
 
-(* type_variables: all current type variable.
-     narrow and widen create scopes for these
-
-
-*)
-
+(* type_variables: all current type variable.  Narrow and widen create scopes
+   for these *)
 let type_variables = ref (TyVarMap.empty : type_expr TyVarMap.t)
 let univars        = ref ([] : (string * type_expr) list)
 let pre_univars    = ref ([] : type_expr list)
@@ -601,7 +597,7 @@ and transl_type_aux env policy mode styp =
             if deep_occur v ty then begin
               match v.desc with
                 Tvar { name; layout } when v.level = Btype.generic_level ->
-                v.desc <- Tunivar { name; layout };
+                  v.desc <- Tunivar { name; layout };
                   v :: tyl
               | _ ->
                 raise (Error (styp.ptyp_loc, env, Cannot_quantify (name, v)))
@@ -911,7 +907,7 @@ let report_error env ppf = function
         "@[The type %a@ does not expand to a polymorphic variant type@]"
         Printtyp.type_expr ty;
       begin match ty.desc with
-        | Tvar { name = Some s; _ } ->
+        | Tvar { name = Some s } ->
            (* PR#7012: help the user that wrote 'Foo instead of `Foo *)
            Misc.did_you_mean ppf (fun () -> ["`" ^ s])
         | _ -> ()
