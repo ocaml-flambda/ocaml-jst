@@ -23,7 +23,7 @@ val extension_descr:
   constructor_description
 
 val labels_of_type:
-  inlined:bool -> Path.t -> type_declaration ->
+  Path.t -> type_declaration ->
   (Ident.t * label_description) list
 val constructors_of_type:
   current_unit:string -> Path.t -> type_declaration ->

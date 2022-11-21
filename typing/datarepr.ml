@@ -201,13 +201,12 @@ let dummy_label =
     lbl_num = -1; lbl_pos = -1; lbl_all = [||];
     lbl_repres = Record_unboxed Type_layout.any;
     lbl_private = Public;
-    lbl_in_env = false;
     lbl_loc = Location.none;
     lbl_attributes = [];
     lbl_uid = Uid.internal_not_actually_unique;
   }
 
-let label_descrs ~inlined ty_res lbls repres priv =
+let label_descrs ty_res lbls repres priv =
   let all_labels = Array.make (List.length lbls) dummy_label in
   let rec describe_labels num pos = function
       [] -> []
@@ -225,7 +224,6 @@ let label_descrs ~inlined ty_res lbls repres priv =
             lbl_all = all_labels;
             lbl_repres = repres;
             lbl_private = priv;
-            lbl_in_env = not inlined;
             lbl_loc = l.ld_loc;
             lbl_attributes = l.ld_attributes;
             lbl_uid = l.ld_uid;
@@ -257,10 +255,10 @@ let constructors_of_type ~current_unit ty_path decl =
      constructor_descrs ~current_unit ty_path decl cstrs rep
   | Type_record _ | Type_abstract _ | Type_open -> []
 
-let labels_of_type ~inlined ty_path decl =
+let labels_of_type ty_path decl =
   match decl.type_kind with
   | Type_record(labels, rep) ->
-      label_descrs ~inlined (newgenconstr ty_path decl.type_params)
+      label_descrs (newgenconstr ty_path decl.type_params)
         labels rep decl.type_private
   | Type_variant _ | Type_abstract _ | Type_open -> []
 

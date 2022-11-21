@@ -1044,7 +1044,7 @@ let find_ident_label id env =
 let type_of_cstr path = function
   | {cstr_inlined = Some decl; _} ->
       let labels =
-        List.map snd (Datarepr.labels_of_type ~inlined:true path decl)
+        List.map snd (Datarepr.labels_of_type path decl)
       in
       { tda_declaration = decl; tda_descriptions = ([], labels) }
   | _ ->
@@ -1619,8 +1619,7 @@ let rec components_of_module_maker
                    path final_decl)
             in
             let labels =
-              List.map snd
-                (Datarepr.labels_of_type ~inlined:false path final_decl)
+              List.map snd (Datarepr.labels_of_type path final_decl)
             in
             let tda =
               { tda_declaration = final_decl;
@@ -1769,7 +1768,7 @@ and store_type ~check id info env =
     Datarepr.constructors_of_type path info
       ~current_unit:(get_unit_name ())
   in
-  let labels = Datarepr.labels_of_type ~inlined:false path info in
+  let labels = Datarepr.labels_of_type path info in
   let descrs = (List.map snd constructors, List.map snd labels) in
   let tda = { tda_declaration = info; tda_descriptions = descrs } in
   if check && not loc.Location.loc_ghost &&

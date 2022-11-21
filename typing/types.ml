@@ -490,7 +490,6 @@ type label_description =
     lbl_all: label_description array;   (* All the labels in this type *)
     lbl_repres: record_representation;  (* Representation for outer record *)
     lbl_private: private_flag;          (* Read-only field? *)
-    lbl_in_env: bool;                   (* False for inlined records *)
     lbl_loc: Location.t;
     lbl_attributes: Parsetree.attributes;
     lbl_uid: Uid.t;
