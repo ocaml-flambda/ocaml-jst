@@ -34,7 +34,7 @@ exception Constr_not_found
 
 val find_constr_by_tag:
   constant:bool -> int -> (constructor_description*'a) list ->
-  constructor_description
+    constructor_description
 
 val constructor_existentials :
     constructor_arguments -> type_expr option -> type_expr list * type_expr list

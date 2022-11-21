@@ -106,7 +106,6 @@ val find_value_address: Path.t -> t -> address
 val find_module_address: Path.t -> t -> address
 val find_class_address: Path.t -> t -> address
 val find_constructor_address: Path.t -> t -> address
-val find_constructor: Path.t -> t -> constructor_description * address
 
 val add_functor_arg: Ident.t -> t -> t
 val is_functor_arg: Path.t -> t -> bool

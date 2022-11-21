@@ -925,9 +925,7 @@ let find_ident_module id env =
 
 let rec find_module_components path env =
   match path with
-  | Pident id ->
-    let x = (find_ident_module id env).mda_components in
-    x
+  | Pident id -> (find_ident_module id env).mda_components
   | Pdot(p, s) ->
       let sc = find_structure_components p env in
       (NameMap.find s sc.comp_modules).mda_components
@@ -1115,12 +1113,12 @@ let find_value_address path env =
 let find_class_address path env =
   get_address (find_class_full path env).clda_address
 
-let rec get_constrs_with_address = function
+let rec get_constrs_address = function
   | [] -> raise Not_found
   | cda :: rest ->
     match cda.cda_address with
-    | None -> get_constrs_with_address rest
-    | Some a -> (cda.cda_description, get_address a)
+    | None -> get_constrs_address rest
+    | Some a -> get_address a
 
 let find_constructor_address path env =
   match path with
@@ -1132,21 +1130,7 @@ let find_constructor_address path env =
     end
   | Pdot(p, s) ->
       let c = find_structure_components p env in
-      snd (get_constrs_with_address (NameMap.find s c.comp_constrs))
-  | Papply _ ->
-      raise Not_found
-
-let find_constructor path env =
-  match path with
-  | Pident id -> begin
-      let cda = TycompTbl.find_same id env.constrs in
-      match cda.cda_address with
-      | None -> raise Not_found
-      | Some addr -> (cda.cda_description, get_address addr)
-    end
-  | Pdot(p, s) ->
-      let c = find_structure_components p env in
-      get_constrs_with_address (NameMap.find s c.comp_constrs)
+      get_constrs_address (NameMap.find s c.comp_constrs)
   | Papply _ ->
       raise Not_found
 
