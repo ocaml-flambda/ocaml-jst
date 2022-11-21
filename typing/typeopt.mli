@@ -28,11 +28,8 @@ val array_kind : Typedtree.expression -> Lambda.array_kind
 val array_pattern_kind : Typedtree.pattern -> Lambda.array_kind
 val bigarray_type_kind_and_layout :
       Env.t -> Types.type_expr -> Lambda.bigarray_kind * Lambda.bigarray_layout
-
 val value_kind : Env.t -> Types.type_expr -> Lambda.value_kind
 val function_return_value_kind : Env.t -> Types.type_expr -> Lambda.value_kind
-
-(* val value_kind_of_layout : Lambda.layout_rep -> Lambda.value_kind *)
 
 val classify_lazy_argument : Typedtree.expression ->
                              [ `Constant_or_function

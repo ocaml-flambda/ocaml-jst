@@ -6269,7 +6269,7 @@ and type_andops env sarg sands expected_ty =
       ~sexp ~sbody ~comp_typell
       ~container_type ~build =
     if !Clflags.principal then begin_def ();
-    let without_arr_ty = Ctype.newvar Type_layout.value  in
+    let without_arr_ty = Ctype.newvar Type_layout.value in
     unify_exp_types loc env
       (instance (container_type without_arr_ty)) (instance ty_expected);
     if !Clflags.principal then begin

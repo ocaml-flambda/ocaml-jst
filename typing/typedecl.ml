@@ -125,7 +125,7 @@ let enter_type rec_flag env sdecl (id, uid) =
      option to not do full layout checking in some cases and fix it up later
      (ugly).
 
-     Instead, we build on an old trick that was used to handle constraints.
+     Instead, we build on an old trick that is used to handle constraints.
      Consider declarations like:
 
        type 'a t = 'a constraint 'a = ('b * 'c)
@@ -134,17 +134,17 @@ let enter_type rec_flag env sdecl (id, uid) =
        and r = int * string
 
      Here we face a similar problem in the context of constraints.  While
-     checking the definition of [s], which is [r t], we'll need to know that
-     [t]'s constraint is satisfied (i.e., that [r] is a tuple).  But we don't
-     know anything about [r] yet!
+     translating [s]'s manifest (which is [r t]), we'll need to know that [t]'s
+     constraint is satisfied (i.e., that [r] is a tuple).  But we don't know
+     anything about [r] yet!
 
      The solution, in three parts:
      1) [enter_type], here, is used to construct [temp_env], an environment
         where we set the manifest of recursively defined things like [s]
         and [t] to just be a fresh type variable.
      2) [transl_declaration] checks constraints in [temp_env].  This succeeds,
-        because [r]'s type is a variable and therefore unifies with
-        ['b * 'c]
+        because [r]'s manifest is a variable and therefore unifies with
+        ['b * 'c].
      3) After we've built the real environment with the actual manifests
         ([new_env] in [transl_type_decl]), the function [update_type] checks
         that the manifests from the old environment (here containing the
@@ -154,8 +154,8 @@ let enter_type rec_flag env sdecl (id, uid) =
 
      If [r] were, e.g., defined to be [int list], step 3 would fail.
 
-     To handle the layout checks above, we piggyback off that approach - the
-     fresh type variable put in manifests here is updated when constraints are
+     To handle the original layout example, we piggyback off that approach - the
+     layout of the variable put in manifests here is updated when constraints are
      checked and then unified with the real manifest and checked against the
      kind. *)
   let layout =
@@ -202,8 +202,7 @@ let update_type temp_env env id loc =
       let params =
         List.map (fun _ -> Ctype.newvar Type_layout.any) decl.type_params
       in
-      try
-        Ctype.unify_delaying_layout_checks env (Ctype.newconstr path params) ty
+      try Ctype.(unify_delaying_layout_checks env (newconstr path params) ty)
       with Ctype.Unify trace ->
         raise (Error(loc, Type_clash (env, trace)))
 
@@ -344,8 +343,10 @@ let transl_constructor_arguments env closed = function
 let make_constructor env type_path type_params sargs sret_type =
   match sret_type with
   | None ->
-      let args, targs = transl_constructor_arguments env true sargs in
-      targs, None, args, None
+      let args, targs =
+        transl_constructor_arguments env true sargs
+      in
+        targs, None, args, None
   | Some sret_type ->
       (* if it's a generalized constructor we must first narrow and
          then widen so as to not introduce any new constraints *)
@@ -463,8 +464,8 @@ let transl_declaration env sdecl (id, uid) =
         let make_cstr scstr =
           let name = Ident.create_local scstr.pcd_name.txt in
           let targs, tret_type, args, ret_type =
-            make_constructor env (Path.Pident id) params scstr.pcd_args
-              scstr.pcd_res
+            make_constructor env (Path.Pident id) params
+                             scstr.pcd_args scstr.pcd_res
           in
           let tcstr =
             { cd_id = name;
@@ -675,12 +676,11 @@ let check_constraints env sdecl (_, decl) =
             try String.Map.find (Ident.name name) pl_index
             with Not_found -> assert false in
           begin match cd_args, pcd_args with
-          | Cstr_tuple tyl, Pcstr_tuple styl -> begin
+          | Cstr_tuple tyl, Pcstr_tuple styl ->
               List.iter2
                 (fun sty ty ->
                    check_constraints_rec env sty.ptyp_loc visited ty)
                 styl tyl
-            end
           | Cstr_record tyl, Pcstr_record styl ->
               check_constraints_labels env visited tyl styl
           | _ -> assert false
@@ -1263,18 +1263,11 @@ let transl_type_decl env rec_flag sdecl_list =
     sdecl_list tdecls;
   (* Check that constraints are enforced *)
   List.iter2 (check_constraints new_env) sdecl_list decls;
-  (* Default away sort variables.  Must happen after check_constraints, which
-     creates sort variables to check layouts of constructor args.  Further, it
-     must happen before update_decls_layout, Typedecl_seperability.update_decls,
-     and add_types_to_env, all of which need to check whether parts of the type
-     are void (and currently use Type_layout.equal to do this which would set
-     any remaining sort variables to void).
-
-     CR ccasinghino: In the future, it may be the case that check_constraints
-     doesn't need to create sort variables because we want to allow
-     unrepresentable algebraic datatype declrations and check that they are
-     specialized to representable types when actually used.  In that case, we
-     can default the sort variables much earlier - right after update_type. *)
+  (* Default away sort variables.  Must happen before update_decls_layout,
+     Typedecl_seperability.update_decls, and add_types_to_env, all of which need
+     to check whether parts of the type are void (and currently use
+     Type_layout.equal to do this which would set any remaining sort variables
+     to void). *)
   default_decls_layout decls;
   (* Add type properties to declarations *)
   let decls =

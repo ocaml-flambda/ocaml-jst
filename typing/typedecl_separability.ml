@@ -125,10 +125,6 @@ let structure : type_definition -> type_structure = fun def ->
                 result_type_parameter_instances;
               }
           | Cstr_record labels ->
-              let labels =
-                List.filter (fun {ld_layout} ->
-                  Type_layout.(equal void ld_layout)) labels
-              in
               demultiply_list labels @@ fun ld ->
                 let argument_type = ld.ld_type in
                 {
@@ -476,7 +472,7 @@ let check_type
     (* "Indifferent" case, the empty context is sufficient. *)
     | (_                  , Ind    ) -> empty
     (* Variable case, add constraint. *)
-    | (Tvar {name; _}     , m      ) ->
+    | (Tvar {name}     , m      ) ->
         TVarMap.singleton {text = name; id = ty.Types.id} m
     (* "Separable" case for constructors with known memory representation. *)
     | (Tarrow _           , Sep    )
@@ -615,7 +611,7 @@ let msig_of_context : decl_loc:Location.t -> parameters:type_expr list
         | Ind -> true
         | Sep | Deepsep -> false in
       match param_instance.desc with
-      | Tvar { name; _ } ->
+      | Tvar { name } ->
           let var = {text=name; id = param_instance.Types.id} in
           (get context var) :: acc, (set_ind context var)
       | _ ->
