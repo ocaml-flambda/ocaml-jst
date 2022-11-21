@@ -387,10 +387,9 @@ type layout_unification_mode =
 
 let lmode = ref Perform_checks
 
-(* The begin/stop functions don't need to save/restore the previous mode
-   because they aren't interleaved. *)
-let begin_delaying_layout_checks () =
-  lmode := Delay_checks (ref [])
+(* The begin/stop functions don't need to save/restore the previous mode because
+   they aren't interleaved. *)
+let begin_delaying_layout_checks () = lmode := Delay_checks (ref [])
 
 let stop_delaying_layout_checks () =
   match !lmode with
@@ -1398,7 +1397,7 @@ let instance_constructor ?in_pattern cstr =
     | None -> ()
     | Some (env, expansion_scope) ->
         let process existential =
-          (* CR ccasinghino - add test case that hits this once we have syntax
+          (* CJC XXX - add test case that hits this once we have syntax
              for it *)
           let layout =
             match (repr existential).desc with
@@ -1929,15 +1928,15 @@ let layout_of_result = function
 
    Note that this really returns an upper bound, and in particular returns [Any]
    in some edge cases (when [get_unboxed_type_representation] ran out of fuel,
-   or when the type is a Tconstr that is missing from the Env *)
+   or when the type is a Tconstr that is missing from the Env). *)
 let rec estimate_type_layout env ty =
   let ty = repr ty in
   let open Type_layout in
   match ty.desc with
   | Tconstr(p, _, _) -> begin
       match Env.find_type p env with
-      | { type_kind = k } -> Layout (Type_layout.layout_bound_of_kind k)
-      | exception Not_found -> Layout Type_layout.any
+      | { type_kind = k } -> Layout (layout_bound_of_kind k)
+      | exception Not_found -> Layout any
     end
   | Tvariant row ->
       let row = Btype.row_repr row in
@@ -2043,7 +2042,6 @@ let type_sort env ty =
     end
   | Error _ as e -> e
 
-
 (* Note: Because [estimate_type_layout] actually returns an upper bound, this
    function computes an innaccurate intersection in some cases.
 
@@ -2079,10 +2077,10 @@ let enforce_constraints env ty =
   match ty with
     {desc = Tconstr (path, args, _abbrev); level = level} ->
       begin try
-      let decl = Env.find_type path env in
+        let decl = Env.find_type path env in
         ignore
-          (subst env level Public (ref Mnil) None
-             decl.type_params args (newvar2 level Type_layout.any))
+          (subst env level Public (ref Mnil) None decl.type_params args
+             (newvar2 level Type_layout.any))
       with Not_found -> ()
       end
   | _ ->
@@ -2790,7 +2788,6 @@ let find_lowest_level ty =
 let find_expansion_scope env path =
   (Env.find_type path env).type_expansion_scope
 
-
 let layout_of_abstract_type_declaration env p =
   try
     (* This lookup duplicates work already done in is_instantiable, which guards
@@ -3016,7 +3013,7 @@ let rec unify (env:Env.t ref) t1 t2 =
         unify_univar t1 t2 !univar_pairs;
         update_level !env t1.level t2;
         update_scope t1.scope t2;
-        (* CR ccasinghino: make test cases that his this.  Easier once we have
+        (* CJC XXX: make test cases that hit this.  Easier once we have
            annotations on univars, I think. *)
         if not (Type_layout.equal l1 l2) then
           raise (Unify [Trace.Unequal_univar_layouts (t1, l1, t2, l2)]);
@@ -3091,7 +3088,7 @@ and unify3 env t1 t1' t2 t2' =
   begin match (d1, d2) with (* handle vars and univars specially *)
     (Tunivar {layout=l1}, Tunivar {layout=l2}) ->
       unify_univar t1' t2' !univar_pairs;
-      (* CJC XXX make a test case for this ince we have annotations on univars
+      (* CJC XXX make a test case for this once we have annotations on univars
 
         type ('a : any) foo = 'a
         type ('a : any) bar
@@ -3241,7 +3238,7 @@ and unify3 env t1 t1' t2 t2' =
       | (Tnil, Tnil) ->
           ()
       | (Tpoly (t1, []), Tpoly (t2, [])) ->
-        unify env t1 t2
+          unify env t1 t2
       | (Tpoly (t1, tl1), Tpoly (t2, tl2)) ->
           enter_poly !env univar_pairs t1 tl1 t2 tl2 (unify env)
       | (Tpackage (p1, n1, tl1), Tpackage (p2, n2, tl2)) ->
@@ -3288,11 +3285,11 @@ and make_rowvar level use1 rest1 use2 rest2  =
   in
   let name =
     match rest1.desc, rest2.desc with
-      Tvar { name = Some _ as name1; _ }, Tvar { name = Some _ as name2; _ } ->
+      Tvar { name = Some _ as name1 }, Tvar { name = Some _ as name2 } ->
         if rest1.level <= rest2.level then name1 else name2
-    | Tvar { name = Some _ as name; _ }, _ ->
+    | Tvar { name = Some _ as name }, _ ->
         if use2 then set_name rest2 name; name
-    | _, Tvar { name = Some _ as name; _} ->
+    | _, Tvar { name = Some _ as name } ->
         if use1 then set_name rest2 name; name
     | _ -> None
   in
@@ -3474,9 +3471,7 @@ and unify_row_field env fixed1 fixed2 rm1 rm2 l f1 f2 =
             List.iter (unify env t1) tl;
             !e1 <> None || !e2 <> None
         end in
-      if redo
-      then unify_row_field env fixed1 fixed2 rm1 rm2 l f1 f2
-      else
+      if redo then unify_row_field env fixed1 fixed2 rm1 rm2 l f1 f2 else
       let tl1 = List.map repr tl1 and tl2 = List.map repr tl2 in
       let rec remq tl = function [] -> []
         | ty :: tl' ->
@@ -3574,7 +3569,7 @@ let unify_var env t1 t2 =
   match t1.desc, t2.desc with
     Tvar _, Tconstr _ when deep_occur t1 t2 ->
       unify (ref env) t1 t2
-  | Tvar { layout; _ }, _ ->
+  | Tvar { layout }, _ ->
       let reset_tracing = check_trace_gadt_instances env in
       begin try
         occur env t1 t2;
@@ -3592,9 +3587,6 @@ let unify_var env t1 t2 =
       unify (ref env) t1 t2
 
 let _ = unify' := unify_var
-
-let unify_var env t1 t2 =
-  unify_var env t1 t2
 
 let unify_pairs env ty1 ty2 pairs =
   univar_pairs := pairs;
@@ -4661,8 +4653,7 @@ let rec build_subtype env visited loops posi level t =
           let cl_abbr, body = find_cltype_for_path env p in
           let ty =
             subst env !current_level Public abbrev None
-              cl_abbr.type_params tl body
-          in
+              cl_abbr.type_params tl body in
           let ty = repr ty in
           let ty1, tl1 =
             match ty.desc with
@@ -5005,8 +4996,7 @@ let subtype env ty1 ty2 =
   function () ->
     List.iter
       (function (trace0, t1, t2, pairs) ->
-         try unify_pairs (ref env) t1 t2 pairs
-         with Unify trace ->
+         try unify_pairs (ref env) t1 t2 pairs with Unify trace ->
            raise (Subtype (expand_trace env (List.rev trace0),
                            List.tl trace)))
       (List.rev cstrs)
@@ -5480,9 +5470,6 @@ let maybe_pointer_type env typ =
     if !Clflags.native_code && Sys.word_size = 64 then Immediate64
     else Immediate in
   Result.is_error (check_type_layout env typ layout)
-
-let is_void_type env typ =
-  Result.is_ok (check_type_layout env typ Type_layout.void)
 
 let apply env params body args =
   apply env params body args

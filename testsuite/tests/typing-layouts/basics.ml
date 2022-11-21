@@ -260,7 +260,7 @@ let id4 : 'a void4 -> 'a void4 = function
 
 (* CR ccasinghino: At the moment, the code in the comment below does not work.
    Because we demand that constructor arguments have layout (Sort 'l), the type
-   [any4] actually only works on values, and we
+   [any4] actually only works on values.
 
    In the future, we would like to allow constructors to take arguments of any
    layout and instead restrict how those arguments are used.  In that case, the
@@ -556,7 +556,7 @@ Error: This expression has type t_void but an expression was expected of type
 (* Test 9: layouts are checked by "more general" *)
 
 (* This hits the first linktype in moregen (no expansion required to see it's a
-   var *)
+   var) *)
 module M9_1 : sig
   val x : string
 end = struct
@@ -584,7 +584,7 @@ Error: Signature mismatch:
 |}];;
 
 (* This hits the second linktype in moregen (requires expansion to see it's a
-   var *)
+   var) *)
 module M9_2 : sig
   val x : string
 end = struct

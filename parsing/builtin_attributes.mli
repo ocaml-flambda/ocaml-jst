@@ -33,7 +33,7 @@
     - layout attributes:
       - ocaml.any
       - ocaml.value
-      - ocaml.int0
+      - ocaml.void
       - ocaml.immediate
       - ocaml.immediate64
 

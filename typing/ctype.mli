@@ -411,7 +411,6 @@ val reset_reified_var_counter: unit -> unit
 
 val maybe_pointer_type : Env.t -> type_expr -> bool
        (* True if type is possibly pointer, false if definitely not a pointer *)
-val is_void_type : Env.t -> type_expr -> bool
 
 (* Stubs *)
 val package_subtype :
