@@ -495,7 +495,7 @@ let rec raw_type ppf ty =
   end
 and raw_type_list tl = raw_list raw_type tl
 and raw_type_desc ppf = function
-    Tvar { name; layout }->
+    Tvar { name; layout } ->
       fprintf ppf "Tvar (@,%a,@,%s)" print_name name
         (Type_layout.to_string layout)
   | Tarrow((l,arg,ret),t1,t2,c) ->
@@ -778,7 +778,7 @@ let named_weak_vars = ref String.Set.empty
 let reset_names () = names := []; name_counter := 0; named_vars := []
 let add_named_var ty =
   match ty.desc with
-    Tvar { name = Some name ; _ } | Tunivar { name = Some name ; _ } ->
+    Tvar { name = Some name } | Tunivar { name = Some name } ->
       if List.mem name !named_vars then () else
       named_vars := name :: !named_vars
   | _ -> ()
@@ -814,7 +814,7 @@ let name_of_type name_generator t =
     try TypeMap.find t !weak_var_map with Not_found ->
     let name =
       match t.desc with
-        Tvar { name = Some name; _ } | Tunivar { name = Some name ; _ } ->
+        Tvar { name = Some name } | Tunivar { name = Some name } ->
           (* Some part of the type we've already printed has assigned another
            * unification variable to that name. We want to keep the name, so try
            * adding a number until we find a name that's not taken. *)
@@ -1229,7 +1229,7 @@ let rec tree_of_type_decl id decl =
   in
   begin match decl.type_kind with
   | Type_abstract _ -> ()
-  | Type_variant (cstrs, _rep) ->
+  | Type_variant (cstrs, _) ->
       List.iter
         (fun c ->
            mark_loops_constructor_arguments c.cd_args;
@@ -1252,7 +1252,7 @@ let rec tree_of_type_decl id decl =
           decl.type_manifest = None || decl.type_private = Private
       | Type_record _ ->
           decl.type_private = Private
-      | Type_variant (tll, _rep) ->
+      | Type_variant (tll, _) ->
           decl.type_private = Private ||
           List.exists (fun cd -> cd.cd_res <> None) tll
       | Type_open ->

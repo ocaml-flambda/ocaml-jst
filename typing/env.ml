@@ -1603,8 +1603,7 @@ let rec components_of_module_maker
                    path final_decl)
             in
             let labels =
-              List.map snd (Datarepr.labels_of_type path final_decl)
-            in
+              List.map snd (Datarepr.labels_of_type path final_decl) in
             let tda =
               { tda_declaration = final_decl;
                 tda_descriptions = (constructors, labels); }

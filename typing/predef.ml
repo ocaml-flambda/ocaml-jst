@@ -158,10 +158,6 @@ let common_initial_env add_type add_extension empty_env =
   let add_type = mk_add_type add_type
   and add_type1 type_ident
       ~variance ~separability ?(kind=fun _ -> Types.kind_abstract_value) env =
-    (* CR ccasinghino: Think harder - for now I'm just going to say the
-       parameters of these built-in types must have layout value.  Could we be
-       less restrictive in some cases?  Are there any phantom type parameters
-       here? *)
     let param = newgenvar Type_layout.value in
     let decl =
       {type_params = [param];

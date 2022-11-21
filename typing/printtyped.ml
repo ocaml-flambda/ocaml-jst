@@ -875,10 +875,10 @@ and structure_item i ppf x =
   line i ppf "structure_item %a\n" fmt_location x.str_loc;
   let i = i+1 in
   match x.str_desc with
-  | Tstr_eval (e, layout, attrs) ->
+  | Tstr_eval (e, l, attrs) ->
       line i ppf "Tstr_eval\n";
       attributes i ppf attrs;
-      line i ppf "%a\n" Type_layout.format layout;
+      line i ppf "%a\n" Type_layout.format l;
       expression i ppf e;
   | Tstr_value (rf, l) ->
       line i ppf "Tstr_value %a\n" fmt_rec_flag rf;

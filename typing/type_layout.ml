@@ -108,13 +108,6 @@ module Violation = struct
     | No_intersection (l1, l2) ->
         pr "%s has layout %a, which does not overlap with %a." name
           format l1 format l2
-
-  (* let report ppf t =
-   *   let pr fmt = Format.fprintf ppf fmt in
-   *   match t with
-   *   | Not_a_sublayout (l1,l2) ->
-   *       pr "Layout %s is not a sublayout of %s." name
-   *  (Type_layout.to_string l1) (Type_layout.to_string l2) *)
 end
 
 let sort_var () = Var (ref None)
@@ -167,8 +160,7 @@ let layout_bound_of_record_representation = function
   | Record_boxed layouts when all_void layouts -> immediate
   | Record_boxed _ -> value
 
-let cstr_layouts_immediate layouts =
-  Array.for_all all_void layouts
+let cstr_layouts_immediate layouts = Array.for_all all_void layouts
 
 let layout_bound_of_variant_representation = function
     Variant_unboxed l -> l
@@ -194,6 +186,9 @@ let equal_sort s1 s2 =
   | Value, Value -> true
   | Void, Void -> true
   | (Var r, Var s) when s == r -> true
+  (* The use of [sort_repr] and this physical equality check amount to an
+     "occurs" check that prevents creating a circular reference in the
+     assignment case. *)
   | (Var r, s) | (s, Var r) -> (r := Some s; true)
   | (Value | Void), _ -> false
 
@@ -208,11 +203,11 @@ let equal l1 l2 =
 let intersection l1 l2 =
   match l1, l2 with
   | (Any, l | l, Any) -> Ok l
-  | ((Immediate64 | Immediate) as l, Sort s
+  | ( (Immediate64 | Immediate) as l, Sort s
     | Sort s, ((Immediate64 | Immediate) as l)) ->
     if equal_sort Value s then Ok l
     else Error (Violation.No_intersection (l1, l2))
-  | (Immediate, Immediate64 | Immediate64, Immediate)-> Ok Immediate64
+  | (Immediate, Immediate64 | Immediate64, Immediate) -> Ok Immediate64
   | _, _ ->
     if equal l1 l2 then Ok l2 else Error (Violation.No_intersection (l1, l2))
 
@@ -227,8 +222,8 @@ let sublayout sub super =
       if equal sub super then Ok sub
       else Error (Violation.Not_a_sublayout (sub,super))
 
-(** This is used in reify.  We default to value as a hack to avoid having rigid sort
-   variables. *)
+(** This is used in reify.  We default to value as a hack to avoid having rigid
+    sort variables. *)
 let reify_sort s =
   match sort_repr s with
   | Var r -> begin

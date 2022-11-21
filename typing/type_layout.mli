@@ -18,7 +18,7 @@
 type t = Types.layout
 
 (* The functions in Constant are used after typechecking, including checking
-   against module signatures.  At this point, any remaining sort variables
+   against module signatures.  At that point, any remaining sort variables
    may be freely defaulted. *)
 module Const : sig
   type t =
@@ -71,7 +71,7 @@ val intersection : t -> t -> (t, Violation.t) Result.t
     Any > Sort Void
 
     Return [Error _] if the coercion is not possible. We return a layout in the
-    success case because in some cases it saves time / is convenient to have the
+    success case because it sometimes saves time / is convenient to have the
     same return type as intersection. *)
 val sublayout : t -> t -> (t, Violation.t) result
 
@@ -86,9 +86,8 @@ val of_attributes : default:t -> Parsetree.attributes -> t
     layouts - errors on Any. *)
 val sort_of_layout : t -> Types.sort
 
-(* (** The least layout that represents the kind *)
- * val of_kind : Types.type_kind -> t *)
-
+(** Type kinds provide an upper bound on layouts of a type (which is precise if
+    the type has no manifest). *)
 val layout_bound_of_kind : Types.type_kind -> t
 
 

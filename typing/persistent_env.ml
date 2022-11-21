@@ -263,9 +263,7 @@ let read penv f modname filename =
   snd (read_pers_struct penv f true modname filename)
 
 let find penv f name =
-  let (_x,y) =  (find_pers_struct penv f true name)
-  in y
-(*  snd (find_pers_struct penv f true name) *)
+  snd (find_pers_struct penv f true name)
 
 let check penv f ~loc name =
   let {persistent_structures; _} = penv in
