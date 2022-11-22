@@ -16,6 +16,7 @@
 (* Type inference for the core language *)
 
 open Asttypes
+open Layouts
 open Types
 
 (* This variant is used for printing which type of comprehension something is
@@ -197,6 +198,7 @@ type error =
       Datatype_kind.t * Longident.t * (Path.t * Path.t) * (Path.t * Path.t) list
   | Invalid_format of string
   | Not_an_object of type_expr * type_forcing_context option
+  | Not_a_value of Layout.Violation.t * type_forcing_context option
   | Undefined_method of type_expr * string * string list option
   | Undefined_self_method of string * string list
   | Virtual_class of Longident.t

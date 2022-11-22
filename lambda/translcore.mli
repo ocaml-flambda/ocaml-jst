@@ -23,8 +23,11 @@ open Debuginfo.Scoped_location
 
 val pure_module : module_expr -> let_kind
 
-(* Used for translating Alloc_heap values in classes and modules *)
-val transl_exp: scopes:scopes -> expression -> lambda
+(* Used for translating Alloc_heap values in classes and modules.  The
+   `void_continuation` must be [Void_cont n] iff the expression's type has
+   layout void.  In that case, the result will [Lstaticraise] to handler [n]
+   after evaluating the expression. *)
+val transl_exp: scopes:scopes -> void_continuation -> expression -> lambda
 val transl_apply: scopes:scopes
                   -> ?tailcall:tailcall_attribute
                   -> ?inlined:inlined_attribute
@@ -42,11 +45,13 @@ val transl_extension_constructor: scopes:scopes ->
   Env.t -> Longident.t option ->
   extension_constructor -> lambda
 
-val transl_scoped_exp : scopes:scopes -> expression -> lambda
+val transl_scoped_exp :
+  scopes:scopes -> void_continuation -> expression -> lambda
 
 type error =
     Free_super_var
   | Unreachable_reached
+  | Bad_probe_layout of Ident.t
 
 exception Error of Location.t * error
 
@@ -65,3 +70,8 @@ val transl_object :
 (* Declarations to be wrapped around the entire body *)
 val clear_probe_handlers : unit -> unit
 val declare_probe_handlers : lambda -> lambda
+
+(* Helper function for translating voids. [catch_void body after layout]
+   performs [body] (which should be void and is provided a continuation),
+   and then [after]. *)
+val catch_void : (void_continuation -> lambda) -> lambda -> layout -> lambda

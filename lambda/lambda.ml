@@ -908,6 +908,8 @@ and free_variables_list set exprs =
   List.fold_left (fun set expr -> Ident.Set.union (free_variables expr) set)
     set exprs
 
+type void_continuation = Void_cont of int | Not_void
+
 (* Check if an action has a "when" guard *)
 let raise_count = ref 0
 
@@ -1213,11 +1215,10 @@ let map f =
   g
 
 (* To let-bind expressions to variables *)
-
-let bind_with_layout str (var, layout) exp body =
+let bind_with_layout let_kind (var, layout) exp body =
   match exp with
     Lvar var' when Ident.same var var' -> body
-  | _ -> Llet(str, layout, var, exp, body)
+  | _ -> Llet(let_kind, layout, var, exp, body)
 
 let negate_integer_comparison = function
   | Ceq -> Cne

@@ -89,6 +89,7 @@
 
 open Misc
 open Asttypes
+open Layouts
 open Types
 open Typedtree
 open Lambda
@@ -139,7 +140,7 @@ let all_record_args lbls =
             (mknoloc (Longident.Lident "?temp?"), lbl, Patterns.omega))
           lbl_all
       in
-      List.iter (fun ((_, lbl, _) as x) -> t.(lbl.lbl_pos) <- x) lbls;
+      List.iter (fun ((_, lbl, _) as x) -> t.(lbl.lbl_num) <- x) lbls;
       Array.to_list t
 
 let expand_record_head h =
@@ -1147,7 +1148,7 @@ let can_group discr pat =
   | Constant (Const_int64 _), Constant (Const_int64 _)
   | Constant (Const_nativeint _), Constant (Const_nativeint _) ->
       true
-  | Construct { cstr_tag = Cstr_extension _ as discr_tag }, Construct pat_cstr
+  | Construct { cstr_tag = Extension _ as discr_tag }, Construct pat_cstr
     ->
       (* Extension constructors with distinct names may be equal thanks to
          constructor rebinding. So we need to produce a specialized
@@ -1419,7 +1420,7 @@ and split_no_or cls args def k =
           ((idef, next) :: nexts)
   and should_split group_discr =
     match group_discr.pat_desc with
-    | Patterns.Head.Construct { cstr_tag = Cstr_extension _ } ->
+    | Patterns.Head.Construct { cstr_tag = Extension _ } ->
         (* it is unlikely that we will raise anything, so we split now *)
         true
     | _ -> false
@@ -1573,10 +1574,13 @@ and precompile_or ~arg (cls : Simple.clause list) ors args def k =
             let patbound_action_vars =
               (* variables bound in the or-pattern
                  that are used in the orpm actions *)
-              Typedtree.pat_bound_idents_full orp
-              |> List.filter (fun (id, _, _) -> Ident.Set.mem id pm_fv)
-              |> List.map (fun (id, _, ty) ->
+              Typedtree.pat_bound_idents_with_types orp
+              |> List.filter (fun (id, _) -> Ident.Set.mem id pm_fv)
+              |> List.map (fun (id, ty) ->
                      (id, Typeopt.layout orp.pat_env ty))
+              (* Void variables don't reach value_kind because they are compiled
+                 out of the action, and are therefore filtered out by the pm_fv
+                 filter *)
             in
             let or_num = next_raise_count () in
             let new_patl = Patterns.omega_list patl in
@@ -1751,7 +1755,12 @@ let get_key_constr = function
 
 let get_pat_args_constr p rem =
   match p with
-  | { pat_desc = Tpat_construct (_, _, args, _) } -> args @ rem
+  | { pat_desc = Tpat_construct (_, {cstr_arg_layouts}, args, _) } ->
+    (* CR layouts: This treatment of void can go when void is handled later in
+       the compiler. *)
+    (List.filteri (fun i _ ->
+       not (Layout.can_make_void cstr_arg_layouts.(i)))
+       args) @ rem
   | _ -> assert false
 
 let get_expr_args_constr ~scopes head (arg, _mut, layout) rem =
@@ -1762,24 +1771,29 @@ let get_expr_args_constr ~scopes head (arg, _mut, layout) rem =
   in
   let loc = head_loc ~scopes head in
   let make_field_accesses binding_kind first_pos last_pos argl =
-    let rec make_args pos =
-      if pos > last_pos then
+    let rec make_args src_pos runtime_pos =
+      if src_pos > last_pos then
         argl
+      else if
+        Layout.can_make_void cstr.cstr_arg_layouts.(src_pos)
+      then
+        make_args (src_pos + 1) runtime_pos
       else
-        (Lprim (Pfield (pos, Reads_agree), [ arg ], loc), binding_kind, layout_field)
-          :: make_args (pos + 1)
+        (Lprim (Pfield (runtime_pos, Reads_agree), [ arg ], loc), binding_kind,
+         layout_field)
+          :: make_args (src_pos + 1) (runtime_pos + 1)
     in
-    make_args first_pos
+    make_args 0 first_pos
   in
   if cstr.cstr_inlined <> None then
     (arg, Alias, layout) :: rem
   else
-    match cstr.cstr_tag with
-    | Cstr_constant _
-    | Cstr_block _ ->
+    match cstr.cstr_repr with
+    | Variant_unboxed _ -> (arg, Alias, layout) :: rem
+    | Variant_extensible ->
+        make_field_accesses Alias 1 (cstr.cstr_arity - 1) rem
+    | Variant_boxed _ ->
         make_field_accesses Alias 0 (cstr.cstr_arity - 1) rem
-    | Cstr_unboxed -> (arg, Alias, layout) :: rem
-    | Cstr_extension _ -> make_field_accesses Alias 1 cstr.cstr_arity rem
 
 let divide_constructor ~scopes ctx pm =
   divide
@@ -1820,13 +1834,13 @@ let divide_variant ~scopes row ctx { cases = cl; args; default = def } =
           | None ->
               add_in_div
                 (make_matching get_expr_args_variant_constant head def ctx)
-                ( = ) (Cstr_constant tag) (patl, action) variants
+                ( = ) (tag, true) (patl, action) variants
           | Some pat ->
               add_in_div
                 (make_matching
                    (get_expr_args_variant_nonconst ~scopes)
                    head def ctx)
-                ( = ) (Cstr_block tag)
+                ( = ) (tag, false)
                 (pat :: patl, action)
                 variants
       )
@@ -2047,7 +2061,8 @@ let divide_tuple ~scopes head ctx pm =
 
 let record_matching_line num_fields lbl_pat_list =
   let patv = Array.make num_fields Patterns.omega in
-  List.iter (fun (_, lbl, pat) -> patv.(lbl.lbl_pos) <- pat) lbl_pat_list;
+  List.iter (fun (_, lbl, pat) ->
+    if lbl.lbl_pos <> lbl_pos_void then patv.(lbl.lbl_pos) <- pat) lbl_pat_list;
   Array.to_list patv
 
 let get_pat_args_record num_fields p rem =
@@ -2067,35 +2082,47 @@ let get_expr_args_record ~scopes head (arg, _mut, layout) rem =
     | _ ->
         assert false
   in
-  let rec make_args pos =
-    if pos >= Array.length all_labels then
+
+  let rec make_args src_pos =
+    if src_pos >= Array.length all_labels then
       rem
     else
-      let lbl = all_labels.(pos) in
-      let sem =
-        match lbl.lbl_mut with
-        | Immutable -> Reads_agree
-        | Mutable -> Reads_vary
-      in
-      let access, layout =
-        match lbl.lbl_repres with
-        | Record_regular
-        | Record_inlined _ ->
-            Lprim (Pfield (lbl.lbl_pos, sem), [ arg ], loc), layout_field
-        | Record_unboxed _ -> arg, layout
-        | Record_float ->
-           (* TODO: could optimise to Alloc_local sometimes *)
-           Lprim (Pfloatfield (lbl.lbl_pos, sem, alloc_heap), [ arg ], loc),
-           layout_float
-        | Record_extension _ ->
-            Lprim (Pfield (lbl.lbl_pos + 1, sem), [ arg ], loc), layout_field
-      in
-      let str =
-        match lbl.lbl_mut with
-        | Immutable -> Alias
-        | Mutable -> StrictOpt
-      in
-      (access, str, layout) :: make_args (pos + 1)
+      let lbl = all_labels.(src_pos) in
+      if lbl.lbl_pos = lbl_pos_void then make_args (src_pos + 1)
+      else
+        let sem =
+          match lbl.lbl_mut with
+          | Immutable -> Reads_agree
+          | Mutable -> Reads_vary
+        in
+        let access, layout =
+          (* CR layouts v1.5: Here we should really get the layout information
+             from the record_representation and translate it to Lambda.layout.
+             It's fine not to do that for now - we've already checked above that
+             we aren't in the void case.  When we do make that change, we
+             probably don't want to actually call `value_kind` in the value
+             case - I think only the sort information matters here. *)
+          match lbl.lbl_repres with
+          | Record_boxed _ | Record_inlined (_, Variant_boxed _) ->
+              Lprim (Pfield (lbl.lbl_pos, sem), [ arg ], loc), layout_field
+          | Record_unboxed _
+          | Record_inlined (_, Variant_unboxed _) -> arg, layout
+          | Record_inlined (_, Variant_extensible) ->
+              Lprim (Pfield (lbl.lbl_pos + 1, sem), [ arg ], loc), layout_field
+          | Record_float ->
+             (* TODO: could optimise to Alloc_local sometimes *)
+              Lprim (Pfloatfield (lbl.lbl_pos, sem, alloc_heap), [ arg ], loc),
+              (* CR layouts v2: We can't currently express the correct layout
+                 for this.  See also the comment on the Record_float case of
+                 update_decl_layout in typedecl. *)
+              layout_float
+        in
+        let str =
+          match lbl.lbl_mut with
+          | Immutable -> Alias
+          | Mutable -> StrictOpt
+        in
+        (access, str, layout) :: make_args (src_pos + 1)
   in
   make_args 0
 
@@ -2106,9 +2133,13 @@ let divide_record all_labels ~scopes head ctx pm =
      and non-expanded heads, to be able to reason confidently on
      when expansions must happen. *)
   let head = expand_record_head head in
+  let non_void_label_count =
+    Array.fold_left (fun i l -> if l.lbl_pos = lbl_pos_void then i else i + 1)
+      0 all_labels
+  in
   divide_line (Context.specialize head)
     (get_expr_args_record ~scopes)
-    (get_pat_args_record (Array.length all_labels))
+    (get_pat_args_record non_void_label_count)
     head ctx pm
 
 (* Matching against an array pattern *)
@@ -2790,41 +2821,61 @@ let combine_constant value_kind loc arg cst partial ctx def
 let split_cases tag_lambda_list =
   let rec split_rec = function
     | [] -> ([], [])
-    | (cstr_tag, act) :: rem -> (
+    | ({cstr_tag; cstr_repr; cstr_constant}, act) :: rem -> (
         let consts, nonconsts = split_rec rem in
-        match cstr_tag with
-        | Cstr_constant n -> ((n, act) :: consts, nonconsts)
-        | Cstr_block n -> (consts, (n, act) :: nonconsts)
-        | Cstr_unboxed -> (consts, (0, act) :: nonconsts)
-        | Cstr_extension _ -> assert false
+        match cstr_tag, cstr_repr with
+        | Ordinary _, Variant_unboxed _ -> (consts, (0, act) :: nonconsts)
+        | Ordinary {runtime_tag}, Variant_boxed _ when cstr_constant ->
+          ((runtime_tag, act) :: consts, nonconsts)
+        | Ordinary {runtime_tag}, Variant_boxed _ ->
+          (consts, (runtime_tag, act) :: nonconsts)
+        | _, Variant_extensible -> assert false
+        | Extension _, _ -> assert false
       )
   in
   let const, nonconst = split_rec tag_lambda_list in
   (sort_int_lambda_list const, sort_int_lambda_list nonconst)
 
+(* The bool tracks whether the constructor is constant, because we don't have a
+   constructor_description available for polymorphic variants *)
+let split_variant_cases (tag_lambda_list : ((int * bool) * lambda) list) =
+  let rec split_rec = function
+    | [] -> ([], [])
+    | (tag, act) :: rem -> (
+        let consts, nonconsts = split_rec rem in
+        match tag with
+        | (n, true) -> ((n, act) :: consts, nonconsts)
+        | (n, false) -> (consts, (n, act) :: nonconsts)
+      )
+  in
+  let const, nonconst = split_rec tag_lambda_list in
+  (sort_int_lambda_list const, sort_int_lambda_list nonconst)
+
+
 let split_extension_cases tag_lambda_list =
   let rec split_rec = function
     | [] -> ([], [])
-    | (cstr_tag, act) :: rem -> (
+    | ({cstr_arg_layouts; cstr_tag}, act) :: rem -> (
         let consts, nonconsts = split_rec rem in
-        match cstr_tag with
-        | Cstr_extension (path, true) -> ((path, act) :: consts, nonconsts)
-        | Cstr_extension (path, false) -> (consts, (path, act) :: nonconsts)
-        | _ -> assert false
+        let all_void =
+          Array.for_all Layout.can_make_void cstr_arg_layouts
+        in
+        match all_void, cstr_tag with
+        | true, Extension (path,_) -> ((path,act) :: consts, nonconsts)
+        | false, Extension (path,_)-> (consts, (path, act) :: nonconsts)
+        | _, Ordinary _ -> assert false
       )
   in
   split_rec tag_lambda_list
 
 let combine_constructor value_kind loc arg pat_env cstr partial ctx def
     (descr_lambda_list, total1, pats) =
-  let tag_lambda (cstr, act) = (cstr.cstr_tag, act) in
   match cstr.cstr_tag with
-  | Cstr_extension _ ->
+  | Extension _ ->
       (* Special cases for extensions *)
       let fail, local_jumps = mk_failaction_neg partial ctx def in
       let lambda1 =
-        let consts, nonconsts =
-          split_extension_cases (List.map tag_lambda descr_lambda_list) in
+        let consts, nonconsts = split_extension_cases descr_lambda_list in
         let default, consts, nonconsts =
           match fail with
           | None -> (
@@ -2875,8 +2926,7 @@ let combine_constructor value_kind loc arg pat_env cstr partial ctx def
           mk_failaction_pos partial constrs ctx def
       in
       let descr_lambda_list = fails @ descr_lambda_list in
-      let consts, nonconsts =
-        split_cases (List.map tag_lambda descr_lambda_list) in
+      let consts, nonconsts = split_cases descr_lambda_list in
       let lambda1 =
         match (fail_opt, same_actions descr_lambda_list) with
         | None, Some act -> act (* Identical actions, no failure *)
@@ -2984,7 +3034,7 @@ let combine_variant value_kind loc row arg partial ctx def
     else
       mk_failaction_neg partial ctx def
   in
-  let consts, nonconsts = split_cases tag_lambda_list in
+  let consts, nonconsts = split_variant_cases tag_lambda_list in
   let lambda1 =
     match (fail, one_action) with
     | None, Some act -> act
@@ -3719,32 +3769,43 @@ let assign_pat ~scopes value_kind opt nraise catch_ids loc pat lam =
     simple_for_let ~scopes value_kind loc lam pat code in
   List.fold_left push_sublet exit rev_sublets
 
-let for_let ~scopes loc param pat body_kind body =
-  match pat.pat_desc with
-  | Tpat_any ->
-      (* This eliminates a useless variable (and stack slot in bytecode)
-         for "let _ = ...". See #6865. *)
-      Lsequence (param, body)
-  | Tpat_var (id, _, _) ->
-      (* fast path, and keep track of simple bindings to unboxable numbers *)
-      let k = Typeopt.layout pat.pat_env pat.pat_type in
-      Llet (Strict, k, id, param, body)
-  | _ ->
-      let opt = ref false in
-      let nraise = next_raise_count () in
-      let catch_ids = pat_bound_idents_full pat in
-      let ids_with_kinds =
-        List.map
-          (fun (id, _, typ) -> (id, Typeopt.layout pat.pat_env typ))
-          catch_ids
-      in
-      let ids = List.map (fun (id, _, _) -> id) catch_ids in
-      let bind =
-        map_return (assign_pat ~scopes body_kind opt nraise ids loc pat) param in
-      if !opt then
-        Lstaticcatch (bind, (nraise, ids_with_kinds), body, body_kind)
-      else
-        simple_for_let ~scopes body_kind loc param pat body
+let for_let ~scopes loc param_void_k param param_sort pat body_kind body =
+  match param_void_k with
+  | Void_cont k ->
+      (* the param is void.  Any variables bound by the pattern must also be
+         void, so we can just skip the whole pattern matching compiler and
+         evaluate the param. *)
+      Lstaticcatch(param, (k,[]), body, body_kind)
+  | Not_void -> begin
+      match pat.pat_desc with
+      | Tpat_any ->
+        (* This eliminates a useless variable (and stack slot in bytecode)
+           for "let _ = ...". See #6865. *)
+        Lsequence (param, body)
+      | Tpat_var (id, _, _) ->
+        (* fast path, and keep track of simple bindings to unboxable numbers *)
+        let k = Typeopt.layout pat.pat_env pat.pat_type in
+        bind_with_layout Strict (id,k) param body
+      | _ ->
+        let opt = ref false in
+        let nraise = next_raise_count () in
+        let catch_ids = pat_bound_idents_full param_sort pat in
+        let ids_with_kinds =
+          List.filter_map
+            (fun (id, _, typ, sort) ->
+               if Layout.can_make_void (Layout.of_sort sort)
+               then None
+               else Some (id, Typeopt.layout pat.pat_env typ))
+            catch_ids
+        in
+        let ids = List.map (fun (id, _, _, _) -> id) catch_ids in
+        let bind =
+          map_return (assign_pat ~scopes body_kind opt nraise ids loc pat) param in
+        if !opt then
+          Lstaticcatch (bind, (nraise, ids_with_kinds), body, body_kind)
+        else
+          simple_for_let ~scopes body_kind loc param pat body
+    end
 
 (* Handling of tupled functions and matchings *)
 

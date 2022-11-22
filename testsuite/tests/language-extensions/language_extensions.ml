@@ -22,7 +22,9 @@ let report ~name ~text =
 
 let typecheck_with_extension ?(full_name = false) name =
   let success =
-    match Typecore.type_expression Env.empty extension_parsed_expression with
+    match Typecore.type_expression Env.initial_safe_string
+            extension_parsed_expression
+    with
     | _ -> true
     | exception (Extensions_parsing.Error.Error _) -> false
   in

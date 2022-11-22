@@ -450,7 +450,7 @@ let iterator ~transl_exp ~scopes ~loc
   | Texp_comp_range { ident; pattern = _; start; stop; direction } ->
       let bound name value =
         Let_binding.make (Immutable Strict) (Pvalue Pintval)
-          name (transl_exp ~scopes value)
+          name (transl_exp ~scopes Not_void value)
       in
       let start = bound "start" start in
       let stop  = bound "stop"  stop  in
@@ -468,7 +468,7 @@ let iterator ~transl_exp ~scopes ~loc
   | Texp_comp_in { pattern; sequence = iter_arr_exp } ->
       let iter_arr =
         Let_binding.make (Immutable Strict) (Pvalue Pgenval)
-          "iter_arr" (transl_exp ~scopes iter_arr_exp)
+          "iter_arr" (transl_exp ~scopes Not_void iter_arr_exp)
       in
       let iter_arr_kind = Typeopt.array_kind iter_arr_exp in
       let iter_len =
@@ -482,6 +482,7 @@ let iterator ~transl_exp ~scopes ~loc
       let mk_iterator body =
         let open (val Lambda_utils.int_ops ~loc) in
         (* for iter_ix = 0 to Array.length iter_arr - 1 ... *)
+        (* CR layouts: will need updating when we allow non-values in arrays. *)
         Lfor { for_id     = iter_ix
              ; for_from   = l0
              ; for_to     = iter_len.var - l1
@@ -491,9 +492,11 @@ let iterator ~transl_exp ~scopes ~loc
                  Matching.for_let
                    ~scopes
                    pattern.pat_loc
+                   Not_void
                    (Lprim(Parrayrefu iter_arr_kind,
                           [iter_arr.var; Lvar iter_ix],
                           loc))
+                   Layouts.Sort.value
                    pattern
                    (Pvalue Pintval)
                    body
@@ -544,7 +547,7 @@ let clause ~transl_exp ~scopes ~loc = function
                     (Iterator_bindings.all_let_bindings var_bindings)
                     (make_clause body)
   | Texp_comp_when cond ->
-      fun body -> Lifthenelse(transl_exp ~scopes cond,
+      fun body -> Lifthenelse(transl_exp ~scopes Not_void cond,
                     body,
                     lambda_unit,
                     (Pvalue Pintval) (* [unit] is immediate *))
@@ -823,7 +826,9 @@ let comprehension
               ~array_sizing
               ~array
               ~index
-              ~body:(transl_exp ~scopes comp_body)),
+              ~body:(transl_exp ~scopes Not_void comp_body)),
+         (* CR layouts: None above to change when arrays don't contain just
+            values *)
          (* If it was dynamically grown, cut it down to size *)
          match array_sizing with
          | Fixed_size -> array.var

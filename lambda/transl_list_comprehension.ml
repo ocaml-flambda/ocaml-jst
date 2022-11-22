@@ -172,7 +172,7 @@ let iterator ~transl_exp ~scopes = function
       let transl_bound var bound =
         Let_binding.make
           (Immutable Strict) (Pvalue Pintval)
-          var (transl_exp ~scopes bound)
+          var (transl_exp ~scopes Not_void bound)
       in
       let start = transl_bound "start" start in
       let stop  = transl_bound "stop"  stop  in
@@ -187,7 +187,7 @@ let iterator ~transl_exp ~scopes = function
   | Texp_comp_in { pattern; sequence } ->
       let iter_list =
         Let_binding.make (Immutable Strict) (Pvalue Pgenval)
-          "iter_list" (transl_exp ~scopes sequence)
+          "iter_list" (transl_exp ~scopes Not_void sequence)
       in
       (* Create a fresh variable to use as the function argument *)
       let element = Ident.create_local "element" in
@@ -196,8 +196,10 @@ let iterator ~transl_exp ~scopes = function
       ; element
       ; element_kind = Typeopt.layout pattern.pat_env pattern.pat_type
       ; add_bindings =
+          (* CR layouts: to change when we allow non-values in sequences *)
           Matching.for_let
-            ~scopes pattern.pat_loc (Lvar element) pattern (Pvalue Pgenval)
+            ~scopes pattern.pat_loc Not_void (Lvar element)
+            Layouts.Sort.value pattern (Pvalue Pgenval)
       }
 
 (** Translates a list comprehension binding
@@ -282,7 +284,7 @@ let rec translate_clauses
             in
             Let_binding.let_all arg_lets bindings
         | Texp_comp_when cond ->
-            Lifthenelse(transl_exp ~scopes cond,
+            Lifthenelse(transl_exp ~scopes Not_void cond,
                         body ~accumulator,
                         accumulator,
                         (Pvalue Pgenval) (* [list]s have the standard representation *))
@@ -297,7 +299,7 @@ let comprehension ~transl_exp ~scopes ~loc { comp_body; comp_clauses } =
         rev_list_snoc_local
           ~loc
           ~init:accumulator
-          ~last:(transl_exp ~scopes comp_body))
+          ~last:(transl_exp ~scopes Not_void comp_body))
       ~accumulator:rev_list_nil
       comp_clauses
   in

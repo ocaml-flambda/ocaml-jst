@@ -24,14 +24,18 @@
     - ocaml.explicit_arity (for camlp4/camlp5)
     - ocaml.warn_on_literal_pattern
     - ocaml.deprecated_mutable
-    - ocaml.immediate
-    - ocaml.immediate64
     - ocaml.boxed / ocaml.unboxed
     - ocaml.nolabels
     - ocaml.inline
     - ocaml.afl_inst_ratio
     - ocaml.flambda_o3
     - ocaml.flambda_oclassic
+    - layout attributes:
+      - ocaml.any
+      - ocaml.value
+      - ocaml.void
+      - ocaml.immediate
+      - ocaml.immediate64
 
     {b Warning:} this module is unstable and part of
   {{!Compiler_libs}compiler-libs}.
@@ -144,9 +148,7 @@ val filter_attributes :
 val warn_on_literal_pattern: Parsetree.attributes -> bool
 val explicit_arity: Parsetree.attributes -> bool
 
-
-val immediate: Parsetree.attributes -> bool
-val immediate64: Parsetree.attributes -> bool
+val layout: Parsetree.attributes -> Asttypes.const_layout option
 
 val has_unboxed: Parsetree.attributes -> bool
 val has_boxed: Parsetree.attributes -> bool

@@ -209,6 +209,9 @@ and float_comparison =
 and array_kind =
     Pgenarray | Paddrarray | Pintarray | Pfloatarray
 
+(* We sometimes use [Pintval] for voids in lambda terms, but only in places the
+   control flow will never actually reach - see the comment on
+   [value_kind_if_not_void] in translcore. *)
 and value_kind =
     Pgenval | Pfloatval | Pboxedintval of boxed_integer | Pintval
   | Pvariant of {
@@ -220,6 +223,8 @@ and value_kind =
     }
   | Parrayval of array_kind
 
+(* Because we compile away void in the translation to lambda, we don't need a
+   constructor for it here. *)
 and layout =
   | Ptop
   | Pvalue of value_kind
@@ -626,6 +631,36 @@ val primitive_may_allocate : primitive -> alloc_mode option
   (** Whether and where a primitive may allocate.
       [Some Alloc_local] permits both options: that is, primitives that
       may allocate on both the GC heap and locally report this value. *)
+
+(* At the moment, we're translating "void" things to lambda with a little trick:
+   We don't return a dummy value, like unit, from void expressions.  Instead,
+   they jump to a continuation via Lstaticraise.  [Translcore.transl_exp] checks
+   whether the thing it's about to evaluate is a void and sets up a handler
+   (Lstaticcatch) for this throw if so.
+
+   Many translation functions take an argument (void_k : void_continuation)
+   argument.  This represents a continuation to be used if the thing being
+   translated is void.  The int is the name of a static exception handler that
+   they will raise to in that case.  [void_k] must be [Void_cont] iff the thing being
+   translated is void.
+
+   Annnoyingly, the lambda syntax has [value_kinds] in several places - mainly
+   control flow join points - that are inconvenient for this trick.  E.g.,:
+
+   | Lifthenelse of lambda * lambda * lambda * value_kind
+
+   Here the value_kind is for the result of the ite.  That result can have a
+   type whose layout is void, in which case there is no actual runtime value.
+   In that case, each branch will Lstaticraise after running the relevant
+   computation, so the value_kind is irrelevant - we never actually return a
+   value.  We use [Pintval] in those cases.
+
+   In the future, we'll add another type that tracks runtime layouts more fully,
+   where [value_kind] just appears in the value case.  But that requires more
+   reworks in the middle end, so we're using this Lstaticraise/Lstaticcatch
+   trick for now. *)
+type void_continuation = Void_cont of int | Not_void
+
 
 (***********************)
 (* For static failures *)

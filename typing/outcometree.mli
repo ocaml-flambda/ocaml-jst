@@ -69,6 +69,10 @@ type out_global =
   | Ogf_nonlocal
   | Ogf_unrestricted
 
+type out_layout =
+  | Olay_const of Asttypes.const_layout
+  | Olay_var (* CR layouts: We likely need to invent names for these *)
+
 type out_type =
   | Otyp_abstract
   | Otyp_open
@@ -88,6 +92,9 @@ type out_type =
   | Otyp_poly of string list * out_type
   | Otyp_module of out_ident * (string * out_type) list
   | Otyp_attribute of out_type * out_attribute
+  | Otyp_layout_annot of out_type * out_layout
+      (* Currently only introduced with very explicit code in [Printtyp] and not
+         synthesized directly from the [Typedtree] *)
 
 and out_constructor = {
   ocstr_name: string;
@@ -137,7 +144,7 @@ and out_type_decl =
     otype_params: out_type_param list;
     otype_type: out_type;
     otype_private: Asttypes.private_flag;
-    otype_immediate: Type_immediacy.t;
+    otype_layout: Asttypes.const_layout option;
     otype_unboxed: bool;
     otype_cstrs: (out_type * out_type) list }
 and out_extension_constructor =

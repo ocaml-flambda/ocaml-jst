@@ -28,7 +28,12 @@ val array_kind : Typedtree.expression -> Lambda.array_kind
 val array_pattern_kind : Typedtree.pattern -> Lambda.array_kind
 val bigarray_type_kind_and_layout :
       Env.t -> Types.type_expr -> Lambda.bigarray_kind * Lambda.bigarray_layout
+
+(* CR layouts: `layout` should have a `sort` argument.  `value_kind` may be
+   unnecessary to expose eventually? *)
 val layout : Env.t -> Types.type_expr -> Lambda.layout
+val value_kind : Env.t -> Types.type_expr -> Lambda.value_kind
+
 val function_return_layout : Env.t -> Types.type_expr -> Lambda.layout
 (* Gives the return layout of a function with two arguments. *)
 val function2_return_layout : Env.t -> Types.type_expr -> Lambda.layout

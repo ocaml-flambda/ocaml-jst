@@ -21,6 +21,7 @@ open Format
 open Longident
 open Path
 open Asttypes
+open Layouts
 open Types
 open Btype
 open Outcometree
@@ -521,7 +522,9 @@ let rec raw_type ppf ty =
   end
 and raw_type_list tl = raw_list raw_type tl
 and raw_type_desc ppf = function
-    Tvar name -> fprintf ppf "Tvar %a" print_name name
+    Tvar { name; layout } ->
+      fprintf ppf "Tvar (@,%a,@,%s)" print_name name
+        (Layout.to_string layout)
   | Tarrow((l,arg,ret),t1,t2,c) ->
       fprintf ppf "@[<hov1>Tarrow((\"%s\",%a,%a),@,%a,@,%a,@,%s)@]"
         (string_of_label l) Alloc_mode.print arg Alloc_mode.print ret
@@ -548,7 +551,9 @@ and raw_type_desc ppf = function
   | Tsubst (t, None) -> fprintf ppf "@[<1>Tsubst@,(%a,None)@]" raw_type t
   | Tsubst (t, Some t') ->
       fprintf ppf "@[<1>Tsubst@,(%a,@ Some%a)@]" raw_type t raw_type t'
-  | Tunivar name -> fprintf ppf "Tunivar %a" print_name name
+  | Tunivar { name; layout } ->
+      fprintf ppf "Tunivar (@,%a,@,%s)" print_name name
+        (Layout.to_string layout)
   | Tpoly (t, tl) ->
       fprintf ppf "@[<hov1>Tpoly(@,%a,@,%a)@]"
         raw_type t
@@ -892,7 +897,7 @@ end = struct
 
   let add_named_var tty =
     match tty.desc with
-      Tvar (Some name) | Tunivar (Some name) ->
+      Tvar { name = Some name } | Tunivar { name = Some name } ->
         if List.mem name !named_vars then () else
         named_vars := name :: !named_vars
     | _ -> ()
@@ -952,7 +957,7 @@ end = struct
       try TransientTypeMap.find t !weak_var_map with Not_found ->
       let name =
         match t.desc with
-          Tvar (Some name) | Tunivar (Some name) ->
+          Tvar { name = Some name } | Tunivar { name = Some name } ->
             (* Some part of the type we've already printed has assigned another
              * unification variable to that name. We want to keep the name, so
              * try adding a number until we find a name that's not taken. *)
@@ -1369,8 +1374,11 @@ let rec tree_of_type_decl id decl =
       let vars = free_variables ty in
       List.iter
         (fun ty ->
-          if get_desc ty = Tvar (Some "_") && List.exists (eq_type ty) vars
-          then set_type_desc ty (Tvar None))
+          match get_desc ty with
+          | Tvar { name = Some "_"; layout }
+              when List.exists (eq_type ty) vars ->
+            set_type_desc ty (Tvar {name = None; layout})
+          | _ -> ())
         params
   | None -> ()
   end;
@@ -1398,7 +1406,7 @@ let rec tree_of_type_decl id decl =
   in
   begin match decl.type_kind with
   | Type_abstract _ -> ()
-  | Type_variant (cstrs, _rep) ->
+  | Type_variant (cstrs, _) ->
       List.iter
         (fun c ->
            prepare_type_constructor_arguments c.cd_args;
@@ -1421,7 +1429,7 @@ let rec tree_of_type_decl id decl =
           decl.type_manifest = None || decl.type_private = Private
       | Type_record _ ->
           decl.type_private = Private
-      | Type_variant (tll, _rep) ->
+      | Type_variant (tll, _) ->
           decl.type_private = Private ||
           List.exists (fun cd -> cd.cd_res <> None) tll
       | Type_open ->
@@ -1457,35 +1465,38 @@ let rec tree_of_type_decl id decl =
   in
   let (name, args) = type_defined decl in
   let constraints = tree_of_constraints params in
-  let ty, priv, unboxed, imm =
+  let lay = Builtin_attributes.layout decl.type_attributes in
+  let ty, priv, unboxed =
     match decl.type_kind with
-    | Type_abstract {immediate=imm} ->
+    | Type_abstract _ ->
         begin match ty_manifest with
-        | None -> (Otyp_abstract, Public, false, imm)
+        | None -> (Otyp_abstract, Public, false)
         | Some ty ->
-            tree_of_typexp Type ty, decl.type_private, false, imm
+            tree_of_typexp Type ty, decl.type_private, false
         end
     | Type_variant (cstrs, rep) ->
+        let unboxed =
+          match rep with
+          | Variant_unboxed _ -> true
+          | Variant_boxed _ | Variant_extensible -> false
+        in
         tree_of_manifest (Otyp_sum (List.map tree_of_constructor cstrs)),
         decl.type_private,
-        (rep = Variant_unboxed),
-        Type_immediacy.Unknown
+        unboxed
     | Type_record(lbls, rep) ->
         tree_of_manifest (Otyp_record (List.map tree_of_label lbls)),
         decl.type_private,
-        (match rep with Record_unboxed _ -> true | _ -> false),
-        Type_immediacy.Unknown
+        (match rep with Record_unboxed _ -> true | _ -> false)
     | Type_open ->
         tree_of_manifest Otyp_open,
         decl.type_private,
-        false,
-        Type_immediacy.Unknown
+        false
   in
     { otype_name = name;
       otype_params = args;
       otype_type = ty;
       otype_private = priv;
-      otype_immediate = imm;
+      otype_layout = lay;
       otype_unboxed = unboxed;
       otype_cstrs = constraints }
 
@@ -1838,7 +1849,7 @@ let dummy =
   {
     type_params = [];
     type_arity = 0;
-    type_kind = Types.kind_abstract;
+    type_kind = Types.kind_abstract_value;
     type_private = Public;
     type_manifest = None;
     type_variance = [];
@@ -2072,21 +2083,40 @@ let same_path t t' =
 
 type 'a diff = Same of 'a | Diff of 'a * 'a
 
-let trees_of_type_expansion mode Errortrace.{ty = t; expanded = t'} =
+let trees_of_type_expansion'
+      ~var_layouts mode Errortrace.{ty = t; expanded = t'} =
+  let tree_of_typexp' ty =
+    let out = tree_of_typexp mode ty in
+    if var_layouts then
+      match get_desc ty with
+      | Tvar { layout; _ } | Tunivar { layout; _ } ->
+          let olay = match Layouts.Layout.get layout with
+            | Const clay -> Olay_const clay
+            | Var   _    -> Olay_var
+          in
+          Otyp_layout_annot (out, olay)
+      | _ ->
+          out
+    else
+      out
+  in
   reset_loop_marks ();
   mark_loops t;
   if same_path t t'
-  then begin add_delayed (proxy t); Same (tree_of_typexp mode t) end
+  then begin add_delayed (proxy t); Same (tree_of_typexp' t) end
   else begin
     mark_loops t';
     let t' = if proxy t == proxy t' then unalias t' else t' in
     (* beware order matter due to side effect,
        e.g. when printing object types *)
-    let first = tree_of_typexp mode t in
-    let second = tree_of_typexp mode t' in
+    let first = tree_of_typexp' t in
+    let second = tree_of_typexp' t' in
     if first = second then Same first
     else Diff(first,second)
   end
+
+let trees_of_type_expansion =
+  trees_of_type_expansion' ~var_layouts:false
 
 let type_expansion ppf = function
   | Same t -> !Oprint.out_type ppf t
@@ -2183,7 +2213,7 @@ let hide_variant_name t =
       newty2 ~level:(get_level t)
         (Tvariant
            (create_row ~fields ~fixed ~closed ~name:None
-              ~more:(newvar2 (get_level more))))
+              ~more:(newvar2 (get_level more) Layout.value)))
   | _ -> t
 
 let prepare_expansion Errortrace.{ty; expanded} =
@@ -2384,6 +2414,20 @@ let explanation (type variety) intro prev env
              {[ The type int occurs inside int list -> 'a |}
         *)
     end
+  | Errortrace.Bad_layout (t,e) ->
+      Some (dprintf "@ @[<hov>%a@]"
+              (Layout.Violation.report_with_offender
+                 ~offender:(fun ppf -> type_expr ppf t)) e)
+  | Errortrace.Bad_layout_sort (t,e) ->
+      Some (dprintf "@ @[<hov>%a@]"
+              (Layout.Violation.report_with_offender_sort
+                 ~offender:(fun ppf -> type_expr ppf t)) e)
+  | Errortrace.Unequal_univar_layouts (t1,l1,t2,l2) ->
+      Some (dprintf "@,@[<hov>Universal variables %a and %a should be equal, \
+                     but@ the former has layout %s,@ and the latter has \
+                     layout %s@]"
+              type_expr t1 type_expr t2
+              (Layout.to_string l1) (Layout.to_string l2))
 
 let mismatch intro env trace =
   Errortrace.explain trace (fun ~prev h -> explanation intro prev env h)
@@ -2411,10 +2455,12 @@ let prepare_expansion_head empty_tr = function
       Some (Errortrace.map_diff (may_prepare_expansion empty_tr) d)
   | _ -> None
 
-let head_error_printer mode txt_got txt_but = function
+let head_error_printer ~var_layouts mode txt_got txt_but = function
   | None -> ignore
   | Some d ->
-      let d = Errortrace.map_diff (trees_of_type_expansion mode) d in
+      let d =
+        Errortrace.map_diff (trees_of_type_expansion' ~var_layouts mode) d
+      in
       dprintf "%t@;<1 2>%a@ %t@;<1 2>%a"
         txt_got type_expansion d.Errortrace.got
         txt_but type_expansion d.Errortrace.expected
@@ -2437,6 +2483,12 @@ let error trace_format mode subst env tr txt1 ppf txt2 ty_expect_explanation =
          Errortrace.{ty_exp with expanded = hide_variant_name ty_exp.expanded})
       tr
   in
+  let layout_error = match Misc.last tr with
+    | Some (Bad_layout _ | Bad_layout_sort _ | Unequal_univar_layouts _) ->
+        true
+    | Some _ | None ->
+        false
+  in
   let mis = mismatch txt1 env tr in
   match tr with
   | [] -> assert false
@@ -2446,7 +2498,9 @@ let error trace_format mode subst env tr txt1 ppf txt2 ty_expect_explanation =
       let tr = filter_trace trace_format (mis = None) tr in
       let head = prepare_expansion_head (tr=[]) elt in
       let tr = List.map (Errortrace.map_diff prepare_expansion) tr in
-      let head_error = head_error_printer mode txt1 txt2 head in
+      let head_error =
+        head_error_printer ~var_layouts:layout_error mode txt1 txt2 head
+      in
       let tr = trees_of_trace mode tr in
       fprintf ppf
         "@[<v>\
