@@ -1449,6 +1449,8 @@ let class_infos define_class kind
   let ci_params =
     let make_param (sty, v) =
       try
+          (* CR-soon reisenberg: That should probably allow [any], not just
+             [value] *)
           (transl_type_param env sty Type_layout.value, v)
       with Already_bound ->
         raise(Error(sty.ptyp_loc, env, Repeated_parameter))

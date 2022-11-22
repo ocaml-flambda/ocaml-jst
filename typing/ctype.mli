@@ -424,6 +424,10 @@ val get_unboxed_type_representation : Env.t -> type_expr -> type_expr
 (* Cheap upper bound on layout.  Will not expand unboxed types - call
    [type_layout] if that's needed. *)
 val estimate_type_layout : Env.t ->  type_expr -> Type_layout.t
+
+(* Get an upper bound on layout. (Returns [any] if a type isn't in the env or
+   if the unboxed-unroller runs out of fuel. This uses [repr] so you don't
+   have to. *)
 val type_layout : Env.t -> type_expr -> Type_layout.t
 
 (* Find a type's sort (constraining it to be an arbitrary sort variable, if

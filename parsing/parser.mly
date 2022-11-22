@@ -3084,6 +3084,7 @@ generic_type_declaration(flag, kind):
   flag = flag
   params = type_parameters
   id = mkrhs(LIDENT)
+  layout = layout_attr?
   kind_priv_manifest = kind
   cstrs = constraints
   attrs2 = post_item_attributes
@@ -3093,7 +3094,7 @@ generic_type_declaration(flag, kind):
       let attrs = attrs1 @ attrs2 in
       let loc = make_loc $sloc in
       (flag, ext),
-      Type.mk id ~params ~cstrs ~kind ~priv ?manifest ~attrs ~loc ~docs
+      Type.mk id ~params ?layout ~cstrs ~kind ~priv ?manifest ~attrs ~loc ~docs
     }
 ;
 %inline generic_and_type_declaration(kind):
@@ -3101,6 +3102,7 @@ generic_type_declaration(flag, kind):
   attrs1 = attributes
   params = type_parameters
   id = mkrhs(LIDENT)
+  layout = layout_attr?
   kind_priv_manifest = kind
   cstrs = constraints
   attrs2 = post_item_attributes
@@ -3110,7 +3112,7 @@ generic_type_declaration(flag, kind):
       let attrs = attrs1 @ attrs2 in
       let loc = make_loc $sloc in
       let text = symbol_text $symbolstartpos in
-      Type.mk id ~params ~cstrs ~kind ~priv ?manifest ~attrs ~loc ~docs ~text
+      Type.mk id ~params ?layout ~cstrs ~kind ~priv ?manifest ~attrs ~loc ~docs ~text
     }
 ;
 %inline constraints:
@@ -3167,12 +3169,16 @@ layout:
   ident { check_layout (make_loc $sloc) $1 }
 ;
 
+layout_attr:
+  COLON
+  layout=layout
+    { Attr.mk ~loc:layout.loc (Location.map snd layout) (PStr []) }
+;
+
 parenthesized_type_parameter:
     type_parameter { $1 }
-  | type_variance type_variable COLON layout_annot=layout
-      { let loc = layout_annot.loc in
-        let attr = Attr.mk ~loc (mkloc (snd layout_annot.txt) loc) (PStr []) in
-        Typ.attr $2 attr, $1 }
+  | type_variance type_variable layout_annot=layout_attr
+      { Typ.attr $2 layout_annot, $1 }
 ;
 
 type_parameter:

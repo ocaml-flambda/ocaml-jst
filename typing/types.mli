@@ -501,6 +501,7 @@ and class_signature =
     csig_concr: Concr.t;
     csig_inher: (Path.t * type_expr list) list }
 
+(* CR-soon reisenberg: add support for layout annotations on class parameters *)
 type class_declaration =
   { cty_params: type_expr list;
     mutable cty_type: class_type;

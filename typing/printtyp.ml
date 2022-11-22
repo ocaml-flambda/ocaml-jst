@@ -27,6 +27,53 @@ open Outcometree
 
 module String = Misc.Stdlib.String
 
+(* Note [When to print layout annotations]
+   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   Layout annotations are only occasionally necessary to write
+   (compilation can often infer layouts), so when should we print
+   them? This Note addresses all the cases.
+
+   Case (C1). The layout on a type declaration, like
+   [type 'a t : <<this one>> = ...].
+
+   We print the layout when it cannot be inferred from the rest of what
+   is printed. Specifically, we print the layout when either of these
+   is the case:
+
+   (C1.1) The type declaration is abstract and has no manifest (i.e.,
+   it's written without any [=]-signs), and the layout is not the default
+   [value]. (* CR-soon reisenberg: update when the default changes *)
+
+   In this case, there is no way to know the layout without the annotation.
+
+   (C1.2) The type is [@@unboxed] and the user wrote a layout annotation.  If an
+   [@@unboxed] type is recursive, it can be impossible to deduce the layout.
+   We thus defer to the user in determining whether to print the layout annotation.
+
+   Case (C2). The layout on a type parameter to a type, like
+   [type ('a : <<this one>>) t = ...].
+
+   This layout is printed if both of the following are true:
+
+   (C2.1) The layout is something other than the default [value].
+   (* CR-soon reienseberg: update when the default changes *)
+
+   (C2.2) The variable has no constraints on it. (If there is a constraint,
+   the constraint determines the layout, so printing the layout is
+   redundant.)
+
+   We *could*, in theory, print this only when it cannot be inferred.
+   But this amounts to repeating inference. The heuristic also runs into
+   trouble when considering the possibility of a recursive type. So, in
+   order to keep the pretty-printer simple, we just always print the
+   (non-default) annotation.
+
+   Another design possibility is to pass in verbosity level as some kind
+   of flag.
+
+   Case (C3). The layout on a universal type variable. RAE XXX
+*)
+
 (* Print a long identifier *)
 
 let rec longident ppf = function
@@ -1189,6 +1236,24 @@ let mark_loops_constructor_arguments = function
   | Cstr_tuple l -> List.iter mark_loops l
   | Cstr_record l -> List.iter (fun l -> mark_loops l.ld_type) l
 
+let layout_annotation_of_param param_ty : Asttypes.layout_annotation option =
+  let layout = in_printing_env (fun env -> Ctype.type_layout env param_ty) in
+  let layout = Type_layout.repr layout in
+  (* This adds a layout annotation according to Case (C2) in
+     Note [When to print layout annotations] *)
+  match (repr param_ty).desc with
+  | Tvar _ -> begin match layout with
+    | Any -> Some Any
+    | Immediate64 -> Some Immediate64
+    | Immediate -> Some Immediate
+    | Sort Value -> None (* this is (C2.1) from the Note *)
+    (* CR-soon reisenberg: put defaulting in one place *)
+    | Sort Void -> Some Void
+    | Sort (Var _) -> assert false
+    (* by the time we're printing, these should be defaulted *)
+  end
+  | _ -> None (* this is (C2.2) from the Note *)
+
 let rec tree_of_type_decl id decl =
 
   reset_except_context();
@@ -1277,9 +1342,14 @@ let rec tree_of_type_decl id decl =
           else (NoVariance, NoInjectivity))
         decl.type_params decl.type_variance
     in
+    let mk_param ty (variance, injectivity) =
+      { oparam_name = type_param (tree_of_typexp false ty);
+        oparam_variance = variance;
+        oparam_injectivity = injectivity;
+        oparam_layout = layout_annotation_of_param ty }
+    in
     (Ident.name id,
-     List.map2 (fun ty cocn -> type_param (tree_of_typexp false ty), cocn)
-       params vari)
+     List.map2 mk_param params vari)
   in
   let tree_of_manifest ty1 =
     match ty_manifest with
@@ -1288,17 +1358,6 @@ let rec tree_of_type_decl id decl =
   in
   let (name, args) = type_defined decl in
   let constraints = tree_of_constraints params in
-  let olayout_of_layout = function
-    | Asttypes.Any -> Olay_any
-    | Asttypes.Value -> Olay_value
-    | Asttypes.Void -> Olay_void
-    | Asttypes.Immediate64 -> Olay_immediate64
-    | Asttypes.Immediate -> Olay_immediate
-  in
-  let lay =
-    Option.map olayout_of_layout
-      (Builtin_attributes.layout decl.type_attributes)
-  in
   let ty, priv, unboxed =
     match decl.type_kind with
     | Type_abstract _ ->
@@ -1323,6 +1382,20 @@ let rec tree_of_type_decl id decl =
         tree_of_manifest Otyp_open,
         decl.type_private,
         false
+  in
+  (* The algorithm for setting [lay] here is described as Case (C1) in
+     Note [When to print layout annotations] *)
+  let lay = match ty, unboxed with
+    | (Otyp_abstract, _) | (_, true) ->
+        (* (C1.1) from the Note corresponds to Otyp_abstract. Anything
+           but the default must be user-written, so we just look in the
+           attributes. Similarly, look in the attributes for (C1.2), the
+           unboxed case. *)
+      begin match Builtin_attributes.layout decl.type_attributes with
+      | Some Value -> None  (* CR-soon reisenberg: update with central defaulting *)
+      | other -> other
+      end
+    | _ -> None (* other cases have no layout annotation *)
   in
     { otype_name = name;
       otype_params = args;
@@ -1568,12 +1641,20 @@ let class_type ppf cty =
   prepare_class_type [] cty;
   !Oprint.out_class_type ppf (tree_of_class_type false [] cty)
 
-let tree_of_class_param param variance =
-  (match tree_of_typexp true param with
-    Otyp_var (_, s) -> s
-  | _ -> "?"),
-  if is_Tvar (repr param) then Asttypes.(NoVariance, NoInjectivity)
-                          else variance
+let tree_of_class_param param var_inj =
+  let variance, injectivity = if is_Tvar (repr param)
+                                   then Asttypes.(NoVariance, NoInjectivity)
+                                   else var_inj
+  in
+  { oparam_name = begin match tree_of_typexp true param with
+      | Otyp_var (_, s) -> s
+      | _ -> "?"
+    end;
+    oparam_variance = variance;
+    oparam_injectivity = injectivity;
+    (* CR-soon reisenberg: fix next line when adding support for layout
+       annotations on class type parameters *)
+    oparam_layout = layout_annotation_of_param param }
 
 let class_variance =
   let open Variance in let open Asttypes in
