@@ -790,8 +790,10 @@ let check_abbrev env sdecl (id, decl) =
    have effects!
 *)
 let default_decl_layout decl =
-  (* CJC XXX is this really sufficient, or do I need to do a full iteration as
-     in Ctype.remove_mode_and_layout_variables? *)
+  (* CR ccasinghino: At the moment, I believe this defaulting is sufficient
+     because of the limited number of places where sort variables are created.
+     But in the future it may be necessary to also do defaulting in the manifest
+     and recursively in the types in the kind, with [iter_type_expr]. *)
   let default_typ typ =
     match (Ctype.repr typ).desc with
     | Tvar { layout } -> Type_layout.default_to_value layout
