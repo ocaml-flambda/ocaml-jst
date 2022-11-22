@@ -17,6 +17,285 @@
 
 open Asttypes
 
+(* Layouts *)
+
+module Sort = struct
+  type const =
+    | Void
+    | Value
+
+  type t =
+    | Var of var
+    | Const of const
+  and var = t option ref
+
+  let void = Const Void
+  let value = Const Value
+
+  let of_const = function
+    | Void -> void
+    | Value -> value
+
+  let of_var v = Var v
+
+  let new_var () = Var (ref None)
+
+  let rec repr ~default : t -> t = function
+    | Const _ as t -> t
+    | Var r as t -> begin match !r with
+      | None -> begin match default with
+        | None -> t
+        | Some const -> begin
+            let t = of_const const in
+            r := Some t;
+            t
+          end
+      end
+      | Some s -> begin
+          let result = repr ~default s in
+          r := Some result; (* path compression *)
+          result
+        end
+    end
+
+  (***********************)
+  (* equality *)
+
+  let equal_const_const c1 c2 = match c1, c2 with
+    | Void, Void -> true
+    | Void, Value -> false
+    | Value, Void -> false
+    | Value, Value -> true
+
+  let rec equate_var_const v1 c2 = match !v1 with
+    | Some s1 -> equate_sort_const s1 c2
+    | None -> v1 := Some (of_const c2); true
+
+  and equate_var v1 s2 = match s2 with
+    | Const c2 -> equate_var_const v1 c2
+    | Var v2 -> equate_var_var v1 v2
+
+  and equate_var_var v1 v2 = v1 == v2 || begin
+    match !v1, !v2 with
+    | Some s1, _ -> equate_var v2 s1
+    | _, Some s2 -> equate_var v1 s2
+    | None, None -> v1 := Some (of_var v2); true
+  end
+
+  and equate_sort_const s1 c2 = match s1 with
+    | Const c1 -> equal_const_const c1 c2
+    | Var v1 -> equate_var_const v1 c2
+
+  and equate s1 s2 = match s1 with
+    | Const c1 -> equate_sort_const s2 c1
+    | Var v1 -> equate_var v1 s2
+end
+
+type sort = Sort.t
+
+module Layout = struct
+  type t =
+    | Any
+    | Sort of sort
+    | Immediate64
+    (** We know for sure that values of types of this layout are always immediate
+        on 64-bit platforms. For other platforms, we know nothing about immediacy.
+    *)
+    | Immediate
+
+  (******************************)
+  (* constants *)
+
+  let any = Any
+  let void = Sort Sort.void
+  let value = Sort Sort.value
+  let immediate64 = Immediate64
+  let immediate = Immediate
+
+  type const = Builtin_attributes.const_layout =
+    | Any
+    | Value
+    | Void
+    | Immediate64
+    | Immediate
+
+  let string_of_const : const -> _ = function
+    | Any -> "any"
+    | Value -> "value"
+    | Void -> "void"
+    | Immediate64 -> "immediate64"
+    | Immediate -> "immediate"
+
+  let equal_const (c1 : const) (c2 : const) = match c1, c2 with
+    | Any, Any -> true
+    | Immediate64, Immediate64 -> true
+    | Immediate, Immediate -> true
+    | Void, Void -> true
+    | Value, Value -> true
+    | (Any | Immediate64 | Immediate | Void | Value), _ -> false
+
+  (******************************)
+  (* construction *)
+
+  let of_new_sort_var () = Sort (Sort.new_var ())
+
+  let of_sort s = Sort s
+
+  let of_const : const -> t = function
+    | Any -> Any
+    | Immediate -> Immediate
+    | Immediate64 -> Immediate64
+    | Value -> value
+    | Void -> void
+
+  let of_const_option annot ~default =
+    match annot with
+    | None -> default
+    | Some annot -> of_const annot
+
+  let of_attributes ~default attrs =
+    of_const_option ~default (Builtin_attributes.layout attrs)
+
+  (******************************)
+  (* elimination *)
+
+  type desc =
+    | Const of const
+    | Var of Sort.var
+
+  let repr ~default : t -> desc = function
+    | Any -> Const Any
+    | Immediate -> Const Immediate
+    | Immediate64 -> Const Immediate64
+    | Sort s -> begin match Sort.repr ~default s with
+      (* NB: this match isn't as silly as it looks: those are
+         different constructors on the left than on the right *)
+      | Const Void -> Const Void
+      | Const Value -> Const Value
+      | Var v -> Var v
+    end
+
+  let get = repr ~default:None
+
+  let of_desc = function
+    | Const c -> of_const c
+    | Var v -> of_sort (Sort.of_var v)
+
+  (* CR layouts: this function is suspect; it seems likely to reisenberg
+     that refactoring could get rid of it *)
+  let sort_of_layout l =
+    match get l with
+    | Const Void -> Sort.void
+    | Const (Value | Immediate | Immediate64) -> Sort.value
+    | Const Any -> Misc.fatal_error "Layout.sort_of_layout"
+    | Var v -> Sort.of_var v
+
+  (*********************************)
+  (* pretty printing *)
+
+  let to_string lay = match get lay with
+    | Const c -> string_of_const c
+    | Var _ -> "<sort variable>"
+
+  let format ppf t = Format.fprintf ppf "%s" (to_string t)
+
+  (******************************)
+  (* errors *)
+
+  module Violation = struct
+    type nonrec t =
+      | Not_a_sublayout of t * t
+      | No_intersection of t * t
+
+    let report_with_offender ~offender ppf t =
+      let pr fmt = Format.fprintf ppf fmt in
+      match t with
+      | Not_a_sublayout (l1, l2) ->
+          pr "%t has layout %a, which is not a sublayout of %a." offender
+            format l1 format l2
+      | No_intersection (l1, l2) ->
+          pr "%t has layout %a, which does not overlap with %a." offender
+            format l1 format l2
+
+    let report_with_offender_sort ~offender ppf t =
+      let sort_expected =
+        "A representable layout was expected, but"
+      in
+      let pr fmt = Format.fprintf ppf fmt in
+      match t with
+      | Not_a_sublayout (l1, l2) ->
+        pr "%s@ %t has layout %a, which is not a sublayout of %a."
+          sort_expected offender format l1 format l2
+      | No_intersection (l1, l2) ->
+        pr "%s@ %t has layout %a, which does not overlap with %a."
+          sort_expected offender format l1 format l2
+
+    let report_with_name ~name ppf t =
+      let pr fmt = Format.fprintf ppf fmt in
+      match t with
+      | Not_a_sublayout (l1,l2) ->
+          pr "%s has layout %a, which is not a sublayout of %a." name
+            format l1 format l2
+      | No_intersection (l1, l2) ->
+          pr "%s has layout %a, which does not overlap with %a." name
+            format l1 format l2
+  end
+
+  (******************************)
+  (* relations *)
+
+  let equate (l1 : t) (l2 : t) = match l1, l2 with
+    | Any, Any -> true
+    | Immediate64, Immediate64 -> true
+    | Immediate, Immediate -> true
+    | Sort s1, Sort s2 -> Sort.equate s1 s2
+    | (Any | Immediate64 | Immediate | Sort _), _ -> false
+
+  let intersection l1 l2 =
+    let err = Error (Violation.No_intersection (l1, l2)) in
+    let equality_check is_eq l = if is_eq then Ok l else err in
+    (* it's OK not to cache the result of [get], because [get] does path
+       compression *)
+    match get l1, get l2 with
+    | Const Any, _ -> Ok l2
+    | _, Const Any -> Ok l1
+    | Const c1, Const c2 when equal_const c1 c2 -> Ok l1
+    | Const (Immediate64 | Immediate), Const (Immediate64 | Immediate) ->
+      Ok immediate
+    | Const ((Immediate64 | Immediate) as imm), l
+    | l, Const ((Immediate64 | Immediate) as imm) ->
+      equality_check (equate (of_desc l) value)
+        (of_const imm)
+    | _, _ -> equality_check (equate l1 l2) l1
+
+  let sub sub super =
+    let ok = Ok sub in
+    let err = Error (Violation.Not_a_sublayout (sub,super)) in
+    let equality_check is_eq = if is_eq then ok else err in
+    match get sub, get super with
+    | _, Const Any -> ok
+    | Const c1, Const c2 when equal_const c1 c2 -> ok
+    | Const Immediate, Const Immediate64 -> ok
+    | Const (Immediate64 | Immediate), _ ->
+      equality_check (equate super value)
+    | _, _ -> equality_check (equate sub super)
+
+  (*********************************)
+  (* defaulting *)
+
+  let get_defaulting ~default t =
+    match repr ~default:(Some default) t with
+    | Const result -> result
+    | Var _ -> assert false
+
+  let constrain_default_void = get_defaulting ~default:Sort.Void
+  let can_make_void l = Void = constrain_default_void l
+  let default_to_value t =
+    ignore (get_defaulting ~default:Value t)
+end
+
+type layout = Layout.t
+
 (* Type expressions for the core language *)
 
 type transient_expr =
@@ -28,7 +307,7 @@ type transient_expr =
 and type_expr = transient_expr
 
 and type_desc =
-    Tvar of string option
+  | Tvar of { name : string option; layout : layout }
   | Tarrow of arrow_desc * type_expr * type_expr * commutable
   | Ttuple of type_expr list
   | Tconstr of Path.t * type_expr list * abbrev_memo ref
@@ -38,7 +317,7 @@ and type_desc =
   | Tlink of type_expr
   | Tsubst of type_expr * type_expr option
   | Tvariant of row_desc
-  | Tunivar of string option
+  | Tunivar of { name : string option; layout : layout }
   | Tpoly of type_expr * type_expr list
   | Tpackage of Path.t * (Longident.t * type_expr) list
 
@@ -232,21 +511,25 @@ type type_declaration =
 and type_decl_kind = (label_declaration, constructor_declaration) type_kind
 
 and ('lbl, 'cstr) type_kind =
-    Type_abstract of {immediate : Type_immediacy.t}
+    Type_abstract of {layout : layout}
   | Type_record of 'lbl list * record_representation
   | Type_variant of 'cstr list * variant_representation
   | Type_open
 
+and tag = Ordinary of {src_index: int;     (* Unique name (per type) *)
+                       runtime_tag: int}   (* The runtime tag *)
+        | Extension of Path.t * layout array
+
 and record_representation =
-    Record_regular                      (* All fields are boxed / tagged *)
-  | Record_float                        (* All fields are floats *)
-  | Record_unboxed of bool    (* Unboxed single-field record, inlined or not *)
-  | Record_inlined of int               (* Inlined record *)
-  | Record_extension of Path.t          (* Inlined record under extension *)
+  | Record_unboxed of layout
+  | Record_inlined of tag * variant_representation
+  | Record_boxed of layout array
+  | Record_float
 
 and variant_representation =
-    Variant_regular          (* Constant or boxed constructors *)
-  | Variant_unboxed          (* One unboxed single-field constructor *)
+  | Variant_unboxed of layout
+  | Variant_boxed of layout array array
+  | Variant_extensible
 
 and global_flag =
   | Global
@@ -259,6 +542,7 @@ and label_declaration =
     ld_mutable: mutable_flag;
     ld_global: global_flag;
     ld_type: type_expr;
+    ld_layout : layout;
     ld_loc: Location.t;
     ld_attributes: Parsetree.attributes;
     ld_uid: Uid.t;
@@ -282,6 +566,8 @@ type extension_constructor =
   { ext_type_path: Path.t;
     ext_type_params: type_expr list;
     ext_args: constructor_arguments;
+    ext_arg_layouts: layout array;
+    ext_constant: bool;
     ext_ret_type: type_expr option;
     ext_private: private_flag;
     ext_loc: Location.t;
@@ -383,14 +669,16 @@ and ext_status =
 
 (* Constructor and record label descriptions inserted held in typing
    environments *)
-
 type constructor_description =
   { cstr_name: string;                  (* Constructor name *)
     cstr_res: type_expr;                (* Type of the result *)
     cstr_existentials: type_expr list;  (* list of existentials *)
     cstr_args: (type_expr * global_flag) list;          (* Type of the arguments *)
+    cstr_arg_layouts: layout array;     (* Layouts of the arguments *)
     cstr_arity: int;                    (* Number of arguments *)
-    cstr_tag: constructor_tag;          (* Tag for heap blocks *)
+    cstr_tag: tag;                      (* Tag for heap blocks *)
+    cstr_repr: variant_representation;  (* Repr of the outer variant *)
+    cstr_constant: bool;                (* True if all args are void *)
     cstr_consts: int;                   (* Number of constant constructors *)
     cstr_nonconsts: int;                (* Number of non-const constructors *)
     cstr_generalized: bool;             (* Constrained return type? *)
@@ -401,26 +689,16 @@ type constructor_description =
     cstr_uid: Uid.t;
    }
 
-and constructor_tag =
-    Cstr_constant of int                (* Constant constructor (an int) *)
-  | Cstr_block of int                   (* Regular constructor (a block) *)
-  | Cstr_unboxed                        (* Constructor of an unboxed type *)
-  | Cstr_extension of Path.t * bool     (* Extension constructor
-                                           true if a constant false if a block*)
-
 let equal_tag t1 t2 =
   match (t1, t2) with
-  | Cstr_constant i1, Cstr_constant i2 -> i2 = i1
-  | Cstr_block i1, Cstr_block i2 -> i2 = i1
-  | Cstr_unboxed, Cstr_unboxed -> true
-  | Cstr_extension (path1, b1), Cstr_extension (path2, b2) ->
-      Path.same path1 path2 && b1 = b2
-  | (Cstr_constant _|Cstr_block _|Cstr_unboxed|Cstr_extension _), _ -> false
+  | Ordinary {src_index=i1}, Ordinary {src_index=i2} -> i2 = i1
+  | Extension (path1,_), Extension (path2,_) -> Path.same path1 path2
+  | (Ordinary _ | Extension _), _ -> false
 
 let may_equal_constr c1 c2 =
   c1.cstr_arity = c2.cstr_arity
   && (match c1.cstr_tag,c2.cstr_tag with
-     | Cstr_extension _,Cstr_extension _ ->
+     | Extension _, Extension _ ->
          (* extension constructors may be rebindings of each other *)
          true
      | tag1, tag2 ->
@@ -435,19 +713,61 @@ let item_visibility = function
   | Sig_class (_, _, _, vis)
   | Sig_class_type (_, _, _, vis) -> vis
 
-let kind_abstract = Type_abstract { immediate = Unknown }
+let kind_abstract ~layout = Type_abstract { layout }
+let kind_abstract_value = kind_abstract ~layout:Layout.value
+let kind_abstract_immediate = kind_abstract ~layout:Layout.immediate
+let kind_abstract_any = kind_abstract ~layout:Layout.any
 
 let decl_is_abstract decl =
   match decl.type_kind with
   | Type_abstract _ -> true
   | Type_record _ | Type_variant _ | Type_open -> false
 
+let all_void layouts =
+  Array.for_all (fun l ->
+    match Layout.get l with
+    | Const Void -> true
+    | Const (Any | Immediate | Immediate64 | Value) | Var _ -> false)
+    layouts
+
+let layout_bound_of_record_representation : record_representation -> _ =
+  let open Layout in function
+  | Record_unboxed l -> l
+  | Record_float -> value
+  | Record_inlined (tag,rep) -> begin
+      match (tag,rep) with
+      | Extension _, _ -> value
+      | _, Variant_extensible -> value
+      | Ordinary _, Variant_unboxed l -> l (* n must be 0 here *)
+      | Ordinary {src_index}, Variant_boxed layouts ->
+        if all_void layouts.(src_index)
+        then immediate
+        else value
+    end
+  | Record_boxed layouts when all_void layouts -> immediate
+  | Record_boxed _ -> value
+
+let layout_bound_of_variant_representation : variant_representation -> _ =
+  let open Layout in function
+  | Variant_unboxed l -> l
+  | Variant_boxed layouts ->
+    if Array.for_all all_void layouts then immediate else value
+  | Variant_extensible -> value
+
+(* should not mutate sorts *)
+let layout_bound_of_kind : _ type_kind -> _ =
+  let open Layout in function
+  | Type_abstract { layout } -> layout
+  | Type_open -> value
+  | Type_record (_,rep) -> layout_bound_of_record_representation rep
+  | Type_variant (_, rep) -> layout_bound_of_variant_representation rep
+
 let decl_is_unboxed decl =
   match decl.type_kind with
     Type_record ([{ld_type = arg; _}], Record_unboxed _)
-  | Type_variant ([{cd_args = Cstr_tuple [arg,_]; _}], Variant_unboxed)
+  | Type_variant ([{cd_args = Cstr_tuple [arg,_]; _}], Variant_unboxed _)
   | Type_variant ([{cd_args = Cstr_record [{ld_type = arg; _}]; _}],
-                  Variant_unboxed) ->
+                  Variant_unboxed _) ->
     Some arg
   | _ -> None
 
@@ -456,15 +776,19 @@ type label_description =
     lbl_res: type_expr;                 (* Type of the result *)
     lbl_arg: type_expr;                 (* Type of the argument *)
     lbl_mut: mutable_flag;              (* Is this a mutable field? *)
-    lbl_global: global_flag;        (* Is this a global field? *)
+    lbl_global: global_flag;            (* Is this a global field? *)
+    lbl_layout : layout;                (* Layout of the argument *)
     lbl_pos: int;                       (* Position in block *)
+    lbl_num: int;                       (* Position in type *)
     lbl_all: label_description array;   (* All the labels in this type *)
-    lbl_repres: record_representation;  (* Representation for this record *)
+    lbl_repres: record_representation;  (* Representation for outer record *)
     lbl_private: private_flag;          (* Read-only field? *)
     lbl_loc: Location.t;
     lbl_attributes: Parsetree.attributes;
     lbl_uid: Uid.t;
-   }
+  }
+
+let lbl_pos_void = -1
 
 let rec bound_value_identifiers = function
     [] -> []
@@ -606,9 +930,19 @@ let get_id t = (repr t).id
 module Transient_expr = struct
   let create desc ~level ~scope ~id = {desc; level; scope; id}
   let set_desc ty d = ty.desc <- d
-  let set_stub_desc ty d = assert (ty.desc = Tvar None); ty.desc <- d
+  let set_stub_desc ty d =
+    assert (
+      match ty.desc with
+      | Tvar {name} -> name = None
+      | _ -> false);
+    ty.desc <- d
   let set_level ty lv = ty.level <- lv
   let set_scope ty sc = ty.scope <- sc
+  let set_var_layout ty layout' =
+    match ty.desc with
+    | Tvar { name; _ } ->
+      set_desc ty (Tvar { name; layout = layout' })
+    | _ -> assert false
   let coerce ty = ty
   let repr = repr
   let type_expr ty = ty
@@ -789,13 +1123,17 @@ let link_type ty ty' =
   (* Name is a user-supplied name for this unification variable (obtained
    * through a type annotation for instance). *)
   match desc, ty'.desc with
-    Tvar name, Tvar name' ->
+    Tvar { name }, Tvar { name = name'; layout = layout' } ->
       begin match name, name' with
-      | Some _, None -> log_type ty'; Transient_expr.set_desc ty' (Tvar name)
+      | Some _, None ->
+        log_type ty';
+        Transient_expr.set_desc ty' (Tvar { name; layout = layout' })
       | None, Some _ -> ()
       | Some _, Some _ ->
-          if ty.level < ty'.level then
-            (log_type ty'; Transient_expr.set_desc ty' (Tvar name))
+        if ty.level < ty'.level then begin
+          log_type ty';
+          Transient_expr.set_desc ty' (Tvar { name; layout = layout' })
+        end
       | None, None   -> ()
       end
   | _ -> ()
@@ -824,6 +1162,10 @@ let set_scope ty scope =
     if ty.id <= !last_snapshot then log_change (Cscope (ty, ty.scope));
     Transient_expr.set_scope ty scope
   end
+let set_var_layout ty layout =
+  let ty = repr ty in
+  log_type ty;
+  Transient_expr.set_var_layout ty layout
 let set_univar rty ty =
   log_change (Cuniv (rty, !rty)); rty := Some ty
 let set_name nm v =

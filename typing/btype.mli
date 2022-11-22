@@ -58,9 +58,9 @@ val generic_level: int
 
 val newgenty: type_desc -> type_expr
         (* Create a generic type *)
-val newgenvar: ?name:string -> unit -> type_expr
+val newgenvar: ?name:string -> layout -> type_expr
         (* Return a fresh generic variable *)
-val newgenstub: scope:int -> type_expr
+val newgenstub: scope:int -> layout -> type_expr
         (* Return a fresh generic node, to be instantiated
            by [Transient_expr.set_stub_desc] *)
 

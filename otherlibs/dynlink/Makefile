@@ -99,9 +99,9 @@ COMPILERLIBS_SOURCES=\
   parsing/builtin_attributes.ml \
   parsing/ast_mapper.ml \
   parsing/attr_helper.ml \
+  parsing/pprintast.ml \
   typing/path.ml \
   typing/primitive.ml \
-  typing/type_immediacy.ml \
   typing/shape.ml \
   typing/types.ml \
   typing/btype.ml \

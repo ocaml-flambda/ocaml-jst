@@ -42,7 +42,7 @@ module A :
     type r = s
     type p = q [@@immediate]
     and q = int
-    type o = Foo | Bar | Baz
+    type o = Foo | Bar | Baz [@@immediate]
     type m = int [@@immediate64]
     type n = m [@@immediate]
   end
@@ -127,8 +127,7 @@ end;;
 Line 2, characters 2-31:
 2 |   type t = string [@@immediate]
       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Error: Types marked with the immediate attribute must be non-pointer types
-       like int or bool.
+Error: This type has layout value, which is not a sublayout of immediate.
 |}];;
 
 (* Cannot directly declare a non-immediate type as immediate (variant) *)
@@ -139,8 +138,8 @@ end;;
 Line 2, characters 2-41:
 2 |   type t = Foo of int | Bar [@@immediate]
       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Error: Types marked with the immediate attribute must be non-pointer types
-       like int or bool.
+Error:
+       t has layout value, which is not a sublayout of immediate.
 |}];;
 
 (* Cannot directly declare a non-immediate type as immediate (record) *)
@@ -151,8 +150,8 @@ end;;
 Line 2, characters 2-38:
 2 |   type t = { foo : int } [@@immediate]
       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Error: Types marked with the immediate attribute must be non-pointer types
-       like int or bool.
+Error:
+       t has layout value, which is not a sublayout of immediate.
 |}];;
 
 (* Not guaranteed that t is immediate, so this is an invalid declaration *)
@@ -164,8 +163,7 @@ end;;
 Line 3, characters 2-26:
 3 |   type s = t [@@immediate]
       ^^^^^^^^^^^^^^^^^^^^^^^^
-Error: Types marked with the immediate attribute must be non-pointer types
-       like int or bool.
+Error: This type has layout value, which is not a sublayout of immediate.
 |}];;
 
 (* Can't ascribe to an immediate type signature with a non-immediate type *)
@@ -186,7 +184,7 @@ Error: Signature mismatch:
          type t = string
        is not included in
          type t [@@immediate]
-       The first is not an immediate type.
+       the first has layout value, which is not a sublayout of immediate.
 |}];;
 
 (* Same as above but with explicit signature *)
@@ -202,7 +200,7 @@ Error: Signature mismatch:
          type t = string
        is not included in
          type t [@@immediate]
-       The first is not an immediate type.
+       the first has layout value, which is not a sublayout of immediate.
 |}];;
 
 (* Can't use a non-immediate type even if mutually recursive *)
@@ -214,8 +212,7 @@ end;;
 Line 2, characters 2-26:
 2 |   type t = s [@@immediate]
       ^^^^^^^^^^^^^^^^^^^^^^^^
-Error: Types marked with the immediate attribute must be non-pointer types
-       like int or bool.
+Error: This type has layout value, which is not a sublayout of immediate.
 |}];;
 
 

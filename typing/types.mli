@@ -24,6 +24,177 @@
 (** Asttypes exposes basic definitions shared both by Parsetree and Types. *)
 open Asttypes
 
+module Sort : sig
+  (** A sort classifies how a type is represented at runtime. Every concrete
+      layout has a sort, and knowing the sort is sufficient for knowing the
+      calling convention of values of a given type. *)
+  type t
+
+  (** These are the constant sorts -- fully determined and without variables *)
+  type const =
+    | Void
+      (** No run time representation at all *)
+    | Value
+      (** Standard ocaml value representation *)
+
+  (** A sort variable that can be unified during type-checking. *)
+  type var
+
+  (** Create a new sort variable that can be unified. *)
+  val new_var : unit -> t
+
+  val of_const : const -> t
+  val of_var : var -> t
+
+  val void : t
+  val value : t
+
+  (** This checks for equality, and sets any variables to make two sorts
+      equal, if possible *)
+  val equate : t -> t -> bool
+end
+
+type sort = Sort.t
+
+(** This module describes layouts, which classify types. Layouts are arranged
+    in the following lattice:
+
+    {[
+                any
+              /    \
+           value  void
+             |
+         immediate64
+             |
+         immediate
+    ]}
+*)
+module Layout : sig
+  (** A Layout.t is a full description of the runtime representation of values
+      of a given type. It includes sorts, but also the abstract top layout
+      [Any] and sublayouts of other sorts, such as [Immediate]. *)
+  type t
+
+  (******************************)
+  (* constants *)
+
+  (** Constant layouts are used both for user-written annotations and within
+      the type checker when we know a layout has no variables *)
+  type const = Builtin_attributes.const_layout =
+    | Any
+    | Value
+    | Void
+    | Immediate64
+    | Immediate
+  val string_of_const : const -> string
+  val equal_const : const -> const -> bool
+
+  (** This layout is the top of the layout lattice. All types have layout [any].
+      But we cannot compile run-time manipulations of values of types with layout
+      [any]. *)
+  val any : t
+
+  (** Value of types of this layout are not retained at all at runtime *)
+  val void : t
+
+  (** This is the layout of normal ocaml values *)
+  val value : t
+
+  (** Values of types of this layout are immediate on 64-bit platforms; on other
+      platforms, we know nothing other than that it's a value. *)
+  val immediate64 : t
+
+  (** We know for sure that values of types of this layout are always immediate *)
+  val immediate : t
+
+  (******************************)
+  (* construction *)
+
+  (** Create a fresh sort variable, packed into a layout. *)
+  val of_new_sort_var : unit -> t
+
+  val of_sort : sort -> t
+  val of_const : const -> t
+
+  (** Translate a user layout annotation to a layout *)
+  val of_const_option : Builtin_attributes.const_layout option -> default:t -> t
+
+  (** Find a layout in attributes, defaulting to ~default *)
+  val of_attributes : default:t -> Parsetree.attributes -> t
+
+  (******************************)
+  (* elimination *)
+
+  type desc =
+    | Const of const
+    | Var of Sort.var
+
+  (** Extract the [const] from a [Layout.t], looking through unified
+      sort variables. Returns [Var] if the final, non-variable layout has not
+      yet been determined. *)
+  val get : t -> desc
+
+  val of_desc : desc -> t
+
+  (** Returns the sort corresponding to the layout.  Call only on representable
+      layouts - errors on Any. *)
+  val sort_of_layout : t -> sort
+
+  (*********************************)
+  (* pretty printing *)
+
+  val to_string : t -> string
+  val format : Format.formatter -> t -> unit
+
+  (******************************)
+  (* errors *)
+  module Violation : sig
+    type nonrec t =
+      | Not_a_sublayout of t * t
+      | No_intersection of t * t
+
+    val report_with_offender :
+      offender:(Format.formatter -> unit) -> Format.formatter -> t -> unit
+    val report_with_offender_sort :
+      offender:(Format.formatter -> unit) -> Format.formatter -> t -> unit
+    val report_with_name : name:string -> Format.formatter -> t -> unit
+  end
+
+  (******************************)
+  (* relations *)
+
+  (** This checks for equality, and sets any variables to make two layouts
+      equal, if possible. e.g. [equate] on a var and [value] will set the
+      variable to be [value] *)
+  val equate : t -> t -> bool
+
+  (** Finds the intersection of two layouts, or returns a [Violation.t]
+      if an intersection does not exist. *)
+  val intersection : t -> t -> (t, Violation.t) Result.t
+
+  (** [sub t1 t2] returns [Ok t1] iff [t1] is a sublayout of
+    of [t2].  The current hierarchy is:
+
+    Any > Sort Value > Immediate64 > Immediate
+    Any > Sort Void
+
+    Return [Error _] if the coercion is not possible. We return a layout in the
+    success case because it sometimes saves time / is convenient to have the
+    same return type as intersection. *)
+  val sub : t -> t -> (t, Violation.t) result
+
+  (*********************************)
+  (* defaulting *)
+  val constrain_default_void : t -> const
+  val can_make_void : t -> bool
+  (* CJC XXX at the moment we default to void whenever we can.  But perhaps it
+     would be better to default to value before we actually ship. *)
+
+  val default_to_value : t -> unit
+end
+
+type layout = Layout.t
+
 (** Type expressions for the core language.
 
     The [type_desc] variant defines all the possible type expressions one can
@@ -61,8 +232,8 @@ type row_field
 type field_kind
 type commutable
 
-type type_desc =
-  | Tvar of string option
+and type_desc =
+  | Tvar of { name : string option; layout : layout }
   (** [Tvar (Some "a")] ==> ['a] or ['_a]
       [Tvar None]       ==> [_] *)
 
@@ -121,7 +292,7 @@ type type_desc =
   | Tvariant of row_desc
   (** Representation of polymorphic variants, see [row_desc]. *)
 
-  | Tunivar of string option
+  | Tunivar of { name : string option; layout : layout }
   (** Occurrence of a type variable introduced by a
       forall quantifier / [Tpoly]. *)
 
@@ -478,7 +649,6 @@ module Separability : sig
 end
 
 (* Type definitions *)
-
 type type_declaration =
   { type_params: type_expr list;
     type_arity: int;
@@ -500,21 +670,35 @@ type type_declaration =
 and type_decl_kind = (label_declaration, constructor_declaration) type_kind
 
 and ('lbl, 'cstr) type_kind =
-    Type_abstract of {immediate : Type_immediacy.t}
+    Type_abstract of {layout : layout}
+  (* The layout here is authoritative if the manifest is [None].  Otherwise,
+     it's an upper bound; it may be necessary to look at the manifest for the
+     most precise layout. *)
   | Type_record of 'lbl list  * record_representation
   | Type_variant of 'cstr list * variant_representation
   | Type_open
 
-and record_representation =
-    Record_regular                      (* All fields are boxed / tagged *)
-  | Record_float                        (* All fields are floats *)
-  | Record_unboxed of bool    (* Unboxed single-field record, inlined or not *)
-  | Record_inlined of int               (* Inlined record *)
-  | Record_extension of Path.t          (* Inlined record under extension *)
+and tag = Ordinary of {src_index: int;  (* Unique name (per type) *)
+                       runtime_tag: int}    (* The runtime tag *)
+        | Extension of Path.t * layout array
 
+and record_representation =
+  | Record_unboxed of layout
+  | Record_inlined of tag * variant_representation
+  (* For an inlined record, we record the representation of the variant that
+     contains it and the tag of the relevant constructor of that variant. *)
+  | Record_boxed of layout array
+  | Record_float
+
+
+(* For unboxed variants, we record the layout of the mandatory single argument.
+   For boxed variants, we record the layouts for the arguments of each
+   constructor.  For boxed inlined records, this is just a length 1 array with
+   the layout of the record itself, not the layouts of each field.  *)
 and variant_representation =
-    Variant_regular          (* Constant or boxed constructors *)
-  | Variant_unboxed          (* One unboxed single-field constructor *)
+  | Variant_unboxed of layout
+  | Variant_boxed of layout array array
+  | Variant_extensible
 
 and global_flag =
   | Global
@@ -527,6 +711,7 @@ and label_declaration =
     ld_mutable: mutable_flag;
     ld_global: global_flag;
     ld_type: type_expr;
+    ld_layout : layout;
     ld_loc: Location.t;
     ld_attributes: Parsetree.attributes;
     ld_uid: Uid.t;
@@ -546,8 +731,15 @@ and constructor_arguments =
   | Cstr_tuple of (type_expr * global_flag) list
   | Cstr_record of label_declaration list
 
-val kind_abstract : ('a,'b) type_kind
+val kind_abstract : layout:layout -> ('a,'b) type_kind
+val kind_abstract_value : ('a,'b) type_kind
+val kind_abstract_immediate : ('a,'b) type_kind
+val kind_abstract_any : ('a,'b) type_kind
 val decl_is_abstract : type_declaration -> bool
+
+(** Type kinds provide an upper bound on layouts of a type (which is precise if
+    the type has no manifest). *)
+val layout_bound_of_kind : ('a,'b) type_kind -> layout
 
 (* Returns the inner type, if unboxed. *)
 val decl_is_unboxed : type_declaration -> type_expr option
@@ -557,6 +749,8 @@ type extension_constructor =
     ext_type_path: Path.t;
     ext_type_params: type_expr list;
     ext_args: constructor_arguments;
+    ext_arg_layouts: layout array;
+    ext_constant: bool;
     ext_ret_type: type_expr option;
     ext_private: private_flag;
     ext_loc: Location.t;
@@ -665,8 +859,11 @@ type constructor_description =
     cstr_res: type_expr;                (* Type of the result *)
     cstr_existentials: type_expr list;  (* list of existentials *)
     cstr_args: (type_expr * global_flag) list;          (* Type of the arguments *)
+    cstr_arg_layouts: layout array;     (* Layouts of the arguments *)
     cstr_arity: int;                    (* Number of arguments *)
-    cstr_tag: constructor_tag;          (* Tag for heap blocks *)
+    cstr_tag: tag;                      (* Tag for heap blocks *)
+    cstr_repr: variant_representation;  (* Repr of the outer variant *)
+    cstr_constant: bool;                (* True if all args are void *)
     cstr_consts: int;                   (* Number of constant constructors *)
     cstr_nonconsts: int;                (* Number of non-const constructors *)
     cstr_generalized: bool;             (* Constrained return type? *)
@@ -677,15 +874,8 @@ type constructor_description =
     cstr_uid: Uid.t;
    }
 
-and constructor_tag =
-    Cstr_constant of int                (* Constant constructor (an int) *)
-  | Cstr_block of int                   (* Regular constructor (a block) *)
-  | Cstr_unboxed                        (* Constructor of an unboxed type *)
-  | Cstr_extension of Path.t * bool     (* Extension constructor
-                                           true if a constant false if a block*)
-
 (* Constructors are the same *)
-val equal_tag :  constructor_tag -> constructor_tag -> bool
+val equal_tag :  tag -> tag -> bool
 
 (* Constructors may be the same, given potential rebinding *)
 val may_equal_constr :
@@ -697,14 +887,20 @@ type label_description =
     lbl_arg: type_expr;                 (* Type of the argument *)
     lbl_mut: mutable_flag;              (* Is this a mutable field? *)
     lbl_global: global_flag;        (* Is this a nonlocal field? *)
+    lbl_layout : layout;                (* Layout of the argument *)
     lbl_pos: int;                       (* Position in block *)
+    lbl_num: int;                       (* Position in the type *)
     lbl_all: label_description array;   (* All the labels in this type *)
-    lbl_repres: record_representation;  (* Representation for this record *)
+    lbl_repres: record_representation;  (* Representation for outer record *)
     lbl_private: private_flag;          (* Read-only field? *)
     lbl_loc: Location.t;
     lbl_attributes: Parsetree.attributes;
     lbl_uid: Uid.t;
   }
+
+(** The special value we assign to lbl_pos for label descriptions corresponding
+    to void types, because they can't sensibly be projected. *)
+val lbl_pos_void : int
 
 (** Extracts the list of "value" identifiers bound by a signature.
     "Value" identifiers are identifiers for signature components that
@@ -748,6 +944,7 @@ val set_type_desc: type_expr -> type_desc -> unit
         (* Set directly the desc field, without sharing *)
 val set_level: type_expr -> int -> unit
 val set_scope: type_expr -> int -> unit
+val set_var_layout: type_expr -> layout -> unit
 val set_name:
     (Path.t * type_expr list) option ref ->
     (Path.t * type_expr list) option -> unit

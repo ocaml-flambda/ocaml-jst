@@ -74,7 +74,7 @@
 
    ;; TYPING
    ident path primitive shape types btype oprint subst predef datarepr
-   cmi_format persistent_env env type_immediacy errortrace
+   cmi_format persistent_env env errortrace
    typedtree printtyped ctype printtyp includeclass mtype envaux includecore
    tast_iterator tast_mapper signature_group cmt_format untypeast
    includemod includemod_errorprinter
@@ -278,7 +278,6 @@
     (cmi_format.mli as compiler-libs/cmi_format.mli)
     (persistent_env.mli as compiler-libs/persistent_env.mli)
     (env.mli as compiler-libs/env.mli)
-    (type_immediacy.mli as compiler-libs/type_immediacy.mli)
     (typedtree.mli as compiler-libs/typedtree.mli)
     (printtyped.mli as compiler-libs/printtyped.mli)
     (ctype.mli as compiler-libs/ctype.mli)

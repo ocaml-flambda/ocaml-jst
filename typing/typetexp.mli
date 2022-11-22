@@ -49,7 +49,7 @@ val transl_type_scheme:
 val reset_type_variables: unit -> unit
 val type_variable: Location.t -> string -> type_expr
 val transl_type_param:
-  Env.t -> Parsetree.core_type -> Typedtree.core_type
+  Env.t -> Parsetree.core_type -> layout -> Typedtree.core_type
 
 val get_alloc_mode : Parsetree.core_type -> alloc_mode_const
 
@@ -58,6 +58,9 @@ val narrow: unit -> variable_context
 val widen: variable_context -> unit
 
 exception Already_bound
+
+type value_loc =
+    Fun_arg | Fun_ret | Tuple | Poly_variant | Package_constraint | Object_field
 
 type error =
     Unbound_type_variable of string
@@ -81,6 +84,8 @@ type error =
   | Not_an_object of type_expr
   | Unsupported_extension of Clflags.Extension.t
   | Polymorphic_optional_param
+  | Non_value of
+      {vloc : value_loc; typ : type_expr; err : Layout.Violation.t}
 
 exception Error of Location.t * Env.t * error
 

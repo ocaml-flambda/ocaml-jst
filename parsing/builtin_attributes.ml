@@ -63,6 +63,9 @@ let builtin_attrs =
   ; "warn_on_literal_pattern"; "ocaml.warn_on_literal_pattern"
   ; "immediate"; "ocaml.immediate"
   ; "immediate64"; "ocaml.immediate64"
+  ; "void"; "ocaml.void"
+  ; "value"; "ocaml.value"
+  ; "any"; "ocaml.any"
   ; "boxed"; "ocaml.boxed"
   ; "unboxed"; "ocaml.unboxed"
   ; "principal"; "ocaml.principal"
@@ -385,9 +388,28 @@ let warn_on_literal_pattern attrs =
 let explicit_arity attrs =
   has_attribute ["ocaml.explicit_arity"; "explicit_arity"] attrs
 
-let immediate attrs = has_attribute ["ocaml.immediate"; "immediate"] attrs
+type const_layout =
+  | Any
+  | Value
+  | Void
+  | Immediate64
+  | Immediate
 
-let immediate64 attrs = has_attribute ["ocaml.immediate64"; "immediate64"] attrs
+let layout attrs =
+  List.find_map
+    (fun a -> match a.attr_name.txt with
+       | "ocaml.immediate"|"immediate" ->
+         (mark_used a.attr_name; Some Immediate)
+       | "ocaml.immediate64"|"immediate64" ->
+         (mark_used a.attr_name; Some Immediate64)
+       | "ocaml.void"|"void" ->
+         (mark_used a.attr_name; Some Void)
+       | "ocaml.value"|"value" ->
+         (mark_used a.attr_name; Some Value)
+       | "ocaml.any"|"any" ->
+         (mark_used a.attr_name; Some Any)
+       | _ -> None
+    ) attrs
 
 (* The "ocaml.boxed (default)" and "ocaml.unboxed (default)"
    attributes cannot be input by the user, they are added by the
