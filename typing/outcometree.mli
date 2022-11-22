@@ -104,6 +104,13 @@ and out_alloc_mode =
   | Oam_global
   | Oam_unknown
 
+and out_layout_annot =
+  | Olay_any
+  | Olay_value
+  | Olay_void
+  | Olay_immediate64
+  | Olay_immediate
+
 type out_class_type =
   | Octy_constr of out_ident * out_type list
   | Octy_arrow of string * out_type * out_class_type
@@ -137,7 +144,7 @@ and out_type_decl =
     otype_params: out_type_param list;
     otype_type: out_type;
     otype_private: Asttypes.private_flag;
-    otype_immediate: Type_immediacy.t;
+    otype_layout: out_layout_annot option;
     otype_unboxed: bool;
     otype_cstrs: (out_type * out_type) list }
 and out_extension_constructor =

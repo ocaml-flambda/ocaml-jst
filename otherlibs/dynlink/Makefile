@@ -101,8 +101,8 @@ COMPILERLIBS_SOURCES=\
   parsing/attr_helper.ml \
   typing/path.ml \
   typing/primitive.ml \
-  typing/type_immediacy.ml \
   typing/shape.ml \
+  typing/type_layout.ml \
   typing/types.ml \
   typing/btype.ml \
   typing/subst.ml \

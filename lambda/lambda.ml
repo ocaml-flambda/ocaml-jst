@@ -1115,11 +1115,10 @@ let map f =
   g
 
 (* To let-bind expressions to variables *)
-
-let bind_with_value_kind str (var, kind) exp body =
+let bind_with_value_kind let_kind (var, kind) exp body =
   match exp with
     Lvar var' when Ident.same var var' -> body
-  | _ -> Llet(str, kind, var, exp, body)
+  | _ -> Llet(let_kind, kind, var, exp, body)
 
 let bind str var exp body =
   bind_with_value_kind str (var, Pgenval) exp body
