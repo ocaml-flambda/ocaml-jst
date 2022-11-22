@@ -223,7 +223,8 @@ type record_mismatch =
                       * label_mismatch
   | Label_names of int * Ident.t * Ident.t
   | Label_missing of position * Ident.t
-  | Unboxed_float_representation of position
+  | Inlined_representation of position
+  | Float_representation of position
 
 type constructor_mismatch =
   | Type
@@ -256,7 +257,8 @@ type type_mismatch =
   | Record_mismatch of record_mismatch
   | Variant_mismatch of variant_mismatch
   | Unboxed_representation of position
-  | Immediate of Type_immediacy.Violation.t
+  | Extensible_representation of position
+  | Layout of Type_layout.Violation.t
 
 let report_label_mismatch first second ppf err =
   let pr fmt = Format.fprintf ppf fmt in
@@ -292,7 +294,11 @@ let report_record_mismatch first second decl ppf err =
   | Label_missing (ord, s) ->
       pr "@[<hv>The field %s is only present in %s %s.@]"
         (Ident.name s) (choose ord first second) decl
-  | Unboxed_float_representation ord ->
+  | Inlined_representation ord ->
+      pr "@[<hv>Their internal representations differ:@ %s %s %s.@]"
+        (choose ord first second) decl
+        "is an inlined record"
+  | Float_representation ord ->
       pr "@[<hv>Their internal representations differ:@ %s %s %s.@]"
         (choose ord first second) decl
         "uses unboxed float representation"
@@ -355,14 +361,12 @@ let report_type_mismatch0 first second decl ppf err =
       pr "Their internal representations differ:@ %s %s %s."
          (choose ord first second) decl
          "uses unboxed representation"
-  | Immediate violation ->
-      let first = StringLabels.capitalize_ascii first in
-      match violation with
-      | Type_immediacy.Violation.Not_always_immediate ->
-          pr "%s is not an immediate type." first
-      | Type_immediacy.Violation.Not_always_immediate_on_64bits ->
-          pr "%s is not a type that is always immediate on 64 bit platforms."
-            first
+  | Extensible_representation ord ->
+      pr "Their internal representations differ:@ %s %s %s."
+         (choose ord first second) decl
+         "is extensible"
+  | Layout v ->
+      Type_layout.Violation.report_with_name ~name:first ppf v
 
 let report_type_mismatch first second decl ppf err =
   if err = Manifest then () else
@@ -423,16 +427,21 @@ and compare_variants_with_representation ~loc env params1 params2 n
       cstrs1 cstrs2 rep1 rep2
   =
   let err = compare_variants ~loc env params1 params2 n cstrs1 cstrs2 in
+  (* Layouts are checked by the type equality checks in compare_variants *)
   match err, rep1, rep2 with
-  | None, Variant_regular, Variant_regular
-  | None, Variant_unboxed, Variant_unboxed ->
-     None
+  | None, Variant_unboxed _, Variant_unboxed _
+  | None, Variant_boxed _, Variant_boxed _
+  | None, Variant_extensible, Variant_extensible -> None
   | Some err, _, _ ->
      Some (Variant_mismatch err)
-  | None, Variant_unboxed, Variant_regular ->
+  | None, Variant_unboxed _, _ ->
      Some (Unboxed_representation First)
-  | None, Variant_regular, Variant_unboxed ->
+  | None, _, Variant_unboxed _ ->
      Some (Unboxed_representation Second)
+  | None, Variant_extensible, _ ->
+    Some (Extensible_representation First)
+  | None, _, Variant_extensible ->
+    Some (Extensible_representation Second)
 
 and compare_labels env params1 params2
       (ld1 : Types.label_declaration)
@@ -496,18 +505,19 @@ let compare_records_with_representation ~loc env params1 params2 n
      | Record_unboxed _, _ -> Some (Unboxed_representation First)
      | _, Record_unboxed _ -> Some (Unboxed_representation Second)
 
+     | Record_inlined _, Record_inlined _ -> None
+     | Record_inlined _, _ ->
+        Some (Record_mismatch (Inlined_representation First))
+     | _, Record_inlined _ ->
+        Some (Record_mismatch (Inlined_representation Second))
+
      | Record_float, Record_float -> None
      | Record_float, _ ->
-        Some (Record_mismatch (Unboxed_float_representation First))
+        Some (Record_mismatch (Float_representation First))
      | _, Record_float ->
-        Some (Record_mismatch (Unboxed_float_representation Second))
+        Some (Record_mismatch (Float_representation Second))
 
-     | Record_regular, Record_regular
-     | Record_inlined _, Record_inlined _
-     | Record_extension _, Record_extension _ -> None
-     | (Record_regular|Record_inlined _|Record_extension _),
-       (Record_regular|Record_inlined _|Record_extension _) ->
-        assert false
+     | Record_boxed _, Record_boxed _ -> None
 
 let type_declarations ?(equality = false) ~loc env ~mark name
       decl1 path decl2 =
@@ -538,10 +548,10 @@ let type_declarations ?(equality = false) ~loc env ~mark name
   in
   if err <> None then err else
   let err = match (decl1.type_kind, decl2.type_kind) with
-      (_, Type_abstract { immediate = imm }) ->
-       (match Ctype.check_decl_immediate env decl1 imm with
-        | Ok () -> None
-        | Error v -> Some (Immediate v))
+      (_, Type_abstract { layout }) ->
+       (match Ctype.check_decl_layout env decl1 layout with
+        | Ok _ -> None
+        | Error v -> Some (Layout v))
     | (Type_variant (cstrs1, rep1), Type_variant (cstrs2, rep2)) ->
         if mark then begin
           let mark usage cstrs =

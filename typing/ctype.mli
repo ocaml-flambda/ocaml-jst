@@ -70,6 +70,10 @@ module Unification_trace: sig
     | Escape of {context: type_expr option; kind:'a escape}
     | Incompatible_fields of {name:string; diff: type_expr diff }
     | Rec_occur of type_expr * type_expr
+    | Bad_layout of type_expr * Type_layout.Violation.t
+    | Bad_layout_sort of type_expr * Type_layout.Violation.t
+    | Unequal_univar_layouts of
+        type_expr * Type_layout.t * type_expr * Type_layout.t
 
   type t = desc elt list
 
@@ -124,10 +128,10 @@ val set_levels: levels -> unit
 val create_scope : unit -> int
 
 val newty: type_desc -> type_expr
-val newvar: ?name:string -> unit -> type_expr
-val newvar2: ?name:string -> int -> type_expr
+val newvar: ?name:string -> Type_layout.t -> type_expr
+val newvar2: ?name:string -> int -> Type_layout.t -> type_expr
         (* Return a fresh variable *)
-val new_global_var: ?name:string -> unit -> type_expr
+val new_global_var: ?name:string -> Type_layout.t -> type_expr
         (* Return a fresh variable, bound at toplevel
            (as type variables ['a] in type constraints). *)
 val newobj: type_expr -> type_expr
@@ -277,6 +281,13 @@ val unify_gadt:
 val unify_var: Env.t -> type_expr -> type_expr -> unit
         (* Same as [unify], but allow free univars when first type
            is a variable. *)
+val unify_delaying_layout_checks :
+  Env.t -> type_expr -> type_expr -> (type_expr * Type_layout.t) list
+        (* Same as [unify], but don't check layout compatibility.  Instead,
+           return the checks that would have been performed.  For use in
+           typedecl before well-foundedness checks have made layout checking
+           safe. *)
+
 val unify_alloc_mode: alloc_mode -> alloc_mode -> unit
 val filter_arrow: Env.t -> type_expr -> arg_label ->
                   alloc_mode * type_expr * alloc_mode * type_expr
@@ -366,8 +377,8 @@ val cyclic_abbrev: Env.t -> Ident.t -> type_expr -> bool
 val is_contractive: Env.t -> Path.t -> bool
 val normalize_type: type_expr -> unit
 
-val remove_mode_variables: type_expr -> unit
-        (* Ensure mode variables are fully determined *)
+val remove_mode_and_layout_variables: type_expr -> unit
+        (* Ensure mode and layout variables are fully determined *)
 
 val closed_schema: Env.t -> type_expr -> bool
         (* Check whether the given type scheme contains no non-generic
@@ -410,6 +421,23 @@ val mcomp : Env.t -> type_expr -> type_expr -> unit
 
 val get_unboxed_type_representation : Env.t -> type_expr -> type_expr
 
-val kind_immediacy : type_kind -> Type_immediacy.t
-val check_decl_immediate : Env.t -> type_declaration -> Type_immediacy.t -> (unit, Type_immediacy.Violation.t) result
-val check_type_immediate : Env.t -> type_expr -> Type_immediacy.t -> (unit, Type_immediacy.Violation.t) result
+(* Cheap upper bound on layout.  Will not expand unboxed types - call
+   [type_layout] if that's needed. *)
+val estimate_type_layout : Env.t ->  type_expr -> Type_layout.t
+val type_layout : Env.t -> type_expr -> Type_layout.t
+
+(* Find a type's sort (constraining it to be an arbitrary sort variable, if
+   needed) *)
+val type_sort : Env.t -> type_expr -> (sort, Type_layout.Violation.t) result
+
+(* Layout checking.  For convenience, on success these functions return the most
+   precise layout we found for the given type during checking (which may be an
+   upper bound). *)
+(* CJC XXX errors: probably changes these to raise on error, like unify, when we
+   work on errors *)
+val check_decl_layout : Env.t -> type_declaration -> Type_layout.t
+  -> (Type_layout.t, Type_layout.Violation.t) result
+val check_type_layout : Env.t -> type_expr -> Type_layout.t
+  -> (Type_layout.t, Type_layout.Violation.t) result
+val constrain_type_layout : Env.t -> type_expr -> Type_layout.t
+  -> (Type_layout.t, Type_layout.Violation.t) result

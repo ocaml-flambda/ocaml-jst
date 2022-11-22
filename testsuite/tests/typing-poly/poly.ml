@@ -1005,12 +1005,12 @@ type u = 'a t as 'a
 |}];;
 
 (* pass typetexp, but fails during Typedecl.check_recursion *)
-type ('a, 'b) a = 'a -> unit constraint 'a = [> `B of ('a, 'b) b as 'b]
-and  ('a, 'b) b = 'b -> unit constraint 'b = [> `A of ('a, 'b) a as 'a];;
+type ('a, 'b) a = 'a -> unit constraint 'a = [> `B of ('a, 'b) b as 'b] [@@value]
+and  ('a, 'b) b = 'b -> unit constraint 'b = [> `A of ('a, 'b) a as 'a] [@@value] ;;
 [%%expect {|
-Line 1, characters 0-71:
-1 | type ('a, 'b) a = 'a -> unit constraint 'a = [> `B of ('a, 'b) b as 'b]
-    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Line 1, characters 0-81:
+1 | type ('a, 'b) a = 'a -> unit constraint 'a = [> `B of ('a, 'b) b as 'b] [@@value]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Error: The definition of a contains a cycle:
        [> `B of ('a, 'b) b as 'b ] as 'a
 |}];;

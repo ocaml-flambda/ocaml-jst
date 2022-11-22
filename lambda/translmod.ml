@@ -577,7 +577,7 @@ and transl_module ~scopes cc rootpath mexp =
   | Tmod_constraint(arg, _, _, ccarg) ->
       transl_module ~scopes (compose_coercions cc ccarg) rootpath arg
   | Tmod_unpack(arg, _) ->
-      apply_coercion loc Strict cc (Translcore.transl_exp ~scopes arg)
+      apply_coercion loc Strict cc (Translcore.transl_exp ~scopes None arg)
 
 and transl_struct ~scopes loc fields cc rootpath {str_final_env; str_items; _} =
   transl_structure ~scopes loc fields cc rootpath str_final_env str_items
@@ -643,15 +643,20 @@ and transl_structure ~scopes loc fields cc rootpath final_env = function
       size
   | item :: rem ->
       match item.str_desc with
-      | Tstr_eval (expr, _) ->
+      | Tstr_eval (expr, layout, _) ->
           let body, size =
             transl_structure ~scopes loc fields cc rootpath final_env rem
           in
-          Lsequence(transl_exp ~scopes expr, body), size
+          if Type_layout.Const.can_make_void layout then
+            catch_void (fun void_k -> transl_exp ~scopes void_k expr)
+              body Pgenval,
+            size
+          else Lsequence(transl_exp ~scopes None expr, body), size
       | Tstr_value(rec_flag, pat_expr_list) ->
           (* Translate bindings first *)
           let mk_lam_let =
-            transl_let ~scopes ~in_structure:true rec_flag pat_expr_list Pgenval in
+            transl_let ~scopes ~in_structure:true rec_flag pat_expr_list Pgenval
+          in
           let ext_fields =
             List.rev_append (let_bound_idents pat_expr_list) fields in
           (* Then, translate remainder of struct *)
@@ -1093,10 +1098,17 @@ let transl_store_structure ~scopes glob map prims aliases str =
       Lambda.subst no_env_update subst cont
     | item :: rem ->
         match item.str_desc with
-        | Tstr_eval (expr, _attrs) ->
-            Lsequence(Lambda.subst no_env_update subst
-                        (transl_exp ~scopes expr),
-                      transl_store ~scopes rootpath subst cont rem)
+        | Tstr_eval (expr, layout,  _attrs) ->
+            let body = transl_store ~scopes rootpath subst cont rem in
+            if Type_layout.Const.can_make_void layout then
+              catch_void
+                (fun void_k -> Lambda.subst no_env_update subst
+                                 (transl_exp ~scopes void_k expr))
+                body Pgenval
+            else
+              Lsequence(Lambda.subst no_env_update subst
+                          (transl_exp ~scopes None expr),
+                        body)
         | Tstr_value(rec_flag, pat_expr_list) ->
             let ids = let_bound_idents pat_expr_list in
             let lam =
@@ -1507,10 +1519,16 @@ let transl_store_gen ~scopes module_name ({ str_items = str }, restr) topl =
   let f str =
     let expr =
       match str with
-      | [ { str_desc = Tstr_eval (expr, _attrs) } ] when topl ->
+      | [ { str_desc = Tstr_eval (expr, layout, _attrs) } ] when topl ->
         assert (size = 0);
-        Lambda.subst (fun _ _ env -> env) !transl_store_subst
-          (transl_exp ~scopes expr)
+        if Type_layout.Const.can_make_void layout then
+          catch_void (fun void_k ->
+            Lambda.subst (fun _ _ env -> env) !transl_store_subst
+              (transl_exp ~scopes void_k expr))
+            lambda_unit Pintval
+        else
+          Lambda.subst (fun _ _ env -> env) !transl_store_subst
+            (transl_exp ~scopes None expr)
       | str -> transl_store_structure ~scopes module_id map prims aliases str
     in
     Translcore.declare_probe_handlers expr
@@ -1598,14 +1616,23 @@ let close_toplevel_term (lam, ()) =
 
 let transl_toplevel_item ~scopes item =
   match item.str_desc with
-    Tstr_eval (expr, _)
+  | Tstr_eval (expr, layout, _) ->
+      (* This and the next case are special compilation for toplevel "let _ =
+         expr", so that Toploop can display the result of the expression.
+         Otherwise, the normal compilation would result in a Lsequence returning
+         unit. *)
+      if Type_layout.Const.can_make_void layout then
+        catch_void (fun void_k -> transl_exp ~scopes void_k expr)
+          lambda_unit Pintval
+      else transl_exp ~scopes None expr
   | Tstr_value(Nonrecursive,
-               [{vb_pat = {pat_desc=Tpat_any};vb_expr = expr}]) ->
-      (* special compilation for toplevel "let _ = expr", so
-         that Toploop can display the result of the expression.
-         Otherwise, the normal compilation would result
-         in a Lsequence returning unit. *)
-      transl_exp ~scopes expr
+               [{vb_pat = {pat_desc=Tpat_any}; vb_sort = sort;
+                 vb_expr = expr}]) ->
+      if Type_layout.Const.can_make_void (Sort sort) then
+        catch_void (fun void_k -> transl_exp ~scopes void_k expr)
+          lambda_unit Pintval
+      else
+        transl_exp ~scopes None expr
   | Tstr_value(rec_flag, pat_expr_list) ->
       let idents = let_bound_idents pat_expr_list in
       transl_let ~scopes ~in_structure:true rec_flag pat_expr_list

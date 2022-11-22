@@ -66,13 +66,13 @@ type type_structure =
   | Algebraic of branching * structure_boxed
 
 let unboxed_of_record_repr = function
-  | Record_unboxed _ -> Unboxed
-  | ( Record_regular | Record_float | Record_inlined _ | Record_extension _ ) ->
-    Boxed
+  | Record_unboxed _ | Record_inlined (_, Variant_unboxed _)-> Unboxed
+  | Record_inlined (_, (Variant_boxed _ | Variant_extensible))
+  | Record_boxed _ | Record_float -> Boxed
 
 let unboxed_of_variant_repr = function
-  | Variant_regular -> Boxed
-  | Variant_unboxed -> Unboxed
+  | Variant_boxed _ | Variant_extensible -> Boxed
+  | Variant_unboxed _ -> Unboxed
 
 let demultiply_list
   : type a b. a list -> (a -> b) -> b multiplicity
@@ -257,7 +257,7 @@ let free_variables ty =
   Ctype.free_variables (Ctype.repr ty)
   |> List.map (fun {desc; id; _} ->
       match desc with
-      | Tvar text -> {text; id}
+      | Tvar { name=text; _ } -> {text; id}
       | _ ->
           (* Ctype.free_variables only returns Tvar nodes *)
           assert false)
@@ -472,8 +472,8 @@ let check_type
     (* "Indifferent" case, the empty context is sufficient. *)
     | (_                  , Ind    ) -> empty
     (* Variable case, add constraint. *)
-    | (Tvar(alpha)        , m      ) ->
-        TVarMap.singleton {text = alpha; id = ty.Types.id} m
+    | (Tvar {name}     , m      ) ->
+        TVarMap.singleton {text = name; id = ty.Types.id} m
     (* "Separable" case for constructors with known memory representation. *)
     | (Tarrow _           , Sep    )
     | (Ttuple _           , Sep    )
@@ -544,7 +544,8 @@ let worst_msig decl = List.map (fun _ -> Deepsep) decl.type_params
     Note: this differs from {!Types.Separability.default_signature},
     which does not have access to the declaration and its immediacy. *)
 let msig_of_external_type env decl =
-  if Result.is_ok (Ctype.check_decl_immediate env decl Always_on_64bits)
+  if Result.is_error (Ctype.check_decl_layout env decl Type_layout.value)
+     || Result.is_ok (Ctype.check_decl_layout env decl Type_layout.immediate64)
   then best_msig decl
   else worst_msig decl
 
@@ -610,8 +611,8 @@ let msig_of_context : decl_loc:Location.t -> parameters:type_expr list
         | Ind -> true
         | Sep | Deepsep -> false in
       match param_instance.desc with
-      | Tvar text ->
-          let var = {text; id = param_instance.Types.id} in
+      | Tvar { name } ->
+          let var = {text=name; id = param_instance.Types.id} in
           (get context var) :: acc, (set_ind context var)
       | _ ->
           let instance_exis = free_variables param_instance in

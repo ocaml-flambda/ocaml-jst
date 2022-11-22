@@ -32,7 +32,7 @@ val newty2: int -> type_desc -> type_expr
         (* Create a type *)
 val newgenty: type_desc -> type_expr
         (* Create a generic type *)
-val newgenvar: ?name:string -> unit -> type_expr
+val newgenvar: ?name:string -> Type_layout.t -> type_expr
         (* Return a fresh generic variable *)
 
 (* Use Tsubst instead
@@ -242,7 +242,8 @@ val set_univar: type_expr option ref -> type_expr -> unit
 val set_kind: field_kind option ref -> field_kind -> unit
 val set_commu: commutable ref -> commutable -> unit
 val set_typeset: TypeSet.t ref -> TypeSet.t -> unit
-        (* Set references, logging the old value *)
+val set_var_layout: type_expr -> layout -> unit
+     (* Set references, logging the old value *)
 
 (**** Forward declarations ****)
 val print_raw: (Format.formatter -> type_expr -> unit) ref

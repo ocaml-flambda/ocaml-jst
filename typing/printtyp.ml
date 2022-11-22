@@ -495,7 +495,9 @@ let rec raw_type ppf ty =
   end
 and raw_type_list tl = raw_list raw_type tl
 and raw_type_desc ppf = function
-    Tvar name -> fprintf ppf "Tvar %a" print_name name
+    Tvar { name; layout } ->
+      fprintf ppf "Tvar (@,%a,@,%s)" print_name name
+        (Type_layout.to_string layout)
   | Tarrow((l,arg,ret),t1,t2,c) ->
       fprintf ppf "@[<hov1>Tarrow((\"%s\",%a,%a),@,%a,@,%a,@,%s)@]"
         (string_of_label l) Alloc_mode.print arg Alloc_mode.print ret
@@ -520,7 +522,9 @@ and raw_type_desc ppf = function
   | Tnil -> fprintf ppf "Tnil"
   | Tlink t -> fprintf ppf "@[<1>Tlink@,%a@]" raw_type t
   | Tsubst t -> fprintf ppf "@[<1>Tsubst@,%a@]" raw_type t
-  | Tunivar name -> fprintf ppf "Tunivar %a" print_name name
+  | Tunivar { name; layout } ->
+      fprintf ppf "Tunivar (@,%a,@,%s)" print_name name
+        (Type_layout.to_string layout)
   | Tpoly (t, tl) ->
       fprintf ppf "@[<hov1>Tpoly(@,%a,@,%a)@]"
         raw_type t
@@ -774,7 +778,7 @@ let named_weak_vars = ref String.Set.empty
 let reset_names () = names := []; name_counter := 0; named_vars := []
 let add_named_var ty =
   match ty.desc with
-    Tvar (Some name) | Tunivar (Some name) ->
+    Tvar { name = Some name } | Tunivar { name = Some name } ->
       if List.mem name !named_vars then () else
       named_vars := name :: !named_vars
   | _ -> ()
@@ -810,7 +814,7 @@ let name_of_type name_generator t =
     try TypeMap.find t !weak_var_map with Not_found ->
     let name =
       match t.desc with
-        Tvar (Some name) | Tunivar (Some name) ->
+        Tvar { name = Some name } | Tunivar { name = Some name } ->
           (* Some part of the type we've already printed has assigned another
            * unification variable to that name. We want to keep the name, so try
            * adding a number until we find a name that's not taken. *)
@@ -1195,8 +1199,8 @@ let rec tree_of_type_decl id decl =
   | Some ty ->
       let vars = free_variables ty in
       List.iter
-        (function {desc = Tvar (Some "_")} as ty ->
-            if List.memq ty vars then ty.desc <- Tvar None
+        (function {desc = Tvar { name = Some "_"; layout }} as ty ->
+             if List.memq ty vars then ty.desc <- Tvar { name = None; layout }
           | _ -> ())
         params
   | None -> ()
@@ -1225,7 +1229,7 @@ let rec tree_of_type_decl id decl =
   in
   begin match decl.type_kind with
   | Type_abstract _ -> ()
-  | Type_variant (cstrs, _rep) ->
+  | Type_variant (cstrs, _) ->
       List.iter
         (fun c ->
            mark_loops_constructor_arguments c.cd_args;
@@ -1248,7 +1252,7 @@ let rec tree_of_type_decl id decl =
           decl.type_manifest = None || decl.type_private = Private
       | Type_record _ ->
           decl.type_private = Private
-      | Type_variant (tll, _rep) ->
+      | Type_variant (tll, _) ->
           decl.type_private = Private ||
           List.exists (fun cd -> cd.cd_res <> None) tll
       | Type_open ->
@@ -1284,35 +1288,47 @@ let rec tree_of_type_decl id decl =
   in
   let (name, args) = type_defined decl in
   let constraints = tree_of_constraints params in
-  let ty, priv, unboxed, imm =
+  let olayout_of_layout = function
+    | Builtin_attributes.Any -> Olay_any
+    | Builtin_attributes.Value -> Olay_value
+    | Builtin_attributes.Void -> Olay_void
+    | Builtin_attributes.Immediate64 -> Olay_immediate64
+    | Builtin_attributes.Immediate -> Olay_immediate
+  in
+  let lay =
+    Option.map olayout_of_layout
+      (Builtin_attributes.layout decl.type_attributes)
+  in
+  let ty, priv, unboxed =
     match decl.type_kind with
-    | Type_abstract {immediate=imm} ->
+    | Type_abstract _ ->
         begin match ty_manifest with
-        | None -> (Otyp_abstract, Public, false, imm)
-        | Some ty ->
-            tree_of_typexp false ty, decl.type_private, false, imm
+        | None -> (Otyp_abstract, Public, false)
+        | Some ty -> tree_of_typexp false ty, decl.type_private, false
         end
     | Type_variant (cstrs, rep) ->
+        let unboxed =
+          match rep with
+          | Variant_unboxed _ -> true
+          | Variant_boxed _ | Variant_extensible -> false
+        in
         tree_of_manifest (Otyp_sum (List.map tree_of_constructor cstrs)),
         decl.type_private,
-        (rep = Variant_unboxed),
-        Type_immediacy.Unknown
+        unboxed
     | Type_record(lbls, rep) ->
         tree_of_manifest (Otyp_record (List.map tree_of_label lbls)),
         decl.type_private,
-        (match rep with Record_unboxed _ -> true | _ -> false),
-        Type_immediacy.Unknown
+        (match rep with Record_unboxed _ -> true | _ -> false)
     | Type_open ->
         tree_of_manifest Otyp_open,
         decl.type_private,
-        false,
-        Type_immediacy.Unknown
+        false
   in
     { otype_name = name;
       otype_params = args;
       otype_type = ty;
       otype_private = priv;
-      otype_immediate = imm;
+      otype_layout = lay;
       otype_unboxed = unboxed;
       otype_cstrs = constraints }
 
@@ -1662,7 +1678,7 @@ let dummy =
   {
     type_params = [];
     type_arity = 0;
-    type_kind = Types.kind_abstract;
+    type_kind = Types.kind_abstract_value;
     type_private = Public;
     type_manifest = None;
     type_variance = [];
@@ -1970,7 +1986,7 @@ let hide_variant_name t =
   | {desc = Tvariant row} as t when (row_repr row).row_name <> None ->
       newty2 t.level
         (Tvariant {(row_repr row) with row_name = None;
-                   row_more = newvar2 (row_more row).level})
+                   row_more = newvar2 (row_more row).level Type_layout.value})
   | _ -> t
 
 let prepare_expansion (t, t') =
@@ -2130,6 +2146,20 @@ let explanation intro prev env = function
                 {[ The type int occurs inside int list -> 'a |}
            *)
       end
+  | Trace.Bad_layout (t,e) ->
+      Some (dprintf "@ @[<hov>%a@]"
+              (Type_layout.Violation.report_with_offender
+                 ~offender:(fun ppf -> type_expr ppf t)) e)
+  | Trace.Bad_layout_sort (t,e) ->
+      Some (dprintf "@ @[<hov>%a@]"
+              (Type_layout.Violation.report_with_offender_sort
+                 ~offender:(fun ppf -> type_expr ppf t)) e)
+  | Trace.Unequal_univar_layouts (t1,l1,t2,l2) ->
+      Some (dprintf "@,@[<hov>Universal variables %a and %a should be equal, \
+                     but@ the former has layout %s,@ and the latter has \
+                     layout %s@]"
+              type_expr t1 type_expr t2
+              (Type_layout.to_string l1) (Type_layout.to_string l2))
 
 let mismatch intro env trace =
   Trace.explain trace (fun ~prev h -> explanation intro prev env h)
