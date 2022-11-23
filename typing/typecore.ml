@@ -545,6 +545,40 @@ let has_local_attr_pat ppat =
 let has_local_attr_exp pexp =
   has_local_attr pexp.pexp_loc pexp.pexp_attributes
 
+let mode_cross env (ty : type_expr) mode =
+  if is_principal ty then begin
+    match immediacy env ty with
+    | Type_immediacy.Always -> Value_mode.newvar ()
+    | Type_immediacy.Always_on_64bits when !Clflags.native_code && Sys.word_size = 64 ->
+      begin
+        (* if !Clflags.verbose then begin
+         *   Format.eprintf "@[mode crossed!!@.%a@.@]" Printtyp.raw_type_expr  ty
+         * end; *)
+        Value_mode.newvar ()  (* floating and relaxed *)
+      end
+    | _ -> begin
+      (* if !Clflags.verbose then begin
+       *   Format.eprintf "@[mode not crossed because not immediate@.%a@.@]"
+       *     Printtyp.raw_type_expr ty
+       * end; *)
+      mode
+    end
+  end
+  else
+    begin
+      (* if !Clflags.verbose then begin
+       *   Format.eprintf "@[mode not crossed because not principal @.%a level only %i @. n@]"
+       *     Printtyp.raw_type_expr ty ty.level
+       * end; *)
+      mode
+    end
+
+let expect_mode_cross env (ty : type_expr) (mode : expected_mode) =
+  {mode with mode = mode_cross env ty mode.mode}
+
+let expect_pat_mode_cross env (ty : type_expr) (mode : expected_pat_mode) =
+  {mode with mode = mode_cross env ty mode.mode}
+
 (* Typing of patterns *)
 
 (* unification inside type_exp and type_expect *)
@@ -1957,7 +1991,7 @@ and type_pat_aux
       end
   | Ppat_var name ->
       let ty = instance expected_ty in
-      let alloc_mode = alloc_mode in
+      let alloc_mode = expect_pat_mode_cross !env expected_ty alloc_mode in
       let id = (* PR#7330 *)
         if name.txt = "*extension*" then
           Ident.create_local name.txt
@@ -2020,6 +2054,7 @@ and type_pat_aux
       assert construction_not_used_in_counterexamples;
       type_pat Value sq expected_ty (fun q ->
         let ty_var, mode = solve_Ppat_alias ~refine env q in
+        let mode = mode_cross !env expected_ty mode in 
         let id =
           enter_variable ~is_as_variable:true loc name mode
             ty_var sp.ppat_attributes
@@ -2366,7 +2401,7 @@ and type_pat_aux
       in
       let cty, ty, expected_ty' =
         solve_Ppat_constraint ~refine loc env type_mode sty expected_ty in
-      type_pat category sp' expected_ty' (fun p ->
+      type_pat ~alloc_mode category sp' expected_ty' (fun p ->
         (*Format.printf "%a@.%a@."
           Printtyp.raw_type_expr ty
           Printtyp.raw_type_expr p.pat_type;*)
@@ -3740,18 +3775,20 @@ and type_expect_
        [Nolabel, sbody]) ->
       if not (Clflags.Extension.is_enabled Local) then
         raise (Typetexp.Error (loc, Env.empty, Local_not_enabled));
-      submode ~loc ~env Value_mode.local expected_mode;
+      let mode = expect_mode_cross env ty_expected mode_local in
+      submode ~loc ~env mode.mode expected_mode;
       let exp =
-        type_expect ?in_function ~recarg env mode_local sbody
+        type_expect ?in_function ~recarg env mode sbody
           ty_expected_explained
       in
       { exp with exp_loc = loc }
   | Pexp_apply
       ({ pexp_desc = Pexp_extension({txt = ("ocaml.local" | "local")}, PStr []) },
        [Nolabel, sbody]) ->
-      submode ~loc ~env Value_mode.local expected_mode;
+      let mode = expect_mode_cross env ty_expected mode_local in
+      submode ~loc ~env mode.mode expected_mode;
       let exp =
-        type_expect ?in_function ~recarg env mode_local sbody
+        type_expect ?in_function ~recarg env mode sbody
           ty_expected_explained
       in
       { exp with exp_loc = loc }
@@ -3897,7 +3934,7 @@ and type_expect_
       let expl =
         List.map2
           (fun body (ty, argument_mode) ->
-             type_expect env (mode_nontail argument_mode)
+             type_expect env (mode_nontail (mode_cross env ty argument_mode))
                body (mk_expected ty))
           sexpl types_and_modes
       in
@@ -4119,10 +4156,25 @@ and type_expect_
         | Nonlocal -> Value_mode.local_to_regional rmode
         | Unrestricted -> rmode
       in
-      submode ~loc ~env mode expected_mode;
+
+      if !Clflags.principal then
+        begin_def ();
+
+      (* ty_arg is the type of field *)
+      (* ty_res is the type of record *)
+      (* they could share type variables *)
+      (* which are now instantiated *)
       let (_, ty_arg, ty_res) = instance_label false label in
+
+      (* we now link the two record types *)
       unify_exp env record ty_res;
-      rue {
+
+      if !Clflags.principal then begin
+          end_def ();
+          generalize_structure ty_arg
+        end;
+      let mode = mode_cross env ty_arg mode in
+      ruem ~mode ~expected_mode {
         exp_desc = Texp_field(record, lid, label);
         exp_loc = loc; exp_extra = [];
         exp_type = ty_arg;
@@ -4153,7 +4205,7 @@ and type_expect_
       let to_unify = Predef.type_array ty in
       with_explanation (fun () ->
         unify_exp_types loc env to_unify (generic_instance ty_expected));
-      let argument_mode = mode_global in
+      let argument_mode = expect_mode_cross env ty mode_global in 
       let argl =
         List.map
           (fun sarg -> type_expect env argument_mode sarg (mk_expected ty))
@@ -5109,6 +5161,7 @@ and type_function ?in_function
       Final_arg { partial_mode = Alloc_mode.join [arg_mode; alloc_mode] }
     end
   in
+  let cases_expected_mode = expect_mode_cross env ty_res cases_expected_mode in 
   let in_function =
     if uncurried_function then
       Some (loc_fun, ty_fun, region_locked)
@@ -5646,6 +5699,7 @@ and type_argument ?explanation ?recarg env (mode : expected_mode) sarg
       end
       end
   | None ->
+      let mode = expect_mode_cross env ty_expected' mode in
       let texp = type_expect ?recarg env mode sarg
         (mk_expected ?explanation ty_expected') in
       unify_exp env texp ty_expected;
@@ -5696,8 +5750,9 @@ and type_application env app_loc expected_mode position funct funct_mode sargs =
       let marg, ty_arg, mres, ty_res =
         filter_arrow env (instance funct.exp_type) Nolabel
       in
+      let mode = mode_cross env ty_res (Value_mode.of_alloc mres) in
       submode ~loc:app_loc ~env
-        (Value_mode.of_alloc mres) expected_mode;
+        mode expected_mode;
       let marg =
         mode_argument ~funct ~index:0 ~position ~partial_app:false marg
       in
@@ -5723,6 +5778,7 @@ and type_application env app_loc expected_mode position funct funct_mode sargs =
            true)
         end
       in
+      if !Clflags.principal then begin_def () ;
       let ty_ret, mode_ret, args =
         collect_apply_args env funct ignore_labels ty (instance ty)
           (Value_mode.regional_to_local_alloc funct_mode) sargs
@@ -5738,8 +5794,12 @@ and type_application env app_loc expected_mode position funct funct_mode sargs =
         type_omitted_parameters expected_mode env
           ty_ret mode_ret args
       in
-      submode ~loc:app_loc ~env
-        (Value_mode.of_alloc mode_ret) expected_mode;
+      if !Clflags.principal then begin
+        end_def () ;
+        generalize_structure ty_ret
+      end;
+      let mode = mode_cross env ty_ret (Value_mode.of_alloc mode_ret) in
+      submode ~loc:app_loc ~env mode expected_mode;
       args, ty_ret, position
 
 and type_construct env (expected_mode : expected_mode) loc lid sarg
