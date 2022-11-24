@@ -2748,7 +2748,7 @@ let remaining_function_type ty_ret mode_ret rev_args =
   in
   ty_ret
 
-let collect_unknown_apply_args env funct ty_fun mode_fun rev_args sargs =
+let collect_unknown_apply_args env funct ty_fun mode_fun rev_args sargs ret_tvar =
   let labels_match ~param ~arg =
     param = arg
     || !Clflags.classic && arg = Nolabel && not (is_optional param)
@@ -2767,7 +2767,7 @@ let collect_unknown_apply_args env funct ty_fun mode_fun rev_args sargs =
           | Tvar _ ->
               let ty_arg = newvar () in
               let ty_res = newvar () in
-              if get_level ty_fun >= get_level ty_arg &&
+              if ret_tvar &&
                  not (is_prim ~name:"%identity" funct) &&
                  not (is_prim ~name:"%obj_magic" funct)
               then
@@ -2801,7 +2801,7 @@ let collect_unknown_apply_args env funct ty_fun mode_fun rev_args sargs =
   in
   loop ty_fun mode_fun rev_args sargs
 
-let collect_apply_args env funct ignore_labels ty_fun ty_fun0 mode_fun sargs =
+let collect_apply_args env funct ignore_labels ty_fun ty_fun0 mode_fun sargs ret_tvar =
   let warned = ref false in
   let rec loop ty_fun ty_fun0 mode_fun rev_args sargs =
     let ty_fun' = expand_head env ty_fun in
@@ -2882,7 +2882,7 @@ let collect_apply_args env funct ignore_labels ty_fun ty_fun0 mode_fun sargs =
     | _ ->
         (* We're not looking at a *known* function type anymore, or there are no
            arguments left. *)
-        collect_unknown_apply_args env funct ty_fun0 mode_fun rev_args sargs
+        collect_unknown_apply_args env funct ty_fun0 mode_fun rev_args sargs ret_tvar
   in
   loop ty_fun ty_fun0 mode_fun [] sargs
 
@@ -3812,15 +3812,24 @@ and type_expect_
           let mode = Value_mode.newvar () in
           mode, mode_nontail mode
       in
-      let rec lower_args seen ty_fun =
+      (* does the function return a tvar which is too generic? *)
+      let rec ret_tvar seen ty_fun =
         let ty = expand_head env ty_fun in
-        if TypeSet.mem ty seen then () else
+        if TypeSet.mem ty seen then false else
           match get_desc ty with
             Tarrow (_l, ty_arg, ty_fun, _com) ->
               (try unify_var env (newvar()) ty_arg
                with Unify _ -> assert false);
-              lower_args (TypeSet.add ty seen) ty_fun
-          | _ -> ()
+              ret_tvar (TypeSet.add ty seen) ty_fun
+          | Tvar _ -> 
+              let v = newvar () in 
+              let rt = get_level ty > get_level v in 
+              unify_var env v ty;
+              rt
+          | _ -> 
+            let v = newvar () in 
+            unify_var env v ty;
+            false
       in
       let type_sfunct sfunct =
         begin_def (); (* one more level for non-returning functions *)
@@ -3832,8 +3841,8 @@ and type_expect_
         end;
         let ty = instance funct.exp_type in
         end_def ();
-        wrap_trace_gadt_instances env (lower_args TypeSet.empty) ty;
-        funct
+        let rt = wrap_trace_gadt_instances env (ret_tvar TypeSet.empty) ty in 
+        rt, funct
       in
       let type_sfunct_args sfunct extra_args =
         match sfunct.pexp_desc with
@@ -3842,8 +3851,8 @@ and type_expect_
         | _ ->
            type_sfunct sfunct, extra_args
       in
-      let funct, sargs =
-        let funct = type_sfunct sfunct in
+      let (rt, funct), sargs =
+        let rt, funct = type_sfunct sfunct in
         match funct.exp_desc, sargs with
         | Texp_ident (_, _, {val_kind = Val_prim {prim_name = "%revapply"}; val_type},
                       Id_prim _),
@@ -3857,14 +3866,12 @@ and type_expect_
           when check_apply_prim_type Apply val_type ->
             type_sfunct_args actual_sfunct [Nolabel, sarg]
         | _ ->
-            funct, sargs
+            (rt, funct), sargs
       in
-      begin_def ();
       let (args, ty_res, position) =
-        type_application env loc expected_mode position funct funct_mode sargs
+        type_application env loc expected_mode position funct funct_mode sargs rt
       in
-      end_def ();
-      unify_var env (newvar()) funct.exp_type;
+
       rue {
         exp_desc = Texp_apply(funct, args, position);
         exp_loc = loc; exp_extra = [];
@@ -5738,7 +5745,7 @@ and type_apply_arg env ~funct ~index ~position ~partial_app (lbl, arg) =
       (lbl, Arg arg)
   | Omitted _ as arg -> (lbl, arg)
 
-and type_application env app_loc expected_mode position funct funct_mode sargs =
+and type_application env app_loc expected_mode position funct funct_mode sargs ret_tvar =
   let is_ignore funct =
     is_prim ~name:"%ignore" funct &&
     (try ignore (filter_arrow env (instance funct.exp_type) Nolabel); true
@@ -5747,9 +5754,14 @@ and type_application env app_loc expected_mode position funct funct_mode sargs =
   match sargs with
   | (* Special case for ignore: avoid discarding warning *)
     [Nolabel, sarg] when is_ignore funct ->
+      if !Clflags.principal then begin_def () ;
       let marg, ty_arg, mres, ty_res =
         filter_arrow env (instance funct.exp_type) Nolabel
       in
+      if !Clflags.principal then begin
+        end_def (); 
+        generalize_structure ty_res
+      end; 
       let mode = mode_cross env ty_res (Value_mode.of_alloc mres) in
       submode ~loc:app_loc ~env
         mode expected_mode;
@@ -5781,7 +5793,7 @@ and type_application env app_loc expected_mode position funct funct_mode sargs =
       if !Clflags.principal then begin_def () ;
       let ty_ret, mode_ret, args =
         collect_apply_args env funct ignore_labels ty (instance ty)
-          (Value_mode.regional_to_local_alloc funct_mode) sargs
+          (Value_mode.regional_to_local_alloc funct_mode) sargs ret_tvar
       in
       let partial_app = is_partial_apply args in
       let position = if partial_app then Default else position in
