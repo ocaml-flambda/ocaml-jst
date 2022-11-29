@@ -550,28 +550,10 @@ let mode_cross env (ty : type_expr) mode =
     match immediacy env ty with
     | Type_immediacy.Always -> Value_mode.newvar ()
     | Type_immediacy.Always_on_64bits when !Clflags.native_code && Sys.word_size = 64 ->
-      begin
-        (* if !Clflags.verbose then begin
-         *   Format.eprintf "@[mode crossed!!@.%a@.@]" Printtyp.raw_type_expr  ty
-         * end; *)
         Value_mode.newvar ()  (* floating and relaxed *)
-      end
-    | _ -> begin
-      (* if !Clflags.verbose then begin
-       *   Format.eprintf "@[mode not crossed because not immediate@.%a@.@]"
-       *     Printtyp.raw_type_expr ty
-       * end; *)
-      mode
-    end
+    | _ -> mode
   end
-  else
-    begin
-      (* if !Clflags.verbose then begin
-       *   Format.eprintf "@[mode not crossed because not principal @.%a level only %i @. n@]"
-       *     Printtyp.raw_type_expr ty ty.level
-       * end; *)
-      mode
-    end
+  else mode
 
 let expect_mode_cross env (ty : type_expr) (mode : expected_mode) =
   {mode with mode = mode_cross env ty mode.mode}
