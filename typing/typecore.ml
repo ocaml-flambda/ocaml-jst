@@ -5138,6 +5138,8 @@ and type_function ?in_function
   in
   let cases_expected_mode, curry =
     if uncurried_function then
+      (* no need to check mode crossing in this case*)
+      (* because ty_res always a function *)
       mode_nontail (Value_mode.of_alloc ret_mode),
       More_args { partial_mode = ret_mode }
     else begin
@@ -5145,12 +5147,12 @@ and type_function ?in_function
       let ret_value_mode =
         if region_locked then Value_mode.local_to_regional ret_value_mode
         else ret_value_mode
-      in
+      in  
+      let ret_value_mode = mode_cross env ty_res ret_value_mode in 
       mode_return ret_value_mode,
       Final_arg { partial_mode = Alloc_mode.join [arg_mode; alloc_mode] }
     end
   in
-  let cases_expected_mode = expect_mode_cross env ty_res cases_expected_mode in 
   let in_function =
     if uncurried_function then
       Some (loc_fun, ty_fun, region_locked)
