@@ -25,4 +25,4 @@ ln -sfn "$merlin_dir" .for-jane-street-merlin/dev
 ln -sfn "$merlin_dir" .for-jane-street-merlin/prod
 
 echo "$PWD/.for-jane-street-merlin" > .merlin-binaries
-ocamlc -config | grep standard_library: | cut -d' ' -f2 > .ocaml-lib
+ocamlc -where > .ocaml-lib
