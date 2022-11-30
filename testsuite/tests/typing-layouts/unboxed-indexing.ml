@@ -1,5 +1,7 @@
 (* TEST
-   * expect
+   * skip
+   reason = "Unboxed types aren't implemented yet"
+   ** expect
 *)
 
 (* CR reisenberg: change [unit] to [#unit] in v5 *)
@@ -65,12 +67,8 @@ end
 module Array : Array = Array
 
 [%%expect{|
-Line 4, characters 30-35:
-4 |     val length : 'a array -> #int64
-                                  ^^^^^
-Error: Unbound class type int64
+success
 |}]
-(* CR reisenberg: There should be no error here *)
 
-(* RAE XXX add correctness tests like in reference-implementations.ml? *)
+(* CR reisenberg: These also need correctness tests, which will be added. *)
 

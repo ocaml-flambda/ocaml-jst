@@ -1,8 +1,8 @@
 (* TEST
-   * expect
+   * skip
+   reason = "Unboxed types aren't implemented yet"
+   ** expect
 *)
-
-(* #float *)
 
 module type Ufloat = sig
   val (+) : #float -> #float -> #float
@@ -86,13 +86,9 @@ module type Ufloat = sig
   val next_after : #float -> #float -> #float
   val copy_sign : #float -> #float -> #float
   val sign_bit : #float -> bool
-(* CR reisenberg: this doesn't parse yet
   val frexp : #float -> (# #float * int #)   (* Part of v7 *)
-*)
   val ldexp : #float -> int -> #float
-(* CR reisenberg: this doesn't parse yet
   val modf : #float -> (# #float * #float #) (* Part of v7 *)
-*)
 
   type t = #float
 
@@ -100,9 +96,7 @@ module type Ufloat = sig
   val equal : t -> t -> bool
   val min : t -> t -> t
   val max : #float -> #float -> #float
-(* CR reisenberg: this doesn't parse yet
   val min_max : #float -> #float -> (# #float * #float #) (* Part of v7 *)
-*)
   val min_num : t -> t -> t
   val max_num : t -> t -> t
   val min_max_num : #float -> #float -> #float * #float (* Part of v5 *)
@@ -113,7 +107,8 @@ module type Ufloat = sig
 (* Part of v4; the [#unit]s will be [unit] before v5 *)
   module Array : sig
     type t
-(* not sure what t will equal; possibly [#float array]; to be filled in *)
+(* CR reisenberg: not sure what t will equal; possibly [#float array]; to be
+   filled in *)
 
     val length : t -> int
     val get : t -> int -> #float
@@ -150,10 +145,8 @@ module type Ufloat = sig
     val map_to_array : (#float -> 'a) -> t -> 'a array
     val map_from_array : ('a -> #float) -> 'a array -> t
 
-(* CR reisenberg: this doesn't parse yet
     val map_to_bits32_array : ('a : bits32). (#float -> 'a) -> t -> 'a array
     val map_from_bits32_array : ('a : bits32). ('a -> #float) -> 'a array -> t
-   *)
 (* RAE XXX should we add more here? *)
 
   end
@@ -197,24 +190,16 @@ module type Ufloat = sig
     val map_to_array : f:(#float -> 'a) -> t -> 'a array
     val map_from_array : f:('a -> #float) -> 'a array -> t
 
-(* CR reisenberg: this doesn't parse yet
     val map_to_bits32_array : f:('a : bits32). (#float -> 'a) -> t -> 'a array
     val map_from_bits32_array : f:('a : bits32). ('a -> #float) -> 'a array -> t
-*)
   end
 end
 
 module Ufloat : Ufloat = Ufloat
 
 [%%expect {|
-Line 2, characters 13-18:
-2 |   val (+) : #float -> #float -> #float
-                 ^^^^^
-Error: Unbound class type float
+success
 |}]
-(* CR reisenberg: there should be no errors here *)
-
-(* CR reisenberg: this doesn't parse yet
 
 let x = #3.14
 let x = Ufloat.(#3.14 + #2.78)
@@ -222,7 +207,7 @@ let x = #0.14
 let x = #1.
 
 [%%expect {|
-??
+success
 |}]
 
 let bad = #3.14 + #2.15
@@ -246,7 +231,7 @@ error
 let f x y = Ufloat.(x + y)
 
 [%%expect {|
-??
+success
 |}]
 
 let x = f #3.14 #2.15
@@ -254,7 +239,7 @@ let x = f #1. #1.
 let g x = f x x
 
 [%%expect {|
-??
+success
 |}]
 
 let bad = f 1. 2.
@@ -263,4 +248,4 @@ let bad = f 1. 2.
 error
 |}]
 
-*)
+

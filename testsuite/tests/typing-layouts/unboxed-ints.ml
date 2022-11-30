@@ -1,5 +1,7 @@
 (* TEST
-   * expect
+   * skip
+   reason = "unboxed types aren't implemented yet"
+   ** expect
 *)
 
 (* annoyingly, we must write out the module signature separately for
@@ -72,12 +74,8 @@ end
 module Uint64 : Uint64 = Uint64
 
 [%%expect {|
-Line 2, characters 13-18:
-2 |   val (+) : #int64 -> #int64 -> #int64
-                 ^^^^^
-Error: Unbound class type int64
+success
 |}]
-(* CR reisenberg: this should not error *)
 
 module type Uint32 = sig
   val (+) : #int32 -> #int32 -> #int32
@@ -143,12 +141,8 @@ end
 module Uint32 : Uint32 = Uint32
 
 [%%expect {|
-Line 2, characters 13-18:
-2 |   val (+) : #int32 -> #int32 -> #int32
-                 ^^^^^
-Error: Unbound class type int32
+success
 |}]
-(* CR reisenberg: this should not error *)
 
 
 module type Unativeint = sig
@@ -215,21 +209,15 @@ end
 module Unativeint : Unativeint = Unativeint
 
 [%%expect {|
-Line 2, characters 13-22:
-2 |   val (+) : #nativeint -> #nativeint -> #nativeint
-                 ^^^^^^^^^
-Error: Unbound class type nativeint
+success
 |}]
-(* CR reisenberg: this should not error *)
-
-(* CR reisenberg: these tests don't parse
 
 let x = #3L
 let x = #3l
 let x = #3n
 
 [%%expect {|
-??
+success
 |}]
 
 let x = Uint64.(#3L + #4L)
@@ -237,7 +225,7 @@ let x = Uint32.(#3l + #4l)
 let x = Unativeint.(#3n + #4n)
 
 [%%expect {|
-??
+success
 |}]
 
 let bad = #3L + #4L  (* wrong + *)
@@ -260,8 +248,6 @@ let bad = #3
 parse error
 |}]
 
-*)
-
 (* CR reisenberg: replace [unit] with [#unit] at v5 *)
 module type Random = sig
   val init : int -> unit
@@ -281,9 +267,5 @@ end
 module Random : Random = Random
 
 [%%expect {|
-Line 4, characters 16-21:
-4 |   val uint32 : #int32 -> #int32
-                    ^^^^^
-Error: Unbound class type int32
+success
 |}]
-(* CR reisenberg: this should not error *)
