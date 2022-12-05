@@ -3,6 +3,7 @@
    reason = "Unboxed types aren't implemented yet"
    ** expect
 *)
+(* CR layouts (v2): enable this test *)
 
 module type S = sig
   type t :any

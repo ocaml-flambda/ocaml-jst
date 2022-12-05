@@ -4,6 +4,7 @@
    reason = "Unboxed types aren't implemented yet"
    ** expect
 *)
+(* CR layouts (v2): Enable this test *)
 
 let () = Random.init 1234
 
@@ -89,13 +90,11 @@ let () =
   test_binary "add" (mk2 Int64.add Uint64.add);
   test_binary "add" (mk2 Int64.add Uint64.add);
   test_binary "add" (mk2 Int64.add Uint64.add);
-  (* testing the rest of the functions is somewhat annoying, because the
-     types vary. I'm tempted to come up with a general approach here, but
-     I'm not convinced that's the best use of time.
-   *)
+
+  (* CR layouts (v2): Test the other functions. See TANDC-1809 *)
 
 [%%expect {|
 success
 |}]
 
-(* CR reisenberg: This must be expanded
+(* CR layouts (v2): Cover other types, once we're happy with the above *)

@@ -3,8 +3,9 @@
    reason = "Unboxed types aren't implemented yet"
    ** expect
 *)
+(* CR layouts (v2): Enable this test *)
 
-(* CR reisenberg: change [unit] to [#unit] in v5 *)
+(* CR layouts (v5): change [unit] to [#unit] *)
 module type Array = sig
   module Uint64 : sig
     type 'a t = 'a array
@@ -70,5 +71,4 @@ module Array : Array = Array
 success
 |}]
 
-(* CR reisenberg: These also need correctness tests, which will be added. *)
 

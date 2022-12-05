@@ -3,12 +3,11 @@
    reason = "unboxed types aren't implemented yet"
    ** expect
 *)
+(* CR layouts (v2): enable this test *)
 
 (* annoyingly, we must write out the module signature separately for
-   each unboxed int, because we don't have abstract layouts.
-
-   CR reisenberg: After we have abstract layouts (v10), fix this.
-*)
+   each unboxed int, because we don't have abstract layouts. *)
+(* CR layouts (v10): Use one signature, specialized *)
 
 module type Uint64 = sig
   val (+) : #int64 -> #int64 -> #int64
@@ -44,7 +43,7 @@ module type Uint64 = sig
   val shift_right_logical : #int64 -> int -> #int64
   val of_int : int -> #int64
   val to_int : #int64 -> int
-  val unsigned_to_int : #int64 -> int or_null (* Part of v3 *)
+  val unsigned_to_int : #int64 -> int or_null (* CR layouts (v3): add this line *)
   val of_int64 : int64 -> #int64
   val to_int64 : #int64 -> int64
   val of_float : float -> #int64
@@ -56,7 +55,7 @@ module type Uint64 = sig
   val of_unativeint : #nativeint -> #int64
   val to_unativeint : #int64 -> #nativeint
   val of_string : string -> #int64
-  val of_string_opt : string -> #int64 option (* part of v5 *)
+  val of_string_opt : string -> #int64 option (* CR layouts (v5): add this line *)
   val to_string : #int64 -> string
   val bits_of_float : float -> #int64
   val bits_of_ufloat : #float -> #int64
@@ -111,7 +110,7 @@ module type Uint32 = sig
   val shift_right_logical : #int32 -> int -> #int32
   val of_int : int -> #int32
   val to_int : #int32 -> int
-  val unsigned_to_int : #int32 -> int or_null (* Part of v3 *)
+  val unsigned_to_int : #int32 -> int or_null (* CR layouts (v3): add this line *)
   val of_int32 : int32 -> #int32
   val to_int32 : #int32 -> int32
   val of_float : float -> #int32
@@ -123,7 +122,7 @@ module type Uint32 = sig
   val of_unativeint : #nativeint -> #int32
   val to_unativeint : #int32 -> #nativeint
   val of_string : string -> #int32
-  val of_string_opt : string -> #int32 option (* part of v5 *)
+  val of_string_opt : string -> #int32 option (* CR layouts (v5): add this line *)
   val to_string : #int32 -> string
   val bits_of_float : float -> #int32
   val bits_of_ufloat : #float -> #int32
@@ -179,7 +178,7 @@ module type Unativeint = sig
   val shift_right_logical : #nativeint -> int -> #nativeint
   val of_int : int -> #nativeint
   val to_int : #nativeint -> int
-  val unsigned_to_int : #nativeint -> int or_null (* Part of v3 *)
+  val unsigned_to_int : #nativeint -> int or_null (* CR layouts (v3): add this line *)
   val of_nativeint : nativeint -> #nativeint
   val to_nativeint : #nativeint -> nativeint
   val of_float : float -> #nativeint
@@ -191,7 +190,7 @@ module type Unativeint = sig
   val of_uint32 : #int32 -> #nativeint
   val to_uint32 : #nativeint -> #int32
   val of_string : string -> #nativeint
-  val of_string_opt : string -> #nativeint option (* part of v5 *)
+  val of_string_opt : string -> #nativeint option (* CR layouts (v5): add this line *)
   val to_string : #nativeint -> string
   val bits_of_float : float -> #nativeint
   val bits_of_ufloat : #float -> #nativeint
@@ -248,7 +247,7 @@ let bad = #3
 parse error
 |}]
 
-(* CR reisenberg: replace [unit] with [#unit] at v5 *)
+(* CR layouts (v5): replace [unit] with [#unit] *)
 module type Random = sig
   val init : int -> unit
 

@@ -3,6 +3,7 @@
    reason = "Unboxed types aren't implemented yet"
    ** expect
 *)
+(* CR layouts (v2): enable this test *)
 
 let f : #int64 -> #int64 = fun x -> Uint64.(x + #3L)
 let y = f #4L
@@ -18,7 +19,7 @@ let y = f #4L
 success
 |}]
 
-(* CR reisenberg: actually, not sure whether these should work *)
+(* CR layouts: reisenberg: actually, not sure whether these should work *)
 let y = f @@ #4L
 let y = #4L |> f
 

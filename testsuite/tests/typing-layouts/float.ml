@@ -3,6 +3,7 @@
    reason = "Unboxed types aren't implemented yet"
    ** expect
 *)
+(* CR layouts (v2): Enable this test *)
 
 module type Ufloat = sig
   val (+) : #float -> #float -> #float
@@ -42,7 +43,7 @@ module type Ufloat = sig
   val of_float : float -> #float
   val to_float : #float -> float
   val of_string : string -> #float
-  val of_string_opt : string -> #float option  (* Part of v5 *)
+  val of_string_opt : string -> #float option  (* CR layouts (v5): add this line *)
   val to_string : #float -> string
 
   type fpclass = Float.fpclass =
@@ -86,9 +87,9 @@ module type Ufloat = sig
   val next_after : #float -> #float -> #float
   val copy_sign : #float -> #float -> #float
   val sign_bit : #float -> bool
-  val frexp : #float -> (# #float * int #)   (* Part of v7 *)
+  val frexp : #float -> (# #float * int #)   (* CR layouts (v7): add this line *)
   val ldexp : #float -> int -> #float
-  val modf : #float -> (# #float * #float #) (* Part of v7 *)
+  val modf : #float -> (# #float * #float #) (* CR layouts (v7): add this line *)
 
   type t = #float
 
@@ -96,19 +97,20 @@ module type Ufloat = sig
   val equal : t -> t -> bool
   val min : t -> t -> t
   val max : #float -> #float -> #float
-  val min_max : #float -> #float -> (# #float * #float #) (* Part of v7 *)
+  val min_max : #float -> #float -> (# #float * #float #) (* CR layouts (v7): add this line *)
   val min_num : t -> t -> t
   val max_num : t -> t -> t
-  val min_max_num : #float -> #float -> #float * #float (* Part of v5 *)
-(* NB: [min_max_num] returns a boxed tuple to match the general interface *)
+  val min_max_num : #float -> #float -> #float * #float (* CR layouts (v7): add this line *)
+  (* NB: [min_max_num] returns a boxed tuple to match the general interface *)
 
   val hash : t -> int
 
-(* Part of v4; the [#unit]s will be [unit] before v5 *)
+  (* CR layouts (v4): Add this sig *)
+  (* CR layouts (v5): change [unit] to [#unit] *)
   module Array : sig
     type t
-(* CR reisenberg: not sure what t will equal; possibly [#float array]; to be
-   filled in *)
+    (* CR layouts (v4): not sure what t will equal; possibly [#float array]; to be
+       filled in *)
 
     val length : t -> int
     val get : t -> int -> #float
@@ -122,7 +124,7 @@ module type Ufloat = sig
     val copy : t -> t
     val fill : t -> int -> int -> #float -> #unit
     val blit : t -> int -> t -> int -> int -> #unit
-(* no [to_list] or [of_list]; we don't have lists of unboxed things *)
+    (* no [to_list] or [of_list]; we don't have lists of unboxed things *)
     val iter : (#float -> #unit) -> t -> #unit
     val iteri : (int -> #float -> #unit) -> t -> #unit
     val map : (#float -> #float) -> t -> t
@@ -140,18 +142,19 @@ module type Ufloat = sig
     val stable_sort : (#float -> #float -> int) -> t -> #unit
     val fast_sort : (#float -> #float -> int) -> t -> #unit
 
-(* no [to_seq], [to_seqi], or [of_seq]; we don't have [Seq]s of unboxed things *)
+    (* no [to_seq], [to_seqi], or [of_seq]; we don't have [Seq]s of unboxed things *)
 
     val map_to_array : (#float -> 'a) -> t -> 'a array
     val map_from_array : ('a -> #float) -> 'a array -> t
 
     val map_to_bits32_array : ('a : bits32). (#float -> 'a) -> t -> 'a array
     val map_from_bits32_array : ('a : bits32). ('a -> #float) -> 'a array -> t
-(* RAE XXX should we add more here? *)
+    (* XXX layouts: should we add more here? *)
 
   end
 
-(* Part of v4; the [#unit]s will be [unit] before v5 *)
+  (* CR layouts (v4): Add this sig *)
+  (* CR layouts (v5): use [#unit] not [unit] *)
   module ArrayLabels : sig
     type t = Array.t
 
@@ -167,7 +170,7 @@ module type Ufloat = sig
     val copy : t -> t
     val fill : t -> pos:int -> len:int -> #float -> #unit
     val blit : src:t -> src_pos:int -> dst:t -> dst_pos:int -> len:int -> #unit
-(* no [to_list] or [of_list]; we don't have lists of unboxed things *)
+    (* no [to_list] or [of_list]; we don't have lists of unboxed things *)
     val iter : f:(#float -> #unit) -> t -> #unit
     val iteri : f:(int -> #float -> #unit) -> t -> #unit
     val map : f:(#float -> #float) -> t -> t
@@ -185,7 +188,7 @@ module type Ufloat = sig
     val stable_sort : cmp:(#float -> #float -> int) -> t -> #unit
     val fast_sort : cmp:(#float -> #float -> int) -> t -> #unit
 
-(* no [to_seq], [to_seqi], or [of_seq]; we don't have [Seq]s of unboxed things *)
+    (* no [to_seq], [to_seqi], or [of_seq]; we don't have [Seq]s of unboxed things *)
 
     val map_to_array : f:(#float -> 'a) -> t -> 'a array
     val map_from_array : f:('a -> #float) -> 'a array -> t
