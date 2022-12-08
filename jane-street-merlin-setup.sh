@@ -12,17 +12,16 @@ fi
 set -e
 
 merlin_dir="$(dirname "$ocamlmerlin")"
+echo "$merlin_dir" > .local-merlin-binaries
+ocamlc -where > .local-ocaml-lib
 
-# The stub files `jenga.conf` and `.ocaml-lib` should be deleted if
-# `.local-merlin-binaries` exists or if the `.merlin-binaries` search ever stops
-# looking for a tree file first.
+# When `.local-merlin-binaries` is fully supported (rather than just supported
+# in dev Emacs), we can drop the extra directory `.for-jane-street-merlin` as
+# well as the stub `jenga.conf` file.
 
-# When `.local-merlin-binaries` is fully supported we can just point it at
-# `$MERLIN_DIR` and drop this extra directory *and* the stub files entirely.
-# This will require updating the `.gitignore`, too.
 mkdir -p .for-jane-street-merlin
 ln -sfn "$merlin_dir" .for-jane-street-merlin/dev
 ln -sfn "$merlin_dir" .for-jane-street-merlin/prod
 
 echo "$PWD/.for-jane-street-merlin" > .merlin-binaries
-ocamlc -where > .ocaml-lib
+cp .local-ocaml-lib .ocaml-lib
