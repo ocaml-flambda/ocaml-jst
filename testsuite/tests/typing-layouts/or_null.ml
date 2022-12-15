@@ -16,7 +16,7 @@ module type Or_null = sig
   val none : 'a or_null
   val some : 'a -> 'a or_null
   val value : 'a or_null -> default:'a -> 'a
-  val get : 'a option -> 'a
+  val get : 'a or_null -> 'a
   val bind : 'a or_null -> ('a -> 'b or_null) -> 'b or_null
   (* unlike [option] we cannot have [join] *)
   val map : ('a -> 'b) -> 'a or_null -> 'b or_null
@@ -90,7 +90,7 @@ type t = (int : non_null_immediate)
 type t = (int or_null : value)
 
 [%%expect {|
-error
+success
 |}]
 
 (* magic looking-through of [or_null] can't be abstracted over *)
