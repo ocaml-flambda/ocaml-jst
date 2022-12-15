@@ -75,6 +75,7 @@ type ('a : immediate) t = 'a or_null
 
 [%%expect {|
 success
+success (inferring an immediate layout for [t] and non_null_immediate for ['a])
 |}]
 
 (* more layout checking *)
