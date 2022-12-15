@@ -288,3 +288,39 @@ let alloc =
 0
 |}]
 
+(* sub-typing *)
+
+let f x = (x : int :> int or_null)
+let f x = (x : string :> string or_null)
+let f x = (x : int list :> int or_null list)
+let f x = (x : string list :> string or_null list)
+let f x = (x : int list :> int list or_null)
+let f x = (x : string list :> string list or_null)
+
+[%%expect {|
+success
+|}]
+
+let f x = (x : int or_null :> int)
+
+[%%expect {|
+error
+|}]
+
+let f x = (x : string or_null :> string)
+
+[%%expect {|
+error
+|}]
+
+let f x = (x : int :> int or_null or_null)
+
+[%%expect {|
+error
+|}]
+
+let f x = (x : int :> string or_null)
+
+[%%expect {|
+error
+|}]
