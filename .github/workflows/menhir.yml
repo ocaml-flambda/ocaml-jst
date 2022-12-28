@@ -2,7 +2,7 @@ name: menhir
 on: [push, pull_request]
 jobs:
   menhir:
-    name: Check Menhir version
+    runs-on: ubuntu-latest
     steps:
       - shell: bash
         run: false
