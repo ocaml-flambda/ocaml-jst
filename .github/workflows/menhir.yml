@@ -1,8 +1,10 @@
 name: menhir
 on: [push, pull_request]
 jobs:
-  steps:
-    - name: Check Menhir version
-      shell: bash
-      run: |
-        grep --count --max-count=1 --quiet 'MenhirLib.StaticVersion.require_30210419' boot/menhir/parser.ml
+  menhir:
+    name: Check Menhir version
+    steps:
+      - name: Check Menhir version
+        shell: bash
+        run: |
+          grep --count --max-count=1 --quiet 'MenhirLib.StaticVersion.require_30210419' boot/menhir/parser.ml
