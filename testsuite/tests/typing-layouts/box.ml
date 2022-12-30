@@ -137,3 +137,20 @@ type ('a : any) mybox : non_null_value = 'a box
 [%%expect {|
 type ('a : any) mybox = 'a box
 |}]
+
+(* test the float array optimization with boxed #floats *)
+
+let arr1 = [| box #3.14; box #5.16 |]
+let good = Obj.tag (Obj.repr arr1) = Obj.double_array_tag
+
+let mk x = [| x |]
+let arr2 = mk (box #2.78)
+let good = Obj.tag (Obj.repr arr2) = Obj.double_array_tag
+
+[%%expect {|
+good = true
+good = true
+|}]
+
+(* CR layouts (v4): add quickcheck-style tests to ensure that
+   box and unbox are inverses *)
