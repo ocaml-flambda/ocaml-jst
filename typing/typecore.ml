@@ -3897,12 +3897,12 @@ and type_expect_
                with Unify _ -> assert false);
               ret_tvar (TypeSet.add ty seen) ty_fun
           | Tvar _ ->
-              let v = newvar Type_layout.value in
+              let v = newvar Type_layout.any in
               let rt = get_level ty > get_level v in
               unify_var env v ty;
               rt
           | _ ->
-            let v = newvar Type_layout.value in
+            let v = newvar Type_layout.any in
             unify_var env v ty;
             false
       in
