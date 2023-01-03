@@ -79,9 +79,9 @@ PARSING_CMI = \
 TYPING = \
   typing/path.cmo \
   typing/primitive.cmo \
-  typing/type_layout.cmo \
   typing/shape.cmo \
   typing/types.cmo \
+  typing/type_layout.cmo \
   typing/btype.cmo \
   typing/oprint.cmo \
   typing/subst.cmo \

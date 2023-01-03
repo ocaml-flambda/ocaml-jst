@@ -48,9 +48,9 @@
     ident
     path
     primitive
-    type_layout
     shape
     types
+    type_layout
     btype
     lazy_backtrack
     subst
@@ -127,9 +127,9 @@
 (copy_files ../../typing/ident.ml)
 (copy_files ../../typing/path.ml)
 (copy_files ../../typing/primitive.ml)
-(copy_files ../../typing/type_layout.ml)
 (copy_files ../../typing/shape.ml)
 (copy_files ../../typing/types.ml)
+(copy_files ../../typing/type_layout.ml)
 (copy_files ../../typing/btype.ml)
 (copy_files ../../typing/subst.ml)
 (copy_files ../../typing/predef.ml)
@@ -179,9 +179,9 @@
 (copy_files ../../typing/ident.mli)
 (copy_files ../../typing/path.mli)
 (copy_files ../../typing/primitive.mli)
-(copy_files ../../typing/type_layout.mli)
 (copy_files ../../typing/shape.mli)
 (copy_files ../../typing/types.mli)
+(copy_files ../../typing/type_layout.mli)
 (copy_files ../../typing/btype.mli)
 (copy_files ../../typing/subst.mli)
 (copy_files ../../typing/predef.mli)
@@ -268,7 +268,6 @@
       .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Btype.cmo
       .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Consistbl.cmo
       .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Shape.cmo
-      .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Datarepr.cmo
       .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Load_path.cmo
       .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Lazy_backtrack.cmo
       .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Persistent_env.cmo
@@ -276,6 +275,7 @@
       .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Ast_helper.cmo
       .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Builtin_attributes.cmo
       .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Type_layout.cmo
+      .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Datarepr.cmo
       .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Attr_helper.cmo
       .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Primitive.cmo
       .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Predef.cmo
@@ -335,7 +335,6 @@
       .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Btype.cmx
       .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Consistbl.cmx
       .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Shape.cmx
-      .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Datarepr.cmx
       .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Load_path.cmx
       .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Lazy_backtrack.cmx
       .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Persistent_env.cmx
@@ -343,6 +342,7 @@
       .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Ast_helper.cmx
       .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Builtin_attributes.cmx
       .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Type_layout.cmx
+      .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Datarepr.cmx
       .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Attr_helper.cmx
       .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Primitive.cmx
       .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Predef.cmx
