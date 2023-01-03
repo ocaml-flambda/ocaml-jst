@@ -451,7 +451,10 @@ val reset_reified_var_counter: unit -> unit
 
 val is_immediate : Env.t -> type_expr -> bool
   (* True if type is definitely always immediate, false if it may be represented
-     by a pointer *)
+     by a pointer.
+
+     This expands types, possibly making use of GADT equations, which may have
+     the effect of modifying the type's scope.  *)
 
 (* Stubs *)
 val package_subtype :

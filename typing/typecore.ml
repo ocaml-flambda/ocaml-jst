@@ -557,7 +557,13 @@ let has_poly_constraint spat =
   | _ -> false
 
 let mode_cross env (ty : type_expr) mode =
-  if is_principal ty && is_immediate env ty then Value_mode.newvar ()
+  if is_principal ty then
+    (* We snapshot to keep this pure; see the mode crossing test that mentions
+       snapshotting for an example. *)
+    let snap = Btype.snapshot () in
+    let mode = if is_immediate env ty then Value_mode.newvar () else mode in
+    Btype.backtrack snap;
+    mode
   else mode
 
 let expect_mode_cross env (ty : type_expr) (mode : expected_mode) =
@@ -5830,7 +5836,7 @@ and type_argument ?explanation ?recarg env (mode : expected_mode) sarg
       end
       end
   | None ->
-      let mode = expect_mode_cross env (generic_instance ty_expected') mode in
+      let mode = expect_mode_cross env ty_expected' mode in
       let texp = type_expect ?recarg env mode sarg
         (mk_expected ?explanation ty_expected') in
       unify_exp env texp ty_expected;
