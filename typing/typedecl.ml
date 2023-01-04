@@ -940,7 +940,14 @@ let update_decl_layout env decl =
     | _, Record_boxed layouts ->
       let lbls = update_label_layouts env loc lbls (Some layouts) in
       lbls, rep
-    | _, Record_float -> lbls, rep
+    | _, Record_float ->
+      (* CR ccasinghino: When we have an unboxed float layout, does it make
+         sense to use that here?  The use of value feels inaccurate, but I think
+         the code that would look at first looks at the rep. *)
+      let lbls =
+        List.map (fun lbl -> { lbl with ld_layout = Type_layout.value }) lbls
+      in
+      lbls, rep
     | (([] | (_ :: _)), Record_unboxed _ | _, Record_inlined _) -> assert false
   in
 

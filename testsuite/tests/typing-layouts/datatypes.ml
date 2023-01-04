@@ -254,4 +254,24 @@ Error: Record element types must have a representable layout.
         t_any has layout any, which is not a sublayout of <sort variable>.
 |}];;
 
+(* Test 6: fields in all-float records get layout value.  may change in the
+   future, but record fields must at least be representable. *)
+type t6 = { fld6 : float }
+type ('a : immediate) s6 = S6 of 'a
 
+let f6 x =
+  let { fld6 = fld6 } = x in fld6
+
+let f6' x =
+  let { fld6 = fld6 } = x in S6 fld6;;
+[%%expect {|
+type t6 = { fld6 : float; }
+type 'a s6 = S6 of 'a
+val f6 : t6 -> float = <fun>
+Line 8, characters 32-36:
+8 |   let { fld6 = fld6 } = x in S6 fld6;;
+                                    ^^^^
+Error: This expression has type float but an expression was expected of type
+         'a
+       float has layout value, which is not a sublayout of immediate.
+|}];;
