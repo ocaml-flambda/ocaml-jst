@@ -1606,8 +1606,9 @@ let subst env level priv abbrev oty params args body =
 *)
 (* CR ccasinghino: Can we actually just always ignore layouts in apply/subst?
 
-   I think no: because of examples like Typecore.unify_head_only ->
-   Ctype.enforce_constraints where we are using subst for its unification effect
+   It seems like almost, but there may be cases where it would forget
+   information.  See bug20 for an attempt (though we couldn't quite get it to
+   work.
 *)
 let apply env params body args =
   try
@@ -1699,7 +1700,16 @@ let expand_abbrev_gen kind find_type_expansion env ty =
               ("add a "^string_of_kind kind^" expansion for "^Path.name path);*)
             let ty' =
               try
-                subst env level kind abbrev (Some ty) params args body
+                (* CJC XXX is it safe to skip layout checks in this call to
+                   subst?  I'm not totally convinced.  It eliminates a stack
+                   overflow in this program, so I'm just going with it
+                   temporarily to make progress:
+
+                     type 'a t = 'a list
+                     type s = { lbl : s t } [@@unboxed]
+                *)
+                skip_layout_checks_in (fun () ->
+                  subst env level kind abbrev (Some ty) params args body)
               with Cannot_subst -> raise_escape_exn Constraint
             in
             (* For gadts, remember type as non exportable *)
