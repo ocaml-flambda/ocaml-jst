@@ -89,7 +89,7 @@ type t =
   | Unexpected_docstring of bool            (* 50 *)
   | Wrong_tailcall_expectation of bool      (* 51 *)
   | Fragile_literal_pattern                 (* 52 *)
-  | Misplaced_attribute of string           (* 53 *)
+  | Misplaced_attribute of string * bool    (* 53 *)
   | Duplicated_attribute of string          (* 54 *)
   | Inlining_impossible of string           (* 55 *)
   | Unreachable_case                        (* 56 *)

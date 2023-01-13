@@ -30,18 +30,18 @@ let mark_used t = Attribute_table.remove unused_attrs t
 (* [attr_order] is used to issue unused attribute warnings in the order the
    attributes occur in the file rather than the random order of the hash table
 *)
-let attr_order a1 a2 =
+let attr_order (a1,_) (a2,_) =
   match String.compare a1.loc.loc_start.pos_fname a2.loc.loc_start.pos_fname
   with
   | 0 -> Int.compare a1.loc.loc_start.pos_lnum a2.loc.loc_start.pos_lnum
   | n -> n
 
 let warn_unused () =
-  let keys = List.of_seq (Attribute_table.to_seq_keys unused_attrs) in
-  let keys = List.sort attr_order keys in
-  List.iter (fun sloc ->
-    Location.prerr_warning sloc.loc (Warnings.Misplaced_attribute sloc.txt))
-    keys
+  let unused = List.of_seq (Attribute_table.to_seq unused_attrs) in
+  let unused = List.sort attr_order unused in
+  List.iter (fun (sloc,ppx) ->
+    Location.prerr_warning sloc.loc (Warnings.Misplaced_attribute (sloc.txt,ppx)))
+    unused
 
 (* These are the attributes that are tracked in the builtin_attrs table for
    misplaced attribute warnings.  Explicitly excluded is [deprecated_mutable],
@@ -92,9 +92,12 @@ let builtin_attrs =
 
 let is_builtin_attr s = Hashtbl.mem builtin_attrs s
 
-let mk_internal ?(loc= !default_loc) name payload =
+let register_attr ~from_ppx name =
   if is_builtin_attr name.txt
-  then Attribute_table.add unused_attrs name ();
+  then Attribute_table.add unused_attrs name from_ppx
+
+let mk_internal ?(loc= !default_loc) name payload =
+  register_attr ~from_ppx:false name;
   Attr.mk ~loc name payload
 
 

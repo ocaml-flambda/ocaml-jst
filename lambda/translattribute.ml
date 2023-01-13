@@ -383,7 +383,7 @@ let add_check_attribute expr loc attributes =
       lfunction_with_attr ~attr funct
   | expr, [check] ->
       Location.prerr_warning loc
-        (Warnings.Misplaced_attribute (to_string check));
+        (Warnings.Misplaced_attribute (to_string check,false));
       expr
   | expr, a::b::_ ->
     Location.prerr_warning loc
@@ -440,7 +440,7 @@ let add_poll_attribute expr loc attributes =
       lfunction_with_attr ~attr funct
   | expr, Error_poll ->
       Location.prerr_warning loc
-        (Warnings.Misplaced_attribute "error_poll");
+        (Warnings.Misplaced_attribute ("error_poll",false));
       expr
 
 (* Get the [@inlined] attribute payload (or default if not present). *)

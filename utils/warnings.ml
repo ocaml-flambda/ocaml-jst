@@ -87,7 +87,7 @@ type t =
   | Unexpected_docstring of bool            (* 50 *)
   | Wrong_tailcall_expectation of bool      (* 51 *)
   | Fragile_literal_pattern                 (* 52 *)
-  | Misplaced_attribute of string           (* 53 *)
+  | Misplaced_attribute of string * bool    (* 53 *)
   | Duplicated_attribute of string          (* 54 *)
   | Inlining_impossible of string           (* 55 *)
   | Unreachable_case                        (* 56 *)
@@ -957,8 +957,11 @@ let message = function
   | Unreachable_case ->
       "this match case is unreachable.\n\
        Consider replacing it with a refutation case '<pat> -> .'"
-  | Misplaced_attribute attr_name ->
+  | Misplaced_attribute (attr_name,false) ->
       Printf.sprintf "the %S attribute cannot appear in this context" attr_name
+  | Misplaced_attribute (attr_name,true) ->
+      Printf.sprintf "a rewriter inserted the %S attribute here, \
+                      but it cannot appear in this context" attr_name
   | Duplicated_attribute attr_name ->
       Printf.sprintf "the %S attribute is used more than once on this \
           expression"
