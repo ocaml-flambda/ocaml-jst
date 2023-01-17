@@ -20,7 +20,7 @@ type 'a [@void] t1;;
 module type S1' = S1 with type 'a t = t_void t1 and type s = t_void t1;;
 [%%expect {|
 type t_any : any
-type t_value
+type t_value : value
 type t_imm : immediate
 type t_imm64 : immediate64
 type t_void : void
@@ -395,7 +395,7 @@ module type S6_4 = sig
   val m : (module S6_3 with type t = t_void)
 end;;
 [%%expect{|
-module type S6_3 = sig type t end
+module type S6_3 = sig type t : value end
 Line 6, characters 33-34:
 6 |   val m : (module S6_3 with type t = t_void)
                                      ^

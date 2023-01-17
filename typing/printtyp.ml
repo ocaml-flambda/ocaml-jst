@@ -37,19 +37,20 @@ module Int = Misc.Stdlib.Int
    Case (C1). The layout on a type declaration, like
    [type 'a t : <<this one>> = ...].
 
-   We print the layout when it cannot be inferred from the rest of what
-   is printed. Specifically, we print the layout when either of these
+   We print the layout when it cannot be inferred from the rest of what is
+   printed. Specifically, we print the user-written layout in both of these
    is the case:
 
    (C1.1) The type declaration is abstract and has no manifest (i.e.,
-   it's written without any [=]-signs), and the layout is not the default
-   [value]. (* CR layouts reisenberg: update when the default changes *)
+   it's written without any [=]-signs).
 
    In this case, there is no way to know the layout without the annotation.
+   It is possible we might print a redundant [ : value ] annotation, but if the
+   user included this, they are probably happy to have it be printed, too.
 
-   (C1.2) The type is [@@unboxed] and the user wrote a layout annotation.  If an
-   [@@unboxed] type is recursive, it can be impossible to deduce the layout.
-   We thus defer to the user in determining whether to print the layout annotation.
+   (C1.2) The type is [@@unboxed]. If an [@@unboxed] type is recursive, it can
+   be impossible to deduce the layout.  We thus defer to the user in determining
+   whether to print the layout annotation.
 
    Case (C2). The layout on a type parameter to a type, like
    [type ('a : <<this one>>) t = ...].
@@ -1605,10 +1606,7 @@ let rec tree_of_type_decl id decl =
            but the default must be user-written, so we just look in the
            attributes. Similarly, look in the attributes for (C1.2), the
            unboxed case. *)
-      begin match Builtin_attributes.layout decl.type_attributes with
-      | Some {txt = Value} -> None
-      | other -> other
-      end
+      Builtin_attributes.layout decl.type_attributes
     | _ -> None (* other cases have no layout annotation *)
   in
     { otype_name = name;

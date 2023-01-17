@@ -28,8 +28,6 @@ exception Escape of type_expr Errortrace.escape
 exception Tags of label * label
 exception Cannot_expand
 exception Cannot_apply
-exception Matches_failure of Env.t * Errortrace.unification_error
-  (* Raised from [matches], hence the odd name *)
 exception Incompatible
   (* Raised from [mcomp] *)
 
@@ -269,13 +267,17 @@ val moregeneral: Env.t -> bool -> type_expr -> type_expr -> unit
 val is_moregeneral: Env.t -> bool -> type_expr -> type_expr -> bool
 val all_distinct_vars: Env.t -> type_expr list -> bool
         (* Check those types are all distinct type variables *)
-val matches: expand_error_trace:bool -> Env.t -> type_expr -> type_expr -> unit
+
+type matches_result =
+  | Unification_failure of Errortrace.unification_error
+  | Layout_mismatch of { original_layout : layout; inferred_layout : layout }
+  | All_good
+val matches: expand_error_trace:bool -> Env.t ->
+  type_expr -> type_expr -> matches_result
         (* Same as [moregeneral false], implemented using the two above
            functions and backtracking. Ignore levels. The [expand_error_trace]
            flag controls whether the error raised performs expansion; this
            should almost always be [true]. *)
-val does_match: Env.t -> type_expr -> type_expr -> bool
-        (* Same as [matches], but returns a [bool] *)
 
 val reify_univars : Env.t -> Types.type_expr -> Types.type_expr
         (* Replaces all the variables of a type by a univar. *)

@@ -11,7 +11,7 @@ type t_void : void
 ;;
 [%%expect{|
 type t_any : any
-type t_value
+type t_value : value
 type t_imm : immediate
 type t_imm64 : immediate64
 type t_void : void
@@ -267,36 +267,11 @@ Error: This expression has type string but an expression was expected of type
        string has layout value, which is not a sublayout of immediate.
 |}]
 
-class c : object
-  val f : 'a -> 'a
-end = object
-  val f = fun (x : ('a : immediate)) -> x
-end
-;;
-[%%expect {|
-fail
-|}]
-
-type s = { f : ('a : value) . 'a -> 'a u }
-and 'a u = 'a t2_imm
-
-[%%expect {|
-fail
-|}]
-
 (* and now, some parsing & printing tests. *)
 
 let f (type a : immediate) (x : a) = x
 let f = fun (type a : immediate) (x : a) -> x
 let f = fun (type a : value) (x : a) -> x
-
-class c : object
-  method m : ('a : immediate). 'a -> 'a
-  val f : ('a : immediate) -> 'a
-end = object
-  method m : type (a : immediate). a -> a = fun x -> x
-  val f = fun (x : ('a : immediate)) -> x
-end
 
 let o = object
   method m : type (a : immediate). a -> a = fun x -> x
@@ -320,7 +295,6 @@ let f (x : ('a : immediate). 'a -> 'a) = x 3, x true
 val f : ('a : immediate). 'a -> 'a = <fun>
 val f : ('a : immediate). 'a -> 'a = <fun>
 val f : 'a -> 'a = <fun>
-class c : object method m : 'a -> 'a end BAD
 val o : < m : ('a : immediate). 'a -> 'a > = <obj>
 val f : ('a : immediate). 'a -> 'a = <fun>
 val f : ('a : immediate). 'a -> 'a = <fun>
@@ -336,15 +310,6 @@ type _ a = Mk : [> ] * ('a : immediate) -> int a
 
 [%%expect {|
 type _ a = Mk : ('a : immediate). [>  ] * 'a -> int a
-|}]
-
-type _ g = | MkG : ('a : immediate) ('b : void). 'a -> 'b g
-
-type ('a : void) t3 = ..
-type _ t3 += MkG : ('a : immediate) 'b. 'a -> 'b t3
-
-[%%expect {|
-success (I think)
 |}]
 
 let f_imm : ('a : immediate). 'a -> 'a = fun x -> x
@@ -369,10 +334,4 @@ type (_ : value) g =
 
 [%%expect {|
 type _ g = MkG : ('a : immediate). 'a g
-|}]
-
-let f_gadt : ('a : value). 'a -> 'a g -> 'a = fun x MkG -> f_imm x
-
-[%%expect {|
-success
 |}]

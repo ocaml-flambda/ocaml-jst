@@ -14,7 +14,7 @@ type void_unboxed_record = { vur_void : t_void } [@@unboxed]
 
 [%%expect{|
 type t_any : any
-type t_value
+type t_value : value
 type t_imm : immediate
 type t_imm64 : immediate64
 type t_void : void
@@ -995,11 +995,10 @@ type 'a t_void_15 : void
 type t_15 = T_15 : 'a t_void_15 -> t_15 [@@unboxed]
 |}];;
 
-
-
 (* CR ccasinghino: Once we allow non-value top-level module definitions, add
    tests showing that things get defaulted to value.
 
    (CJC XXX actually, once we can annotate universally quantified variables,
    that's probably enough)
 *)
+

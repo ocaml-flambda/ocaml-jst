@@ -687,9 +687,14 @@ let rec check_constraints_rec env loc visited ty =
            *already* violate the constraints -- we need to report a problem with
            the unexpanded types, or we get errors that talk about the same type
            twice.  This is generally true for constraint errors. *)
-        try Ctype.matches ~expand_error_trace:false env ty ty'
-        with Ctype.Matches_failure (env, err) ->
+        match Ctype.matches ~expand_error_trace:false env ty ty' with
+        | Unification_failure err ->
           raise (Error(loc, Constraint_failed (env, err)))
+        | Layout_mismatch { original_layout; inferred_layout } ->
+          raise (Error(loc, Layout
+                              (Not_a_sublayout
+                                 (original_layout, inferred_layout))))
+        | All_good -> ()
       end;
       List.iter (check_constraints_rec env loc visited) args
   | Tpoly (ty, tl) ->

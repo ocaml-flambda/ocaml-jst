@@ -140,8 +140,6 @@ exception Cannot_subst
 
 exception Cannot_unify_universal_variables
 
-exception Matches_failure of Env.t * unification_error
-
 exception Incompatible
 
 (**** Type level management ****)
@@ -4485,41 +4483,6 @@ let is_moregeneral env inst_nongen pat_sch subj_sch =
   | () -> true
   | exception Moregen _ -> false
 
-(* Alternative approach: "rigidify" a type scheme,
-   and check validity after unification *)
-(* Simpler, no? *)
-
-let rec rigidify_rec vars ty =
-  if try_mark_node ty then
-    begin match get_desc ty with
-    | Tvar { layout } ->
-        vars := TypeMap.add ty layout !vars
-    | Tvariant row ->
-        let Row {more; name; closed} = row_repr row in
-        if is_Tvar more && not (has_fixed_explanation row) then begin
-          let more' = newty2 ~level:(get_level more) (get_desc more) in
-          let row' =
-            create_row ~fixed:(Some Rigid) ~fields:[] ~more:more'
-              ~name ~closed
-          in link_type more (newty2 ~level:(get_level ty) (Tvariant row'))
-        end;
-        iter_row (rigidify_rec vars) row;
-        (* only consider the row variable if the variant is not static *)
-        if not (static_row row) then
-          rigidify_rec vars (row_more row)
-    | _ ->
-        iter_type_expr (rigidify_rec vars) ty
-    end
-
-(* remember free variables in a type so we can make sure they aren't unified;
-   should be paired with a call to [all_distinct_vars_and_layouts] later. *)
-let rigidify ty =
-  let vars = ref TypeMap.empty in
-  rigidify_rec vars ty;
-  unmark_type ty;
-  List.map (fun (trans_expr, lay) -> Transient_expr.type_expr trans_expr, lay)
-    (TypeMap.bindings !vars)
-
 let all_distinct_vars env vars =
   let tys = ref TypeSet.empty in
   List.for_all
@@ -4531,44 +4494,107 @@ let all_distinct_vars env vars =
      end)
     vars
 
-let all_distinct_vars_and_layouts env vars_layouts =
-  let tys = ref TypeSet.empty in
-  List.for_all
-    (fun (ty, old_layout) ->
-       let ty = expand_head env ty in
-       let old_layout = Type_layout.repr old_layout in
-       if TypeSet.mem ty !tys then false else begin
-         tys := TypeSet.add ty !tys;
-         match get_desc ty with
-         | Tvar { layout } -> Type_layout.equal layout old_layout
-         | _ -> false
-       end)
-    vars_layouts
+type matches_result =
+  | Unification_failure of Errortrace.unification_error
+  | Layout_mismatch of { original_layout : layout; inferred_layout : layout }
+  | All_good
 
-let matches ~expand_error_trace env ty ty' =
-  let snap = snapshot () in
-  let vars_layouts = rigidify ty in
-  cleanup_abbrev ();
-  match unify env ty ty' with
-  | () ->
-      if not (all_distinct_vars_and_layouts env vars_layouts) then begin
-        backtrack snap;
-        let diff =
-          if expand_error_trace
-          then expanded_diff env ~got:ty ~expected:ty'
-          else unexpanded_diff ~got:ty ~expected:ty'
-        in
-        raise (Matches_failure (env, unification_error ~trace:[diff]))
-      end;
-      backtrack snap
-  | exception Unify err ->
+module Matches = struct
+  (* Alternative approach: "rigidify" a type scheme,
+     and check validity after unification *)
+  (* Simpler, no? *)
+
+  let rec rigidify_rec vars ty =
+    if try_mark_node ty then
+      begin match get_desc ty with
+      | Tvar { layout } ->
+          vars := TypeMap.add ty layout !vars
+      | Tvariant row ->
+          let Row {more; name; closed} = row_repr row in
+          if is_Tvar more && not (has_fixed_explanation row) then begin
+            let more' = newty2 ~level:(get_level more) (get_desc more) in
+            let row' =
+              create_row ~fixed:(Some Rigid) ~fields:[] ~more:more'
+                ~name ~closed
+            in link_type more (newty2 ~level:(get_level ty) (Tvariant row'))
+          end;
+          iter_row (rigidify_rec vars) row;
+          (* only consider the row variable if the variant is not static *)
+          if not (static_row row) then
+            rigidify_rec vars (row_more row)
+      | _ ->
+          iter_type_expr (rigidify_rec vars) ty
+      end
+
+  (* remember free variables in a type so we can make sure they aren't unified;
+     should be paired with a call to [all_distinct_vars_with_original__layouts]
+     later. *)
+  let rigidify ty =
+    let vars = ref TypeMap.empty in
+    rigidify_rec vars ty;
+    unmark_type ty;
+    List.map (fun (trans_expr, lay) -> Transient_expr.type_expr trans_expr, lay)
+      (TypeMap.bindings !vars)
+
+  (* this version doesn't carry the unification error, which is computed after
+     the error is detected *)
+  module No_trace = struct
+    type matches_result_ =
+      | Unification_failure
+      | Layout_mismatch of { original_layout : layout; inferred_layout : layout }
+      | All_good
+  end
+
+  let all_distinct_vars_with_original_layouts env vars_layouts =
+    let open No_trace in
+    let tys = ref TypeSet.empty in
+    let folder acc (ty, original_layout) =
+      match acc with
+      | Unification_failure | Layout_mismatch _ -> acc
+      | All_good ->
+         let open No_trace in
+         let ty = expand_head env ty in
+         if TypeSet.mem ty !tys then Unification_failure else begin
+           let original_layout = Type_layout.repr original_layout in
+           tys := TypeSet.add ty !tys;
+           match get_desc ty with
+           | Tvar { layout = inferred_layout } ->
+             if Type_layout.equal inferred_layout original_layout
+             then All_good
+             else Layout_mismatch { original_layout; inferred_layout }
+           | _ -> Unification_failure
+         end
+    in
+    List.fold_left folder All_good vars_layouts
+
+  let matches ~expand_error_trace env ty ty' =
+    let snap = snapshot () in
+    let vars_layouts = rigidify ty in
+    cleanup_abbrev ();
+    match unify env ty ty' with
+    | () ->
+      let result =
+        match all_distinct_vars_with_original_layouts env vars_layouts with
+        | Unification_failure ->
+          let diff =
+              if expand_error_trace
+              then expanded_diff env ~got:ty ~expected:ty'
+              else unexpanded_diff ~got:ty ~expected:ty'
+          in
+          Unification_failure (unification_error ~trace:[diff])
+        | Layout_mismatch { original_layout; inferred_layout } ->
+          Layout_mismatch { original_layout; inferred_layout }
+        | All_good -> All_good
+      in
       backtrack snap;
-      raise (Matches_failure (env, err))
+      result
+    | exception Unify err ->
+        backtrack snap;
+        Unification_failure err
+end
 
-let does_match env ty ty' =
-  match matches ~expand_error_trace:false env ty ty' with
-  | () -> true
-  | exception Matches_failure (_, _) -> false
+let matches = Matches.matches
+
 
                  (*********************************************)
                  (*  Equivalence between parameterized types  *)
