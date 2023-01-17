@@ -165,7 +165,7 @@ let typevar_layout ~print_quote ppf (v, l) =
   | None -> fprintf ppf " %a" pptv v
   | Some lay -> fprintf ppf " (%a : %a)"
                     pptv v
-                    Pprintast.layout_annotation lay
+                    Pprintast.const_layout lay
 
 let typevars ppf vs =
   List.iter (typevar_layout ~print_quote:true ppf) vs
@@ -257,7 +257,7 @@ let rec core_type i ppf x =
       line i ppf "Ttyp_package %a\n" fmt_path s;
       list i package_with ppf l;
   | Ttyp_layout (inner_ty, layout) ->
-      line i ppf "Ttyp_layout %s\n" (Pprintast.layout_annotation_to_string layout);
+      line i ppf "Ttyp_layout %s\n" (Pprintast.const_layout_to_string layout);
       core_type i ppf inner_ty;
 
 and package_with i ppf (s, t) =

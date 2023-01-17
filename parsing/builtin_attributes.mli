@@ -127,7 +127,7 @@ val filter_attributes :
 val warn_on_literal_pattern: Parsetree.attributes -> bool
 val explicit_arity: Parsetree.attributes -> bool
 
-val layout: Parsetree.attributes -> Asttypes.layout_annotation Location.loc option
+val layout: Parsetree.attributes -> Asttypes.const_layout Location.loc option
 
 val has_unboxed: Parsetree.attributes -> bool
 val has_boxed: Parsetree.attributes -> bool

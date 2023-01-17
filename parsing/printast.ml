@@ -157,7 +157,7 @@ let var_layout ~print_quote ppf (v, l) =
   | None -> fprintf ppf " %a" pptv v.txt
   | Some lay -> fprintf ppf " (%a : %a)"
                   pptv v.txt
-                  Pprintast.layout_annotation lay.txt
+                  Pprintast.const_layout lay.txt
 
 let typevars ppf (vs, ls) =
   List.iter2 (fun v l -> var_layout ~print_quote:true ppf (v, l)) vs ls
@@ -214,7 +214,7 @@ let rec core_type i ppf x =
       payload i ppf arg
   | Ptyp_layout (t, layout) ->
       line i ppf "Ptyp_layout %a"
-        Pprintast.layout_annotation layout.txt;
+        Pprintast.const_layout layout.txt;
       core_type i ppf t
 
 and package_with i ppf (s, t) =

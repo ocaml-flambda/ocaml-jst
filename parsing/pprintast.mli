@@ -54,7 +54,7 @@ val tyvar: Format.formatter -> string -> unit
   (** Print a type variable name, taking care of the special treatment
       required for the single quote character in second position. *)
 
-val layout_annotation: Format.formatter -> Asttypes.layout_annotation -> unit
+val const_layout: Format.formatter -> Asttypes.const_layout -> unit
 
 (* CR layouts RAE: where should this go? *)
-val layout_annotation_to_string : Asttypes.layout_annotation -> string
+val const_layout_to_string : Asttypes.const_layout -> string

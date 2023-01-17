@@ -60,7 +60,7 @@ type out_type_param =
   { oparam_name : string;
     oparam_variance : Asttypes.variance;
     oparam_injectivity : Asttypes.injectivity;
-    oparam_layout : Asttypes.layout_annotation option }
+    oparam_layout : Asttypes.const_layout option }
 
 type out_mutable_or_global =
   | Ogom_mutable
@@ -74,7 +74,7 @@ type out_global =
   | Ogf_unrestricted
 
 (* should be empty if all the layout annotations are missing *)
-type out_vars_layouts = (string * Asttypes.layout_annotation option) list
+type out_vars_layouts = (string * Asttypes.const_layout option) list
 
 type out_type =
   | Otyp_abstract
@@ -147,7 +147,7 @@ and out_type_decl =
 
     (* Some <=> we should print this annotation;
        see Note [When to print layout annotations] in Printtyp, Case (C1) *)
-    otype_layout: Asttypes.layout_annotation option;
+    otype_layout: Asttypes.const_layout option;
 
     otype_unboxed: bool;
     otype_cstrs: (out_type * out_type) list }

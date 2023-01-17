@@ -700,7 +700,7 @@ let mk_directive ~loc name arg =
 
 (* returns both the translated layout and the string, because
    the string is useful for building an Attribute *)
-let check_layout loc id : (layout_annotation * string) with_loc =
+let check_layout loc id : (const_layout * string) with_loc =
   let layout_annotation = match id with
     | "any" -> Any
     | "value" -> Value
@@ -712,7 +712,7 @@ let check_layout loc id : (layout_annotation * string) with_loc =
   mkloc (layout_annotation, id) loc
 
 (* See Note [Parsing layout annotations in types] *)
-let check_layout_from_type layout_type : layout_annotation with_loc =
+let check_layout_from_type layout_type : const_layout with_loc =
   match layout_type.ptyp_desc with
   | Ptyp_constr({ txt = Lident lay_string }, []) ->
     Location.map fst (check_layout layout_type.ptyp_loc lay_string)
@@ -2954,11 +2954,11 @@ type_constraint:
 
 (* the thing between the [type] and the [.] in
    [let : type <<here>>. 'a -> 'a = ...] *)
-newtypes: (* : (string with_loc * layout_annotation with_loc option) list *)
+newtypes: (* : (string with_loc * const_layout with_loc option) list *)
   newtype+
     { $1 }
 
-newtype: (* : string with_loc * layout_annotation with_loc option *)
+newtype: (* : string with_loc * const_layout with_loc option *)
     mkrhs(LIDENT)                     { $1, None }
   | LPAREN name=mkrhs(LIDENT) COLON layout=layout_annotation RPAREN
       { name, Some layout }
@@ -3310,10 +3310,10 @@ type_parameters:
       { ps }
 ;
 
-layout_annotation: (* : layout_annotation with_loc *)
+layout_annotation: (* : const_layout with_loc *)
   layout { Location.map fst $1 }
 
-layout: (* : (layout_annotation * string) with_loc *)
+layout: (* : (const_layout * string) with_loc *)
   (* this includes the string form of the layout annotation; useful for
      some clients *)
   ident { check_layout (make_loc $sloc) $1 }
@@ -3578,7 +3578,7 @@ with_type_binder:
 
 /* Polymorphic types */
 
-%inline typevar: (* : string with_loc * layout_annotation with_loc option *)
+%inline typevar: (* : string with_loc * const_layout with_loc option *)
     QUOTE mkrhs(ident)
       { ($2, None) }
       (* See Note [Parsing layout annotations in types], the [Similar story],
@@ -3587,7 +3587,7 @@ with_type_binder:
       { (check_type_var_from_type tv, Some (check_layout_from_type lay)) }
 ;
 %inline typevar_list:
-  (* : string with_loc list * layout_annotation with_loc option list *)
+  (* : string with_loc list * const_layout with_loc option list *)
   nonempty_llist(typevar)
     { List.split $1 }
 ;

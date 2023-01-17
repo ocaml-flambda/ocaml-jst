@@ -1156,7 +1156,7 @@ let print_labels = ref true
 
 (* Returns a layout annotation if we should print one, according to
    Note [When to print layout annotations] *)
-let layout_annotation_of_layout layout : Asttypes.layout_annotation option =
+let const_layout_of_layout layout : Asttypes.const_layout option =
   match Type_layout.repr layout with
     | Any -> Some Any
     | Immediate64 -> Some Immediate64
@@ -1166,11 +1166,11 @@ let layout_annotation_of_layout layout : Asttypes.layout_annotation option =
     | Sort (Var _) -> assert false
     (* by the time we're printing, these should be defaulted *)
 
-let layout_annotation_of_param tv : Asttypes.layout_annotation option =
+let const_layout_of_param tv : Asttypes.const_layout option =
   (* This adds a layout annotation according to Case (C2) in
      Note [When to print layout annotations] *)
   match get_desc tv with
-  | Tvar { layout } -> layout_annotation_of_layout layout
+  | Tvar { layout } -> const_layout_of_layout layout
   | _ -> None (* this is (C2.2) from the Note *)
 
 let rec tree_of_typexp mode ty =
@@ -1309,9 +1309,9 @@ let rec tree_of_typexp mode ty =
 (* qtvs = quantified type variables *)
 (* this silently drops any arguments that are not generic Tvar or Tunivar *)
 and tree_of_qtvs qtvs =
-  let tree_of_qtv v : (string * Asttypes.layout_annotation option) option =
+  let tree_of_qtv v : (string * Asttypes.const_layout option) option =
     let tree layout = Some (Names.name_of_type Names.new_name v,
-                            layout_annotation_of_layout layout)
+                            const_layout_of_layout layout)
     in
     match v.desc with
     | Tvar { layout } when v.level = generic_level -> tree layout
@@ -1560,7 +1560,7 @@ let rec tree_of_type_decl id decl =
       { oparam_name = type_param (tree_of_typexp Type ty);
         oparam_variance = variance;
         oparam_injectivity = injectivity;
-        oparam_layout = layout_annotation_of_param ty }
+        oparam_layout = const_layout_of_param ty }
     in
     (Ident.name id,
      List.map2 mk_param params vari)
@@ -1878,7 +1878,7 @@ let tree_of_class_param param var_inj =
     oparam_injectivity = injectivity;
     (* CR-soon reisenberg: fix next line when adding support for layout
        annotations on class type parameters *)
-    oparam_layout = layout_annotation_of_param param }
+    oparam_layout = const_layout_of_param param }
 
 let class_variance =
   let open Variance in let open Asttypes in

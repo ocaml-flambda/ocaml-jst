@@ -67,10 +67,10 @@ let value_ident ppf name =
 
 (* Layouts *)
 
-let print_layout_option ppf : Asttypes.layout_annotation option -> _ = function
+let print_layout_option ppf : Asttypes.const_layout option -> _ = function
   | None -> ()
   | Some lay -> fprintf ppf "@ : %s"
-                  (Pprintast.layout_annotation_to_string lay)
+                  (Pprintast.const_layout_to_string lay)
 
 (* Values *)
 
@@ -277,7 +277,7 @@ let pr_var_layout ppf (v, l) = match l with
     | None -> pr_var ppf v
     | Some lay -> fprintf ppf "(%a : %a)"
                     pr_var v
-                    Pprintast.layout_annotation lay
+                    Pprintast.const_layout lay
 
 let pr_var_layouts =
   print_list pr_var_layout (fun ppf -> fprintf ppf "@ ")

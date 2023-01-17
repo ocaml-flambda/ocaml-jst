@@ -217,13 +217,13 @@ let rec extract_params styp =
 let new_pre_univar ?name layout =
   let v = newvar ?name layout in pre_univars := v :: !pre_univars; v
 
-let make_typed_univars vars layouts : (string * layout_annotation option) list =
+let make_typed_univars vars layouts : (string * const_layout option) list =
   List.map2 (fun v l -> v.txt, Option.map Location.txt l) vars layouts
 
 let make_poly_univars vars layouts =
   let mk_pair v l =
     let name = v.txt in
-    let original_layout = Type_layout.of_layout_annotation_opt l
+    let original_layout = Type_layout.of_const_layout_opt l
                             ~default:Type_layout.value
     in
     let layout_info = { original_layout; defaulted = Option.is_none l } in
@@ -715,7 +715,7 @@ and transl_type_aux env policy mode styp =
   | Ptyp_layout (inner_type, layout_annot) ->
       let cty = transl_type env policy mode inner_type in
       let cty_expr = cty.ctyp_type in
-      let layout = Type_layout.of_layout_annotation layout_annot.txt in
+      let layout = Type_layout.of_const_layout layout_annot.txt in
       begin match constrain_type_layout env cty_expr layout with
              | Ok _ -> ()
              | Error err ->

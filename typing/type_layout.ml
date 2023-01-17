@@ -17,45 +17,39 @@ open Types
 type t = layout
 
 module Const = struct
-  type t =
-    | Any
-    | Value
-    | Immediate64
-    | Immediate
-    | Void
+  type t = Asttypes.const_layout
 
   let rec constrain_sort_default_void = function
-    | Types.Void -> Void
-    | Types.Value -> Value
+    | Types.Void -> Asttypes.Void
+    | Types.Value -> Asttypes.Value
     | Types.Var r ->
       match !r with
       | Some sort -> constrain_sort_default_void sort
-      | None -> (r := Some Types.Void; Void)
+      | None -> (r := Some Types.Void; Asttypes.Void)
 
   let constrain_default_void = function
-    | Types.Any -> Any
+    | Types.Any -> Asttypes.Any
     | Types.Sort sort -> constrain_sort_default_void sort
-    | Types.Immediate64 -> Immediate64
-    | Types.Immediate -> Immediate
+    | Types.Immediate64 -> Asttypes.Immediate64
+    | Types.Immediate -> Asttypes.Immediate
 
-  let can_make_void l = Void = constrain_default_void l
+  let can_make_void l = Asttypes.Void = constrain_default_void l
 end
 
-
-let of_layout_annotation = function
+let of_const_layout = function
   | Asttypes.Any         -> Any
   | Asttypes.Value       -> Sort Value
   | Asttypes.Void        -> Sort Void
   | Asttypes.Immediate64 -> Immediate64
   | Asttypes.Immediate   -> Immediate
 
-let of_layout_annotation_opt annot_opt ~default =
+let of_const_layout_opt annot_opt ~default =
   match annot_opt with
   | None -> default
-  | Some {Location.txt = annot} -> of_layout_annotation annot
+  | Some {Location.txt = annot} -> of_const_layout annot
 
 let of_attributes ~default attrs =
-  of_layout_annotation_opt ~default (Builtin_attributes.layout attrs)
+  of_const_layout_opt ~default (Builtin_attributes.layout attrs)
 
 let rec sort_to_string = function
   | Var r -> begin

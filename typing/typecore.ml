@@ -4862,7 +4862,7 @@ and type_expect_
              (Texp_poly cty, loc, sexp.pexp_attributes) :: exp.exp_extra }
   | Pexp_newtype({txt=name}, sbody, lay) ->
       let layout =
-        Type_layout.of_layout_annotation_opt ~default:Type_layout.value lay
+        Type_layout.of_const_layout_opt ~default:Type_layout.value lay
       in
       let ty =
         if Typetexp.valid_tyvar_name name then

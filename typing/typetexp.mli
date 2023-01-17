@@ -21,7 +21,7 @@ val valid_tyvar_name : string -> bool
 
 type poly_univars
 val make_poly_univars : string Location.loc list ->
-  Asttypes.layout_annotation Location.loc option list ->
+  Asttypes.const_layout Location.loc option list ->
   poly_univars
   (* Create a set of univars with given names and layouts. Any call
      of this function *must* call [check_poly_univars] when done

@@ -71,7 +71,9 @@ type injectivity =
   | Injective
   | NoInjectivity
 
-type layout_annotation =
+(* constant layouts are parsed as layout annotations, and also used
+   in the type checker as already-inferred (i.e. non-variable) layouts *)
+type const_layout =
   | Any
   | Value
   | Void

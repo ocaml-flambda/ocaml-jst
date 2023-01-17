@@ -28,7 +28,7 @@ open Longident
 open Parsetree
 open Ast_helper
 
-let layout_annotation_to_string = function
+let const_layout_to_string = function
   | Any -> "any"
   | Value -> "value"
   | Immediate -> "immediate"
@@ -310,8 +310,8 @@ let tyvar ppf s =
   else
     Format.fprintf ppf "'%s" s
 
-let layout_annotation ppf lay =
-  Format.fprintf ppf "%s" (layout_annotation_to_string lay)
+let const_layout ppf lay =
+  Format.fprintf ppf "%s" (const_layout_to_string lay)
 
 let tyvar_layout_loc ~print_quote f (str,layout) =
   let pptv =
@@ -321,7 +321,7 @@ let tyvar_layout_loc ~print_quote f (str,layout) =
   in
   match layout with
   | None -> pptv f str.txt
-  | Some lay -> Format.fprintf f "(%a : %a)" pptv str.txt layout_annotation lay.txt
+  | Some lay -> Format.fprintf f "(%a : %a)" pptv str.txt const_layout lay.txt
 let string_quot f x = pp f "`%s" x
 
 let maybe_local_type pty ctxt f c =

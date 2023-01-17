@@ -171,9 +171,9 @@ and core_type_desc =
   | Ptyp_extension of extension  (** [[%id]]. *)
 
   (* XXX layouts RAE: use extension instead *)
-  | Ptyp_layout of core_type * layout_annotation loc
+  | Ptyp_layout of core_type * const_layout loc
 
-and type_vars_layouts = layout_annotation loc option list
+and type_vars_layouts = const_layout loc option list
   (* the layout annotations associated with a type-variable list,
      typically a nearby [string loc list]; this list will always
      be the same length as that one *)
@@ -412,8 +412,8 @@ and expression_desc =
            values). *)
   | Pexp_object of class_structure  (** [object ... end] *)
 
-      (* XXX layouts RAE: move the layout_annotation to an extension *)
-  | Pexp_newtype of string loc * expression * layout_annotation loc option
+      (* XXX layouts RAE: move the const_layout to an extension *)
+  | Pexp_newtype of string loc * expression * const_layout loc option
       (** [fun (type t : immediate) -> E] *)
   | Pexp_pack of module_expr
       (** [(module ME)].
