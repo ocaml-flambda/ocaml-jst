@@ -41,22 +41,8 @@ module Violation : sig
   val report_with_name : name:string -> Format.formatter -> t -> unit
 end
 
-val sort_var : unit -> Types.sort
-
-val any : t
-val any_sort : unit -> t
-val value : t
-val immediate : t
-val immediate64 : t
-val void : t
-
-val repr : t -> t
 val default_to_value : t -> unit
 
-(** [equal t1 t2] checks if the two layouts are equal, and will set sort
-    variables to make this true if possible. (e.g., [equal (Sort 'k) (Sort
-    Value)] is true and has the effect of setting 'k to value). *)
-val equal : t -> t -> bool
 val intersection : t -> t -> (t, Violation.t) Result.t
 
 (** [sublayout t1 t2] returns [Ok t1] iff [t1] is a sublayout of
@@ -69,9 +55,6 @@ val intersection : t -> t -> (t, Violation.t) Result.t
     success case because it sometimes saves time / is convenient to have the
     same return type as intersection. *)
 val sublayout : t -> t -> (t, Violation.t) result
-
-(** Translate a user layout annotation to a layout *)
-val of_const_layout : Asttypes.const_layout -> t
 
 (** Translate an optional user layout annotation to a layout, with a default *)
 val of_const_layout_opt :
@@ -93,5 +76,3 @@ val layout_bound_of_kind : ('a,'b) Types.type_kind -> t
 val to_string : t -> string
 val format : Format.formatter -> t -> unit
 
-(** Eliminate sort vars (by defaulting to value) - used in Ctype.reify *)
-val reify : t -> unit

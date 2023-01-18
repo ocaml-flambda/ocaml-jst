@@ -1157,13 +1157,10 @@ let print_labels = ref true
 (* Returns a layout annotation if we should print one, according to
    Note [When to print layout annotations] *)
 let const_layout_of_layout layout : Asttypes.const_layout option =
-  match Type_layout.repr layout with
-    | Any -> Some Any
-    | Immediate64 -> Some Immediate64
-    | Immediate -> Some Immediate
-    | Sort Value -> None (* this is (C2.1) from the Note *)
-    | Sort Void -> Some Void
-    | Sort (Var _) -> assert false
+  match Layout.get layout with
+    | Const Value -> None (* this is (C2.1) from the Note *)
+    | Const c -> Some c
+    | Var _ -> assert false
     (* by the time we're printing, these should be defaulted *)
 
 let const_layout_of_param tv : Asttypes.const_layout option =
@@ -2316,7 +2313,7 @@ let hide_variant_name t =
       newty2 ~level:(get_level t)
         (Tvariant
            (create_row ~fields ~fixed ~closed ~name:None
-              ~more:(newvar2 (get_level more) Type_layout.value)))
+              ~more:(newvar2 (get_level more) Layout.value)))
   | _ -> t
 
 let prepare_expansion Errortrace.{ty; expanded} =

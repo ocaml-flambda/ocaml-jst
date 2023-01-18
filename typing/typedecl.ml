@@ -162,7 +162,7 @@ let enter_type rec_flag env sdecl (id, uid) =
      checked and then unified with the real manifest and checked against the
      kind. *)
   let layout =
-    Type_layout.of_attributes ~default:Type_layout.any sdecl.ptype_attributes
+    Type_layout.of_attributes ~default:Layout.any sdecl.ptype_attributes
   in
   if not needed then env else
   let decl =
@@ -172,7 +172,7 @@ let enter_type rec_flag env sdecl (id, uid) =
            (Sort 'l) and default to value if it's not determined by use. *)
         List.map (fun ({ptyp_attributes;_},_) ->
           let layout =
-            Type_layout.of_attributes ~default:Type_layout.value
+            Type_layout.of_attributes ~default:Layout.value
               ptyp_attributes
           in
           Btype.newgenvar layout) sdecl.ptype_params;
@@ -278,7 +278,7 @@ let make_params env params =
   let make_param (sty, v) =
     try
       let layout =
-        Type_layout.of_attributes ~default:(Type_layout.any_sort ())
+        Type_layout.of_attributes ~default:(Layout.new_var ())
           sty.ptyp_attributes
       in
       (transl_type_param env sty layout, v)
@@ -336,7 +336,7 @@ let transl_labels env univars closed lbls =
          {Types.ld_id = ld.ld_id;
           ld_mutable = ld.ld_mutable;
           ld_global = ld.ld_global;
-          ld_layout = Type_layout.any; (* Updated later *)
+          ld_layout = Layout.any; (* Updated later *)
           ld_type = ty;
           ld_loc = ld.ld_loc;
           ld_attributes = ld.ld_attributes;
@@ -419,7 +419,7 @@ let make_constructor env loc type_path type_params svars slays sargs sret_type =
          Ctype.generalize ret_type;
          let _vars = instance_poly_univars env loc univars in
          let set_level t =
-           Ctype.unify_var env (Ctype.newvar Type_layout.any) t
+           Ctype.unify_var env (Ctype.newvar Layout.any) t
          in
          Btype.iter_type_expr_cstr_args set_level args;
          set_level ret_type;
@@ -497,8 +497,8 @@ let transl_declaration env sdecl (id, uid) =
           *)
           let default =
             if Option.is_some sdecl.ptype_manifest
-            then Type_layout.any
-            else Type_layout.value
+            then Layout.any
+            else Layout.value
           in
           Type_layout.of_const_layout_opt ~default layout_annotation
         in
@@ -556,7 +556,7 @@ let transl_declaration env sdecl (id, uid) =
         let rep =
           if unbox then
             let layout =
-              Type_layout.of_const_layout_opt ~default:Type_layout.any
+              Type_layout.of_const_layout_opt ~default:Layout.any
                 layout_annotation
             in
             Variant_unboxed layout
@@ -567,8 +567,8 @@ let transl_declaration env sdecl (id, uid) =
               Array.of_list (List.map (fun cstr ->
                 match Types.(cstr.cd_args) with
                 | Cstr_tuple args ->
-                  Array.make (List.length args) Type_layout.any
-                | Cstr_record _ -> [| Type_layout.any |])
+                  Array.make (List.length args) Layout.any
+                | Cstr_record _ -> [| Layout.any |])
                 cstrs)
             )
         in
@@ -578,13 +578,13 @@ let transl_declaration env sdecl (id, uid) =
           let rep =
             if unbox then
               let layout =
-                Type_layout.of_const_layout_opt ~default:Type_layout.any
+                Type_layout.of_const_layout_opt ~default:Layout.any
                   layout_annotation
               in
               Record_unboxed layout
             else if List.for_all (fun l -> is_float env l.Types.ld_type) lbls'
             then Record_float
-            else Record_boxed (Array.make (List.length lbls) Type_layout.any)
+            else Record_boxed (Array.make (List.length lbls) Layout.any)
           in
           Ttype_record lbls, Type_record(lbls', rep)
       | Ptype_open -> Ttype_open, Type_open
@@ -898,7 +898,7 @@ let default_decls_layout decls =
    [Ctype.type_layout_representable] that avoids duplicated work *)
 let check_representable env loc lloc typ =
   match Ctype.type_sort env typ with
-  | Ok s -> Type_layout.default_to_value (Sort s)
+  | Ok s -> Type_layout.default_to_value (Layout.of_sort s)
   | Error err -> raise (Error (loc,Layout_sort {lloc; typ; err}))
 
 (* The [update_x_layouts] functions infer more precise layouts in the type kind,
@@ -918,7 +918,7 @@ let update_label_layouts env loc lbls named =
       (idx+1, {lbl with ld_layout} :: lbls)
     ) (0,[]) lbls
   in
-  if List.for_all (fun l -> Type_layout.(equal void l.ld_layout)) lbls then
+  if List.for_all (fun l -> Layout.(equate void l.ld_layout)) lbls then
     raise (Error (loc, Layout_empty_record))
   else List.rev lbls
 
@@ -931,7 +931,7 @@ let update_constructor_arguments_layouts env loc cd_args layouts =
     cd_args
   | Types.Cstr_record lbls ->
     let lbls = update_label_layouts env loc lbls None in
-    layouts.(0) <- Type_layout.value;
+    layouts.(0) <- Layout.value;
     Types.Cstr_record lbls
 
 (* CJC XXX I believe this will fail to infer immediate appropriately for
@@ -951,7 +951,7 @@ let update_decl_layout env decl =
          sense to use that here?  The use of value feels inaccurate, but I think
          the code that would look at first looks at the rep. *)
       let lbls =
-        List.map (fun lbl -> { lbl with ld_layout = Type_layout.value }) lbls
+        List.map (fun lbl -> { lbl with ld_layout = Layout.value }) lbls
       in
       lbls, rep
     | (([] | (_ :: _)), Record_unboxed _ | _, Record_inlined _) -> assert false
@@ -1067,7 +1067,7 @@ let check_well_founded env loc path to_check ty =
 let check_well_founded_manifest env loc path decl =
   if decl.type_manifest = None then () else
   let args =
-    List.map (fun _ -> Ctype.newvar Type_layout.any) decl.type_params
+    List.map (fun _ -> Ctype.newvar Layout.any) decl.type_params
   in
   check_well_founded env loc path (Path.same path) (Ctype.newconstr path args)
 
@@ -1342,7 +1342,7 @@ let transl_type_decl env rec_flag sdecl_list =
   (* Default away sort variables.  Must happen before update_decls_layout,
      Typedecl_seperability.update_decls, and add_types_to_env, all of which need
      to check whether parts of the type are void (and currently use
-     Type_layout.equal to do this which would set any remaining sort variables
+     Layout.equate to do this which would set any remaining sort variables
      to void). *)
   default_decls_layout decls;
   (* Add type properties to declarations *)
@@ -1373,7 +1373,7 @@ let transl_type_decl env rec_flag sdecl_list =
   (* Check layout annotations *)
   List.iter (fun tdecl ->
     let layout =
-      Type_layout.of_const_layout_opt ~default:Type_layout.any
+      Type_layout.of_const_layout_opt ~default:Layout.any
         tdecl.typ_layout_annotation
     in
     match Ctype.check_decl_layout final_env tdecl.typ_type layout with
@@ -1400,13 +1400,13 @@ let transl_extension_constructor ~scope env type_path type_params
           | Cstr_tuple args -> List.length args
           | Cstr_record _ -> 1
         in
-        let layouts = Array.make num_args Type_layout.any in
+        let layouts = Array.make num_args Layout.any in
         let args =
           update_constructor_arguments_layouts env sext.pext_loc args layouts
         in
         let strip_locs sv sl = sv.txt, Option.map Location.txt sl in
         let vars = List.map2 strip_locs svars slays in
-        let constant = Array.for_all Type_layout.(equal void) layouts in
+        let constant = Array.for_all Layout.(equate void) layouts in
           args, layouts, constant, ret_type,
           Text_decl(vars, targs, tret_type)
     | Pext_rebind lid ->
@@ -1935,7 +1935,7 @@ let transl_with_constraint id ?fixed_row_path ~sig_env ~sig_decl ~outer_env
     else
       (* CJC XXX: this is a gross hack.  See the comments in the [Ptyp_package]
          case of [Typetexp.transl_type_aux]. *)
-      let layout = Type_layout.value in
+      let layout = Layout.value in
         (* Type_layout.(of_attributes ~default:value sdecl.ptype_attributes) *)
       Types.kind_abstract ~layout, false
   in
@@ -2039,12 +2039,12 @@ let approx_type_decl sdecl_list =
     (fun sdecl ->
        let injective = sdecl.ptype_kind <> Ptype_abstract in
        let layout =
-         Type_layout.of_attributes ~default:Type_layout.value
+         Type_layout.of_attributes ~default:Layout.value
            sdecl.ptype_attributes
        in
        let params =
          List.map (fun (styp,_) ->
-           Type_layout.of_attributes ~default:Type_layout.value
+           Type_layout.of_attributes ~default:Layout.value
              styp.ptyp_attributes)
            sdecl.ptype_params
        in

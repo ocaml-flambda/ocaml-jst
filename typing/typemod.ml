@@ -583,10 +583,10 @@ let merge_constraint initial_env loc sg lid constr =
           { type_params =
               (* layout any is fine on the params because they get thrown away
                  below *)
-              List.map (fun _ -> Btype.newgenvar Type_layout.any)
+              List.map (fun _ -> Btype.newgenvar Layout.any)
                 sdecl.ptype_params;
             type_arity = arity;
-            type_kind = Types.kind_abstract ~layout:Type_layout.value;
+            type_kind = Types.kind_abstract ~layout:Layout.value;
             type_private = Private;
             type_manifest = None;
             type_variance =
@@ -2570,7 +2570,7 @@ and type_structure ?(toplevel = None) funct_body anchor env sstr =
                    Typecore.escape ~loc ~env:newenv mode;
                    (* Note that this layout check has the effect of defaulting
                       the sort of top-level bindings to value. *)
-                   if not (Type_layout.(equal (Sort sort) value)) then
+                   if not (Layout.(equate (of_sort sort) value)) then
                      raise (Error (loc, env,
                                    Toplevel_nonvalue (Ident.name id,sort)))
                 )
@@ -3099,7 +3099,7 @@ let type_package env m p fl =
   in
   List.iter
     (fun (n, ty) ->
-      try Ctype.unify env ty (Ctype.newvar Type_layout.value)
+      try Ctype.unify env ty (Ctype.newvar Layout.value)
       with Ctype.Unify _ ->
         raise (Error(modl.mod_loc, env, Scoping_pack (n,ty))))
     fl';
@@ -3527,7 +3527,7 @@ let report_error ~loc _env = function
   | Toplevel_nonvalue (id, sort) ->
       Location.errorf ~loc
         "@[Top-level module bindings must have layout value, but@ \
-         %s has layout@ %a.@]" id Type_layout.format (Sort sort)
+         %s has layout@ %a.@]" id Type_layout.format (Layout.of_sort sort)
 
 let report_error env ~loc err =
   Printtyp.wrap_printing_env ~error:true env

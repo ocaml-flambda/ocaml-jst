@@ -732,7 +732,7 @@ let close_variant env row =
       (orig_name, true) fields in
   if not closed || name != orig_name then begin
     let more' =
-      if static then Btype.newgenty Tnil else Btype.newgenvar Type_layout.value
+      if static then Btype.newgenty Tnil else Btype.newgenvar Layout.value
     in
     (* this unification cannot fail *)
     Ctype.unify env more

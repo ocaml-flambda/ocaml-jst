@@ -24,6 +24,94 @@
 (** Asttypes exposes basic definitions shared both by Parsetree and Types. *)
 open Asttypes
 
+module Sort : sig
+  (** A sort classifies how a type is represented at runtime. Every concrete
+      layout has a sort, and knowing the sort is sufficient for knowing the
+      calling convention of values of a given type. *)
+  type t
+
+  (** These are the constant sorts -- fully determined and without variables *)
+  type const =
+    | Void
+      (** No run time representation at all *)
+    | Value
+      (** Standard ocaml value representation *)
+
+  (** A sort variable that can be unified during type-checking. *)
+  type var
+
+  (** Create a new variable sort that can be unified. *)
+  val new_var : unit -> t
+
+  val of_const : const -> t
+  val of_var : var -> t
+
+  val void : t
+  val value : t
+
+  (** This checks for equality, and sets any variables to make two sorts
+      equal, if possible *)
+  val equate : t -> t -> bool
+end
+
+type sort = Sort.t
+
+module Layout : sig
+  (** A Layout.t is a full description of the runtime representation of values
+      of a given type. It includes sorts, but also the abstract top layout
+      [Any] and sublayouts of other sorts, such as [Immediate]. *)
+  type t
+
+  (** This layout is the top of the layout lattice. All types have layout [any].
+      But we cannot compile run-time manipulations of values of types with layout
+      [any]. *)
+  val any : t
+
+  (** Value of types of this layout are not retained at all at runtime *)
+  val void : t
+
+  (** This is the layout of normal ocaml values *)
+  val value : t
+
+  (** Values of types of this layout are immediate on 64-bit platforms; on other
+      platforms, we know nothing other than that it's a value. *)
+  val immediate64 : t
+
+  (** We know for sure that values of types of this layout are always immediate *)
+  val immediate : t
+
+  (** Create a fresh sort variable, packed into a layout. *)
+  val new_var : unit -> t
+
+  val of_sort : Sort.t -> t
+
+  (** Convert a [const_layout] to a [Layout.t]. *)
+  val of_const : const_layout -> t
+
+  type get_result =
+    | Const of const_layout
+    | Var of Sort.var
+
+  (** Extract the [const_layout] from a [Layout.t], looking through unified
+      sort variables. Returns [Var] if the final, non-variable layout has not
+      yet been determined. *)
+  val get : t -> get_result
+
+  val of_get_result : get_result -> t
+
+  (** Like [get], but defaults the layout if it is undetermined. *)
+  val get_defaulting : default:Sort.const -> t -> const_layout
+
+  val equal_const : const_layout -> const_layout -> bool
+
+  (** This checks for equality, and sets any variables to make two layouts
+      equal, if possible. e.g. [equate] on a var and [value] will set the
+      variable to be [value] *)
+  val equate : t -> t -> bool
+end
+
+type layout = Layout.t
+
 (** Type expressions for the core language.
 
     The [type_desc] variant defines all the possible type expressions one can
@@ -149,24 +237,6 @@ and alloc_mode_var = {
 and alloc_mode =
   | Amode of alloc_mode_const
   | Amodevar of alloc_mode_var
-
-and sort =
-  | Var of sort option ref
-  (** Unification variable *)
-  | Value
-  (** Standard ocaml value representation *)
-  | Void
-  (** No run time representation *)
-
-and layout =
-  | Any
-  | Sort of sort
-  | Immediate64
-  (** We know for sure that values of types of this layout are always immediate
-      on 64 bit platforms. For other platforms, we know nothing about immediacy.
-  *)
-  | Immediate
-  (** We know for sure that values of types of this layout are always immediate *)
 
 and fixed_explanation =
   | Univar of type_expr (** The row type was bound to an univar *)

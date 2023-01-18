@@ -54,7 +54,7 @@ let declare_probe_handlers lam =
     !probe_handlers
 
 (* Layout checking may default everything once we reach translcore *)
-let is_void_sort s = Type_layout.Const.can_make_void (Sort s)
+let is_void_sort s = Type_layout.Const.can_make_void (Layout.of_sort s)
 let is_void_layout = Type_layout.Const.can_make_void
 
 (* Compile an exception/extension definition *)
@@ -243,7 +243,7 @@ let rec push_defaults loc bindings use_lhs cases partial warnings =
               Texp_ident
                 (Path.Pident param, mknoloc (Longident.Lident name),
                  desc, Id_value)},
-             Types.Value,
+             Types.Sort.value,
              (* CR ccasinghino Value here will changes when functions take other
                 layouts *)
              cases, partial) }
@@ -1648,7 +1648,7 @@ and transl_match ~scopes e arg sort pat_expr_list partial void_k =
         let ids_full = Typedtree.pat_bound_idents_full sort pv in
         let ids_kinds =
           List.filter_map (fun (id, _, ty, sort) ->
-            if Type_layout.Const.can_make_void (Sort sort)
+            if Type_layout.Const.can_make_void (Layout.of_sort sort)
             then None
             else Some (id, Typeopt.value_kind pv.pat_env ty))
             ids_full

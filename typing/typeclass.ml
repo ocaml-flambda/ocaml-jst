@@ -305,7 +305,7 @@ let rec class_type_field env sign self_scope ctf =
         (fun () ->
           let cty = transl_simple_type env false Global sty in
           let ty = cty.ctyp_type in
-          begin match Ctype.constrain_type_layout env ty Type_layout.value with
+          begin match Ctype.constrain_type_layout env ty Layout.value with
           | Ok _ -> ()
           | Error err -> raise (Error(loc, env, Non_value_binding(lab, err)))
           end;
@@ -318,7 +318,7 @@ let rec class_type_field env sign self_scope ctf =
            let sty = Ast_helper.Typ.force_poly sty in
            match sty.ptyp_desc, priv with
            | Ptyp_poly ([],sty',[]), Public ->
-               let expected_ty = Ctype.newvar Type_layout.value in
+               let expected_ty = Ctype.newvar Layout.value in
                add_method loc env lab priv virt expected_ty sign;
                let returned_cty = ctyp Ttyp_any (Ctype.newty Tnil) env loc in
                delayed_meth_specs :=
@@ -664,7 +664,7 @@ let rec class_field_first_pass self_loc cl_num sign self_scope acc cf =
              Ctype.generalize_structure ty
            end;
            begin
-             match Ctype.constrain_type_layout val_env ty Type_layout.value with
+             match Ctype.constrain_type_layout val_env ty Layout.value with
              | Ok _ -> ()
              | Error err -> raise (Error(label.loc, val_env,
                                          Non_value_binding(label.txt, err)))
@@ -711,7 +711,7 @@ let rec class_field_first_pass self_loc cl_num sign self_scope acc cf =
            end;
            begin
              match Ctype.constrain_type_layout val_env definition.exp_type
-                     Type_layout.value with
+                     Layout.value with
              | Ok _ -> ()
              | Error err -> raise (Error(label.loc, val_env,
                                          Non_value_binding(label.txt, err)))
@@ -780,7 +780,7 @@ let rec class_field_first_pass self_loc cl_num sign self_scope acc cf =
            in
            let ty =
              match sty with
-             | None -> Ctype.newvar Type_layout.value
+             | None -> Ctype.newvar Layout.value
              | Some sty ->
                  let sty = Ast_helper.Typ.force_poly sty in
                  let cty' =
@@ -793,7 +793,7 @@ let rec class_field_first_pass self_loc cl_num sign self_scope acc cf =
              try
                match get_desc ty with
                | Tvar _ ->
-                   let ty' = Ctype.newvar Type_layout.value in
+                   let ty' = Ctype.newvar Layout.value in
                    Ctype.unify val_env (Ctype.newmono ty') ty;
                    type_approx val_env sbody ty'
                | Tpoly (ty1, tl) ->
@@ -1351,7 +1351,7 @@ and class_expr_aux cl_num val_env met_env virt self_scope scl =
              List.iter
                (fun (loc, mode, sort) ->
                   Typecore.escape ~loc ~env:val_env mode;
-                  match Type_layout.(sublayout (Sort sort) value) with
+                  match Type_layout.sublayout (Layout.of_sort sort) Layout.value with
                   | Ok _ -> ()
                   | Error err ->
                     raise (Error(loc,met_env,
@@ -1454,14 +1454,14 @@ and class_expr_aux cl_num val_env met_env virt self_scope scl =
 (* Approximate the type of the constructor to allow recursive use *)
 (* of optional parameters                                         *)
 
-let var_option = Predef.type_option (Btype.newgenvar Type_layout.value)
+let var_option = Predef.type_option (Btype.newgenvar Layout.value)
 
 let rec approx_declaration cl =
   match cl.pcl_desc with
     Pcl_fun (l, _, _, cl) ->
       let arg =
         if Btype.is_optional l then Ctype.instance var_option
-        else Ctype.newvar Type_layout.value
+        else Ctype.newvar Layout.value
       in
       let arg = Ctype.newmono arg in
       let arrow_desc = l, Alloc_mode.global, Alloc_mode.global in
@@ -1471,29 +1471,29 @@ let rec approx_declaration cl =
       approx_declaration cl
   | Pcl_constraint (cl, _) ->
       approx_declaration cl
-  | _ -> Ctype.newvar Type_layout.value
+  | _ -> Ctype.newvar Layout.value
 
 let rec approx_description ct =
   match ct.pcty_desc with
     Pcty_arrow (l, _, ct) ->
       let arg =
         if Btype.is_optional l then Ctype.instance var_option
-        else Ctype.newvar Type_layout.value
+        else Ctype.newvar Layout.value
       in
       let arg = Ctype.newmono arg in
       let arrow_desc = l, Alloc_mode.global, Alloc_mode.global in
       Ctype.newty
         (Tarrow (arrow_desc, arg, approx_description ct, commu_ok))
-  | _ -> Ctype.newvar Type_layout.value
+  | _ -> Ctype.newvar Layout.value
 
 (*******************************)
 
 let temp_abbrev loc env id arity uid =
   let params = ref [] in
   for _i = 1 to arity do
-    params := Ctype.newvar Type_layout.value :: !params
+    params := Ctype.newvar Layout.value :: !params
   done;
-  let ty = Ctype.newobj (Ctype.newvar Type_layout.value) in
+  let ty = Ctype.newobj (Ctype.newvar Layout.value) in
   let env =
     Env.add_type ~check:true id
       {type_params = !params;
@@ -1583,7 +1583,7 @@ let class_infos define_class kind
       try
           (* CR-soon reisenberg: That should probably allow [any], not just
              [value] *)
-          (transl_type_param env sty Type_layout.value, v)
+          (transl_type_param env sty Layout.value, v)
       with Already_bound ->
         raise(Error(sty.ptyp_loc, env, Repeated_parameter))
     in

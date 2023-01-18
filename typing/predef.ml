@@ -159,7 +159,7 @@ let common_initial_env add_type add_extension empty_env =
   let add_type = mk_add_type add_type
   and add_type1 ?(kind=fun _ -> Types.kind_abstract_value) type_ident
       ~variance ~separability env =
-    let param = newgenvar Type_layout.value in
+    let param = newgenvar Layout.value in
     let decl =
       {type_params = [param];
        type_arity = 1;
@@ -221,36 +221,36 @@ let common_initial_env add_type add_extension empty_env =
          variant [cstr ident_nil [];
                   cstr ident_cons [tvar, Unrestricted;
                                    type_list tvar, Unrestricted]]
-           [| [| |]; [| Type_layout.value; Type_layout.value |] |] )
+           [| [| |]; [| Layout.value; Layout.value |] |] )
   |> add_type ident_nativeint
   |> add_type1 ident_option
        ~variance:Variance.covariant
        ~separability:Separability.Ind
        ~kind:(fun tvar ->
          variant [cstr ident_none []; cstr ident_some [tvar, Unrestricted]]
-           [| [| |]; [| Type_layout.value |] |])
+           [| [| |]; [| Layout.value |] |])
   |> add_type ident_string
   |> add_type ident_unit
        ~kind:(variant [cstr ident_void []] [| [| |] |])
   (* Predefined exceptions - alphabetical order *)
   |> add_extension ident_assert_failure
        [newgenty (Ttuple[type_string; type_int; type_int])]
-       [| Type_layout.value |]
+       [| Layout.value |]
   |> add_extension ident_division_by_zero [] [||]
   |> add_extension ident_end_of_file [] [||]
-  |> add_extension ident_failure [type_string] [| Type_layout.value |]
-  |> add_extension ident_invalid_argument [type_string] [| Type_layout.value |]
+  |> add_extension ident_failure [type_string] [| Layout.value |]
+  |> add_extension ident_invalid_argument [type_string] [| Layout.value |]
   |> add_extension ident_match_failure
        [newgenty (Ttuple[type_string; type_int; type_int])]
-       [| Type_layout.value |]
+       [| Layout.value |]
   |> add_extension ident_not_found [] [||]
   |> add_extension ident_out_of_memory [] [||]
   |> add_extension ident_stack_overflow [] [||]
   |> add_extension ident_sys_blocked_io [] [||]
-  |> add_extension ident_sys_error [type_string] [| Type_layout.value |]
+  |> add_extension ident_sys_error [type_string] [| Layout.value |]
   |> add_extension ident_undefined_recursive_module
        [newgenty (Ttuple[type_string; type_int; type_int])]
-       [| Type_layout.value |]
+       [| Layout.value |]
 
 let build_initial_env add_type add_exception empty_env =
   let common = common_initial_env add_type add_exception empty_env in

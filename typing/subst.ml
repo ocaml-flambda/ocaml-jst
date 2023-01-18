@@ -144,37 +144,37 @@ let newpersty desc =
     desc ~level:generic_level ~scope:Btype.lowest_level ~id:!new_id
 
 (* ensure that all occurrences of 'Tvar None' are physically shared *)
-let tvar_none_any = Tvar { name = None; layout = Type_layout.any }
-let tvar_none_imm = Tvar { name = None; layout = Type_layout.immediate }
-let tvar_none_imm64 = Tvar { name = None; layout = Type_layout.immediate64 }
-let tvar_none_val = Tvar { name = None; layout = Type_layout.value }
-let tvar_none_void = Tvar { name = None; layout = Type_layout.void }
+let tvar_none_any = Tvar { name = None; layout = Layout.any }
+let tvar_none_imm = Tvar { name = None; layout = Layout.immediate }
+let tvar_none_imm64 = Tvar { name = None; layout = Layout.immediate64 }
+let tvar_none_val = Tvar { name = None; layout = Layout.value }
+let tvar_none_void = Tvar { name = None; layout = Layout.void }
 
-let tunivar_none_any = Tunivar { name = None; layout = Type_layout.any }
-let tunivar_none_imm = Tunivar { name = None; layout = Type_layout.immediate }
+let tunivar_none_any = Tunivar { name = None; layout = Layout.any }
+let tunivar_none_imm = Tunivar { name = None; layout = Layout.immediate }
 let tunivar_none_imm64 =
-  Tunivar { name = None; layout = Type_layout.immediate64 }
-let tunivar_none_val = Tunivar { name = None; layout = Type_layout.value }
-let tunivar_none_void = Tunivar { name = None; layout = Type_layout.void}
+  Tunivar { name = None; layout = Layout.immediate64 }
+let tunivar_none_val = Tunivar { name = None; layout = Layout.value }
+let tunivar_none_void = Tunivar { name = None; layout = Layout.void}
 
 let norm = function
   | (Tvar { name = None; layout }) as t -> begin
-      match Type_layout.repr layout with
-      | Any -> tvar_none_any
-      | Immediate -> tvar_none_imm
-      | Immediate64 -> tvar_none_imm64
-      | Sort Value -> tvar_none_val
-      | Sort Void -> tvar_none_void
-      | Sort (Var _) -> t
+      match Layout.get layout with
+      | Const Any -> tvar_none_any
+      | Const Immediate -> tvar_none_imm
+      | Const Immediate64 -> tvar_none_imm64
+      | Const Value -> tvar_none_val
+      | Const Void -> tvar_none_void
+      | Var _ -> t
     end
   | (Tunivar { name = None; layout }) as t -> begin
-      match Type_layout.repr layout with
-      | Any -> tunivar_none_any
-      | Immediate -> tunivar_none_imm
-      | Immediate64 -> tunivar_none_imm64
-      | Sort Value -> tunivar_none_val
-      | Sort Void -> tunivar_none_void
-      | Sort (Var _) -> t
+      match Layout.get layout with
+      | Const Any -> tunivar_none_any
+      | Const Immediate -> tunivar_none_imm
+      | Const Immediate64 -> tunivar_none_imm64
+      | Const Value -> tunivar_none_val
+      | Const Void -> tunivar_none_void
+      | Var _ -> t
     end
   | d -> d
 
@@ -208,7 +208,7 @@ let rec typexp copy_scope s ty =
     let has_fixed_row =
       not (is_Tconstr ty) && is_constr_row ~allow_ident:false tm in
     (* Make a stub *)
-    let layout = Type_layout.any in
+    let layout = Layout.any in
     let ty' =
       if s.for_saving then newpersty (Tvar {name = None; layout})
       else newgenstub ~scope:(get_scope ty) layout

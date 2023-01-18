@@ -17,6 +17,150 @@
 
 open Asttypes
 
+(* Layouts *)
+
+module Sort = struct
+  type const =
+    | Void
+    | Value
+
+  type t =
+    | Var of var
+    | Const of const
+  and var = t option ref
+
+  let void = Const Void
+  let value = Const Value
+
+  let of_const = function
+    | Void -> void
+    | Value -> value
+
+  let of_var v = Var v
+
+  let new_var () = Var (ref None)
+
+  let rec repr ~default : t -> t = function
+    | Const _ as t -> t
+    | Var r as t -> begin match !r with
+      | None -> begin match default with
+        | None -> t
+        | Some const -> begin
+            let t = of_const const in
+            r := Some t;
+            t
+          end
+      end
+      | Some s -> begin
+          let result = repr ~default s in
+          r := Some result; (* path compression *)
+          result
+        end
+    end
+
+  let equal_const_const c1 c2 = match c1, c2 with
+    | Void, Void -> true
+    | Void, Value -> false
+    | Value, Void -> false
+    | Value, Value -> true
+
+  let rec equate_var_const v1 c2 = match !v1 with
+    | Some s1 -> equate_sort_const s1 c2
+    | None -> v1 := Some (of_const c2); true
+
+  and equate_var v1 s2 = match s2 with
+    | Const c2 -> equate_var_const v1 c2
+    | Var v2 -> equate_var_var v1 v2
+
+  and equate_var_var v1 v2 = v1 == v2 || begin
+    match !v1, !v2 with
+    | Some s1, _ -> equate_var v2 s1
+    | _, Some s2 -> equate_var v1 s2
+    | None, None -> v1 := Some (of_var v2); true
+  end
+
+  and equate_sort_const s1 c2 = match s1 with
+    | Const c1 -> equal_const_const c1 c2
+    | Var v1 -> equate_var_const v1 c2
+
+  and equate s1 s2 = match s1 with
+    | Const c1 -> equate_sort_const s2 c1
+    | Var v1 -> equate_var v1 s2
+end
+
+type sort = Sort.t
+
+module Layout = struct
+  type t =
+    | Any
+    | Sort of sort
+    | Immediate64
+    (** We know for sure that values of types of this layout are always immediate
+        on 64-bit platforms. For other platforms, we know nothing about immediacy.
+    *)
+    | Immediate
+
+  let new_var () = Sort (Sort.new_var ())
+
+  let any = Any
+  let void = Sort Sort.void
+  let value = Sort Sort.value
+  let immediate64 = Immediate64
+  let immediate = Immediate
+
+  let of_sort s = Sort s
+
+  let of_const : const_layout -> t = function
+    | Any -> Any
+    | Immediate -> Immediate
+    | Immediate64 -> Immediate64
+    | Value -> value
+    | Void -> void
+
+  type get_result =
+    | Const of const_layout
+    | Var of Sort.var
+
+  let of_get_result = function
+    | Const c -> of_const c
+    | Var v -> of_sort (Sort.of_var v)
+
+  let repr ~default : t -> get_result = function
+    | Any -> Const Any
+    | Immediate -> Const Immediate
+    | Immediate64 -> Const Immediate64
+    | Sort s -> begin match Sort.repr ~default s with
+      (* NB: this match isn't as silly as it looks: those are
+         different constructors on the left than on the right *)
+      | Const Void -> Const Void
+      | Const Value -> Const Value
+      | Var v -> Var v
+    end
+
+  let get = repr ~default:None
+  let get_defaulting ~default t =
+    match repr ~default:(Some default) t with
+    | Const result -> result
+    | Var _ -> assert false
+
+  let equal_const (c1 : const_layout) (c2 : const_layout) = match c1, c2 with
+    | Any, Any -> true
+    | Immediate64, Immediate64 -> true
+    | Immediate, Immediate -> true
+    | Void, Void -> true
+    | Value, Value -> true
+    | (Any | Immediate64 | Immediate | Void | Value), _ -> false
+
+  let equate l1 l2 = match l1, l2 with
+    | Any, Any -> true
+    | Immediate64, Immediate64 -> true
+    | Immediate, Immediate -> true
+    | Sort s1, Sort s2 -> Sort.equate s1 s2
+    | (Any | Immediate64 | Immediate | Sort _), _ -> false
+end
+
+type layout = Layout.t
+
 (* Type expressions for the core language *)
 
 type transient_expr =
@@ -58,17 +202,6 @@ and alloc_mode_var = {
 and alloc_mode =
   | Amode of alloc_mode_const
   | Amodevar of alloc_mode_var
-
-and sort =
-  | Var of sort option ref
-  | Value
-  | Void
-
-and layout =
-  | Any
-  | Sort of sort
-  | Immediate64
-  | Immediate
 
 and row_desc =
     { row_fields: (label * row_field) list;
@@ -450,9 +583,9 @@ let item_visibility = function
   | Sig_class_type (_, _, _, vis) -> vis
 
 let kind_abstract ~layout = Type_abstract { layout }
-let kind_abstract_value = kind_abstract ~layout:(Sort Value)
-let kind_abstract_immediate = kind_abstract ~layout:Immediate
-let kind_abstract_any = kind_abstract ~layout:Any
+let kind_abstract_value = kind_abstract ~layout:Layout.value
+let kind_abstract_immediate = kind_abstract ~layout:Layout.immediate
+let kind_abstract_any = kind_abstract ~layout:Layout.any
 
 let decl_is_abstract decl =
   match decl.type_kind with

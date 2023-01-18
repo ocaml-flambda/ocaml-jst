@@ -94,7 +94,7 @@ let constructor_descrs ~current_unit ty_path decl cstrs rep =
     | Variant_boxed layouts -> layouts
     | Variant_unboxed layout -> [| [| layout |] |]
   in
-  let all_void layouts = Array.for_all Type_layout.(equal void) layouts in
+  let all_void layouts = Array.for_all Layout.(equate void) layouts in
   let num_consts = ref 0 and num_nonconsts = ref 0 in
   Array.iter
     (fun layouts ->
@@ -186,9 +186,9 @@ let none =
 let dummy_label =
   { lbl_name = ""; lbl_res = none; lbl_arg = none;
     lbl_mut = Immutable; lbl_global = Unrestricted;
-    lbl_layout = Type_layout.any;
+    lbl_layout = Layout.any;
     lbl_num = -1; lbl_pos = -1; lbl_all = [||];
-    lbl_repres = Record_unboxed Type_layout.any;
+    lbl_repres = Record_unboxed Layout.any;
     lbl_private = Public;
     lbl_loc = Location.none;
     lbl_attributes = [];
@@ -200,7 +200,7 @@ let label_descrs ty_res lbls repres priv =
   let rec describe_labels num pos = function
       [] -> []
     | l :: rest ->
-        let is_void = Type_layout.(equal l.ld_layout void) in
+        let is_void = Layout.(equate l.ld_layout void) in
         let lbl =
           { lbl_name = Ident.name l.ld_id;
             lbl_res = ty_res;
