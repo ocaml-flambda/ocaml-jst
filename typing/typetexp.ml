@@ -62,7 +62,7 @@ module TyVarEnv : sig
   val add : string -> type_expr -> unit
   (* add a global type variable to the environment *)
 
-  val narrow_in : (unit -> 'a) -> 'a
+  val with_local_scope : (unit -> 'a) -> 'a
   (* see mli file *)
 
   type poly_univars
@@ -128,7 +128,7 @@ end = struct
   let add name v =
     type_variables := TyVarMap.add name v !type_variables
 
-  let narrow_in f =
+  let with_local_scope f =
     let old_gl = increase_global_level () in
     let old_tv = !type_variables in
     Fun.protect
@@ -187,7 +187,6 @@ end = struct
 
   let remember_used name v loc =
     used_variables := TyVarMap.add name (v, loc) !used_variables
-
 
   type flavor = Unification | Universal
   type extensibility = Extensible | Fixed
@@ -683,7 +682,7 @@ and transl_type_aux env policy mode styp =
       ctyp (Ttyp_poly (vars, cty)) ty'
   | Ptyp_package (p, l) ->
       let l, mty = create_package_mty true styp.ptyp_loc env (p, l) in
-      let mty = TyVarEnv.narrow_in (fun () -> !transl_modtype env mty) in
+      let mty = TyVarEnv.with_local_scope (fun () -> !transl_modtype env mty) in
       let ptys = List.map (fun (s, pty) ->
                              s, transl_type env policy Alloc_mode.Global pty
                           ) l in

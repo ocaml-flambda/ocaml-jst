@@ -293,7 +293,7 @@ let make_constructor env loc type_path type_params svars sargs sret_type =
         transl_constructor_arguments env None true sargs
       in
         targs, None, args, None
-  | Some sret_type -> TyVarEnv.narrow_in begin fun () ->
+  | Some sret_type -> TyVarEnv.with_local_scope begin fun () ->
       (* if it's a generalized constructor we must work in a narrowed
          context so as to not introduce any new constraints *)
       TyVarEnv.reset ();

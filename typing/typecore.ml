@@ -4674,7 +4674,7 @@ and type_expect_
       let ty = newvar() in
       (* remember original level *)
       begin_def ();
-      let modl, pres, id, new_env = Typetexp.TyVarEnv.narrow_in begin fun () ->
+      let modl, pres, id, new_env = Typetexp.TyVarEnv.with_local_scope begin fun () ->
         let modl, md_shape = !type_module env smodl in
         Mtype.lower_nongen (get_level ty) modl.mod_type;
         let pres =
@@ -6076,7 +6076,7 @@ and type_unpacks ?(in_function : (Location.t * type_expr * bool) option)
   let extended_env, tunpacks =
     List.fold_left (fun (env, tunpacks) unpack ->
       begin_def ();
-      Typetexp.TyVarEnv.narrow_in begin fun () ->
+      Typetexp.TyVarEnv.with_local_scope begin fun () ->
         let modl, md_shape =
           !type_module env
             Ast_helper.(

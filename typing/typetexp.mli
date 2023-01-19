@@ -24,7 +24,7 @@ module TyVarEnv : sig
   val reset : unit -> unit
   (** removes all type variables from scope *)
 
-  val narrow_in: (unit -> 'a) -> 'a
+  val with_local_scope : (unit -> 'a) -> 'a
   (** Evaluate in a narrowed type-variable scope *)
 
   type poly_univars
