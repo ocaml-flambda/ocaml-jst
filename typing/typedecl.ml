@@ -331,7 +331,7 @@ let make_constructor env loc type_path type_params svars sargs sret_type =
          Ctype.end_def();
          Btype.iter_type_expr_cstr_args Ctype.generalize args;
          Ctype.generalize ret_type;
-         let _vars = instance_poly_univars env loc univars in
+         let _vars = TyVarEnv.instance_poly_univars env loc univars in
          let set_level t = Ctype.unify_var env (Ctype.newvar()) t in
          Btype.iter_type_expr_cstr_args set_level args;
          set_level ret_type;

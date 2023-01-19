@@ -75,6 +75,10 @@ module TyVarEnv : sig
   val check_poly_univars : Env.t -> Location.t -> poly_univars -> type_expr list
   (* see mli file *)
 
+  val instance_poly_univars :
+     Env.t -> Location.t -> poly_univars -> type_expr list
+  (* see mli file *)
+
   type policy
   val fixed_policy : policy (* no wildcards allowed *)
   val extensible_policy : policy (* common case *)
@@ -85,9 +89,12 @@ module TyVarEnv : sig
     (* create a new variable according to the given policy *)
 
   val add_pre_univar : type_expr -> policy -> unit
-    (* remember that a variable might become a univar if it isn't unified *)
-  val collect_pre_univars : (unit -> 'a) -> 'a * type_expr list
-    (* collect univars during a computation; returns the univars
+    (* remember that a variable might become a univar if it isn't unified;
+       used for checking method types *)
+
+  val collect_univars : (unit -> 'a) -> 'a * type_expr list
+    (* collect univars during a computation; returns the univars.
+       The wrapped computation should use [univars_policy].
        postcondition: the returned type_exprs are all Tunivar *)
 
   val reset_locals : ?univars:poly_univars -> unit -> unit
@@ -204,6 +211,15 @@ end = struct
       end;
       v)
 
+  let instance_poly_univars env loc vars =
+    let vs = check_poly_univars env loc vars in
+    vs |> List.iter (fun v ->
+      match get_desc v with
+      | Tunivar name ->
+         set_type_desc v (Tvar name)
+      | _ -> assert false);
+    vs
+
   (*****)
   let reset_locals ?univars:(uvs=[]) () =
     assert_univars uvs;
@@ -235,7 +251,7 @@ end = struct
       pre_univars := tv :: !pre_univars
     | _ -> ()
 
-  let collect_pre_univars f =
+  let collect_univars f =
     pre_univars := [];
     let result = f () in
     let univs =
@@ -380,15 +396,6 @@ let rec extract_params styp =
       in
       (l, arg_mode, a) :: params, ret, ret_mode
   | _ -> final styp
-
-let instance_poly_univars env loc vars =
-  let vs = TyVarEnv.check_poly_univars env loc vars in
-  vs |> List.iter (fun v ->
-    match get_desc v with
-    | Tunivar name ->
-       set_type_desc v (Tvar name)
-    | _ -> assert false);
-  vs
 
 let check_arg_type styp =
   if not (Clflags.Extension.is_enabled Polymorphic_parameters) then begin
@@ -839,7 +846,7 @@ let transl_simple_type env ?univars ~fixed mode styp =
 
 let transl_simple_type_univars env styp =
   TyVarEnv.reset_locals ();
-  let typ, univs = TyVarEnv.collect_pre_univars begin fun () ->
+  let typ, univs = TyVarEnv.collect_univars begin fun () ->
     begin_def ();
     let typ = transl_type env TyVarEnv.univars_policy Alloc_mode.Global styp in
     (* Globalize only local occurrences of variables that are already in global
@@ -877,7 +884,7 @@ let transl_type_scheme env styp =
      let typ = transl_simple_type env ~univars ~fixed:true Alloc_mode.Global st in
      end_def();
      generalize typ.ctyp_type;
-     let _ = instance_poly_univars env styp.ptyp_loc univars in
+     let _ = TyVarEnv.instance_poly_univars env styp.ptyp_loc univars in
      { ctyp_desc = Ttyp_poly (vars, typ);
        ctyp_type = typ.ctyp_type;
        ctyp_env = env;
