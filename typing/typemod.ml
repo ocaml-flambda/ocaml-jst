@@ -99,14 +99,14 @@ let rec path_concat head p =
 (* Extract a signature from a module type *)
 
 let extract_sig env loc mty =
-  match Env.scrape_alias env mty with
+  match Mtype.scrape_alias env mty with
     Mty_signature sg -> sg
   | Mty_alias path ->
       raise(Error(loc, env, Cannot_scrape_alias path))
   | _ -> raise(Error(loc, env, Signature_expected))
 
 let extract_sig_open env loc mty =
-  match Env.scrape_alias env mty with
+  match Mtype.scrape_alias env mty with
     Mty_signature sg -> sg
   | Mty_alias path ->
       raise(Error(loc, env, Cannot_scrape_alias path))
@@ -116,7 +116,7 @@ let extract_sig_open env loc mty =
    signature to fill in names from its parameter *)
 let extract_sig_functor_open funct_body env loc mty sig_acc =
   let sig_acc = List.rev sig_acc in
-  match Env.scrape_alias env mty with
+  match Mtype.scrape_alias env mty with
   | Mty_functor (Named (param, mty_param),mty_result) as mty_func ->
       let sg_param =
         match Mtype.scrape env mty_param with
@@ -381,7 +381,7 @@ let retype_applicative_functor_type ~loc env funct arg =
   let mty_functor = (Env.find_module funct env).md_type in
   let mty_arg = (Env.find_module arg env).md_type in
   let mty_param =
-    match Env.scrape_alias env mty_functor with
+    match Mtype.scrape_alias env mty_functor with
     | Mty_functor (Named (_, mty_param), _) -> mty_param
     | _ -> assert false (* could trigger due to MPR#7611 *)
   in
@@ -2235,11 +2235,8 @@ and type_module_aux ~alias sttn funct_body anchor env smod =
         if alias && aliasable then
           (Env.add_required_global path env; md)
         else begin
-          let mty =
-            if sttn then
-              Env.find_strengthened_module ~aliasable path env
-            else
-              (Env.find_module path env).md_type
+          let mty = Mtype.find_type_of_module
+              ~strengthen:sttn ~aliasable env path
           in
           match mty with
           | Mty_alias p1 when not alias ->
@@ -2388,7 +2385,7 @@ and type_application loc strengthen funct_body env smod =
 
 and type_one_application ~ctx:(apply_loc,md_f,args)
     funct_body env (funct, funct_shape)  app_view =
-  match Env.scrape_alias env funct.mod_type with
+  match Mtype.scrape_alias env funct.mod_type with
   | Mty_functor (Unit, mty_res) ->
       if not app_view.arg_is_syntactic_unit then
         raise (Error (app_view.f_loc, env, Apply_generative));
