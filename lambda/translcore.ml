@@ -174,7 +174,7 @@ let rec trivial_pat pat =
   match pat.pat_desc with
     Tpat_var _
   | Tpat_any -> true
-  | Tpat_alias (p, _, _) ->
+  | Tpat_alias (p, _, _, _) ->
       trivial_pat p
   | Tpat_construct (_, cd, [], _) ->
       not cd.cstr_generalized && cd.cstr_consts = 1 && cd.cstr_nonconsts = 0
@@ -233,7 +233,7 @@ let rec push_defaults loc bindings use_lhs cases partial warnings =
                  desc, Id_value)},
              cases, partial) }
       in
-      [{c_lhs = {pat with pat_desc = Tpat_var (param, mknoloc name)};
+      [{c_lhs = {pat with pat_desc = Tpat_var (param, mknoloc name, Value_mode.global)};
         c_guard = None; c_rhs= wrap_bindings bindings exp}]
   | _ ->
       cases
@@ -290,8 +290,8 @@ let rec cut n l =
 
 let rec iter_exn_names f pat =
   match pat.pat_desc with
-  | Tpat_var (id, _) -> f id
-  | Tpat_alias (p, id, _) ->
+  | Tpat_var (id, _, _) -> f id
+  | Tpat_alias (p, id, _, _) ->
       f id;
       iter_exn_names f p
   | _ -> ()
@@ -1251,7 +1251,7 @@ and transl_let ~scopes ?(add_regions=false) ?(in_structure=false)
       let idlist =
         List.map
           (fun {vb_pat=pat} -> match pat.pat_desc with
-              Tpat_var (id,_) -> id
+              Tpat_var (id,_,_) -> id
             | _ -> assert false)
         pat_expr_list in
       let transl_case {vb_expr=expr; vb_attributes; vb_loc; vb_pat} id =
