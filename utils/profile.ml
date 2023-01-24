@@ -27,6 +27,8 @@ module Measure = struct
     time : float;
     allocated_words : float;
     top_heap_words : int;
+    minor_gc_ns : float;
+    major_gc_ns: float;
   }
   let create () =
     let stat = Gc.quick_stat () in
@@ -34,8 +36,16 @@ module Measure = struct
       time = cpu_time ();
       allocated_words = stat.minor_words +. stat.major_words;
       top_heap_words = stat.top_heap_words;
+      minor_gc_ns = stat.time_spend_in_minor_collections_ns;
+      major_gc_ns = stat.time_spend_in_major_collections_ns;
     }
-  let zero = { time = 0.; allocated_words = 0.; top_heap_words = 0 }
+  let zero = {
+    time = 0.;
+    allocated_words = 0.;
+    top_heap_words = 0;
+    minor_gc_ns = 0.;
+    major_gc_ns = 0.;
+  }
 end
 
 module Measure_diff = struct
@@ -45,12 +55,16 @@ module Measure_diff = struct
     duration : float;
     allocated_words : float;
     top_heap_words_increase : int;
+    minor_gc_ns : float;
+    major_gc_ns : float;
   }
   let zero () = {
     timestamp = timestamp ();
     duration = 0.;
     allocated_words = 0.;
     top_heap_words_increase = 0;
+    minor_gc_ns = 0.;
+    major_gc_ns = 0.;
   }
   let accumulate t (m1 : Measure.t) (m2 : Measure.t) = {
     timestamp = t.timestamp;
@@ -59,6 +73,8 @@ module Measure_diff = struct
       t.allocated_words +. (m2.allocated_words -. m1.allocated_words);
     top_heap_words_increase =
       t.top_heap_words_increase + (m2.top_heap_words - m1.top_heap_words);
+    minor_gc_ns = t.minor_gc_ns +. (m2.minor_gc_ns -. m1.minor_gc_ns);
+    major_gc_ns = t.major_gc_ns +. (m2.major_gc_ns -. m1.major_gc_ns);
   }
   let of_diff m1 m2 =
     accumulate (zero ()) m1 m2
@@ -184,12 +200,14 @@ let compute_other_category (E table : hierarchy) (total : Measure_diff.t) =
       allocated_words = p1.allocated_words -. p2.allocated_words;
       top_heap_words_increase =
         p1.top_heap_words_increase - p2.top_heap_words_increase;
+      minor_gc_ns = p1.minor_gc_ns -. p2.minor_gc_ns;
+      major_gc_ns = p1.major_gc_ns -. p2.major_gc_ns;
     }
   ) table;
   !r
 
 type row = R of string * (float * display) list * row list
-type column = [ `Time | `Alloc | `Top_heap | `Abs_top_heap ]
+type column = [ `Time | `Alloc | `Top_heap | `Abs_top_heap | `Gc_time_minor | `Gc_time_major ]
 
 let rec rows_of_hierarchy ~nesting make_row name measure_diff hierarchy env =
   let rows =
@@ -248,6 +266,10 @@ let rows_of_hierarchy hierarchy measure_diff initial_measure columns timings_pre
         | `Abs_top_heap ->
           make (float_of_int top_heap_words)
            ~f:(memory_word_display ~previous:(float_of_int prev_top_heap_words))
+        | `Gc_time_minor ->
+          make (p.minor_gc_ns *. 1e-9) ~f:(time_display timings_precision);
+        | `Gc_time_major ->
+          make (p.major_gc_ns *. 1e-9) ~f:(time_display timings_precision);
       ) columns,
       top_heap_words
   in
@@ -320,6 +342,8 @@ let column_mapping = [
   "alloc", `Alloc;
   "top-heap", `Top_heap;
   "absolute-top-heap", `Abs_top_heap;
+  "gc-time-minor", `Gc_time_minor;
+  "gc-time-major", `Gc_time_major;
 ]
 
 let column_names = List.map fst column_mapping
