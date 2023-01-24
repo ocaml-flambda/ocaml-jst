@@ -736,54 +736,57 @@ let merge_constraint initial_env loc sg lid constr =
     if destructive_substitution then
       check_usage_after_substitution ~loc ~lid initial_env !real_ids
         !unpackable_modtype sg;
-    let sg =
-    match tcstr with
-    | (_, _, Twith_typesubst tdecl) ->
-       let how_to_extend_subst =
-         let sdecl =
-           match constr with
-           | With_typesubst sdecl -> sdecl
-           | _ -> assert false
-         in
-         match type_decl_is_alias sdecl with
-         | Some lid ->
-            let replacement, _ =
-              try Env.find_type_by_name lid.txt initial_env
-              with Not_found -> assert false
-            in
-            fun s path -> Subst.add_type_path path replacement s
-         | None ->
-            let body = Option.get tdecl.typ_type.type_manifest in
-            let params = tdecl.typ_type.type_params in
-            if params_are_constrained params
-            then raise(Error(loc, initial_env,
-                             With_cannot_remove_constrained_type));
-            fun s path -> Subst.add_type_function path ~params ~body s
-       in
-       let sub = Subst.change_locs Subst.identity loc in
-       let sub = List.fold_left how_to_extend_subst sub !real_ids in
-       (* This signature will not be used directly, it will always be freshened
-          by the caller. So what we do with the scope doesn't really matter. But
-          making it local makes it unlikely that we will ever use the result of
-          this function unfreshened without issue. *)
-       Subst.signature Make_local sub sg
-    | (_, _, Twith_modsubst (real_path, _)) ->
-       let sub = Subst.change_locs Subst.identity loc in
-       let sub =
-         List.fold_left
-           (fun s path -> Subst.add_module_path path real_path s)
-           sub
-           !real_ids
-       in
-       (* See explanation in the [Twith_typesubst] case above. *)
-       Subst.signature Make_local sub sg
-    | (_, _, Twith_modtypesubst tmty) ->
-        let add s p = Subst.add_modtype_path p tmty.mty_type s in
+    let sub = match tcstr with
+      | (_, _, Twith_typesubst tdecl) ->
+        let how_to_extend_subst =
+          let sdecl =
+            match constr with
+            | With_typesubst sdecl -> sdecl
+            | _ -> assert false
+          in
+          match type_decl_is_alias sdecl with
+          | Some lid ->
+              let replacement, _ =
+                try Env.find_type_by_name lid.txt initial_env
+                with Not_found -> assert false
+              in
+              fun s path -> Subst.add_type_path path replacement s
+          | None ->
+              let body = Option.get tdecl.typ_type.type_manifest in
+              let params = tdecl.typ_type.type_params in
+              if params_are_constrained params
+              then raise(Error(loc, initial_env,
+                              With_cannot_remove_constrained_type));
+              fun s path -> Subst.add_type_function path ~params ~body s
+        in
         let sub = Subst.change_locs Subst.identity loc in
-        let sub = List.fold_left add sub !real_ids in
-        Subst.signature Make_local sub sg
-    | _ ->
-       sg
+        let sub = List.fold_left how_to_extend_subst sub !real_ids in
+        Some sub
+      | (_, _, Twith_modsubst (real_path, _)) ->
+        let sub = Subst.change_locs Subst.identity loc in
+        let sub =
+          List.fold_left
+            (fun s path -> Subst.add_module_path path real_path s)
+            sub
+            !real_ids
+        in
+        Some sub
+      | (_, _, Twith_modtypesubst tmty) ->
+          let add s p = Subst.add_modtype_path p tmty.mty_type s in
+          let sub = Subst.change_locs Subst.identity loc in
+          let sub = List.fold_left add sub !real_ids in
+          Some sub
+      | _ ->
+        None
+    in
+    let sg = match sub with
+      | Some sub ->
+          (* This signature will not be used directly, it will always be freshened
+            by the caller. So what we do with the scope doesn't really matter. But
+            making it local makes it unlikely that we will ever use the result of
+            this function unfreshened without issue. *)
+          Subst.signature Make_local sub sg
+      | None -> sg
     in
     check_well_formed_module initial_env loc "this instantiated signature"
       (Mty_signature sg);
