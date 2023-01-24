@@ -223,8 +223,8 @@ module Big_to_small1 : B2S = functor (X : Big) -> X
 [%%expect{|
 {
  "Big_to_small1"[module] ->
-     Abs<.40>(X/388, {<.39>
-                      "t"[type] -> X/388<.39> . "t"[type];
+     Abs<.40>(X/386, {<.39>
+                      "t"[type] -> X/386<.39> . "t"[type];
                       });
  }
 module Big_to_small1 : B2S
@@ -234,8 +234,8 @@ module Big_to_small2 : B2S = functor (X : Big) -> struct include X end
 [%%expect{|
 {
  "Big_to_small2"[module] ->
-     Abs<.42>(X/391, {
-                      "t"[type] -> X/391<.41> . "t"[type];
+     Abs<.42>(X/389, {
+                      "t"[type] -> X/389<.41> . "t"[type];
                       });
  }
 module Big_to_small2 : B2S

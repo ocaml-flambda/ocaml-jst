@@ -10,3 +10,6 @@ end
 
 module M : sig end
 module O : sig end
+
+module Nominal : sig module N : sig type t end end
+
