@@ -103,6 +103,7 @@ module Lazy : sig
     | MtyL_signature of signature
     | MtyL_functor of functor_parameter * modtype
     | MtyL_alias of Path.t
+    | MtyL_strengthen of modtype * Path.t * bool
 
   and modtype_declaration =
     {

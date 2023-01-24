@@ -25,6 +25,12 @@ val scrape_alias: Env.t -> module_type -> module_type
         (* Expand toplevel module type abbreviations and aliases
            till hitting a "hard" module type (signature, functor,
            or abstract module type ident. *)
+val reduce_lazy: Env.t -> Subst.Lazy.modtype -> Subst.Lazy.modtype option
+        (* Expand one toplevel module abbreviation. Return None if
+           no expansion is possible. *)
+val reduce: Env.t -> module_type -> module_type option
+        (* Expand one toplevel module abbreviation. Return None if
+           no expansion is possible. *)
 val scrape_for_functor_arg: Env.t -> module_type -> module_type
         (* Remove aliases in a functor argument type *)
 val scrape_for_type_of:
@@ -33,15 +39,24 @@ val scrape_for_type_of:
 val freshen: scope:int -> module_type -> module_type
         (* Return an alpha-equivalent copy of the given module type
            where bound identifiers are fresh. *)
-val strengthen: aliasable:bool -> Env.t -> module_type -> Path.t -> module_type
+val strengthen_lazy:
+  aliasable:bool -> Subst.Lazy.modtype -> Path.t -> Subst.Lazy.modtype
+        (* Strengthen abstract type components relative to the
+          given path. *)
+val strengthen: aliasable:bool -> module_type -> Path.t -> module_type
         (* Strengthen abstract type components relative to the
            given path. *)
 val strengthen_decl:
-  aliasable:bool -> Env.t -> module_declaration -> Path.t -> module_declaration
-
+  aliasable:bool -> module_declaration -> Path.t -> module_declaration
+        (* Strengthen a module declaration relative to the given
+           path. *)
 val find_type_of_module:
   strengthen:bool -> aliasable:bool -> Env.t -> Path.t -> module_type
         (* Get the type of a module, strengthening if necessary. *)
+
+val expand_to: Env.t -> signature -> Path.t list -> signature
+        (* Expand Mty_strengthen nodes in a signature up to the
+           given paths. *)
 
 val sig_make_manifest : signature -> signature
         (* Make abstract types manifest.  Similar to strengthening, but rather
