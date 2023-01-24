@@ -446,13 +446,9 @@ let no_code_needed env mty = no_code_needed_mod env Mp_present mty
 
 (* Check whether a module type may return types *)
 
-let rec contains_type env = function
-    Mty_ident path ->
-      begin try match (Env.find_modtype path env).mtd_type with
-      | None -> raise Exit (* PR#6427 *)
-      | Some mty -> contains_type env mty
-      with Not_found -> raise Exit
-      end
+let rec contains_type env mty =
+  match scrape env mty with
+    Mty_ident _ -> raise Exit (* PR#6427 *)
   | Mty_signature sg ->
       contains_type_sig env sg
   | Mty_functor (_, body) ->
