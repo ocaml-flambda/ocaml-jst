@@ -558,6 +558,10 @@ let mk_dtimings f =
   "-dtimings", Arg.Unit f, " Print timings information for each pass";
 ;;
 
+let mk_dgc_timings f =
+  "-dgc-timings", Arg.Unit f, " Print GC timings information for each pass";
+;;
+
 let mk_dtimings_precision f =
   "-dtimings-precision", Arg.Int f,
     Printf.sprintf "<n>  Specify precision for timings information (default %d)"
@@ -1053,6 +1057,7 @@ module type Compiler_options = sig
 
   val _match_context_rows : int -> unit
   val _dtimings : unit -> unit
+  val _dgc_timings : unit -> unit
   val _dtimings_precision : int -> unit
   val _dprofile : unit -> unit
   val _dump_into_file : unit -> unit
@@ -1309,6 +1314,7 @@ struct
     mk_dinstr F._dinstr;
     mk_dcamlprimc F._dcamlprimc;
     mk_dtimings F._dtimings;
+    mk_dgc_timings F._dgc_timings;
     mk_dtimings_precision F._dtimings_precision;
     mk_dprofile F._dprofile;
     mk_dump_into_file F._dump_into_file;
@@ -1540,6 +1546,7 @@ struct
     mk_dinterval F._dinterval;
     mk_dstartup F._dstartup;
     mk_dtimings F._dtimings;
+    mk_dgc_timings F._dgc_timings;
     mk_dtimings_precision F._dtimings_precision;
     mk_dprofile F._dprofile;
     mk_dump_into_file F._dump_into_file;
@@ -1923,6 +1930,9 @@ module Default = struct
     let _config_var = Misc.show_config_variable_and_exit
     let _dprofile () = profile_columns := Profile.all_columns
     let _dtimings () = profile_columns := [`Time]
+    let _dgc_timings () =
+      Gc.collect_timing ();
+      profile_columns := [`Gc_time_minor; `Gc_time_major]
     let _dtimings_precision n = timings_precision := n
     let _dump_into_file = set dump_into_file
     let _dump_dir s = dump_dir := Some s
