@@ -130,6 +130,8 @@ CAMLexport void caml_do_exit(int retcode)
     intnat top_heap_words = Caml_state->stat_top_heap_wsz;
     intnat cpct = Caml_state->stat_compactions;
     intnat forcmajcoll = Caml_state->stat_forced_major_collections;
+    intnat mincollns = Caml_state->stat_minor_collections_ns;
+    intnat majcollns = Caml_state->stat_major_collections_ns;
     caml_gc_message(0x400, "allocated_words: %.0f\n", allocated_words);
     caml_gc_message(0x400, "minor_words: %.0f\n", minwords);
     caml_gc_message(0x400, "promoted_words: %.0f\n", prowords);
@@ -149,6 +151,10 @@ CAMLexport void caml_do_exit(int retcode)
     caml_gc_message(0x400,
                     "forced_major_collections: %"ARCH_INTNAT_PRINTF_FORMAT"d\n",
                     forcmajcoll);
+    caml_gc_message(0x400, "minor_collections_ns: %"ARCH_INTNAT_PRINTF_FORMAT"d\n",
+                    mincollns);
+    caml_gc_message(0x400, "major_collections_ns: %"ARCH_INTNAT_PRINTF_FORMAT"d\n",
+                    majcollns);
   }
 
 #ifndef NATIVE_CODE

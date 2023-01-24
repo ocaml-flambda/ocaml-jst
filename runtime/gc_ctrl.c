@@ -39,7 +39,7 @@
 #include "caml/startup_aux.h"
 
 #ifndef NATIVE_CODE
-extern uintnat caml_max_stack_size;    /* defined in stacks.c */
+extern uintnat caml_max_stack_size;    /* defined in stacks.c77 */
 #endif
 
 extern uintnat caml_major_heap_increment; /* percent or words; see major_gc.c */
@@ -236,8 +236,10 @@ static value heap_stats (int returnstats)
     intnat cpct = Caml_state->stat_compactions;
     intnat forcmajcoll = Caml_state->stat_forced_major_collections;
     intnat top_heap_words = Caml_state->stat_top_heap_wsz;
+    intnat minor_collections_ns = (double)Caml_state->stat_minor_collections_ns;
+    intnat major_collections_ns = (double)Caml_state->stat_major_collections_ns;
 
-    res = caml_alloc_tuple (17);
+    res = caml_alloc_tuple (19);
     Store_field (res, 0, caml_copy_double (minwords));
     Store_field (res, 1, caml_copy_double (prowords));
     Store_field (res, 2, caml_copy_double (majwords));
@@ -255,6 +257,8 @@ static value heap_stats (int returnstats)
     Store_field (res, 14, Val_long (top_heap_words));
     Store_field (res, 15, Val_long (caml_stack_usage()));
     Store_field (res, 16, Val_long (forcmajcoll));
+    Store_field (res, 17, caml_copy_double (minor_collections_ns));
+    Store_field (res, 18, caml_copy_double (major_collections_ns));
     CAMLreturn (res);
   }else{
     CAMLreturn (Val_unit);
@@ -297,8 +301,10 @@ CAMLprim value caml_gc_quick_stat(value v)
   intnat cpct = Caml_state->stat_compactions;
   intnat forcmajcoll = Caml_state->stat_forced_major_collections;
   intnat heap_chunks = Caml_state->stat_heap_chunks;
+  intnat minor_collections_ns = (double)Caml_state->stat_minor_collections_ns;
+  intnat major_collections_ns = (double)Caml_state->stat_major_collections_ns;
 
-  res = caml_alloc_tuple (17);
+  res = caml_alloc_tuple (19);
   Store_field (res, 0, caml_copy_double (minwords));
   Store_field (res, 1, caml_copy_double (prowords));
   Store_field (res, 2, caml_copy_double (majwords));
@@ -316,6 +322,8 @@ CAMLprim value caml_gc_quick_stat(value v)
   Store_field (res, 14, Val_long (top_heap_words));
   Store_field (res, 15, Val_long (caml_stack_usage()));
   Store_field (res, 16, Val_long (forcmajcoll));
+  Store_field (res, 17, caml_copy_double (minor_collections_ns));
+  Store_field (res, 18, caml_copy_double (major_collections_ns));
   CAMLreturn (res);
 }
 
@@ -541,6 +549,12 @@ CAMLprim value caml_gc_minor(value v)
   exn = caml_process_pending_actions_exn();
   CAML_EV_END(EV_EXPLICIT_GC_MINOR);
   caml_raise_async_if_exception(exn, "");
+  return Val_unit;
+}
+
+CAMLprim value caml_gc_toggle_collect_timing(value v) {
+  caml_gc_collect_timing = 1;
+  CAMLassert (v == Val_unit);
   return Val_unit;
 }
 

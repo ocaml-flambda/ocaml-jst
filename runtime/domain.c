@@ -77,6 +77,8 @@ void caml_init_domain ()
   Caml_state->stat_compactions = 0;
   Caml_state->stat_forced_major_collections = 0;
   Caml_state->stat_heap_chunks = 0;
+  Caml_state->stat_minor_collections_ns = 0;
+  Caml_state->stat_major_collections_ns = 0;
 
   Caml_state->raising_async_exn = 0;
   Caml_state->backtrace_active = 0;

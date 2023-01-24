@@ -940,6 +940,8 @@ void caml_major_collection_slice (intnat howmuch)
   double p, dp, filt_p, spend;
   intnat computed_work;
   int i;
+  int64_t major_collection_start_ns, major_collection_end_ns;
+  major_collection_start_ns = caml_gc_collect_timing ? time_counter() : 0;
   /*
      Free memory at the start of the GC cycle (garbage + free list) (assumed):
                  FM = Caml_state->stat_heap_wsz * caml_percent_free
@@ -997,7 +999,6 @@ void caml_major_collection_slice (intnat howmuch)
 
      This slice will either mark MS words or sweep SS words.
   */
-
   if (caml_major_slice_begin_hook != NULL) (*caml_major_slice_begin_hook) ();
 
   p = (double) caml_allocated_words * 3.0 * (100 + caml_percent_free)
@@ -1164,7 +1165,9 @@ void caml_major_collection_slice (intnat howmuch)
     for (i = 0; i < caml_major_window; i++) caml_major_ring[i] += p;
   }
 
+  major_collection_end_ns = caml_gc_collect_timing ? time_counter() : 0;
   Caml_state->stat_major_words += caml_allocated_words;
+  Caml_state->stat_major_collections_ns += major_collection_end_ns - major_collection_start_ns;
   caml_allocated_words = 0;
   caml_dependent_allocated = 0;
   caml_extra_heap_resources = 0.0;
@@ -1177,6 +1180,8 @@ void caml_major_collection_slice (intnat howmuch)
 */
 void caml_finish_major_cycle (void)
 {
+  int64_t major_collection_start_ns, major_collection_end_ns;
+  major_collection_start_ns = caml_gc_collect_timing ? time_counter() : 0;
   if (caml_gc_phase == Phase_idle){
     p_backlog = 0.0; /* full major GC cycle, the backlog becomes irrelevant */
     start_cycle ();
@@ -1187,7 +1192,9 @@ void caml_finish_major_cycle (void)
   CAMLassert (redarken_first_chunk == NULL);
   while (caml_gc_phase == Phase_sweep) sweep_slice (LONG_MAX);
   CAMLassert (caml_gc_phase == Phase_idle);
+  major_collection_end_ns = caml_gc_collect_timing ? time_counter() : 0;
   Caml_state->stat_major_words += caml_allocated_words;
+  Caml_state->stat_major_collections_ns += major_collection_end_ns - major_collection_start_ns;
   caml_allocated_words = 0;
 }
 

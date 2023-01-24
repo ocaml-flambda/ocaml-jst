@@ -88,6 +88,8 @@ DOMAIN_STATE(intnat, stat_top_heap_wsz)
 DOMAIN_STATE(intnat, stat_compactions)
 DOMAIN_STATE(intnat, stat_forced_major_collections)
 DOMAIN_STATE(intnat, stat_heap_chunks)
+DOMAIN_STATE(intnat, stat_minor_collections_ns)
+DOMAIN_STATE(intnat, stat_major_collections_ns)
 /* See gc_ctrl.c */
 
 DOMAIN_STATE(uintnat, eventlog_startup_timestamp)

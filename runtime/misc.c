@@ -41,6 +41,8 @@ caml_timing_hook caml_minor_gc_end_hook = NULL;
 caml_timing_hook caml_finalise_begin_hook = NULL;
 caml_timing_hook caml_finalise_end_hook = NULL;
 
+int caml_gc_collect_timing = 0;
+
 #ifdef DEBUG
 
 void caml_failed_assert (char * expr, char_os * file_os, int line)
@@ -223,3 +225,59 @@ void caml_flambda2_invalid (value message)
   abort ();
 }
 
+
+#ifdef _WIN32
+#include <wtypes.h>
+#include <process.h>
+#elif defined(HAS_UNISTD)
+#include <unistd.h>
+#endif
+
+#ifdef HAS_MACH_ABSOLUTE_TIME
+#include <mach/mach_time.h>
+#elif HAS_POSIX_MONOTONIC_CLOCK
+#include <time.h>
+#endif
+
+int64_t time_counter(void)
+{
+#ifdef _WIN32
+  static double clock_freq = 0;
+  static LARGE_INTEGER now;
+
+  if (clock_freq == 0) {
+    LARGE_INTEGER f;
+    if (!QueryPerformanceFrequency(&f))
+      return 0;
+    clock_freq = (1000000000.0 / f.QuadPart);
+  };
+
+  if (!QueryPerformanceCounter(&now))
+    return 0;
+  return (int64_t)(now.QuadPart * clock_freq);
+
+#elif defined(HAS_MACH_ABSOLUTE_TIME)
+  static mach_timebase_info_data_t time_base = {0};
+  uint64_t now;
+
+  if (time_base.denom == 0) {
+    if (mach_timebase_info (&time_base) != KERN_SUCCESS)
+      return 0;
+
+    if (time_base.denom == 0)
+      return 0;
+  }
+
+  now = mach_absolute_time ();
+  return (int64_t)((now * time_base.numer) / time_base.denom);
+
+#elif defined(HAS_POSIX_MONOTONIC_CLOCK)
+  struct timespec t;
+  clock_gettime(CLOCK_MONOTONIC, &t);
+  return
+    (int64_t)t.tv_sec  * (int64_t)1000000000 +
+    (int64_t)t.tv_nsec;
+
+
+#endif
+}

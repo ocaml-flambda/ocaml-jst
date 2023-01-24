@@ -195,6 +195,10 @@ extern caml_timing_hook caml_major_slice_begin_hook, caml_major_slice_end_hook;
 extern caml_timing_hook caml_minor_gc_begin_hook, caml_minor_gc_end_hook;
 extern caml_timing_hook caml_finalise_begin_hook, caml_finalise_end_hook;
 
+
+extern int caml_gc_collect_timing;
+
+
 #define CAML_STATIC_ASSERT_3(b, l) \
   CAMLunused_start \
     CAMLextern char static_assertion_failure_line_##l[(b) ? 1 : -1] \
@@ -415,6 +419,8 @@ extern void caml_ext_table_clear(struct ext_table * tbl, int free_entries);
    Return 0 on success, -1 on error; set errno in the case of error. */
 CAMLextern int caml_read_directory(char_os * dirname,
                                    struct ext_table * contents);
+
+int64_t time_counter(void);
 
 /* Deprecated aliases */
 #define caml_aligned_malloc \

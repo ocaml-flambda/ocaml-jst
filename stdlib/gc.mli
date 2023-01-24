@@ -95,6 +95,12 @@ type stat =
     (** Number of forced full major collections completed since the program
         was started.
         @since 4.12.0 *)
+
+    time_spend_in_minor_collections_ns: float;
+    (** Time spend in minor collections, expressed in milliseconds. *)
+
+    time_spend_in_major_collections_ns: float;
+    (** Time spend in major collections, expressed in milliseconds. *)
 }
 (** The memory management counters are returned in a [stat] record.
 
@@ -461,6 +467,10 @@ external eventlog_resume : unit -> unit = "caml_eventlog_resume"
 
    @since 4.11
   *)
+
+external collect_timing : unit -> unit = "caml_gc_toggle_collect_timing" [@@noalloc]
+(** [collect_timing ()] will start collecting timing information from
+   gc cycles.*)
 
 
 (** [Memprof] is a sampling engine for allocated memory words. Every

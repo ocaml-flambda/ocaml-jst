@@ -37,6 +37,8 @@ type stat = {
   top_heap_words : int;
   stack_size : int;
   forced_major_collections: int;
+  time_spend_in_minor_collections_ns: float;
+  time_spend_in_major_collections_ns: float;
 }
 
 type control = {
@@ -71,6 +73,7 @@ external get_credit : unit -> int = "caml_get_major_credit" [@@noalloc]
 external huge_fallback_count : unit -> int = "caml_gc_huge_fallback_count"
 external eventlog_pause : unit -> unit = "caml_eventlog_pause"
 external eventlog_resume : unit -> unit = "caml_eventlog_resume"
+external collect_timing : unit -> unit = "caml_gc_toggle_collect_timing" [@@noalloc]
 
 open Printf
 
@@ -96,7 +99,11 @@ let print_stat c =
   fprintf c "\n";
   fprintf c "live_blocks: %d\n" st.live_blocks;
   fprintf c "free_blocks: %d\n" st.free_blocks;
-  fprintf c "heap_chunks: %d\n" st.heap_chunks
+  fprintf c "heap_chunks: %d\n" st.heap_chunks;
+  fprintf c "\n";
+  let l3 = String.length (sprintf "%.0f" st.time_spend_in_minor_collections_ns) in
+  fprintf c "minor_collections (ns):      %*.0f\n" l3 st.time_spend_in_minor_collections_ns;
+  fprintf c "major_collections (ns):      %*.0f\n" l3 st.time_spend_in_major_collections_ns
 
 
 let allocated_bytes () =

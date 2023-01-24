@@ -399,6 +399,7 @@ void caml_empty_minor_heap (void)
   struct caml_custom_elt *elt;
   uintnat prev_alloc_words;
   struct caml_ephe_ref_elt *re;
+  int64_t minor_gc_start_ns, minor_gc_end_ns;
 
   if (Caml_state->young_ptr != Caml_state->young_alloc_end){
     CAMLassert_young_header(*(header_t*)Caml_state->young_ptr);
@@ -408,6 +409,7 @@ void caml_empty_minor_heap (void)
     if (caml_minor_gc_begin_hook != NULL) (*caml_minor_gc_begin_hook) ();
     prev_alloc_words = caml_allocated_words;
     Caml_state->in_minor_collection = 1;
+    minor_gc_start_ns = caml_gc_collect_timing ? time_counter() : 0;
     caml_gc_message (0x02, "<");
     CAML_EV_BEGIN(EV_MINOR_LOCAL_ROOTS);
     caml_oldify_local_roots();
@@ -472,12 +474,14 @@ void caml_empty_minor_heap (void)
     Caml_state->extra_heap_resources_minor = 0;
     caml_gc_message (0x02, ">");
     Caml_state->in_minor_collection = 0;
+    minor_gc_end_ns = caml_gc_collect_timing ? time_counter() : 0;
     caml_final_empty_young ();
     CAML_EV_END(EV_MINOR_FINALIZED);
     Caml_state->stat_promoted_words += caml_allocated_words - prev_alloc_words;
     CAML_EV_COUNTER (EV_C_MINOR_PROMOTED,
                      caml_allocated_words - prev_alloc_words);
     ++ Caml_state->stat_minor_collections;
+    Caml_state->stat_minor_collections_ns += minor_gc_end_ns - minor_gc_start_ns;
     caml_memprof_renew_minor_sample();
     if (caml_minor_gc_end_hook != NULL) (*caml_minor_gc_end_hook) ();
   }else{
