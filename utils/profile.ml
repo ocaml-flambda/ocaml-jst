@@ -324,7 +324,30 @@ let display_rows ppf rows =
   in
   List.iter (loop ~indentation:"") rows
 
+
+
+let column_mapping = [
+  "time", `Time;
+  "alloc", `Alloc;
+  "top-heap", `Top_heap;
+  "absolute-top-heap", `Abs_top_heap;
+  "gc-time-minor", `Gc_time_minor;
+  "gc-time-major", `Gc_time_major;
+]
+
+let column_to_index =
+  List.mapi (fun idx (_, c) -> c, idx) column_mapping
+  |> Misc.create_hashtable (List.length column_mapping)
+
 let print ppf columns ~timings_precision =
+  let columns =
+    List.sort_uniq
+      (fun c1 c2 ->
+        Int.compare
+         (Hashtbl.find column_to_index c1)
+         (Hashtbl.find column_to_index c2))
+    columns
+  in
   match columns with
   | [] -> ()
   | _ :: _ ->
@@ -336,15 +359,6 @@ let print ppf columns ~timings_precision =
      let total = Measure_diff.of_diff Measure.zero (Measure.create ()) in
      display_rows ppf
        (rows_of_hierarchy !hierarchy total initial_measure columns timings_precision)
-
-let column_mapping = [
-  "time", `Time;
-  "alloc", `Alloc;
-  "top-heap", `Top_heap;
-  "absolute-top-heap", `Abs_top_heap;
-  "gc-time-minor", `Gc_time_minor;
-  "gc-time-major", `Gc_time_major;
-]
 
 let column_names = List.map fst column_mapping
 
