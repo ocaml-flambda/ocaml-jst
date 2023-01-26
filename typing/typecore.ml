@@ -2810,12 +2810,17 @@ let remaining_function_type ty_ret mode_ret rev_args =
   in
   ty_ret
 
-let check_local_application_complete ~sarg ~rest ~env ~mode_fun ~mode_arg ~mode_ret =
+let check_local_application_complete ~env ~app_loc ~sarg ~rest ~mode_fun ~mode_arg ~mode_ret =
   let submode m1 m2 =
     match Alloc_mode.submode m1 m2 with
     | Ok () -> ()
     | Error () ->
-      raise (Error(sarg.pexp_loc, env, Local_application_complete))
+      let loc =
+        Location.{ loc_start = app_loc.loc_start;
+                   loc_end = sarg.pexp_loc.loc_end;
+                   loc_ghost = app_loc.loc_ghost || sarg.pexp_loc.loc_ghost }
+      in
+      raise (Error(loc, env, Local_application_complete))
   in
   match rest with
   | [] -> ()
@@ -2825,7 +2830,7 @@ let check_local_application_complete ~sarg ~rest ~env ~mode_fun ~mode_arg ~mode_
     submode mode_arg mode_ret
 
 
-let collect_unknown_apply_args env funct ty_fun mode_fun rev_args sargs ret_tvar =
+let collect_unknown_apply_args env app_loc funct ty_fun mode_fun rev_args sargs ret_tvar =
   let labels_match ~param ~arg =
     param = arg
     || !Clflags.classic && arg = Nolabel && not (is_optional param)
@@ -2853,7 +2858,7 @@ let collect_unknown_apply_args env funct ty_fun mode_fun rev_args sargs ret_tvar
                   Warnings.Ignored_extra_argument;
               let mode_arg = Alloc_mode.newvar () in
               let mode_ret = Alloc_mode.newvar () in
-              check_local_application_complete ~sarg ~rest ~env
+              check_local_application_complete ~env ~app_loc ~sarg ~rest
                 ~mode_fun ~mode_arg ~mode_ret;
               let kind = (lbl, mode_arg, mode_ret) in
               unify env ty_fun
@@ -2861,7 +2866,7 @@ let collect_unknown_apply_args env funct ty_fun mode_fun rev_args sargs ret_tvar
               (mode_arg, ty_arg_mono, mode_ret, ty_res)
         | Tarrow ((l, mode_arg, mode_ret), ty_arg, ty_res, _)
           when labels_match ~param:l ~arg:lbl ->
-            check_local_application_complete ~sarg ~rest ~env
+            check_local_application_complete ~env ~app_loc ~sarg ~rest
               ~mode_fun ~mode_arg ~mode_ret;
             (mode_arg, tpoly_get_mono ty_arg, mode_ret, ty_res)
         | td ->
@@ -2883,7 +2888,7 @@ let collect_unknown_apply_args env funct ty_fun mode_fun rev_args sargs ret_tvar
   in
   loop ty_fun mode_fun rev_args sargs
 
-let collect_apply_args env funct ignore_labels ty_fun ty_fun0 mode_fun sargs ret_tvar =
+let collect_apply_args env app_loc funct ignore_labels ty_fun ty_fun0 mode_fun sargs ret_tvar =
   let warned = ref false in
   let delayed_checks = ref [] in
   let rec loop ty_fun ty_fun0 mode_fun rev_args sargs =
@@ -2902,7 +2907,7 @@ let collect_apply_args env funct ignore_labels ty_fun ty_fun0 mode_fun sargs ret
              sure the application is otherwise well-typed, because in ill-typed cases
              the standard error is easier to understand *)
           delayed_checks :=
-            (fun () -> check_local_application_complete ~sarg ~rest ~env
+            (fun () -> check_local_application_complete ~env ~app_loc ~sarg ~rest
                          ~mode_fun ~mode_arg ~mode_ret)
             :: !delayed_checks
         end;
@@ -2978,7 +2983,7 @@ let collect_apply_args env funct ignore_labels ty_fun ty_fun0 mode_fun sargs ret
     | _ ->
         (* We're not looking at a *known* function type anymore, or there are no
            arguments left. *)
-        collect_unknown_apply_args env funct ty_fun0 mode_fun rev_args sargs ret_tvar
+        collect_unknown_apply_args env app_loc funct ty_fun0 mode_fun rev_args sargs ret_tvar
   in
   let ty, mode_ret, args = loop ty_fun ty_fun0 mode_fun [] sargs in
   ty, mode_ret, args, List.rev !delayed_checks
@@ -6044,7 +6049,7 @@ and type_application env app_loc expected_mode position funct funct_mode sargs r
       in
       if !Clflags.principal then begin_def () ;
       let ty_ret, mode_ret, args, delayed_checks =
-        collect_apply_args env funct ignore_labels ty (instance ty)
+        collect_apply_args env app_loc funct ignore_labels ty (instance ty)
           (Value_mode.regional_to_local_alloc funct_mode) sargs ret_tvar
       in
       let partial_app = is_partial_apply args in
@@ -7780,11 +7785,10 @@ let report_error ~loc env = function
       Location.errorf ~loc ~sub "This %svalue escapes its region" mode
   | Local_application_complete ->
       Location.errorf ~loc
-        "@[This application involving locals is complete after this argument,@ \
-         but extra arguments were provided@]"
+        "@[This application is complete, but further arguments were provided afterwards.@ \
+         With local arguments or closures, these are not allowed in the same application.@]"
         ~sub:[Location.msg
-            "@[Hint: Try wrapping the application in parentheses \
-             up to this argument@]"]
+            "@[Hint: Try wrapping the marked application in parentheses.@]"]
   | Param_mode_mismatch ty ->
       Location.errorf ~loc
         "@[This function has a local parameter, but was expected to have type:@ %a@]"

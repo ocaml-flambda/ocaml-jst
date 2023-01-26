@@ -326,12 +326,12 @@ val apply2 : int -> local_ 'a -> int -> int = <fun>
 |}]
 let apply3 x = g x x x
 [%%expect{|
-Line 1, characters 19-20:
+Line 1, characters 15-20:
 1 | let apply3 x = g x x x
-                       ^
-Error: This application involving locals is complete after this argument,
-       but extra arguments were provided
-  Hint: Try wrapping the application in parentheses up to this argument
+                   ^^^^^
+Error: This application is complete, but further arguments were provided afterwards.
+       With local arguments or closures, these are not allowed in the same application.
+  Hint: Try wrapping the marked application in parentheses.
 |}]
 let apply3_wrapped x = (g x x) x
 [%%expect{|
@@ -345,12 +345,12 @@ Error: This local value escapes its region
 |}]
 let apply4 x = g x x x x
 [%%expect{|
-Line 1, characters 19-20:
+Line 1, characters 15-20:
 1 | let apply4 x = g x x x x
-                       ^
-Error: This application involving locals is complete after this argument,
-       but extra arguments were provided
-  Hint: Try wrapping the application in parentheses up to this argument
+                   ^^^^^
+Error: This application is complete, but further arguments were provided afterwards.
+       With local arguments or closures, these are not allowed in the same application.
+  Hint: Try wrapping the marked application in parentheses.
 |}]
 let apply4_wrapped x = (g x x) x x
 [%%expect{|
@@ -420,12 +420,12 @@ Error: This local value escapes its region
 let app42 (f : a:local_ int ref -> (int -> b:local_ int ref -> c:int -> unit)) =
   f ~a:(local_ ref 1) 2 ~c:4
 [%%expect{|
-Line 2, characters 7-21:
+Line 2, characters 2-21:
 2 |   f ~a:(local_ ref 1) 2 ~c:4
-           ^^^^^^^^^^^^^^
-Error: This application involving locals is complete after this argument,
-       but extra arguments were provided
-  Hint: Try wrapping the application in parentheses up to this argument
+      ^^^^^^^^^^^^^^^^^^^
+Error: This application is complete, but further arguments were provided afterwards.
+       With local arguments or closures, these are not allowed in the same application.
+  Hint: Try wrapping the marked application in parentheses.
 |}]
 let app42_wrapped (f : a:local_ int ref -> (int -> b:local_ int ref -> c:int -> unit)) =
   (f ~a:(local_ ref 1)) 2 ~c:4
@@ -483,12 +483,12 @@ Error: This local value escapes its region
 let app42' (f : a:local_ int ref -> (int -> b:local_ int ref -> c:int -> unit)) =
   f ~a:(ref 1) 2 ~c:4
 [%%expect{|
-Line 2, characters 7-14:
+Line 2, characters 2-14:
 2 |   f ~a:(ref 1) 2 ~c:4
-           ^^^^^^^
-Error: This application involving locals is complete after this argument,
-       but extra arguments were provided
-  Hint: Try wrapping the application in parentheses up to this argument
+      ^^^^^^^^^^^^
+Error: This application is complete, but further arguments were provided afterwards.
+       With local arguments or closures, these are not allowed in the same application.
+  Hint: Try wrapping the marked application in parentheses.
 |}]
 let app42'_wrapped (f : a:local_ int ref -> (int -> b:local_ int ref -> c:int -> unit)) =
   (f ~a:(ref 1)) 2 ~c:4
@@ -500,12 +500,12 @@ val app42'_wrapped :
 let app43' (f : a:local_ int ref -> (int -> b:local_ int ref -> c:int -> unit)) =
   f ~a:(ref 1) 2
 [%%expect{|
-Line 2, characters 7-14:
+Line 2, characters 2-14:
 2 |   f ~a:(ref 1) 2
-           ^^^^^^^
-Error: This application involving locals is complete after this argument,
-       but extra arguments were provided
-  Hint: Try wrapping the application in parentheses up to this argument
+      ^^^^^^^^^^^^
+Error: This application is complete, but further arguments were provided afterwards.
+       With local arguments or closures, these are not allowed in the same application.
+  Hint: Try wrapping the marked application in parentheses.
 |}]
 let app43'_wrapped (f : a:local_ int ref -> (int -> b:local_ int ref -> c:int -> unit)) =
   (f ~a:(ref 1)) 2
