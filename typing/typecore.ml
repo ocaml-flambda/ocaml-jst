@@ -862,8 +862,16 @@ and build_as_type_aux ~refine (env : Env.t ref) p =
         None ->
           let ty1, mode1 = build_as_type_and_mode ~refine env p1 in
           let ty2, mode2 = build_as_type_and_mode ~refine env p2 in
-          unify_pat ~refine env {p2 with pat_type = ty2} ty1;
-          ty1, Value_mode.join [mode1; mode2]
+          let mode = Value_mode.join [mode1; mode2] in
+          let ty =
+            let snap = Btype.snapshot () in
+            match unify_pat_types ~refine p2.pat_loc env ty2 ty1 with
+            | exception (Error _) ->
+              Btype.backtrack snap;
+              p.pat_type
+            | () -> ty1
+          in
+          ty, mode
       | Some row ->
           let Row {fields; fixed; name} = row_repr row in
           let all_constant =
