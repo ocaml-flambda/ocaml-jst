@@ -185,6 +185,7 @@ type error =
   | Wrong_expected_kind of wrong_kind_sort * wrong_kind_context * type_expr
   | Expr_not_a_record_type of type_expr
   | Local_value_escapes of Value_mode.error * submode_reason * Env.escaping_context option
+  | Local_application_complete
   | Param_mode_mismatch of type_expr
   | Uncurried_function_escapes
   | Local_return_annotation_mismatch of Location.t
@@ -2809,6 +2810,21 @@ let remaining_function_type ty_ret mode_ret rev_args =
   in
   ty_ret
 
+let check_local_application_complete ~sarg ~rest ~env ~mode_fun ~mode_arg ~mode_ret =
+  let submode m1 m2 =
+    match Alloc_mode.submode m1 m2 with
+    | Ok () -> ()
+    | Error () ->
+      raise (Error(sarg.pexp_loc, env, Local_application_complete))
+  in
+  match rest with
+  | [] -> ()
+  | _ :: _ ->
+    (* Not the final argument *)
+    submode mode_fun mode_ret;
+    submode mode_arg mode_ret
+
+
 let collect_unknown_apply_args env funct ty_fun mode_fun rev_args sargs ret_tvar =
   let labels_match ~param ~arg =
     param = arg
@@ -2822,7 +2838,7 @@ let collect_unknown_apply_args env funct ty_fun mode_fun rev_args sargs ret_tvar
     match sargs with
     | [] -> ty_fun, mode_fun, List.rev rev_args
     | (lbl, sarg) :: rest ->
-        let (mode_arg, ty_arg_mono, mode_res, ty_res) =
+        let (mode_arg, ty_arg_mono, mode_ret, ty_res) =
           let ty_fun = expand_head env ty_fun in
           match get_desc ty_fun with
           | Tvar _ ->
@@ -2836,14 +2852,18 @@ let collect_unknown_apply_args env funct ty_fun mode_fun rev_args sargs ret_tvar
                 Location.prerr_warning sarg.pexp_loc
                   Warnings.Ignored_extra_argument;
               let mode_arg = Alloc_mode.newvar () in
-              let mode_res = Alloc_mode.newvar () in
-              let kind = (lbl, mode_arg, mode_res) in
+              let mode_ret = Alloc_mode.newvar () in
+              check_local_application_complete ~sarg ~rest ~env
+                ~mode_fun ~mode_arg ~mode_ret;
+              let kind = (lbl, mode_arg, mode_ret) in
               unify env ty_fun
                 (newty (Tarrow(kind,ty_arg,ty_res,commu_var ())));
-              (mode_arg, ty_arg_mono, mode_res, ty_res)
-        | Tarrow ((l, mode_arg, mode_res), ty_arg, ty_res, _)
+              (mode_arg, ty_arg_mono, mode_ret, ty_res)
+        | Tarrow ((l, mode_arg, mode_ret), ty_arg, ty_res, _)
           when labels_match ~param:l ~arg:lbl ->
-            (mode_arg, tpoly_get_mono ty_arg, mode_res, ty_res)
+            check_local_application_complete ~sarg ~rest ~env
+              ~mode_fun ~mode_arg ~mode_ret;
+            (mode_arg, tpoly_get_mono ty_arg, mode_ret, ty_res)
         | td ->
             let ty_fun = match td with Tarrow _ -> newty td | _ -> ty_fun in
             let ty_res = remaining_function_type ty_fun mode_fun rev_args in
@@ -2859,12 +2879,13 @@ let collect_unknown_apply_args env funct ty_fun mode_fun rev_args sargs ret_tvar
                               (expand_head env funct.exp_type)))
     in
     let arg = Unknown_arg { sarg; ty_arg_mono; mode_arg; } in
-    loop ty_res mode_res ((lbl, Arg arg) :: rev_args) rest
+    loop ty_res mode_ret ((lbl, Arg arg) :: rev_args) rest
   in
   loop ty_fun mode_fun rev_args sargs
 
 let collect_apply_args env funct ignore_labels ty_fun ty_fun0 mode_fun sargs ret_tvar =
   let warned = ref false in
+  let delayed_checks = ref [] in
   let rec loop ty_fun ty_fun0 mode_fun rev_args sargs =
     let ty_fun' = expand_head env ty_fun in
     match get_desc ty_fun', get_desc (expand_head env ty_fun0) with
@@ -2873,6 +2894,18 @@ let collect_apply_args env funct ignore_labels ty_fun ty_fun0 mode_fun sargs ret
       when sargs <> [] && is_commu_ok com ->
         let lv = get_level ty_fun' in
         let (l, mode_arg, mode_ret) = ad in
+        begin match sargs with
+        | [] -> assert false
+        | (_lbl, sarg) :: rest ->
+          (* This is an obscure error, which often triggers on ill-typed applications.
+             Since it is relatively confusing, we want to delay issuing it until we're
+             sure the application is otherwise well-typed, because in ill-typed cases
+             the standard error is easier to understand *)
+          delayed_checks :=
+            (fun () -> check_local_application_complete ~sarg ~rest ~env
+                         ~mode_fun ~mode_arg ~mode_ret)
+            :: !delayed_checks
+        end;
         let may_warn loc w =
           if not !warned && !Clflags.principal && lv <> generic_level
           then begin
@@ -2947,7 +2980,8 @@ let collect_apply_args env funct ignore_labels ty_fun ty_fun0 mode_fun sargs ret
            arguments left. *)
         collect_unknown_apply_args env funct ty_fun0 mode_fun rev_args sargs ret_tvar
   in
-  loop ty_fun ty_fun0 mode_fun [] sargs
+  let ty, mode_ret, args = loop ty_fun ty_fun0 mode_fun [] sargs in
+  ty, mode_ret, args, List.rev !delayed_checks
 
 let type_omitted_parameters expected_mode env ty_ret mode_ret args =
   let ty_ret, mode_ret, _, _, args =
@@ -6009,7 +6043,7 @@ and type_application env app_loc expected_mode position funct funct_mode sargs r
         end
       in
       if !Clflags.principal then begin_def () ;
-      let ty_ret, mode_ret, args =
+      let ty_ret, mode_ret, args, delayed_checks =
         collect_apply_args env funct ignore_labels ty (instance ty)
           (Value_mode.regional_to_local_alloc funct_mode) sargs ret_tvar
       in
@@ -6024,6 +6058,7 @@ and type_application env app_loc expected_mode position funct funct_mode sargs r
         type_omitted_parameters expected_mode env
           ty_ret mode_ret args
       in
+      List.iter (fun check -> check ()) delayed_checks;
       if !Clflags.principal then begin
         end_def () ;
         generalize_structure ty_ret
@@ -7743,6 +7778,13 @@ let report_error ~loc env = function
         | `Regionality -> ""
       in
       Location.errorf ~loc ~sub "This %svalue escapes its region" mode
+  | Local_application_complete ->
+      Location.errorf ~loc
+        "@[This application involving locals is complete after this argument,@ \
+         but extra arguments were provided@]"
+        ~sub:[Location.msg
+            "@[Hint: Try wrapping the application in parentheses \
+             up to this argument@]"]
   | Param_mode_mismatch ty ->
       Location.errorf ~loc
         "@[This function has a local parameter, but was expected to have type:@ %a@]"

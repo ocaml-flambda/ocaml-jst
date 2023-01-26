@@ -326,9 +326,18 @@ val apply2 : int -> local_ 'a -> int -> int = <fun>
 |}]
 let apply3 x = g x x x
 [%%expect{|
-Line 1, characters 15-22:
+Line 1, characters 19-20:
 1 | let apply3 x = g x x x
-                   ^^^^^^^
+                       ^
+Error: This application involving locals is complete after this argument,
+       but extra arguments were provided
+  Hint: Try wrapping the application in parentheses up to this argument
+|}]
+let apply3_wrapped x = (g x x) x
+[%%expect{|
+Line 1, characters 23-32:
+1 | let apply3_wrapped x = (g x x) x
+                           ^^^^^^^^^
 Error: This local value escapes its region
   Hint: Cannot return local value without an explicit "local_" annotation
   Hint: This is a partial application
@@ -336,7 +345,40 @@ Error: This local value escapes its region
 |}]
 let apply4 x = g x x x x
 [%%expect{|
-val apply4 : int -> int = <fun>
+Line 1, characters 19-20:
+1 | let apply4 x = g x x x x
+                       ^
+Error: This application involving locals is complete after this argument,
+       but extra arguments were provided
+  Hint: Try wrapping the application in parentheses up to this argument
+|}]
+let apply4_wrapped x = (g x x) x x
+[%%expect{|
+val apply4_wrapped : int -> int = <fun>
+|}]
+let ill_typed () = g 1 2 3 4 5
+[%%expect{|
+Line 1, characters 19-20:
+1 | let ill_typed () = g 1 2 3 4 5
+                       ^
+Error: This function has type local_ 'a -> int -> (local_ 'b -> int -> int)
+       It is applied to too many arguments; maybe you forgot a `;'.
+|}]
+
+(*
+ * Defaulting of modes in module type of (like mli-less files)
+ *)
+
+let f g = g (local_ (1, 2)) 1 2 3 [@nontail]
+[%%expect{|
+val f : (local_ int * int -> int -> int -> int -> 'a) -> 'a = <fun>
+|}]
+module type F = module type of struct
+  let f g = g (local_ (1, 2)) 1 2 3 [@nontail]
+end
+[%%expect{|
+module type F =
+  sig val f : (local_ int * int -> int -> int -> int -> 'a) -> 'a end
 |}]
 
 (*
@@ -378,7 +420,17 @@ Error: This local value escapes its region
 let app42 (f : a:local_ int ref -> (int -> b:local_ int ref -> c:int -> unit)) =
   f ~a:(local_ ref 1) 2 ~c:4
 [%%expect{|
-val app42 :
+Line 2, characters 7-21:
+2 |   f ~a:(local_ ref 1) 2 ~c:4
+           ^^^^^^^^^^^^^^
+Error: This application involving locals is complete after this argument,
+       but extra arguments were provided
+  Hint: Try wrapping the application in parentheses up to this argument
+|}]
+let app42_wrapped (f : a:local_ int ref -> (int -> b:local_ int ref -> c:int -> unit)) =
+  (f ~a:(local_ ref 1)) 2 ~c:4
+[%%expect{|
+val app42_wrapped :
   (a:local_ int ref -> (int -> b:local_ int ref -> c:int -> unit)) ->
   b:local_ int ref -> unit = <fun>
 |}]
@@ -431,14 +483,34 @@ Error: This local value escapes its region
 let app42' (f : a:local_ int ref -> (int -> b:local_ int ref -> c:int -> unit)) =
   f ~a:(ref 1) 2 ~c:4
 [%%expect{|
-val app42' :
+Line 2, characters 7-14:
+2 |   f ~a:(ref 1) 2 ~c:4
+           ^^^^^^^
+Error: This application involving locals is complete after this argument,
+       but extra arguments were provided
+  Hint: Try wrapping the application in parentheses up to this argument
+|}]
+let app42'_wrapped (f : a:local_ int ref -> (int -> b:local_ int ref -> c:int -> unit)) =
+  (f ~a:(ref 1)) 2 ~c:4
+[%%expect{|
+val app42'_wrapped :
   (a:local_ int ref -> (int -> b:local_ int ref -> c:int -> unit)) ->
   b:local_ int ref -> unit = <fun>
 |}]
 let app43' (f : a:local_ int ref -> (int -> b:local_ int ref -> c:int -> unit)) =
   f ~a:(ref 1) 2
 [%%expect{|
-val app43' :
+Line 2, characters 7-14:
+2 |   f ~a:(ref 1) 2
+           ^^^^^^^
+Error: This application involving locals is complete after this argument,
+       but extra arguments were provided
+  Hint: Try wrapping the application in parentheses up to this argument
+|}]
+let app43'_wrapped (f : a:local_ int ref -> (int -> b:local_ int ref -> c:int -> unit)) =
+  (f ~a:(ref 1)) 2
+[%%expect{|
+val app43'_wrapped :
   (a:local_ int ref -> (int -> b:local_ int ref -> c:int -> unit)) ->
   b:local_ int ref -> c:int -> unit = <fun>
 |}]
