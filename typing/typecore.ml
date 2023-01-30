@@ -501,7 +501,7 @@ let option_some env texp mode =
   let alloc_mode  = register_allocation_value_mode mode in
   let lid = Longident.Lident "Some" in
   let csome = Env.find_ident_constructor Predef.ident_some env in
-  mkexp ( Texp_construct(mknoloc lid , csome, [texp], Some alloc_mode) )
+  mkexp (Texp_construct(mknoloc lid , csome, [texp], Some alloc_mode))
     (type_option texp.exp_type) texp.exp_loc texp.exp_env
 
 let extract_option_type env ty =
@@ -2459,7 +2459,7 @@ and type_pat_aux
       let path, new_env =
         !type_open Asttypes.Fresh !env sp.ppat_loc lid in
       env := new_env;
-      type_pat category ~env p expected_ty ( fun p ->
+      type_pat category ~env p expected_ty (fun p ->
         let new_env = !env in
         begin match Env.remove_last_open path new_env with
         | None -> assert false
@@ -2978,7 +2978,7 @@ let rec is_nonexpansive exp =
   | Texp_probe {handler} -> is_nonexpansive handler
   | Texp_tuple (el, _) ->
       List.for_all is_nonexpansive el
-  | Texp_construct( _, _, el, _) ->
+  | Texp_construct(_, _, el, _) ->
       List.for_all is_nonexpansive el
   | Texp_variant(_, arg) -> is_nonexpansive_opt (Option.map fst arg)
   | Texp_record { fields; extended_expression } ->
@@ -4099,7 +4099,7 @@ and type_expect_
         | Some sarg ->
             let arg = type_exp env argument_mode sarg in
             let alloc_mode = register_allocation expected_mode in
-            Some ( arg, alloc_mode )
+            Some (arg, alloc_mode)
         in
         let arg_type = Option.map (fun (arg, _) -> arg.exp_type) arg in
         let row =
