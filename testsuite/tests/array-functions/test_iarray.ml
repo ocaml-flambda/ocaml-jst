@@ -1,5 +1,5 @@
 (* TEST
-   flags = "-extension immutable_arrays"
+   flags = "-extension immutable_arrays_experimental"
 *)
 
 (* Copied from [test.ml], but with all the [Array.fill] tests deleted *)

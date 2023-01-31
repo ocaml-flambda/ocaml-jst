@@ -405,14 +405,14 @@ module Extension = struct
     | Local -> "local"
     | Include_functor -> "include_functor"
     | Polymorphic_parameters -> "polymorphic_parameters"
-    | Immutable_arrays -> "immutable_arrays"
+    | Immutable_arrays -> "immutable_arrays_experimental"
 
   let of_string = function
     | "comprehensions_experimental" -> Some Comprehensions
     | "local" -> Some Local
     | "include_functor" -> Some Include_functor
     | "polymorphic_parameters" -> Some Polymorphic_parameters
-    | "immutable_arrays" -> Some Immutable_arrays
+    | "immutable_arrays_experimental" -> Some Immutable_arrays
     | _ -> None
 
   let disable_all_extensions = ref false             (* -disable-all-extensions *)

@@ -53,7 +53,7 @@ module Comprehensions : sig
     | Cexp_array_comprehension of Asttypes.mutable_flag * comprehension
     (** [|BODY ...CLAUSES...|] (flag = Mutable)
         [:BODY ...CLAUSES...:] (flag = Immutable)
-          (only allowed with [-extension Immutable_arrays]) *)
+          (only allowed with [-extension immutable_arrays]) *)
 end
 
 (** The ASTs for immutable arrays.  When we merge this upstream, we'll merge
