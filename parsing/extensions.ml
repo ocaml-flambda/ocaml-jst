@@ -8,7 +8,7 @@ open Extensions_parsing
 (*
 Note [Check for immutable extension in comprehensions code]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-When we spot a comprehension for a mutable array, we need to make
+When we spot a comprehension for an immutable array, we need to make
 sure that both [comprehensions] and [immutable_arrays] are enabled.
 But our general mechanism for checking for enabled extensions
 (in Extensions_parsing.Translate(...).of_ast) won't work well here:
