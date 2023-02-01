@@ -220,6 +220,16 @@ let mark_warn_on_literal_pattern_used l =
     | _ -> ())
     l
 
+let mark_payload_attrs_used payload =
+  let iter =
+    { Ast_iterator.default_iterator
+      with attribute = fun self a ->
+        mark_used a.attr_name;
+        Ast_iterator.default_iterator.attribute self a
+    }
+  in
+  iter.payload iter payload
+
 let alerts_of_attrs l =
   List.fold_left
     (fun acc (_, kind, message) ->

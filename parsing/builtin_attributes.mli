@@ -61,6 +61,10 @@ val mark_alerts_used : Parsetree.attributes -> unit
     attributes into the environment. *)
 val mark_warn_on_literal_pattern_used : Parsetree.attributes -> unit
 
+(** Marks the attributes hiding in the payload of another attribute (or
+    extension node) used, for the purposes of misplaced attribute warnings. *)
+val mark_payload_attrs_used : Parsetree.payload -> unit
+
 (** Issue misplaced attribute warnings for all attributes created with
     [mk_internal] but not yet marked used. *)
 val warn_unused : unit -> unit

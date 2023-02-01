@@ -1076,6 +1076,8 @@ The precedences must be listed from low to high.
 %inline mk_directive_arg(symb): symb
     { mk_directive_arg ~loc:$sloc $1 }
 
+%inline mark_payload_attrs_used(symb): symb
+    { Builtin_attributes.mark_payload_attrs_used $1; $1 }
 /* Generic definitions */
 
 (* [iloption(X)] recognizes either nothing or [X]. Assuming [X] produces
@@ -4221,10 +4223,12 @@ item_extension:
     { mk_quotedext ~loc:$sloc $1 }
 ;
 payload:
-    structure { PStr $1 }
-  | COLON signature { PSig $2 }
-  | COLON core_type { PTyp $2 }
-  | QUESTION pattern { PPat ($2, None) }
-  | QUESTION pattern WHEN seq_expr { PPat ($2, Some $4) }
+  mark_payload_attrs_used (
+      structure { PStr $1 }
+    | COLON signature { PSig $2 }
+    | COLON core_type { PTyp $2 }
+    | QUESTION pattern { PPat ($2, None) }
+    | QUESTION pattern WHEN seq_expr { PPat ($2, Some $4) }
+    ) { $1 }
 ;
 %%
