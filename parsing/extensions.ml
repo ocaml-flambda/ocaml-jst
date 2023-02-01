@@ -16,7 +16,7 @@ it triggers when converting from e.g. [[%extensions.comprehensions.array] ...]
 to the comprehensions-specific AST. But if we spot a
 [[%extensions.comprehensions.immutable]], there is no expression to translate.
 
-The alternative would be to track the shape of comprehension in some expression,
+The alternative would be to track the shape of the comprehension in some expression,
 just so it can be translated, just to report if an extension is off. This is
 not a good tradeoff, so we just check the [immutable_arrays] extension when we
 encounter it within the comprehensions code.
