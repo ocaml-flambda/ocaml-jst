@@ -125,6 +125,17 @@ module Comprehensions = struct
     let expr_of_comprehension_type type_ =
       expr_of_comprehension ~loc:ghost_loc ~type_
     in
+    (* This next line could, in theory, be abstracted into
+       the general structure in Extensions_parsing. It will
+       have to repeated in every [expr_of] (and similar lines
+       in e.g. [pat_of]). But the extension_string is different
+       for each extension, as is the payload (after the [@@]).
+       These pieces will always have to be passed to whatever
+       abstract structure we design to avoid this tiny bit
+       of boilerplate. Any abstraction seems unable to pay its
+       way here. Maybe we can revisit this in some glorious future,
+       but for now, we'll just settle for writing this one line
+       in a number of places. *)
     Expression.make_extension ~loc [extension_string] @@
     match eexpr with
     | Cexp_list_comprehension comp ->
