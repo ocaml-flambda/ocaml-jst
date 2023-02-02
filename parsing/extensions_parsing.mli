@@ -122,7 +122,8 @@ module type AST = sig
 end
 
 (** One [AST] module per syntactic category we currently care about; we're
-    adding these lazily as we need them. *)
+    adding these lazily as we need them. When you add another one, make
+    sure also to add special handling in [Ast_iterator] and [Ast_mapper]. *)
 
 module Expression : AST with type ast = Parsetree.expression
 module Pattern    : AST with type ast = Parsetree.pattern
