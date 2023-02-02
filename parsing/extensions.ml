@@ -15,11 +15,8 @@ But our general mechanism for checking for enabled extensions
 it triggers when converting from e.g. [[%extensions.comprehensions.array] ...]
 to the comprehensions-specific AST. But if we spot a
 [[%extensions.comprehensions.immutable]], there is no expression to translate.
-
-The alternative would be to track the shape of the comprehension in some expression,
-just so it can be translated, just to report if an extension is off. This is
-not a good tradeoff, so we just check the [immutable_arrays] extension when we
-encounter it within the comprehensions code.
+So we just check for the immutable arrays extension when processing a
+comprehension expression for an immutable array.
 *)
 
 (** List and array comprehensions *)

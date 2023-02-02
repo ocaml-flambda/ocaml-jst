@@ -144,6 +144,14 @@ module type Of_ast_parameters = sig
       [[%extensions.comprehensions]] node, and the argument to that
       node is passed in as the [Parsetree] AST.
 
+      So, for example, if [of_ast] spots the expression
+
+      {[
+        [%extensions.comprehensions] blah
+      ]}
+
+      then it will call [of_ast_internal Comprehensions blah].
+
       If the given extension does not actually extend the
       syntactic category, return None; this will be reported
       as an error. (Example: there are no pattern comprehensions,
