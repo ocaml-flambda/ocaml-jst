@@ -73,13 +73,13 @@ let report_error ~loc = function
       | Has_payload _payload ->
           Location.errorf
             ~loc
-            "Extension extension nodes are not allowed to have a payload, \
+            "Modular extension nodes are not allowed to have a payload, \
              but \"%s\" does"
           name
       | Wrong_arguments arguments ->
           Location.errorf
             ~loc
-            "Expression extension extension nodes must be applied to exactly \
+            "Expression modular extension nodes must be applied to exactly \
              one unlabeled argument, but \"%s\" was applied to %s"
             name
             (match arguments with
@@ -89,7 +89,7 @@ let report_error ~loc = function
       | Wrong_tuple patterns ->
           Location.errorf
             ~loc
-            "Pattern extension extension nodes must be the first component of \
+            "Pattern modular extension nodes must be the first component of \
              a pair, but \"%s\" was the first component of a %d-tuple"
             name
             (1 + List.length patterns)

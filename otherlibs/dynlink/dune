@@ -42,6 +42,8 @@
     docstrings
     syntaxerr
     ast_iterator
+    extensions_parsing
+    extensions
     ast_helper
     ast_mapper
     attr_helper
@@ -122,6 +124,8 @@
 (copy_files ../../parsing/docstrings.ml)
 (copy_files ../../parsing/syntaxerr.ml)
 (copy_files ../../parsing/ast_iterator.ml)
+(copy_files ../../parsing/extensions_parsing.ml)
+(copy_files ../../parsing/extensions.ml)
 (copy_files ../../parsing/ast_helper.ml)
 (copy_files ../../parsing/ast_mapper.ml)
 (copy_files ../../parsing/attr_helper.ml)
@@ -175,6 +179,8 @@
 (copy_files ../../parsing/docstrings.mli)
 (copy_files ../../parsing/syntaxerr.mli)
 (copy_files ../../parsing/ast_iterator.mli)
+(copy_files ../../parsing/extensions_parsing.mli)
+(copy_files ../../parsing/extensions.mli)
 (copy_files ../../parsing/ast_helper.mli)
 (copy_files ../../parsing/ast_mapper.mli)
 (copy_files ../../parsing/attr_helper.mli)
@@ -283,6 +289,8 @@
       .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Attr_helper.cmo
       .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Primitive.cmo
       .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Predef.cmo
+      .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Extensions_parsing.cmo
+      .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Extensions.cmo
       .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Ast_mapper.cmo
       .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Subst.cmo
       .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Env.cmo
@@ -351,6 +359,8 @@
       .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Attr_helper.cmx
       .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Primitive.cmx
       .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Predef.cmx
+      .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Extensions_parsing.cmx
+      .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Extensions.cmx
       .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Ast_mapper.cmx
       .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Subst.cmx
       .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Env.cmx
