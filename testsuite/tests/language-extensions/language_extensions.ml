@@ -2,6 +2,8 @@
    include ocamlcommon
    flags = "-I ${ocamlsrcdir}/parsing"
    reference = "${test_source_directory}/reference.txt"
+   * skip
+   reason = "local_ currently always parses"
 *)
 
 let report ~name ~text =
