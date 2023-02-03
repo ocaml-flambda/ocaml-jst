@@ -383,6 +383,8 @@ module Extension = struct
     | Polymorphic_parameters
     | Immutable_arrays
 
+  let equal (a : t) (b : t) = (a = b)
+
   let all =
     [ Comprehensions
     ; Local
@@ -396,8 +398,6 @@ module Extension = struct
     ; Include_functor
     ; Polymorphic_parameters
     ]
-
-  let equal (a : t) (b : t) = (a = b)
 
   let to_string = function
     | Comprehensions -> "comprehensions_experimental"
