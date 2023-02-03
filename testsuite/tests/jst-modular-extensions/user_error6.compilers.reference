@@ -1,4 +1,6 @@
 File "user_error6.ml", line 19, characters 24-56:
 19 | let _bad_introduction = [%extension.something.nested] ();;
                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Error: The extension "something" was referenced improperly; it started with an [%extension.something.nested] extension node, not an [%extension.something] one
+Error: The extension "something" was referenced improperly; it started with an
+       [%extension.something.nested] extension node,
+       not an [%extension.something] one

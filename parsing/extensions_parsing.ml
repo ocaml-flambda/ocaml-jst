@@ -73,14 +73,14 @@ let report_error ~loc = function
       | Has_payload _payload ->
           Location.errorf
             ~loc
-            "Modular extension nodes are not allowed to have a payload, \
-             but \"%s\" does"
+            "@[Modular extension nodes are not allowed to have a payload,@ \
+             but \"%s\" does@]"
           name
       | Wrong_arguments arguments ->
           Location.errorf
             ~loc
-            "Expression modular extension nodes must be applied to exactly \
-             one unlabeled argument, but \"%s\" was applied to %s"
+            "@[Expression modular extension nodes must be applied to exactly@ \
+             one unlabeled argument, but \"%s\" was applied to@ %s@]"
             name
             (match arguments with
              | [Labelled _, _] -> "a labeled argument"
@@ -89,16 +89,16 @@ let report_error ~loc = function
       | Wrong_tuple patterns ->
           Location.errorf
             ~loc
-            "Pattern modular extension nodes must be the first component of \
-             a pair, but \"%s\" was the first component of a %d-tuple"
+            "@[Pattern modular extension nodes must be the first component of@ \
+             a pair, but \"%s\" was the first component of a %d-tuple@]"
             name
             (1 + List.length patterns)
     end
   | Unknown_extension name ->
       Location.errorf
         ~loc
-        "Unknown extension \"%s\" referenced via an [%%extension.%s] \
-         extension node"
+        "@[Unknown extension \"%s\" referenced via an@ [%%extension.%s] \
+         extension node@]"
         name
         name
   | Disabled_extension ext ->
@@ -119,8 +119,8 @@ let report_error ~loc = function
   | Bad_introduction(name, subnames) ->
       Location.errorf
         ~loc
-        "The extension \"%s\" was referenced improperly; it started with an \
-         [%%extension.%s] extension node, not an [%%extension.%s] one"
+        "@[The extension \"%s\" was referenced improperly; it started with an@ \
+         [%%extension.%s] extension node,@ not an [%%extension.%s] one@]"
         name
         (String.concat "." (name :: subnames))
         name
