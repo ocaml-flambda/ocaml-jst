@@ -467,14 +467,8 @@ module Extension = struct
   let with_disabled = with_set ~enabled:false
 
   let disallow_extensions () =
-    match !extensions with
-    | [] ->
-        disallow_extensions := true
-    | extns ->
-        raise (Arg.Bad(Printf.sprintf
-          "Compiler flag -disable-all-extensions is incompatible with \
-           the enabled extensions: %s"
-          (String.concat "," (List.map to_string extns))))
+    extensions          := [];
+    disallow_extensions := true
 end
 
 let dump_into_file = ref false (* -dump-into-file *)

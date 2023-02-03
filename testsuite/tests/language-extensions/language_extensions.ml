@@ -40,6 +40,11 @@ let should_fail name f =
 
 (* Test the ground state *)
 
+parse_local "\"local\" extension enabled by default";
+
+(* Disable all extensions for testing *)
+
+List.iter Clflags.Extension.disable Clflags.Extension.all;
 parse_local "no extensions enabled";
 
 (* Test globally toggling [Local] *)
@@ -108,11 +113,7 @@ Clflags.Extension.with_set Local ~enabled:true (fun () ->
 
 Clflags.Extension.enable Local;
 try_disallowing_extensions
-  "can't disallow extensions while an extension is enabled";
-
-Clflags.Extension.disable Local;
-try_disallowing_extensions
-  "can disallow extensions while no extensions are enabled";
+  "can disallow extensions while extensions are enabled";
 
 try_disallowing_extensions
   "can disallow extensions while extensions are already disallowed";

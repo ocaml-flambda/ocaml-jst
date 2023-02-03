@@ -244,10 +244,11 @@ module Extension : sig
   val with_disabled : t -> (unit -> unit) -> unit
 
   (** Permanently ban all extensions; used for [-disable-all-extensions] to
-      ensure that some code is 100% extension-free.  Causes any uses of [set],
-      [enable], [disable], and their [with_] variants to raise, and will raise
-      if any extensions have already been enabled.  [is_enabled] will still work,
-      and will always return [false].*)
+      ensure that some code is 100% extension-free.  When called, disables any
+      currently-enabled extensions, including the defaults.  Causes any future
+      uses of [set], [enable], [disable], and their [with_] variants to raise.
+      The [is_enabled] function will still work, it will just always return
+      [false].*)
   val disallow_extensions : unit -> unit
 end
 
