@@ -40,11 +40,16 @@
 
 
 (** Used by the compiler for attributes that may be compiler built-ins.  These
-    are tracked for misplaced attribute warnings.  This should be used rather
-    than Attr.mk for all built-in attributes. *)
+    are tracked for misplaced attribute warnings (unless this tracking has been
+    turned off with [track_attrs]).  This should be used rather than Attr.mk for
+    all built-in attributes. *)
 val mk_internal:
   ?loc:Location.t -> string Location.loc -> Parsetree.payload ->
   Parsetree.attribute
+
+(** Turns on or off the tracking of attributes constructed with [mk_internal]
+    for warning 53. *)
+val track_attrs : bool -> unit
 
 (** Used to record attributes that should be tracked for the purpose of
     misplaced attribute warnings.  *)

@@ -184,7 +184,10 @@ let iterator =
            subtypes is not allowed."
   in
   let attribute self attr =
-    super.attribute self attr;
+    (* The change to `self` here avoids registering attributes within attributes
+       for the purposes of warning 53, while keeping all the other invariant
+       checks for attribute payloads. *)
+    super.attribute { self with attribute = super.attribute } attr;
     Builtin_attributes.register_attr attr.attr_name
   in
   { super with

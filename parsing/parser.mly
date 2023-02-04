@@ -4179,15 +4179,15 @@ attr_id:
   ) { $1 }
 ;
 attribute:
-  LBRACKETAT attr_id payload RBRACKET
+  LBRACKETAT attr_id attr_payload RBRACKET
     { Builtin_attributes.mk_internal ~loc:(make_loc $sloc) $2 $3 }
 ;
 post_item_attribute:
-  LBRACKETATAT attr_id payload RBRACKET
+  LBRACKETATAT attr_id attr_payload RBRACKET
     { Builtin_attributes.mk_internal ~loc:(make_loc $sloc) $2 $3 }
 ;
 floating_attribute:
-  LBRACKETATATAT attr_id payload RBRACKET
+  LBRACKETATATAT attr_id attr_payload RBRACKET
     { mark_symbol_docs $sloc;
       Builtin_attributes.mk_internal ~loc:(make_loc $sloc) $2 $3 }
 ;
@@ -4223,12 +4223,13 @@ item_extension:
     { mk_quotedext ~loc:$sloc $1 }
 ;
 payload:
-  mark_payload_attrs_used (
-      structure { PStr $1 }
-    | COLON signature { PSig $2 }
-    | COLON core_type { PTyp $2 }
-    | QUESTION pattern { PPat ($2, None) }
-    | QUESTION pattern WHEN seq_expr { PPat ($2, Some $4) }
-    ) { $1 }
+    structure { PStr $1 }
+  | COLON signature { PSig $2 }
+  | COLON core_type { PTyp $2 }
+  | QUESTION pattern { PPat ($2, None) }
+  | QUESTION pattern WHEN seq_expr { PPat ($2, Some $4) }
+;
+attr_payload:
+  mark_payload_attrs_used ( payload ) { $1 }
 ;
 %%

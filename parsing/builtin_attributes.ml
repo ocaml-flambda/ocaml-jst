@@ -92,14 +92,16 @@ let builtin_attrs =
 
 let is_builtin_attr s = Hashtbl.mem builtin_attrs s
 
+let track = ref true
+let track_attrs b = track := b
+
 let register_attr name =
-  if is_builtin_attr name.txt
+  if !track && is_builtin_attr name.txt
   then Attribute_table.replace unused_attrs name ()
 
 let mk_internal ?(loc= !default_loc) name payload =
   register_attr name;
   Attr.mk ~loc name payload
-
 
 let ident_of_payload = function
   | PStr[{pstr_desc=Pstr_eval({pexp_desc=Pexp_ident {txt=Lident id}},_)}] ->
