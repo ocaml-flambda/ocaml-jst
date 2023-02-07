@@ -1089,7 +1089,7 @@ and find_functor_components path env =
   | Functor_comps f -> f
   | Structure_comps _ -> raise Not_found
 
-let find_module ?(alias=false) path env =
+let find_module path env =
   match path with
   | Pident id ->
       let data = find_ident_module id env in
@@ -1100,10 +1100,9 @@ let find_module ?(alias=false) path env =
       Subst.Lazy.force_module_decl data.mda_declaration
   | Papply(p1, p2) ->
       let fc = find_functor_components p1 env in
-      if alias then md (fc.fcomp_res)
-      else md (modtype_of_functor_appl fc p1 p2)
+      md (modtype_of_functor_appl fc p1 p2)
 
-let find_module_lazy ?(alias=false) path env =
+let find_module_lazy ~alias path env =
   match path with
   | Pident id ->
       let data = find_ident_module id env in
@@ -1446,6 +1445,9 @@ and expand_modtype_path env path =
   match (find_modtype_lazy path env).mtdl_type with
   | Some (MtyL_ident path) -> normalize_modtype_path env path
   | _ | exception Not_found -> path
+
+let find_module_lazy path env =
+  find_module_lazy ~alias:false path env
 
 (* Find the manifest type associated to a type when appropriate:
    - the type should be public or should have a private row,

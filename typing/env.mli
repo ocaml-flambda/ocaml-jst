@@ -86,8 +86,8 @@ val without_cmis: ('a -> 'b) -> 'a -> 'b
 val find_value: Path.t -> t -> value_description
 val find_type: Path.t -> t -> type_declaration
 val find_type_descrs: Path.t -> t -> type_descriptions
-val find_module_lazy: ?alias:bool -> Path.t -> t -> Subst.Lazy.module_decl
-val find_module: ?alias:bool -> Path.t -> t -> module_declaration
+val find_module_lazy: Path.t -> t -> Subst.Lazy.module_decl
+val find_module: Path.t -> t -> module_declaration
 val find_modtype: Path.t -> t -> modtype_declaration
 val find_class: Path.t -> t -> class_declaration
 val find_cltype: Path.t -> t -> class_type_declaration

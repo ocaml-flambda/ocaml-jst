@@ -242,7 +242,7 @@ let () = Env.scrape_alias := fun env mty -> scrape_alias_lazy env mty
 
 let find_type_of_module ~strengthen ~aliasable env path =
   if strengthen then
-    let md = Env.find_module_lazy ~alias:true path env in
+    let md = Env.find_module_lazy path env in
     let mty = strengthen_lazy ~aliasable env md.mdl_type path in
     Subst.Lazy.force_modtype mty
   else
