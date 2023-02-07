@@ -2760,17 +2760,21 @@ type untyped_apply_arg =
       { sarg : Parsetree.expression;
         ty_arg : type_expr;
         ty_arg0 : type_expr;
+        mode_fun : Alloc_mode.t;
         mode_arg : Alloc_mode.t;
+        mode_ret : Alloc_mode.t;
         wrapped_in_some : bool; }
   | Unknown_arg of
       { sarg : Parsetree.expression;
         ty_arg_mono : type_expr;
-        mode_arg : Alloc_mode.t; }
+        mode_fun : Alloc_mode.t;
+        mode_arg : Alloc_mode.t;
+        mode_ret : Alloc_mode.t; }
   | Eliminated_optional_arg of
       { mode_fun: Alloc_mode.t;
         ty_arg : type_expr;
         mode_arg : Alloc_mode.t;
-        level: int;}
+        level: int; }
 
 type untyped_omitted_param =
   { mode_fun: Alloc_mode.t;
@@ -2810,27 +2814,33 @@ let remaining_function_type ty_ret mode_ret rev_args =
   in
   ty_ret
 
-let check_local_application_complete ~env ~app_loc ~sarg ~rest ~mode_fun ~mode_arg ~mode_ret =
-  let submode m1 m2 =
-    match Alloc_mode.submode m1 m2 with
-    | Ok () -> ()
-    | Error () ->
-      let loc =
-        Location.{ loc_start = app_loc.loc_start;
-                   loc_end = sarg.pexp_loc.loc_end;
-                   loc_ghost = app_loc.loc_ghost || sarg.pexp_loc.loc_ghost }
-      in
-      raise (Error(loc, env, Local_application_complete))
-  in
-  match rest with
-  | [] -> ()
-  | _ :: _ ->
-    (* Not the final argument *)
+let rec check_local_application_complete ~env ~app_loc args =
+  match args with
+  | [] | [_] -> ()
+  | (_, Omitted _) :: rest ->
+    check_local_application_complete ~env ~app_loc rest
+  | (_, Arg (Eliminated_optional_arg _)) :: rest ->
+    check_local_application_complete ~env ~app_loc rest
+  | (_, Arg ( Known_arg { sarg; mode_fun; mode_arg; mode_ret; _ }
+            | Unknown_arg { sarg; mode_fun; mode_arg; mode_ret; _ }))
+    :: (_ :: _ as rest) ->
+    let submode m1 m2 =
+      match Alloc_mode.submode m1 m2 with
+      | Ok () -> ()
+      | Error () ->
+        let loc =
+          Location.{ loc_start = app_loc.loc_start;
+                     loc_end = sarg.pexp_loc.loc_end;
+                     loc_ghost = app_loc.loc_ghost || sarg.pexp_loc.loc_ghost }
+        in
+        raise (Error(loc, env, Local_application_complete))
+    in
     submode mode_fun mode_ret;
-    submode mode_arg mode_ret
+    submode mode_arg mode_ret;
+    check_local_application_complete ~env ~app_loc rest
 
 
-let collect_unknown_apply_args env app_loc funct ty_fun mode_fun rev_args sargs ret_tvar =
+let collect_unknown_apply_args env funct ty_fun mode_fun rev_args sargs ret_tvar =
   let labels_match ~param ~arg =
     param = arg
     || !Clflags.classic && arg = Nolabel && not (is_optional param)
@@ -2858,16 +2868,12 @@ let collect_unknown_apply_args env app_loc funct ty_fun mode_fun rev_args sargs 
                   Warnings.Ignored_extra_argument;
               let mode_arg = Alloc_mode.newvar () in
               let mode_ret = Alloc_mode.newvar () in
-              check_local_application_complete ~env ~app_loc ~sarg ~rest
-                ~mode_fun ~mode_arg ~mode_ret;
               let kind = (lbl, mode_arg, mode_ret) in
               unify env ty_fun
                 (newty (Tarrow(kind,ty_arg,ty_res,commu_var ())));
               (mode_arg, ty_arg_mono, mode_ret, ty_res)
         | Tarrow ((l, mode_arg, mode_ret), ty_arg, ty_res, _)
           when labels_match ~param:l ~arg:lbl ->
-            check_local_application_complete ~env ~app_loc ~sarg ~rest
-              ~mode_fun ~mode_arg ~mode_ret;
             (mode_arg, tpoly_get_mono ty_arg, mode_ret, ty_res)
         | td ->
             let ty_fun = match td with Tarrow _ -> newty td | _ -> ty_fun in
@@ -2883,14 +2889,13 @@ let collect_unknown_apply_args env app_loc funct ty_fun mode_fun rev_args sargs 
                 raise(Error(funct.exp_loc, env, Apply_non_function
                               (expand_head env funct.exp_type)))
     in
-    let arg = Unknown_arg { sarg; ty_arg_mono; mode_arg; } in
+    let arg = Unknown_arg { sarg; ty_arg_mono; mode_fun; mode_arg; mode_ret } in
     loop ty_res mode_ret ((lbl, Arg arg) :: rev_args) rest
   in
   loop ty_fun mode_fun rev_args sargs
 
-let collect_apply_args env app_loc funct ignore_labels ty_fun ty_fun0 mode_fun sargs ret_tvar =
+let collect_apply_args env funct ignore_labels ty_fun ty_fun0 mode_fun sargs ret_tvar =
   let warned = ref false in
-  let delayed_checks = ref [] in
   let rec loop ty_fun ty_fun0 mode_fun rev_args sargs =
     let ty_fun' = expand_head env ty_fun in
     match get_desc ty_fun', get_desc (expand_head env ty_fun0) with
@@ -2899,18 +2904,6 @@ let collect_apply_args env app_loc funct ignore_labels ty_fun ty_fun0 mode_fun s
       when sargs <> [] && is_commu_ok com ->
         let lv = get_level ty_fun' in
         let (l, mode_arg, mode_ret) = ad in
-        begin match sargs with
-        | [] -> assert false
-        | (_lbl, sarg) :: rest ->
-          (* This is an obscure error, which often triggers on ill-typed applications.
-             Since it is relatively confusing, we want to delay issuing it until we're
-             sure the application is otherwise well-typed, because in ill-typed cases
-             the standard error is easier to understand *)
-          delayed_checks :=
-            (fun () -> check_local_application_complete ~env ~app_loc ~sarg ~rest
-                         ~mode_fun ~mode_arg ~mode_ret)
-            :: !delayed_checks
-        end;
         let may_warn loc w =
           if not !warned && !Clflags.principal && lv <> generic_level
           then begin
@@ -2926,7 +2919,7 @@ let collect_apply_args env app_loc funct ignore_labels ty_fun ty_fun0 mode_fun s
             may_warn sarg.pexp_loc
               (Warnings.Not_principal "using an optional argument here");
           Arg (Known_arg
-            { sarg; ty_arg; ty_arg0; mode_arg; wrapped_in_some })
+            { sarg; ty_arg; ty_arg0; mode_fun; mode_arg; mode_ret; wrapped_in_some })
         in
         let eliminate_optional_arg () =
           may_warn funct.exp_loc
@@ -2983,10 +2976,9 @@ let collect_apply_args env app_loc funct ignore_labels ty_fun ty_fun0 mode_fun s
     | _ ->
         (* We're not looking at a *known* function type anymore, or there are no
            arguments left. *)
-        collect_unknown_apply_args env app_loc funct ty_fun0 mode_fun rev_args sargs ret_tvar
+        collect_unknown_apply_args env funct ty_fun0 mode_fun rev_args sargs ret_tvar
   in
-  let ty, mode_ret, args = loop ty_fun ty_fun0 mode_fun [] sargs in
-  ty, mode_ret, args, List.rev !delayed_checks
+  loop ty_fun ty_fun0 mode_fun [] sargs
 
 let type_omitted_parameters expected_mode env ty_ret mode_ret args =
   let ty_ret, mode_ret, _, _, args =
@@ -6048,22 +6040,22 @@ and type_application env app_loc expected_mode position funct funct_mode sargs r
         end
       in
       if !Clflags.principal then begin_def () ;
-      let ty_ret, mode_ret, args, delayed_checks =
-        collect_apply_args env app_loc funct ignore_labels ty (instance ty)
+      let ty_ret, mode_ret, untyped_args =
+        collect_apply_args env funct ignore_labels ty (instance ty)
           (Value_mode.regional_to_local_alloc funct_mode) sargs ret_tvar
       in
-      let partial_app = is_partial_apply args in
+      let partial_app = is_partial_apply untyped_args in
       let position = if partial_app then Default else position in
       let args =
         List.mapi (fun index arg ->
             type_apply_arg env ~app_loc ~funct ~index ~position ~partial_app arg)
-          args
+          untyped_args
       in
       let ty_ret, mode_ret, args =
         type_omitted_parameters expected_mode env
           ty_ret mode_ret args
       in
-      List.iter (fun check -> check ()) delayed_checks;
+      check_local_application_complete ~env ~app_loc untyped_args;
       if !Clflags.principal then begin
         end_def () ;
         generalize_structure ty_ret
