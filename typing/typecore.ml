@@ -2814,6 +2814,14 @@ let remaining_function_type ty_ret mode_ret rev_args =
   in
   ty_ret
 
+(* Check that within a single application, the return modes of curried arrows
+   increase along the application. That is, check that this is not an
+   unparenthesized over-application of a local function that returns a global
+   function.
+
+   This check is not required for soundness, but including it simplifies the
+   principal types of applications, making the inferred types more sensible
+   in ml files that lack an mli. *)
 let rec check_local_application_complete ~env ~app_loc args =
   match args with
   | [] | [_] -> ()
@@ -7777,8 +7785,8 @@ let report_error ~loc env = function
       Location.errorf ~loc ~sub "This %svalue escapes its region" mode
   | Local_application_complete ->
       Location.errorf ~loc
-        "@[This application is complete, but further arguments were provided afterwards.@ \
-         With local arguments or closures, these are not allowed in the same application.@]"
+        "@[This application is complete, but surplus arguments were provided afterwards.@ \
+         When passing or calling a local value, extra arguments are passed in a separate application.@]"
         ~sub:[Location.msg
             "@[Hint: Try wrapping the marked application in parentheses.@]"]
   | Param_mode_mismatch ty ->
