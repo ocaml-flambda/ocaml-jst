@@ -1078,8 +1078,6 @@ The precedences must be listed from low to high.
 %inline mk_directive_arg(symb): symb
     { mk_directive_arg ~loc:$sloc $1 }
 
-%inline mark_payload_attrs_used(symb): symb
-    { Builtin_attributes.mark_payload_attrs_used $1; $1 }
 /* Generic definitions */
 
 (* [iloption(X)] recognizes either nothing or [X]. Assuming [X] produces
@@ -4232,6 +4230,9 @@ payload:
   | QUESTION pattern WHEN seq_expr { PPat ($2, Some $4) }
 ;
 attr_payload:
-  mark_payload_attrs_used ( payload ) { $1 }
+  payload
+    { Builtin_attributes.mark_payload_attrs_used $1;
+      $1
+    }
 ;
 %%
