@@ -185,7 +185,7 @@ type error =
   | Wrong_expected_kind of wrong_kind_sort * wrong_kind_context * type_expr
   | Expr_not_a_record_type of type_expr
   | Local_value_escapes of Value_mode.error * submode_reason * Env.escaping_context option
-  | Local_application_complete
+  | Local_application_complete of [`Prefix|`Single_arg]
   | Param_mode_mismatch of type_expr
   | Uncurried_function_escapes
   | Local_return_annotation_mismatch of Location.t
@@ -2760,6 +2760,7 @@ type untyped_apply_arg =
       { sarg : Parsetree.expression;
         ty_arg : type_expr;
         ty_arg0 : type_expr;
+        commuted : bool;
         mode_fun : Alloc_mode.t;
         mode_arg : Alloc_mode.t;
         mode_ret : Alloc_mode.t;
@@ -2822,31 +2823,41 @@ let remaining_function_type ty_ret mode_ret rev_args =
    This check is not required for soundness, but including it simplifies the
    principal types of applications, making the inferred types more sensible
    in ml files that lack an mli. *)
-let rec check_local_application_complete ~env ~app_loc args =
-  match args with
-  | [] | [_] -> ()
-  | (_, Omitted _) :: rest ->
-    check_local_application_complete ~env ~app_loc rest
-  | (_, Arg (Eliminated_optional_arg _)) :: rest ->
-    check_local_application_complete ~env ~app_loc rest
-  | (_, Arg ( Known_arg { sarg; mode_fun; mode_arg; mode_ret; _ }
-            | Unknown_arg { sarg; mode_fun; mode_arg; mode_ret; _ }))
-    :: (_ :: _ as rest) ->
-    let submode m1 m2 =
-      match Alloc_mode.submode m1 m2 with
-      | Ok () -> ()
-      | Error () ->
-        let loc =
-          Location.{ loc_start = app_loc.loc_start;
-                     loc_end = sarg.pexp_loc.loc_end;
-                     loc_ghost = app_loc.loc_ghost || sarg.pexp_loc.loc_ghost }
-        in
-        raise (Error(loc, env, Local_application_complete))
-    in
-    submode mode_fun mode_ret;
-    submode mode_arg mode_ret;
-    check_local_application_complete ~env ~app_loc rest
-
+let check_local_application_complete ~env ~app_loc args =
+  let rec loop loc_kind = function
+    | [] | [_] -> ()
+    | (_, Omitted _) :: rest ->
+      loop loc_kind rest
+    | (_, Arg (Eliminated_optional_arg _)) :: rest ->
+      loop loc_kind rest
+    | (_, Arg ( Known_arg { sarg; mode_fun; mode_arg; mode_ret; _ }
+              | Unknown_arg { sarg; mode_fun; mode_arg; mode_ret; _ } as arg))
+      :: (_ :: _ as rest) ->
+      let loc_kind =
+        match arg with
+        | Known_arg { commuted = true } -> `Single_arg
+        | _ -> loc_kind
+      in
+      let submode m1 m2 =
+        match Alloc_mode.submode m1 m2 with
+        | Ok () -> ()
+        | Error () ->
+          let loc =
+            match loc_kind with
+            | `Prefix ->
+              Location.{ loc_start = app_loc.loc_start;
+                         loc_end = sarg.pexp_loc.loc_end;
+                         loc_ghost = app_loc.loc_ghost || sarg.pexp_loc.loc_ghost }
+            | `Single_arg ->
+              sarg.pexp_loc
+          in
+          raise (Error(loc, env, Local_application_complete loc_kind))
+      in
+      submode mode_fun mode_ret;
+      submode mode_arg mode_ret;
+      loop loc_kind rest
+  in
+  loop `Prefix args
 
 let collect_unknown_apply_args env funct ty_fun mode_fun rev_args sargs ret_tvar =
   let labels_match ~param ~arg =
@@ -2921,13 +2932,14 @@ let collect_apply_args env funct ignore_labels ty_fun ty_fun0 mode_fun sargs ret
         in
         let name = label_name l
         and optional = is_optional l in
-        let use_arg sarg l' =
+        let use_arg ~commuted sarg l' =
           let wrapped_in_some = optional && not (is_optional l') in
           if wrapped_in_some then
             may_warn sarg.pexp_loc
               (Warnings.Not_principal "using an optional argument here");
           Arg (Known_arg
-            { sarg; ty_arg; ty_arg0; mode_fun; mode_arg; mode_ret; wrapped_in_some })
+            { sarg; ty_arg; ty_arg0; commuted;
+              mode_fun; mode_arg; mode_ret; wrapped_in_some })
         in
         let eliminate_optional_arg () =
           may_warn funct.exp_loc
@@ -2943,7 +2955,7 @@ let collect_apply_args env funct ignore_labels ty_fun ty_fun0 mode_fun sargs ret
             | [] -> assert false
             | (l', sarg) :: remaining_sargs ->
                 if name = label_name l' || (not optional && l' = Nolabel) then
-                  (remaining_sargs, use_arg sarg l')
+                  (remaining_sargs, use_arg ~commuted:false sarg l')
                 else if
                   optional &&
                   not (List.exists (fun (l, _) -> name = label_name l)
@@ -2967,7 +2979,7 @@ let collect_apply_args env funct ignore_labels ty_fun ty_fun0 mode_fun sargs ret
                 if not optional && is_optional l' then
                   Location.prerr_warning sarg.pexp_loc
                     (Warnings.Nonoptional_label (Printtyp.string_of_label l));
-                remaining_sargs, use_arg sarg l'
+                remaining_sargs, use_arg ~commuted sarg l'
             | None ->
                 sargs,
                 if optional && List.mem_assoc Nolabel sargs then
@@ -7783,12 +7795,20 @@ let report_error ~loc env = function
         | `Regionality -> ""
       in
       Location.errorf ~loc ~sub "This %svalue escapes its region" mode
-  | Local_application_complete ->
-      Location.errorf ~loc
+  | Local_application_complete loc_kind ->
+      let sub =
+        match loc_kind with
+        | `Prefix ->
+          [Location.msg
+             "@[Hint: Try wrapping the marked application in parentheses.@]"]
+        | `Single_arg ->
+          [Location.msg
+             "@[Hint: Try splitting the application in two, first applying the arguments@ \
+              up to the marked one (in the function's type), and then the rest.@]"]
+      in
+      Location.errorf ~loc ~sub
         "@[This application is complete, but surplus arguments were provided afterwards.@ \
          When passing or calling a local value, extra arguments are passed in a separate application.@]"
-        ~sub:[Location.msg
-            "@[Hint: Try wrapping the marked application in parentheses.@]"]
   | Param_mode_mismatch ty ->
       Location.errorf ~loc
         "@[This function has a local parameter, but was expected to have type:@ %a@]"

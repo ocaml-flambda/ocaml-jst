@@ -253,7 +253,7 @@ type error =
   | Wrong_expected_kind of wrong_kind_sort * wrong_kind_context * type_expr
   | Expr_not_a_record_type of type_expr
   | Local_value_escapes of Value_mode.error * submode_reason * Env.escaping_context option
-  | Local_application_complete
+  | Local_application_complete of [`Prefix|`Single_arg]
   | Param_mode_mismatch of type_expr
   | Uncurried_function_escapes
   | Local_return_annotation_mismatch of Location.t
