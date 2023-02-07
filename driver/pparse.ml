@@ -185,15 +185,10 @@ let file_aux ~tool_name inputfile (type a) parse_fun invariant_fun
         let lexbuf = Lexing.from_channel ic in
         Location.init lexbuf inputfile;
         Location.input_lexbuf := Some lexbuf;
-        let track_attrs = !Clflags.all_ppx = [] in
-        Builtin_attributes.track_attrs track_attrs;
-        let ast = Profile.record_call "parser" (fun () -> parse_fun lexbuf) in
-        Builtin_attributes.track_attrs true;
-        ast
+        Profile.record_call "parser" (fun () -> parse_fun lexbuf)
       end
     with x ->
       close_in ic;
-      Builtin_attributes.track_attrs true;
       raise x
   in
   close_in ic;

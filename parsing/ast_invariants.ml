@@ -188,7 +188,7 @@ let iterator =
        for the purposes of warning 53, while keeping all the other invariant
        checks for attribute payloads. *)
     super.attribute { self with attribute = super.attribute } attr;
-    Builtin_attributes.register_attr attr.attr_name
+    Builtin_attributes.(register_attr Invariant_check attr.attr_name)
   in
   { super with
     type_declaration

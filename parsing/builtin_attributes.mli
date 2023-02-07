@@ -39,21 +39,22 @@
 *)
 
 
-(** Used by the compiler for attributes that may be compiler built-ins.  These
-    are tracked for misplaced attribute warnings (unless this tracking has been
-    turned off with [track_attrs]).  This should be used rather than Attr.mk for
-    all built-in attributes. *)
-val mk_internal:
-  ?loc:Location.t -> string Location.loc -> Parsetree.payload ->
-  Parsetree.attribute
+(** [register_attr] must be called on the locations of attributes that should be
+    tracked for the purpose of misplaced attribute warnings.
 
-(** Turns on or off the tracking of attributes constructed with [mk_internal]
-    for warning 53. *)
-val track_attrs : bool -> unit
+    The [attr_tracking_time] argument indicates when the attr is being added for
+    tracking - either when it is created in the parser or when we see it while
+    running the check in the [Ast_invariants] module.  This ensures that we
+    track only attributes from the final version of the parse tree: we skip
+    adding attributes at parse time if we can see that a ppx will be run later,
+    because the [Ast_invariants] check is always run on the result of a ppx.
 
-(** Used to record attributes that should be tracked for the purpose of
-    misplaced attribute warnings.  *)
-val register_attr: string Location.loc -> unit
+    Note that the [Ast_invariants] check is also run on parse trees created from
+    marshalled ast files if no ppx is being used, ensuring we don't miss
+    attributes in that case.
+*)
+type attr_tracking_time = Parser | Invariant_check
+val register_attr : attr_tracking_time -> string Location.loc -> unit
 
 (** Marks alert attributes used for the purposes of misplaced attribute
     warnings.  Call this when moving things with alert attributes into the
