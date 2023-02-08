@@ -110,7 +110,9 @@ and expression_desc =
   | Texp_function of { arg_label : arg_label; param : Ident.t;
       cases : value case list; partial : partial;
       region : bool; curry : fun_curry_state;
-      warnings : Warnings.state; alloc_mode : Types.alloc_mode }
+      warnings : Warnings.state;
+      arg_mode : Types.alloc_mode;
+      alloc_mode : Types.alloc_mode }
   | Texp_apply of expression * (arg_label * apply_arg) list * apply_position * Types.alloc_mode
   | Texp_match of expression * computation case list * partial
   | Texp_try of expression * value case list
