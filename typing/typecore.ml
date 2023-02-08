@@ -185,7 +185,7 @@ type error =
   | Wrong_expected_kind of wrong_kind_sort * wrong_kind_context * type_expr
   | Expr_not_a_record_type of type_expr
   | Local_value_escapes of Value_mode.error * submode_reason * Env.escaping_context option
-  | Local_application_complete of [`Prefix|`Single_arg]
+  | Local_application_complete of Asttypes.arg_label * [`Prefix|`Single_arg|`Entire_apply]
   | Param_mode_mismatch of type_expr
   | Uncurried_function_escapes
   | Local_return_annotation_mismatch of Location.t
@@ -2763,14 +2763,12 @@ type untyped_apply_arg =
         commuted : bool;
         mode_fun : Alloc_mode.t;
         mode_arg : Alloc_mode.t;
-        mode_ret : Alloc_mode.t;
         wrapped_in_some : bool; }
   | Unknown_arg of
       { sarg : Parsetree.expression;
         ty_arg_mono : type_expr;
         mode_fun : Alloc_mode.t;
-        mode_arg : Alloc_mode.t;
-        mode_ret : Alloc_mode.t; }
+        mode_arg : Alloc_mode.t; }
   | Eliminated_optional_arg of
       { mode_fun: Alloc_mode.t;
         ty_arg : type_expr;
@@ -2824,40 +2822,51 @@ let remaining_function_type ty_ret mode_ret rev_args =
    principal types of applications, making the inferred types more sensible
    in ml files that lack an mli. *)
 let check_local_application_complete ~env ~app_loc args =
-  let rec loop loc_kind = function
+  let arg_mode_fun (_lbl, arg) =
+    match arg with
+    | Arg ( Known_arg { mode_fun; _ }
+          | Unknown_arg { mode_fun; _ }
+          | Eliminated_optional_arg { mode_fun; _ })
+    | Omitted { mode_fun; _ } -> mode_fun
+  in
+  let rec loop has_commuted = function
     | [] | [_] -> ()
-    | (_, Omitted _) :: rest ->
-      loop loc_kind rest
-    | (_, Arg (Eliminated_optional_arg _)) :: rest ->
-      loop loc_kind rest
-    | (_, Arg ( Known_arg { sarg; mode_fun; mode_arg; mode_ret; _ }
-              | Unknown_arg { sarg; mode_fun; mode_arg; mode_ret; _ } as arg))
-      :: (_ :: _ as rest) ->
-      let loc_kind =
+    | (lbl, ( Arg ( Known_arg { mode_fun; mode_arg; _ }
+                  | Unknown_arg { mode_fun; mode_arg; _ }
+                  | Eliminated_optional_arg { mode_fun; mode_arg; _ })
+            | Omitted { mode_fun; mode_arg; _ } as arg))
+      :: ((next :: _) as rest) ->
+      let mode_ret = arg_mode_fun next in
+      let has_commuted =
+        has_commuted ||
         match arg with
-        | Known_arg { commuted = true } -> `Single_arg
-        | _ -> loc_kind
+        | Arg (Known_arg { commuted }) -> commuted
+        | _ -> false
       in
       let submode m1 m2 =
         match Alloc_mode.submode m1 m2 with
         | Ok () -> ()
         | Error () ->
-          let loc =
-            match loc_kind with
-            | `Prefix ->
-              Location.{ loc_start = app_loc.loc_start;
-                         loc_end = sarg.pexp_loc.loc_end;
-                         loc_ghost = app_loc.loc_ghost || sarg.pexp_loc.loc_ghost }
-            | `Single_arg ->
-              sarg.pexp_loc
+          let loc, loc_kind =
+            match arg with
+            | Arg (Known_arg {sarg; _} | Unknown_arg {sarg; _}) ->
+              if has_commuted then
+                sarg.pexp_loc, `Single_arg
+              else
+                Location.{ loc_start = app_loc.loc_start;
+                           loc_end = sarg.pexp_loc.loc_end;
+                           loc_ghost = app_loc.loc_ghost || sarg.pexp_loc.loc_ghost },
+                `Prefix
+            | _ ->
+              app_loc, `Entire_apply
           in
-          raise (Error(loc, env, Local_application_complete loc_kind))
+          raise (Error(loc, env, Local_application_complete (lbl, loc_kind)))
       in
       submode mode_fun mode_ret;
       submode mode_arg mode_ret;
-      loop loc_kind rest
+      loop has_commuted rest
   in
-  loop `Prefix args
+  loop false args
 
 let collect_unknown_apply_args env funct ty_fun mode_fun rev_args sargs ret_tvar =
   let labels_match ~param ~arg =
@@ -2908,7 +2917,7 @@ let collect_unknown_apply_args env funct ty_fun mode_fun rev_args sargs ret_tvar
                 raise(Error(funct.exp_loc, env, Apply_non_function
                               (expand_head env funct.exp_type)))
     in
-    let arg = Unknown_arg { sarg; ty_arg_mono; mode_fun; mode_arg; mode_ret } in
+    let arg = Unknown_arg { sarg; ty_arg_mono; mode_fun; mode_arg } in
     loop ty_res mode_ret ((lbl, Arg arg) :: rev_args) rest
   in
   loop ty_fun mode_fun rev_args sargs
@@ -2939,7 +2948,7 @@ let collect_apply_args env funct ignore_labels ty_fun ty_fun0 mode_fun sargs ret
               (Warnings.Not_principal "using an optional argument here");
           Arg (Known_arg
             { sarg; ty_arg; ty_arg0; commuted;
-              mode_fun; mode_arg; mode_ret; wrapped_in_some })
+              mode_fun; mode_arg; wrapped_in_some })
         in
         let eliminate_optional_arg () =
           may_warn funct.exp_loc
@@ -7795,7 +7804,7 @@ let report_error ~loc env = function
         | `Regionality -> ""
       in
       Location.errorf ~loc ~sub "This %svalue escapes its region" mode
-  | Local_application_complete loc_kind ->
+  | Local_application_complete (lbl, loc_kind) ->
       let sub =
         match loc_kind with
         | `Prefix ->
@@ -7805,6 +7814,15 @@ let report_error ~loc env = function
           [Location.msg
              "@[Hint: Try splitting the application in two, first applying the arguments@ \
               up to the marked one (in the function's type), and then the rest.@]"]
+        | `Entire_apply ->
+          let lbl =
+            match lbl with
+            | Nolabel -> "_"
+            | Labelled s | Optional s -> s
+          in
+          [Location.msg
+             "@[Hint: Try splitting the application in two, first applying the arguments@ \
+             up to %s (in the function's type), and then the rest.@]" lbl]
       in
       Location.errorf ~loc ~sub
         "@[This application is complete, but surplus arguments were provided afterwards.@ \

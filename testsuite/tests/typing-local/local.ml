@@ -556,7 +556,13 @@ let bug2 () =
   let res = bar ~a:"world" in
   res
 [%%expect{|
-val bug2 : unit -> c:int -> unit = <fun>
+Line 5, characters 19-33:
+5 |   let bar = local_ foo ~b:"hello" in
+                       ^^^^^^^^^^^^^^
+Error: This application is complete, but surplus arguments were provided afterwards.
+       When passing or calling a local value, extra arguments are passed in a separate application.
+  Hint: Try splitting the application in two, first applying the arguments
+  up to a (in the function's type), and then the rest.
 |}]
 let bug3 () =
   let foo : a:local_ string -> (b:local_ string -> (c:int -> unit)) =
@@ -604,6 +610,17 @@ Error: This application is complete, but surplus arguments were provided afterwa
        When passing or calling a local value, extra arguments are passed in a separate application.
   Hint: Try splitting the application in two, first applying the arguments
   up to the marked one (in the function's type), and then the rest.
+|}]
+
+let () = overapp ~d:1 ~a:2
+[%%expect{|
+Line 1, characters 9-26:
+1 | let () = overapp ~d:1 ~a:2
+             ^^^^^^^^^^^^^^^^^
+Error: This application is complete, but surplus arguments were provided afterwards.
+       When passing or calling a local value, extra arguments are passed in a separate application.
+  Hint: Try splitting the application in two, first applying the arguments
+  up to b (in the function's type), and then the rest.
 |}]
 
 
