@@ -39,8 +39,12 @@
 *)
 
 
-(** [register_attr] must be called on the locations of attributes that should be
-    tracked for the purpose of misplaced attribute warnings.
+(** [register_attr] must be called on the locations of all attributes that
+    should be tracked for the purpose of misplaced attribute warnings.  In
+    particular, it should be called on all attributes that are present in the
+    source program except those that are contained in the payload of another
+    attribute (because these may be left behind by a ppx and intentionally
+    ignored by the compiler).
 
     The [attr_tracking_time] argument indicates when the attr is being added for
     tracking - either when it is created in the parser or when we see it while
@@ -68,9 +72,10 @@ val mark_alerts_used : Parsetree.attributes -> unit
 val mark_warn_on_literal_pattern_used : Parsetree.attributes -> unit
 
 (** Marks the attributes hiding in the payload of another attribute used, for
-    the purposes of misplaced attribute warnings.  In the parser, it's simplest
-    to add these to the table and remove them later, rather than threading
-    through state tracking whether we're in an attribute payload. *)
+    the purposes of misplaced attribute warnings (see comment on
+    [attr_tracking_time] above).  In the parser, it's simplest to add these to
+    the table and remove them later, rather than threading through state
+    tracking whether we're in an attribute payload. *)
 val mark_payload_attrs_used : Parsetree.payload -> unit
 
 (** Issue misplaced attribute warnings for all attributes created with
