@@ -731,6 +731,8 @@ let module_type (sub : mapper) mty =
           List.map (sub.with_constraint sub) list)
     | Tmty_typeof mexpr ->
         Pmty_typeof (sub.module_expr sub mexpr)
+    | Tmty_strengthen (mtype, lid) ->
+        Ast_helper.Mty.strengthen (sub.module_type sub mtype) lid
   in
   Mty.mk ~loc ~attrs desc
 

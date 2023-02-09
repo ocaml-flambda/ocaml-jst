@@ -260,6 +260,10 @@ module Mty:
       with_constraint list -> module_type
     val typeof_: ?loc:loc -> ?attrs:attrs -> module_expr -> module_type
     val extension: ?loc:loc -> ?attrs:attrs -> extension -> module_type
+
+    (* Hack to deal with the strengthening syntax (`S with M`) *)
+    val strengthen: module_type -> lid -> module_type_desc
+    val unstrengthen: module_type -> (module_type * lid) option
   end
 
 (** Module expressions *)

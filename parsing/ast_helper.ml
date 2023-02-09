@@ -242,6 +242,32 @@ module Mty = struct
   let with_ ?loc ?attrs a b = mk ?loc ?attrs (Pmty_with (a, b))
   let typeof_ ?loc ?attrs a = mk ?loc ?attrs (Pmty_typeof a)
   let extension ?loc ?attrs a = mk ?loc ?attrs (Pmty_extension a)
+
+  let strengthen mty lid =
+    let loc = mty.pmty_loc in
+    let mt =
+      { pmty_desc = Pmty_with (mty, [Pwith_module (lid,lid)]);
+        pmty_attributes = [];
+        pmty_loc = loc
+      }
+    in
+    let md =
+      { pmd_name = Location.mknoloc None;
+        pmd_type = mt;
+        pmd_attributes = [];
+        pmd_loc = loc
+      }
+    in
+    let payload = PSig [{psig_desc = Psig_module md; psig_loc = loc}] in
+    Pmty_extension (Location.mknoloc "strengthen", payload)
+
+  let unstrengthen = function
+    | {pmty_desc =
+        Pmty_extension (str, PSig [{psig_desc =
+          Psig_module {pmd_type = {pmty_desc =
+            Pmty_with (mty, [Pwith_module (_,lid)])}}}])}
+      when str.txt = "strengthen" -> Some (mty, lid)
+    | _ -> None
 end
 
 module Mod = struct

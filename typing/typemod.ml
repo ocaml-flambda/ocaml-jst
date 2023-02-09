@@ -1430,7 +1430,24 @@ and transl_modtype_aux env smty =
       let tmty, mty = !type_module_type_of_fwd env smod in
       mkmty (Tmty_typeof tmty) mty env loc smty.pmty_attributes
   | Pmty_extension ext ->
-      raise (Error_forward (Builtin_attributes.error_of_extension ext))
+      begin match Ast_helper.Mty.unstrengthen smty with
+      | Some (mty,lid) ->
+          let tmty = transl_modtype_aux env mty in
+          let path, md =
+            Env.lookup_module ~use:false ~loc lid.txt env
+          in
+          let aliasable = not (Env.is_functor_arg path env) in
+          ignore
+            (Includemod.modtypes ~loc env
+              ~mark:Includemod.Mark_neither tmty.mty_type md.md_type);
+          mkmty
+            (Tmty_strengthen (tmty, lid))
+            (Mty_strengthen (tmty.mty_type, path, aliasable))
+            env
+            loc
+            []
+      | None -> raise (Error_forward (Builtin_attributes.error_of_extension ext))
+      end
 
 and transl_with ~loc env remove_aliases (rev_tcstrs,sg) constr =
   let lid, with_info = match constr with

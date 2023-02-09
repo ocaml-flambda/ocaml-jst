@@ -1754,6 +1754,8 @@ module_type:
         { Pmty_functor(Named (mknoloc None, $1), $3) }
     | module_type WITH separated_nonempty_llist(AND, with_constraint)
         { Pmty_with($1, $3) }
+    | module_type WITH mkrhs(mod_longident)
+        { Mty.strengthen $1 $3 }
 /*  | LPAREN MODULE mkrhs(mod_longident) RPAREN
         { Pmty_alias $3 } */
     | extension
