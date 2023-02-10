@@ -1203,7 +1203,7 @@ and transl_function ~scopes e alloc_mode param cases partial warnings region cur
     List.fold_left
       (fun attrs (extra_exp, _, extra_attrs) ->
          match extra_exp with
-         | Texp_newtype _ -> attrs @ extra_attrs
+         | Texp_newtype _ -> extra_attrs @ attrs
          | (Texp_constraint _ | Texp_coerce _ | Texp_poly _) -> attrs)
       e.exp_attributes e.exp_extra
   in
