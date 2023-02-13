@@ -731,7 +731,15 @@ let mk_extension f =
     Clflags.Extension.(List.map to_string all)
   in
   "-extension", Arg.Symbol (available_extensions, f),
-  "<extension>  Enable the extension (may be specified more than once)"
+  "<extension>  Enable the specified extension (may be specified more than once)"
+;;
+
+let mk_no_extension f =
+  let available_extensions =
+    Clflags.Extension.(List.map to_string all)
+  in
+  "-no-extension", Arg.Symbol (available_extensions, f),
+  "<extension>  Disable the specified extension (may be specified more than once)"
 ;;
 
 (* CR aspectorzabusky: Are these comments about OCAMLPARAM true?  Should they be? *)
@@ -972,6 +980,7 @@ module type Common_options = sig
   val _disable_all_extensions : unit -> unit
   val _only_erasable_extensions : unit -> unit
   val _extension : string -> unit
+  val _no_extension : string -> unit
   val _noassert : unit -> unit
   val _nolabels : unit -> unit
   val _nostdlib : unit -> unit
@@ -1238,6 +1247,7 @@ struct
     mk_dllpath F._dllpath;
     mk_dtypes F._annot;
     mk_extension F._extension;
+    mk_no_extension F._no_extension;
     mk_for_pack_byt F._for_pack;
     mk_g_byt F._g;
     mk_stop_after ~native:false F._stop_after;
@@ -1348,6 +1358,7 @@ struct
     mk_disable_all_extensions F._disable_all_extensions;
     mk_only_erasable_extensions F._only_erasable_extensions;
     mk_extension F._extension;
+    mk_no_extension F._no_extension;
     mk_noassert F._noassert;
     mk_noinit F._noinit;
     mk_nolabels F._nolabels;
@@ -1427,6 +1438,7 @@ struct
     mk_disable_all_extensions F._disable_all_extensions;
     mk_only_erasable_extensions F._only_erasable_extensions;
     mk_extension F._extension;
+    mk_no_extension F._no_extension;
     mk_for_pack_opt F._for_pack;
     mk_g_opt F._g;
     mk_function_sections F._function_sections;
@@ -1597,6 +1609,7 @@ module Make_opttop_options (F : Opttop_options) = struct
     mk_disable_all_extensions F._disable_all_extensions;
     mk_only_erasable_extensions F._only_erasable_extensions;
     mk_extension F._extension;
+    mk_no_extension F._no_extension;
     mk_no_float_const_prop F._no_float_const_prop;
     mk_noassert F._noassert;
     mk_noinit F._noinit;
@@ -1692,6 +1705,7 @@ struct
     mk_disable_all_extensions F._disable_all_extensions;
     mk_only_erasable_extensions F._only_erasable_extensions;
     mk_extension F._extension;
+    mk_no_extension F._no_extension;
     mk_noassert F._noassert;
     mk_nolabels F._nolabels;
     mk_nostdlib F._nostdlib;
@@ -1789,6 +1803,7 @@ module Default = struct
     let _disable_all_extensions = Extension.disallow_extensions
     let _only_erasable_extensions = Extension.restrict_to_erasable_extensions
     let _extension s = Extension.(enable (of_string_exn s))
+    let _no_extension s = Extension.(disable (of_string_exn s))
     let _noassert = set noassert
     let _nolabels = set classic
     let _nostdlib = set no_std_include
