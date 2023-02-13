@@ -14,7 +14,9 @@
 (* We cannot use an expect-test here, because these are essentially parsing
    errors. The expect-test infrastructure uses Ast_mapper to prepare its
    input, and the call to Ast_mapper fails with a bogus extension setup,
-   because it tries to decode extensions. *)
+   because it tries to decode extensions. We thus have this error and others
+   like it in separate files, because the "compile and test output"
+   infrastructure reports only one error at a time. *)
 
 let _unnamed_extension = [%extension] ();;
 

@@ -5,18 +5,39 @@ open Extensions_parsing
 (******************************************************************************)
 (** Individual language extension modules *)
 
-(*
-Note [Check for immutable extension in comprehensions code]
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-When we spot a comprehension for an immutable array, we need to make
-sure that both [comprehensions] and [immutable_arrays] are enabled.
-But our general mechanism for checking for enabled extensions
-(in Extensions_parsing.Translate(...).of_ast) won't work well here:
-it triggers when converting from e.g. [[%extensions.comprehensions.array] ...]
-to the comprehensions-specific AST. But if we spot a
-[[%extensions.comprehensions.immutable]], there is no expression to translate.
-So we just check for the immutable arrays extension when processing a
-comprehension expression for an immutable array.
+(* Note [Check for immutable extension in comprehensions code]
+   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   When we spot a comprehension for an immutable array, we need to make sure
+   that both [comprehensions] and [immutable_arrays] are enabled.  But our
+   general mechanism for checking for enabled extensions (in
+   Extensions_parsing.Translate(...).of_ast) won't work well here: it triggers
+   when converting from e.g. [[%extensions.comprehensions.array] ...]  to the
+   comprehensions-specific AST. But if we spot a
+   [[%extensions.comprehensions.immutable]], there is no expression to
+   translate.  So we just check for the immutable arrays extension when
+   processing a comprehension expression for an immutable array.
+
+   Note [Wrapping with make_extension]
+   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   The topmost node in the encoded AST must always look like e.g.
+   [%extension.comprehensions]. This allows the decoding machinery to know
+   what extension is being used and what function to call to do the decoding.
+   Accordingly, during encoding, after doing the hard work of converting the
+   extension syntax tree into e.g. Parsetree.expression, we need to make a final
+   step of wrapping the result in an [%extension.xyz] node. Ideally, this step
+   would be done by part of our general structure, like we separate [of_ast]
+   and [of_ast_internal] in the decode structure; this design would make it
+   structurally impossible/hard to forget taking this final step.
+
+   However, the final step is only one line of code (a call to
+   [make_extension]), but yet the name of the extension varies, as does the type
+   of the payload. It would thus take several lines of code to execute this
+   command otherwise, along with dozens of lines to create the structure in the
+   first place. And so instead we just manually call [make_extension] and refer
+   to this Note as a reminder to authors of future extensions to remember to do
+   this wrapping.
 *)
 
 (** List and array comprehensions *)
@@ -125,17 +146,7 @@ module Comprehensions = struct
     let expr_of_comprehension_type type_ =
       expr_of_comprehension ~loc:ghost_loc ~type_
     in
-    (* This next line could, in theory, be abstracted into
-       the general structure in Extensions_parsing. It will
-       have to repeated in every [expr_of] (and similar lines
-       in e.g. [pat_of]). But the extension_string is different
-       for each extension, as is the payload (after the [@@]).
-       These pieces will always have to be passed to whatever
-       abstract structure we design to avoid this tiny bit
-       of boilerplate. Any abstraction seems unable to pay its
-       way here. Maybe we can revisit this in some glorious future,
-       but for now, we'll just settle for writing this one line
-       in a number of places. *)
+    (* See Note [Wrapping with make_extension] *)
     Expression.make_extension ~loc [extension_string] @@
     match eexpr with
     | Cexp_list_comprehension comp ->
@@ -270,6 +281,7 @@ module Immutable_arrays = struct
 
   let expr_of ~loc = function
     | Iaexp_immutable_array elts ->
+      (* See Note [Wrapping with make_extension] *)
       Expression.make_extension ~loc [extension_string] @@
       Ast_helper.Exp.array ~loc elts
 
@@ -279,6 +291,7 @@ module Immutable_arrays = struct
 
   let pat_of ~loc = function
     | Iapat_immutable_array elts ->
+      (* See Note [Wrapping with make_extension] *)
       Pattern.make_extension ~loc [extension_string] @@
       Ast_helper.Pat.array ~loc elts
 
