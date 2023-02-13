@@ -946,13 +946,13 @@ typing/includemod_errorprinter.cmo : \
     typing/printtyp.cmi \
     typing/path.cmi \
     typing/oprint.cmi \
+    typing/mtype.cmi \
     utils/misc.cmi \
     parsing/location.cmi \
     typing/includemod.cmi \
     typing/includecore.cmi \
     typing/includeclass.cmi \
     typing/ident.cmi \
-    typing/env.cmi \
     utils/diffing.cmi \
     utils/clflags.cmi \
     typing/includemod_errorprinter.cmi
@@ -962,13 +962,13 @@ typing/includemod_errorprinter.cmx : \
     typing/printtyp.cmx \
     typing/path.cmx \
     typing/oprint.cmx \
+    typing/mtype.cmx \
     utils/misc.cmx \
     parsing/location.cmx \
     typing/includemod.cmx \
     typing/includecore.cmx \
     typing/includeclass.cmx \
     typing/ident.cmx \
-    typing/env.cmx \
     utils/diffing.cmx \
     utils/clflags.cmx \
     typing/includemod_errorprinter.cmi
