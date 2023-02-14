@@ -221,6 +221,11 @@ module Extension : sig
   (** A list of all possible language extensions *)
   val all : t list
 
+  (** Check if a language extension is "erasable", i.e. whether it can be
+      harmlessly translated to attributes and compiled with the upstream
+      compiler. *)
+  val is_erasable : t -> bool
+
   (** Print and parse language extensions; parsing is case-insensitive *)
   val to_string : t -> string
   val of_string : string -> t option
