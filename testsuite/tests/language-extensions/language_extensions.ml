@@ -2,26 +2,33 @@
    include ocamlcommon
    flags = "-I ${ocamlsrcdir}/parsing"
    reference = "${test_source_directory}/reference.txt"
-   * skip
-   reason = "local_ currently always parses"
 *)
 
+(* Currently, this test case only works with modular extensions, as they fail
+   during parsing and we test via parsing. *)
+
+(* Change these two variables to change which extension is being tested *)
+let extension            = Clflags.Extension.Comprehensions
+let extension_expression = "[x for x = 1 to 10]"
+
+let extension_name = Clflags.Extension.to_string extension
+
 let report ~name ~text =
-  Printf.printf "# %s [local %s]:\n%s\n\n"
+  Printf.printf "# %s [%s %s]:\n%s\n\n"
     name
-    (if Clflags.Extension.is_enabled Local then "enabled" else "disabled")
+    extension_name
+    (if Clflags.Extension.is_enabled extension then "enabled" else "disabled")
     text
 
-let parse_local name =
-  let example =
-    "fun (local_ x) -> x"
-  in
-  let expr = match Parse.expression (Lexing.from_string example) with
+let parse_with_extension ?(full_name = false) name =
+  let expr = match Parse.expression (Lexing.from_string extension_expression) with
     | expr -> Some expr
-    | exception (Syntaxerr.Error _) -> None
+    | exception (Extensions_parsing.Error.Error _) -> None
   in
   report
-    ~name
+    ~name:(if full_name
+           then name
+           else "\"" ^ extension_name ^ "\" extension " ^ name)
     ~text:(Option.fold
              ~none:"<syntax error>" ~some:Pprintast.string_of_expression expr)
 ;;
@@ -42,78 +49,75 @@ let should_fail name f =
 
 (* Test the ground state *)
 
-parse_local "\"local\" extension enabled by default";
+parse_with_extension "in its default state";
 
 (* Disable all extensions for testing *)
 
 List.iter Clflags.Extension.disable Clflags.Extension.all;
-parse_local "no extensions enabled";
+parse_with_extension ~full_name:true "no extensions enabled";
 
-(* Test globally toggling [Local] *)
+(* Test globally toggling a language extension *)
 
-Clflags.Extension.enable Local;
-parse_local "\"local\" extension enabled";
+Clflags.Extension.enable extension;
+parse_with_extension "enabled";
 
-Clflags.Extension.enable Local;
-parse_local "\"local\" extension still enabled";
+Clflags.Extension.enable extension;
+parse_with_extension "still enabled";
 
-Clflags.Extension.disable Local;
-parse_local "\"local\" extension disabled";
+Clflags.Extension.disable extension;
+parse_with_extension "disabled";
 
-Clflags.Extension.disable Local;
-parse_local "\"local\" extension still disabled";
+Clflags.Extension.disable extension;
+parse_with_extension "still disabled";
 
-Clflags.Extension.set Local ~enabled:true;
-parse_local "\"local\" extension enabled via [set]";
+Clflags.Extension.set extension ~enabled:true;
+parse_with_extension "enabled via [set]";
 
-Clflags.Extension.enable Local;
-parse_local "\"local\" extension still enabled, via [set] and [enable]";
+Clflags.Extension.enable extension;
+parse_with_extension "still enabled, via [set] and [enable]";
 
-Clflags.Extension.set Local ~enabled:false;
-parse_local "\"local\" extension disabled via [set]";
+Clflags.Extension.set extension ~enabled:false;
+parse_with_extension "disabled via [set]";
 
-Clflags.Extension.disable Local;
-parse_local "\"local\" extension still disabled, via [set] and [disable]";
+Clflags.Extension.disable extension;
+parse_with_extension "still disabled, via [set] and [disable]";
 
-(* Test locally toggling [Local] *)
+(* Test locally toggling a language extension *)
 
-(* Globally disable [Local] (idempotent, but more robust) *)
-Clflags.Extension.disable Local;
+(* Globally disable the language extension (idempotent, given the prior tests,
+   but it's more robust to do this explicitly) *)
+Clflags.Extension.disable extension;
 
-Clflags.Extension.with_enabled Local (fun () ->
-  parse_local "\"local\" extension enabled locally and disabled globally");
+Clflags.Extension.with_enabled extension (fun () ->
+  parse_with_extension "enabled locally and disabled globally");
 
-Clflags.Extension.with_disabled Local (fun () ->
-  parse_local "\"local\" extension disabled locally and globally");
+Clflags.Extension.with_disabled extension (fun () ->
+  parse_with_extension "disabled locally and globally");
 
-Clflags.Extension.with_set Local ~enabled:true (fun () ->
-  parse_local
-    "\"local\" extension enabled locally via [with_set] and disabled globally");
+Clflags.Extension.with_set extension ~enabled:true (fun () ->
+  parse_with_extension "enabled locally via [with_set] and disabled globally");
 
-Clflags.Extension.with_set Local ~enabled:false (fun () ->
-  parse_local
-    "\"local\" extension disabled locally via [with_set] and also globally");
+Clflags.Extension.with_set extension ~enabled:false (fun () ->
+  parse_with_extension "disabled locally via [with_set] and also globally");
 
-(* Globally enable [Local] *)
-Clflags.Extension.enable Local;
+(* Globally enable the language extension *)
+Clflags.Extension.enable extension;
 
-Clflags.Extension.with_disabled Local (fun () ->
-  parse_local "\"local\" extension disabled locally and enabled globally");
+Clflags.Extension.with_disabled extension (fun () ->
+  parse_with_extension "disabled locally and enabled globally");
 
-Clflags.Extension.with_enabled Local (fun () ->
-  parse_local "\"local\" extension enabled locally and globally");
+Clflags.Extension.with_enabled extension (fun () ->
+  parse_with_extension "enabled locally and globally");
 
-Clflags.Extension.with_set Local ~enabled:false (fun () ->
-  parse_local
-    "\"local\" extension disabled locally via [with_set] and enabled globally");
+Clflags.Extension.with_set extension ~enabled:false (fun () ->
+  parse_with_extension "disabled locally via [with_set] and enabled globally");
 
-Clflags.Extension.with_set Local ~enabled:true (fun () ->
-  parse_local
-    "\"local\" extension disabled locally via [with_set] and also globally");
+Clflags.Extension.with_set extension ~enabled:true (fun () ->
+  parse_with_extension "disabled locally via [with_set] and also globally");
 
 (* Test disallowing extensions *)
 
-Clflags.Extension.enable Local;
+Clflags.Extension.enable extension;
 try_disallowing_extensions
   "can disallow extensions while extensions are enabled";
 
@@ -124,40 +128,41 @@ try_disallowing_extensions
 
 should_fail
   "can't call [set ~enabled:true] when extensions are disallowed"
-  (fun () -> Clflags.Extension.set Local ~enabled:true);
+  (fun () -> Clflags.Extension.set extension ~enabled:true);
 
 should_fail
   "can't call [set ~enabled:false] when extensions are disallowed"
-  (fun () -> Clflags.Extension.set Local ~enabled:false);
+  (fun () -> Clflags.Extension.set extension ~enabled:false);
 
 should_fail
   "can't call [enable] when extensions are disallowed"
-  (fun () -> Clflags.Extension.enable Local);
+  (fun () -> Clflags.Extension.enable extension);
 
 should_fail
   "can't call [disable] when extensions are disallowed"
-  (fun () -> Clflags.Extension.disable Local);
+  (fun () -> Clflags.Extension.disable extension);
 
 should_fail
   "can't call [with_set ~enabled:true] when extensions are disallowed"
-  (fun () -> Clflags.Extension.with_set Local ~enabled:true Fun.id);
+  (fun () -> Clflags.Extension.with_set extension ~enabled:true Fun.id);
 
 should_fail
   "can't call [with_set ~enabled:false] when extensions are disallowed"
-  (fun () -> Clflags.Extension.with_set Local ~enabled:false Fun.id);
+  (fun () -> Clflags.Extension.with_set extension ~enabled:false Fun.id);
 
 should_fail
   "can't call [with_enabled] when extensions are disallowed"
-  (fun () -> Clflags.Extension.with_enabled Local Fun.id);
+  (fun () -> Clflags.Extension.with_enabled extension Fun.id);
 
 should_fail
   "can't call [with_disabled] when extensions are disallowed"
-  (fun () -> Clflags.Extension.with_disabled Local Fun.id);
+  (fun () -> Clflags.Extension.with_disabled extension Fun.id);
 
 (* Test explicitly (rather than just via [report]) that [is_enabled] returns
    [false] now that we've disallowed all extensions *)
 report
   ~name:"[is_enabled] returns [false] when extensions are disallowed"
-  ~text:(if Clflags.Extension.is_enabled Local
-         then "\"local\" is INCORRECTLY enabled"
-         else "\"local\" is correctly disabled")
+  ~text:("\"" ^ extension_name ^ "\" is " ^
+         if Clflags.Extension.is_enabled extension
+         then "INCORRECTLY enabled"
+         else "correctly disabled")
