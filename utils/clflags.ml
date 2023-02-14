@@ -469,13 +469,8 @@ module Extension = struct
       if not (List.exists (equal extn) !extensions) then
         extensions := extn :: !extensions
     end else
-      (* Like [filter (( <> ) extn)], but stop after deleting the first one *)
-      let rec del = function
-        | [] -> []
-        | extn' :: extns when equal extn extn' -> extns
-        | extn' :: extns -> extn' :: del extns
-      in
-      extensions := del !extensions
+      extensions :=
+        List.filter (fun extn' -> not (equal extn extn')) !extensions
 
   let enable  = set ~enabled:true
   let disable = set ~enabled:false
