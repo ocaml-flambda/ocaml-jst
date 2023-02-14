@@ -862,7 +862,7 @@ either with the same or a different language extension; is idempotent.
 \item[(JST) "-only-erasable-extensions"]
 Restricts the "-extension" and "-no-extension" options to work only with
 so-called ``erasable'' extensions: ones that can be rewritten into attributes
-while still preserving the program's observable runtime behavior.  Turns off
+while still preserving the program's runtime input/output behavior.  Turns off
 currently-enabled non-erasable extensions when specified.  After this flag,
 specifying a non-erasable extension (even to disable it) will fail with an
 error.  This flag cannot be reversed, but it can be strengthened (by
