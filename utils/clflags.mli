@@ -254,9 +254,9 @@ module Extension : sig
       to ensure that some code is guaranteed to be compatible with upstream
       OCaml after rewriting to attributes.  When called, disables any
       currently-enabled non-erasable extensions, including any that are on by
-      default.  Causes any future uses of [set], [enable], [disable], and their
-      [with_] variants to raise if used with a non-erasable extension.  The
-      [is_enabled] function will still work on any extensions, it will just
+      default.  Causes any future uses of [set ~enabled:true], [enable], and
+      their [with_] variants to raise if used with a non-erasable extension.
+      The [is_enabled] function will still work on any extensions, it will just
       always return [false] on non-erasable ones.  Will raise if called after
       [disallow_extensions]; the ratchet of extension restriction only goes one
       way. *)
@@ -265,9 +265,9 @@ module Extension : sig
   (** Permanently ban all extensions; used for [-disable-all-extensions] to
       ensure that some code is 100% extension-free.  When called, disables any
       currently-enabled extensions, including the defaults.  Causes any future
-      uses of [set], [enable], [disable], and their [with_] variants to raise;
-      also causes any future uses of [only_erasable_extensions] to raise.  The
-      [is_enabled] function will still work, it will just always return
+      uses of [set ~enabled:true], [enable], and their [with_] variants to
+      raise; also causes any future uses of [only_erasable_extensions] to raise.
+      The [is_enabled] function will still work, it will just always return
       [false].*)
   val disallow_extensions : unit -> unit
 end

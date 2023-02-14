@@ -33,19 +33,45 @@ let parse_with_extension ?(full_name = false) name =
              ~none:"<syntax error>" ~some:Pprintast.string_of_expression expr)
 ;;
 
-let try_disallowing_extensions name =
-  report ~name ~text:(match Clflags.Extension.disallow_extensions () with
+let should_succeed name what f =
+  report ~name ~text:(match f () with
     | () ->
-        "Successfully disallowed all extensions"
+        "Succeeded at " ^ what
     | exception Arg.Bad msg ->
-        "Failed to disallow all extensions, with the following error:\n" ^ msg)
+        "FAILED at " ^ what ^ ", with the following error\n:" ^ msg)
 ;;
 
 let should_fail name f =
   report ~name ~text:(match f () with
-    | () -> "<succeeded unexpectedly>"
-    | exception Arg.Bad msg -> "Failed: " ^ msg)
+    | () -> "<succeeded INCORRECTLY>"
+    | exception Arg.Bad msg -> "Failed as expected: " ^ msg)
 ;;
+
+let try_disallowing_extensions name =
+  should_succeed
+    name
+    "disallowing all extensions"
+    Clflags.Extension.disallow_extensions
+;;
+
+type goal = Fail | Succeed
+
+let when_disallowed goal f_str f =
+  let can_or_can't = match goal with
+    | Fail    -> "can't"
+    | Succeed -> "can"
+  in
+  let f_code = "[" ^ f_str ^ "]" in
+  let name =
+    can_or_can't ^ " call " ^ f_code ^ " when extensions are disallowed"
+  in
+  let action () = f extension in
+  match goal with
+  | Fail    -> should_fail    name                                   action
+  | Succeed -> should_succeed name ("redundantly calling " ^ f_code) action
+;;
+
+let lift_with with_fn extension = with_fn extension Fun.id;;
 
 (* Test the ground state *)
 
@@ -117,7 +143,6 @@ Clflags.Extension.with_set extension ~enabled:true (fun () ->
 
 (* Test disallowing extensions *)
 
-Clflags.Extension.enable extension;
 try_disallowing_extensions
   "can disallow extensions while extensions are enabled";
 
@@ -126,37 +151,29 @@ try_disallowing_extensions
 
 (* Test that disallowing extensions prevents other functions from working *)
 
-should_fail
-  "can't call [set ~enabled:true] when extensions are disallowed"
-  (fun () -> Clflags.Extension.set extension ~enabled:true);
+when_disallowed Fail "set ~enabled:true"
+  (Clflags.Extension.set ~enabled:true);
 
-should_fail
-  "can't call [set ~enabled:false] when extensions are disallowed"
-  (fun () -> Clflags.Extension.set extension ~enabled:false);
+when_disallowed Succeed "set ~enabled:false"
+  (Clflags.Extension.set ~enabled:false);
 
-should_fail
-  "can't call [enable] when extensions are disallowed"
-  (fun () -> Clflags.Extension.enable extension);
+when_disallowed Fail "enable"
+  Clflags.Extension.enable;
 
-should_fail
-  "can't call [disable] when extensions are disallowed"
-  (fun () -> Clflags.Extension.disable extension);
+when_disallowed Succeed "disable"
+  Clflags.Extension.disable;
 
-should_fail
-  "can't call [with_set ~enabled:true] when extensions are disallowed"
-  (fun () -> Clflags.Extension.with_set extension ~enabled:true Fun.id);
+when_disallowed Fail "with_set ~enabled:true"
+  (Clflags.Extension.with_set ~enabled:true |> lift_with);
 
-should_fail
-  "can't call [with_set ~enabled:false] when extensions are disallowed"
-  (fun () -> Clflags.Extension.with_set extension ~enabled:false Fun.id);
+when_disallowed Succeed "with_set ~enabled:false"
+  (Clflags.Extension.with_set ~enabled:false |> lift_with);
 
-should_fail
-  "can't call [with_enabled] when extensions are disallowed"
-  (fun () -> Clflags.Extension.with_enabled extension Fun.id);
+when_disallowed Fail "with_enabled"
+  (Clflags.Extension.with_enabled |> lift_with);
 
-should_fail
-  "can't call [with_disabled] when extensions are disallowed"
-  (fun () -> Clflags.Extension.with_disabled extension Fun.id);
+when_disallowed Succeed "with_disabled"
+  (Clflags.Extension.with_disabled |> lift_with);
 
 (* Test explicitly (rather than just via [report]) that [is_enabled] returns
    [false] now that we've disallowed all extensions *)

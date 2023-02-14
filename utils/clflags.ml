@@ -459,13 +459,13 @@ module Extension = struct
                                              -disable-all-extensions *)
 
   let set extn ~enabled =
-    if not (Universe.is_allowed !universe extn) then
-      raise (Arg.Bad(Printf.sprintf
-        "Cannot %s extension %s: incompatible with %s"
-        (if enabled then "enable" else "disable")
-        (to_string extn)
-        (Universe.compiler_options !universe)));
     if enabled then begin
+      if not (Universe.is_allowed !universe extn) then
+        raise (Arg.Bad(Printf.sprintf
+          "Cannot %s extension %s: incompatible with %s"
+          (if enabled then "enable" else "disable")
+          (to_string extn)
+          (Universe.compiler_options !universe)));
       if not (List.exists (equal extn) !extensions) then
         extensions := extn :: !extensions
     end else

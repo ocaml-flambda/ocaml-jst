@@ -53,34 +53,34 @@
 [x for x = 1 to 10]
 
 # can disallow extensions while extensions are enabled [comprehensions_experimental disabled]:
-Successfully disallowed all extensions
+Succeeded at disallowing all extensions
 
 # can disallow extensions while extensions are already disallowed [comprehensions_experimental disabled]:
-Successfully disallowed all extensions
+Succeeded at disallowing all extensions
 
 # can't call [set ~enabled:true] when extensions are disallowed [comprehensions_experimental disabled]:
-Failed: Cannot enable extension comprehensions_experimental: incompatible with flag -disable-all-extensions
+Failed as expected: Cannot enable extension comprehensions_experimental: incompatible with flag -disable-all-extensions
 
-# can't call [set ~enabled:false] when extensions are disallowed [comprehensions_experimental disabled]:
-Failed: Cannot disable extension comprehensions_experimental: incompatible with flag -disable-all-extensions
+# can call [set ~enabled:false] when extensions are disallowed [comprehensions_experimental disabled]:
+Succeeded at redundantly calling [set ~enabled:false]
 
 # can't call [enable] when extensions are disallowed [comprehensions_experimental disabled]:
-Failed: Cannot enable extension comprehensions_experimental: incompatible with flag -disable-all-extensions
+Failed as expected: Cannot enable extension comprehensions_experimental: incompatible with flag -disable-all-extensions
 
-# can't call [disable] when extensions are disallowed [comprehensions_experimental disabled]:
-Failed: Cannot disable extension comprehensions_experimental: incompatible with flag -disable-all-extensions
+# can call [disable] when extensions are disallowed [comprehensions_experimental disabled]:
+Succeeded at redundantly calling [disable]
 
 # can't call [with_set ~enabled:true] when extensions are disallowed [comprehensions_experimental disabled]:
-Failed: Cannot enable extension comprehensions_experimental: incompatible with flag -disable-all-extensions
+Failed as expected: Cannot enable extension comprehensions_experimental: incompatible with flag -disable-all-extensions
 
-# can't call [with_set ~enabled:false] when extensions are disallowed [comprehensions_experimental disabled]:
-Failed: Cannot disable extension comprehensions_experimental: incompatible with flag -disable-all-extensions
+# can call [with_set ~enabled:false] when extensions are disallowed [comprehensions_experimental disabled]:
+Succeeded at redundantly calling [with_set ~enabled:false]
 
 # can't call [with_enabled] when extensions are disallowed [comprehensions_experimental disabled]:
-Failed: Cannot enable extension comprehensions_experimental: incompatible with flag -disable-all-extensions
+Failed as expected: Cannot enable extension comprehensions_experimental: incompatible with flag -disable-all-extensions
 
-# can't call [with_disabled] when extensions are disallowed [comprehensions_experimental disabled]:
-Failed: Cannot disable extension comprehensions_experimental: incompatible with flag -disable-all-extensions
+# can call [with_disabled] when extensions are disallowed [comprehensions_experimental disabled]:
+Succeeded at redundantly calling [with_disabled]
 
 # [is_enabled] returns [false] when extensions are disallowed [comprehensions_experimental disabled]:
 "comprehensions_experimental" is correctly disabled

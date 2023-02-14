@@ -747,7 +747,7 @@ let mk_disable_all_extensions f =
   "  Disable all extensions, wherever they have been specified; this\n\
   \    flag overrides prior uses of the -extension flag, disables any\n\
   \    extensions that are enabled by default, and causes future uses of\n\
-  \    the -extension or -no-extension flag to raise."
+  \    the -extension flag to raise an error."
 ;;
 
 let mk_only_erasable_extensions f =
@@ -758,9 +758,9 @@ let mk_only_erasable_extensions f =
 "-only-erasable-extensions", Arg.Unit f,
   "  Disable all extensions that cannot be \"erased\" to attributes,\n\
   \    wherever they have been specified; this flag overrides prior\n\
-  \    contradictory uses of the -extension or -no-extension flags,\n\
-  \    raises on future uses of them, and disables any such extensions\n\
-  \    that are enabled by default.\n\
+  \    contradictory uses of the -extension flag, raises an error on\n\
+  \    future such uses, and disables any such extensions that are\n\
+  \    enabled by default.\n\
   \    (Erasable extensions: " ^ erasable_extensions ^ ")"
 ;;
 
