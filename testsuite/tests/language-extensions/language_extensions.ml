@@ -21,7 +21,8 @@ let report ~name ~text =
     text
 
 let parse_with_extension ?(full_name = false) name =
-  let expr = match Parse.expression (Lexing.from_string extension_expression) with
+  let expr =
+    match Parse.expression (Lexing.from_string extension_expression) with
     | expr -> Some expr
     | exception (Extensions_parsing.Error.Error _) -> None
   in
