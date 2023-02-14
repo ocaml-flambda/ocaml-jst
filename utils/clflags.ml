@@ -481,6 +481,8 @@ module Extension = struct
      [only_erasable_extensions], and [disallow_extensions] inside [f], but it's
      not clear that it's worth the hassle *)
   let with_set extn ~enabled f =
+    (* This is similar to [Misc.protect_refs], but we don't have values to set
+       [extensions] and [universe] to. *)
     let current_extensions = !extensions in
     let current_universe   = !universe   in
     Fun.protect
