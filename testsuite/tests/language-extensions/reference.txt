@@ -1,56 +1,56 @@
 # "comprehensions_experimental" extension in its default state [comprehensions_experimental disabled]:
-<syntax error>
+<extension error>
 
 # no extensions enabled [comprehensions_experimental disabled]:
-<syntax error>
+<extension error>
 
 # "comprehensions_experimental" extension enabled [comprehensions_experimental enabled]:
-[x for x = 1 to 10]
+Successfully typechecked "[x for x = 1 to 10]"
 
 # "comprehensions_experimental" extension still enabled [comprehensions_experimental enabled]:
-[x for x = 1 to 10]
+Successfully typechecked "[x for x = 1 to 10]"
 
 # "comprehensions_experimental" extension disabled [comprehensions_experimental disabled]:
-<syntax error>
+<extension error>
 
 # "comprehensions_experimental" extension still disabled [comprehensions_experimental disabled]:
-<syntax error>
+<extension error>
 
 # "comprehensions_experimental" extension enabled via [set] [comprehensions_experimental enabled]:
-[x for x = 1 to 10]
+Successfully typechecked "[x for x = 1 to 10]"
 
 # "comprehensions_experimental" extension still enabled, via [set] and [enable] [comprehensions_experimental enabled]:
-[x for x = 1 to 10]
+Successfully typechecked "[x for x = 1 to 10]"
 
 # "comprehensions_experimental" extension disabled via [set] [comprehensions_experimental disabled]:
-<syntax error>
+<extension error>
 
 # "comprehensions_experimental" extension still disabled, via [set] and [disable] [comprehensions_experimental disabled]:
-<syntax error>
+<extension error>
 
 # "comprehensions_experimental" extension enabled locally and disabled globally [comprehensions_experimental enabled]:
-[x for x = 1 to 10]
+Successfully typechecked "[x for x = 1 to 10]"
 
 # "comprehensions_experimental" extension disabled locally and globally [comprehensions_experimental disabled]:
-<syntax error>
+<extension error>
 
 # "comprehensions_experimental" extension enabled locally via [with_set] and disabled globally [comprehensions_experimental enabled]:
-[x for x = 1 to 10]
+Successfully typechecked "[x for x = 1 to 10]"
 
 # "comprehensions_experimental" extension disabled locally via [with_set] and also globally [comprehensions_experimental disabled]:
-<syntax error>
+<extension error>
 
 # "comprehensions_experimental" extension disabled locally and enabled globally [comprehensions_experimental disabled]:
-<syntax error>
+<extension error>
 
 # "comprehensions_experimental" extension enabled locally and globally [comprehensions_experimental enabled]:
-[x for x = 1 to 10]
+Successfully typechecked "[x for x = 1 to 10]"
 
 # "comprehensions_experimental" extension disabled locally via [with_set] and enabled globally [comprehensions_experimental disabled]:
-<syntax error>
+<extension error>
 
 # "comprehensions_experimental" extension disabled locally via [with_set] and also globally [comprehensions_experimental enabled]:
-[x for x = 1 to 10]
+Successfully typechecked "[x for x = 1 to 10]"
 
 # can disallow extensions while extensions are enabled [comprehensions_experimental disabled]:
 Succeeded at disallowing all extensions
