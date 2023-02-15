@@ -7812,8 +7812,8 @@ let report_error ~loc env = function
              "@[Hint: Try wrapping the marked application in parentheses.@]"]
         | `Single_arg ->
           [Location.msg
-             "@[Hint: Try splitting the application in two, first applying the arguments@ \
-              up to the marked one (in the function's type), and then the rest.@]"]
+             "@[Hint: Try splitting the application in two. The arguments that come@ \
+              after this one in the function's type should be applied separately.@]"]
         | `Entire_apply ->
           let lbl =
             match lbl with
@@ -7821,8 +7821,8 @@ let report_error ~loc env = function
             | Labelled s | Optional s -> s
           in
           [Location.msg
-             "@[Hint: Try splitting the application in two, first applying the arguments@ \
-             up to %s (in the function's type), and then the rest.@]" lbl]
+             "@[Hint: Try splitting the application in two. The arguments that come@ \
+              after %s in the function's type should be applied separately.@]" lbl]
       in
       Location.errorf ~loc ~sub
         "@[This application is complete, but surplus arguments were provided afterwards.@ \

@@ -561,8 +561,8 @@ Line 5, characters 19-33:
                        ^^^^^^^^^^^^^^
 Error: This application is complete, but surplus arguments were provided afterwards.
        When passing or calling a local value, extra arguments are passed in a separate application.
-  Hint: Try splitting the application in two, first applying the arguments
-  up to a (in the function's type), and then the rest.
+  Hint: Try splitting the application in two. The arguments that come
+  after a in the function's type should be applied separately.
 |}]
 let bug3 () =
   let foo : a:local_ string -> (b:local_ string -> (c:int -> unit)) =
@@ -597,8 +597,8 @@ Line 1, characters 20-21:
                         ^
 Error: This application is complete, but surplus arguments were provided afterwards.
        When passing or calling a local value, extra arguments are passed in a separate application.
-  Hint: Try splitting the application in two, first applying the arguments
-  up to the marked one (in the function's type), and then the rest.
+  Hint: Try splitting the application in two. The arguments that come
+  after this one in the function's type should be applied separately.
 |}]
 
 let () = overapp ~c:1 ~b:2
@@ -608,8 +608,8 @@ Line 1, characters 25-26:
                              ^
 Error: This application is complete, but surplus arguments were provided afterwards.
        When passing or calling a local value, extra arguments are passed in a separate application.
-  Hint: Try splitting the application in two, first applying the arguments
-  up to the marked one (in the function's type), and then the rest.
+  Hint: Try splitting the application in two. The arguments that come
+  after this one in the function's type should be applied separately.
 |}]
 
 let () = overapp ~d:1 ~a:2
@@ -619,8 +619,8 @@ Line 1, characters 9-26:
              ^^^^^^^^^^^^^^^^^
 Error: This application is complete, but surplus arguments were provided afterwards.
        When passing or calling a local value, extra arguments are passed in a separate application.
-  Hint: Try splitting the application in two, first applying the arguments
-  up to b (in the function's type), and then the rest.
+  Hint: Try splitting the application in two. The arguments that come
+  after b in the function's type should be applied separately.
 |}]
 
 
