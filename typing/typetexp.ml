@@ -125,13 +125,13 @@ end = struct
 
   let not_generic v = get_level v <> Btype.generic_level
 
-  (* These are the "global" type variables: they were in scope before
+  (* These are the type variables that were in scope before
      we started processing the current type.
   *)
   let type_variables = ref (TyVarMap.empty : type_expr TyVarMap.t)
 
   (* These are variables that have been used in the currently-being-checked
-     type.
+     type, possibly including the variables in [type_variables].
   *)
   let used_variables =
     ref (TyVarMap.empty : (type_expr * Location.t) TyVarMap.t)
@@ -143,7 +143,7 @@ end = struct
      [used_variables], but will not be globalized in [globalize_used_variables].
   *)
   let univars = ref ([] : (string * type_expr) list)
-  let assert_univars uvs =
+  let assert_not_generic uvs =
     assert (List.for_all (fun (_name, v) -> not_generic v) uvs)
 
   (* These are variables that will become univars when we're done with the
@@ -189,7 +189,7 @@ end = struct
   type poly_univars = (string * type_expr) list
 
   let with_univars new_ones f =
-    assert_univars new_ones;
+    assert_not_generic new_ones;
     let old_univars = !univars in
     univars := new_ones @ !univars;
     Fun.protect
@@ -222,7 +222,7 @@ end = struct
 
   (*****)
   let reset_locals ?univars:(uvs=[]) () =
-    assert_univars uvs;
+    assert_not_generic uvs;
     univars := uvs;
     used_variables := TyVarMap.empty
 
