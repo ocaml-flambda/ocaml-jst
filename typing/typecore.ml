@@ -4000,7 +4000,8 @@ and type_expect_
        [Nolabel, sbody]) ->
       if txt = "extension.local" && not (Clflags.Extension.is_enabled Local) then
         raise (Typetexp.Error (loc, Env.empty, Unsupported_extension Local));
-      let mode = mode_exact Value_mode.local in
+      (* note that we inherit position from expected_mode *)
+      let mode = {expected_mode with mode = Value_mode.local; exact = true} in
       if not (mode_cross env ty_expected) then
         submode ~loc ~env ~reason:Other mode.mode expected_mode;
       let exp =
@@ -5375,14 +5376,14 @@ and type_function ?in_function loc attrs env (expected_mode : expected_mode)
     else begin
       let ret_value_mode = Value_mode.of_alloc ret_mode in
       let ret_value_mode =
-        if region_locked then Value_mode.local_to_regional ret_value_mode
-        else ret_value_mode
+        if region_locked then mode_return (Value_mode.local_to_regional ret_value_mode)
+        else mode_nontail ret_value_mode
       in
       let ret_value_mode =
         if mode_cross env ty_res
-          then Value_mode.local else ret_value_mode
+          then mode_local else ret_value_mode
       in
-      mode_return ret_value_mode,
+      ret_value_mode,
       Final_arg { partial_mode = Alloc_mode.join [arg_mode; alloc_mode] }
     end
   in
