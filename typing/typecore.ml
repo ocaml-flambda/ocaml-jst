@@ -4000,9 +4000,6 @@ and type_expect_
        [Nolabel, sbody]) ->
       if txt = "extension.local" && not (Clflags.Extension.is_enabled Local) then
         raise (Typetexp.Error (loc, Env.empty, Unsupported_extension Local));
-      (* CR zqian: should copy `position` from expected_mode;
-        currently can't because would trigger a bug that causes false error about
-        tail call arguments escaping, in a local returning function. *)
       let mode = mode_exact Value_mode.local in
       if not (mode_cross env ty_expected) then
         submode ~loc ~env ~reason:Other mode.mode expected_mode;
