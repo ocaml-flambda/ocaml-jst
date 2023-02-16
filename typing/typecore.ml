@@ -275,10 +275,21 @@ type expected_mode =
     escaping_context : Env.escaping_context option;
     (* the upper bound of mode*)
     mode : Value_mode.t;
-    (* in some scnearios, the above `mode` will be the exact mode of the typed
-    expression. For most allocations, they already use expected_mode.mode as
-    exact, because they want to be as local as possible anyway, so this bit can
-    be safely ignored.
+    (* in some scnearios, the above `mode` will be the exact mode of the
+        expression to be typed, indicated by the `exact` field.
+
+    - In any case, there is no risk of miscompilation in taking an upper bound
+    as exact. We might lose some range and trigger some false mode errors.
+
+    - Taking an exact as upper bound could cause issues. In particular
+    for the inner function of an uncurried function.
+
+
+    Therefore, if we just take it as exact regardless of the `exact`
+    field, we should be safe. Moreover, note that for most allocations, they
+    want to use expected_mode.mode as exact anyway, because that would be the
+    only constraint and they want to be as local as possible. The only exception
+    is uncurried functions where the mode constraints are tricky.
     *)
     exact : bool;
     tuple_modes : Value_mode.t list;
