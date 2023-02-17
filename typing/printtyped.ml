@@ -508,6 +508,9 @@ and expression i ppf x =
       expression i ppf handler;
   | Texp_probe_is_enabled {name} ->
       line i ppf "Texp_probe_is_enabled \"%s\"\n" name;
+  | Texp_unregion (e) ->
+      line i ppf "Texp_unregion";
+      expression i ppf e;
 
 and value_description i ppf x =
   line i ppf "value_description %a %a\n" fmt_ident x.val_id fmt_location

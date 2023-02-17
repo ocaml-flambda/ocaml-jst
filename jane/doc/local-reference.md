@@ -441,6 +441,63 @@ function is a local-returning function, then the nearest enclosing region will
 be the caller's (or that of the caller's caller, etc., if the caller is also
 local-returning).
 
+## Unregion
+
+In the previous section, a function can return local values by not having its own
+region; as a result, it works in the caller's region. This has downsides;
+consider the following example:
+```
+let f (local_ x) = local_
+  let local_ y = (complex computation on x) in
+  if y then local_ None
+  else local_ (Some x)
+```
+function `f` will allocate in caller's region to store
+intermediate/temporary data for the complex computation, and the allocation
+will stay in the region even after `f` returns. They would be released
+only when the program exits the caller's region. We hope that the temporary
+allocation are released upon `f` returning and rewrite the example as
+```
+let f (local_ x) =
+  let local_ y = (complex computation on x) in
+  if y then [%unregion] (local_ None)
+  else [%unregion] (local_ (Some x))
+```
+The new primitive `[%unregion]` early-terminates the current region, and runs
+whatever follows in the outer region. In this example, the function `f` still
+has its own region, where the allocation of the complex computation will happen.
+This region will be early-terminated by `[%unregion]`, releasing all the
+temporary allocations. Next, both `local_ None` and `local_ (Some x)` are "local"
+relative to the outer region and thus allowed to escape. In summary, we have
+temporary allocations on stack and released promptly, and have the result
+allocations on stack and escaped.
+
+`[%unregion]` terminates the current region, and all values therein are
+deleted. For example, the following is error because `x` is deleted after
+[%unregion] and cannot be refered to.
+```
+  let local_ x = "hello" in
+  [%unregion] (
+    let local_ y = "world" in
+    local_ (x ^ y)
+  )
+```
+
+For a similar reason, `[%unregion]` can only appear at the tail position of a
+region - one cannot re-enter a region that has been
+terminated. For example, the following is error.
+```
+  let local_ x = "hello" in
+  [%unregion] (
+    let local_ y = "world" in
+    ()
+  );
+  local_ (x ^ "world")
+```
+
+From a low-level perspective, in both examples the memory of `x` might have
+been overwritten by `y` and unsafe to read - this gives an intuition of we mean
+by "region terminated and values deleted".
 
 ## Records and mutability
 
@@ -481,7 +538,7 @@ itself local.
 In particular, by defining:
 
     type 'a glob = { global_ contents: 'a } [@@unboxed]
-    
+
 then a variable `local_ x` of type `string glob list` is a local list
 of global strings, and while the list itself cannot be returned out of
 a region, the `contents` field of any of its elements can.

@@ -337,6 +337,7 @@ and expression_desc =
         (** let open[!] M in e *)
   | Texp_probe of { name:string; handler:expression; }
   | Texp_probe_is_enabled of { name:string }
+  | Texp_unregion of expression
 
 and ident_kind = Id_value | Id_prim of Types.alloc_mode option
 

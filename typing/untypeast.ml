@@ -604,6 +604,16 @@ let expression sub exp =
                      , [])
                ; pstr_loc = loc
                }]))
+    | Texp_unregion exp ->
+        Pexp_apply ({
+        pexp_desc =
+          Pexp_extension
+            ({ txt = "ocaml.unregion"; loc}
+            , PStr []);
+        pexp_loc = loc;
+        pexp_loc_stack = [];
+        pexp_attributes = [];
+      }, [Nolabel, sub.expr sub exp])
   in
   List.fold_right (exp_extra sub) exp.exp_extra
     (Exp.mk ~loc ~attrs desc)

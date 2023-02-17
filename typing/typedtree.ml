@@ -176,6 +176,7 @@ and expression_desc =
   | Texp_open of open_declaration * expression
   | Texp_probe of { name:string; handler:expression; }
   | Texp_probe_is_enabled of { name:string }
+  | Texp_unregion of expression
 
 and ident_kind = Id_value | Id_prim of Types.alloc_mode option
 

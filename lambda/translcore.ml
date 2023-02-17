@@ -103,7 +103,16 @@ let transl_apply_position position =
     else Rc_normal
 
 let may_allocate_in_region lam =
-  let rec loop = function
+  (* loop_region raises, if the lambda might allocate in parent region *)
+  (* this only happens if at tail position there is a unregion,
+     and its body allocates in its current region *)
+  (* I guess there can't be unregion in non-tail positions?(because of type checker) *)
+  let rec loop_region lam =
+    shallow_iter ~tail:(function
+      | Lunregion body -> loop body
+      | _ -> ()
+    ) ~non_tail:(fun _ -> ()) lam
+  and loop = function
     | Lvar _ | Lmutvar _ | Lconst _ -> ()
 
     | Lfunction {mode=Alloc_heap} -> ()
@@ -118,9 +127,14 @@ let may_allocate_in_region lam =
        | None | Some Alloc_heap ->
           List.iter loop args
        end
-    | Lregion (_body, _layout) ->
-       (* [_body] might do local allocations, but not in the current region *)
-       ()
+    | Lregion (body, _layout) ->
+       (* [body] might do allocations in parent region because of unregion, and thus
+          [Lregion body] might do allocations in current region *)
+      loop_region body
+    | Lunregion _body ->
+      (* [_body] might do local allocations, but not in the current region either *)
+      (* rather, it's in the parent region *)
+      ()
     | Lwhile {wh_cond_region=false} -> raise Exit
     | Lwhile {wh_body_region=false} -> raise Exit
     | Lwhile _ -> ()
@@ -140,18 +154,19 @@ let may_allocate_in_region lam =
   end
 
 let maybe_region get_layout lam =
-  let rec remove_tail_markers = function
+  let rec remove_tail_markers_and_unregion = function
     | Lapply ({ap_region_close = Rc_close_at_apply} as ap) ->
        Lapply ({ap with ap_region_close = Rc_normal})
     | Lsend (k, lmet, lobj, largs, Rc_close_at_apply, mode, loc, layout) ->
        Lsend (k, lmet, lobj, largs, Rc_normal, mode, loc, layout)
     | Lregion _ as lam -> lam
+    | Lunregion lam -> lam
     | lam ->
-       Lambda.shallow_map ~tail:remove_tail_markers ~non_tail:Fun.id lam
+       Lambda.shallow_map ~tail:remove_tail_markers_and_unregion ~non_tail:Fun.id lam
   in
   if not Config.stack_allocation then lam
   else if may_allocate_in_region lam then Lregion (lam, get_layout ())
-  else remove_tail_markers lam
+  else remove_tail_markers_and_unregion lam
 
 let maybe_region_layout layout lam =
   maybe_region (fun () -> layout) lam
@@ -884,6 +899,10 @@ and transl_exp0 ~in_new_scope ~scopes e =
       Lprim(Pprobe_is_enabled {name}, [], of_location ~scopes e.exp_loc)
     else
       lambda_unit
+  | Texp_unregion e ->
+    let l = transl_exp ~scopes e in
+    if Config.stack_allocation then Lunregion l
+    else l
 
 and pure_module m =
   match m.mod_desc with
