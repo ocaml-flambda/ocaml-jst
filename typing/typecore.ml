@@ -310,29 +310,27 @@ let apply_position env (expected_mode : expected_mode) sexp : apply_position =
   | Ok (Some `Tail), Nontail -> fail `Not_a_tailcall
   | Error `Conflict, _ -> fail `Conflict
 
-let mode_default =
+let mode_default mode =
   { position = Nontail;
     escaping_context = None;
-    mode = Value_mode.global;
+    mode = mode;
     exact = false;
     tuple_modes = [] }
 
 let mode_return mode =
-  { mode_default with
+  { (mode_default mode) with
     position = Tail;
     escaping_context = Some Return;
-    mode }
+  }
 
 let mode_local =
-  { mode_default with mode = Value_mode.local }
+  mode_default Value_mode.local
 
 let mode_global =
-  { mode_default with
-    mode = Value_mode.global }
+  mode_default Value_mode.global
 
 let mode_subcomponent expected_mode =
-  { mode_default with
-    mode = Value_mode.regional_to_global expected_mode.mode }
+  mode_default (Value_mode.regional_to_global expected_mode.mode)
 
 let mode_nonlocal expected_mode =
   let mode =
@@ -340,43 +338,37 @@ let mode_nonlocal expected_mode =
     |> Value_mode.regional_to_global
     |> Value_mode.local_to_regional
   in
-  { mode_default with
-    mode;}
+  mode_default mode
 
 let mode_tailcall_function mode =
-  { mode_default with
-    escaping_context = Some Tailcall_function;
-    mode; }
+  { (mode_default mode) with
+    escaping_context = Some Tailcall_function }
 
 let mode_tailcall_argument mode =
-  { mode_default with
-    escaping_context = Some Tailcall_argument;
-    mode }
+  { (mode_default mode) with
+    escaping_context = Some Tailcall_argument }
+
 
 let mode_partial_application expected_mode =
-  { mode_default with
-    escaping_context = Some Partial_application;
-    mode = Value_mode.regional_to_global expected_mode.mode }
+  { (mode_default (Value_mode.regional_to_global expected_mode.mode))
+    with
+    escaping_context = Some Partial_application }
+
 
 let mode_trywith expected_mode =
   { expected_mode with position = Nontail }
 
-let mode_nontail mode =
-  { mode_default with
-    mode }
-
 let mode_tuple mode tuple_modes =
-  { mode_default with
-    mode;
+  { (mode_default mode) with
     tuple_modes }
 
 let mode_exact mode =
-  { mode_default with
-    mode; exact = true }
+  { (mode_default mode) with
+    exact = true }
 
 let mode_argument ~funct ~index ~position ~partial_app alloc_mode =
   let vmode = Value_mode.of_alloc alloc_mode in
-  if partial_app then mode_nontail vmode
+  if partial_app then mode_default vmode
   else match funct.exp_desc, index, (position : apply_position) with
   | Texp_ident (_, _, {val_kind =
       Val_prim {Primitive.prim_name = ("%sequor"|"%sequand")}},
@@ -386,16 +378,16 @@ let mode_argument ~funct ~index ~position ~partial_app alloc_mode =
      mode_return (Value_mode.local_to_regional vmode)
   | Texp_ident (_, _, _, Id_prim _), _, _ ->
      (* Other primitives cannot be tail-called *)
-     mode_nontail vmode
+     mode_default vmode
   | _, _, (Nontail | Default) ->
-     mode_nontail vmode
+     mode_default vmode
   | _, _, Tail ->
      mode_tailcall_argument (Value_mode.local_to_regional vmode)
 
 let mode_lazy =
-  { mode_default with
-    position = Tail;
-    mode = Value_mode.global }
+  { mode_global with
+    position = Tail }
+
 
 let submode ~loc ~env ~reason mode expected_mode =
   let res =
@@ -576,7 +568,7 @@ let has_poly_constraint spat =
     end
   | _ -> false
 
-let mode_cross env (ty : type_expr) =
+let mode_cross env ty =
   if is_principal ty then begin
     match immediacy env ty with
     | Type_immediacy.Always -> true
@@ -584,6 +576,21 @@ let mode_cross env (ty : type_expr) =
     | _ -> false
   end
   else false
+
+let mode_cross_to_global env ty mode =
+  if mode_cross env ty then
+    Value_mode.global
+  else
+    mode
+
+let mode_cross_to_local env ty mode =
+  if mode_cross env ty then
+    Value_mode.local
+  else
+    mode
+
+let expect_mode_cross env ty (expected_mode : expected_mode) =
+  {expected_mode with mode = mode_cross_to_local env ty expected_mode.mode}
 
 (* Typing of patterns *)
 
@@ -2088,18 +2095,15 @@ and type_pat_aux
       end
   | Ppat_var name ->
       let ty = instance expected_ty in
-      let alloc_mode =
-        if mode_cross !env expected_ty
-          then {alloc_mode with mode = Value_mode.global} else alloc_mode
-      in
+      let alloc_mode = mode_cross_to_global !env expected_ty alloc_mode.mode in
       let id = (* PR#7330 *)
         if name.txt = "*extension*" then
           Ident.create_local name.txt
         else
-          enter_variable loc name alloc_mode.mode ty sp.ppat_attributes
+          enter_variable loc name alloc_mode ty sp.ppat_attributes
       in
       rvp k {
-        pat_desc = Tpat_var (id, name, alloc_mode.mode);
+        pat_desc = Tpat_var (id, name, alloc_mode);
         pat_loc = loc; pat_extra=[];
         pat_type = ty;
         pat_attributes = sp.ppat_attributes;
@@ -2132,10 +2136,7 @@ and type_pat_aux
       assert construction_not_used_in_counterexamples;
       type_pat Value sq expected_ty (fun q ->
         let ty_var, mode = solve_Ppat_alias ~refine ~mode:alloc_mode.mode env q in
-        let mode =
-          if mode_cross !env expected_ty
-          then Value_mode.global else mode
-        in
+        let mode = mode_cross_to_global !env expected_ty mode in
         let id =
           enter_variable ~is_as_variable:true loc name mode
             ty_var sp.ppat_attributes
@@ -4027,7 +4028,7 @@ and type_expect_
           mode, mode_tailcall_function mode
         | Nontail | Default ->
           let mode = Value_mode.newvar () in
-          mode, mode_nontail mode
+          mode, mode_default mode
       in
       (* does the function return a tvar which is too generic? *)
       let rec ret_tvar seen ty_fun =
@@ -4101,7 +4102,7 @@ and type_expect_
         match cases_tuple_arity caselist with
         | Not_local_tuple | Maybe_local_tuple ->
           let mode = Value_mode.newvar () in
-          simple_pat_mode mode, mode_nontail mode
+          simple_pat_mode mode, mode_default mode
         | Local_tuple arity ->
           let modes = List.init arity (fun _ -> Value_mode.newvar ()) in
           let mode = Value_mode.regional_to_local (Value_mode.join modes) in
@@ -4156,11 +4157,9 @@ and type_expect_
       let expl =
         List.map2
           (fun body (ty, argument_mode) ->
-             let argument_mode =
-              if mode_cross env ty then Value_mode.local
-              else argument_mode
-             in
-             type_expect env (mode_nontail argument_mode)
+            let argument_mode = mode_default argument_mode in
+            let argument_mode = expect_mode_cross env ty argument_mode in
+             type_expect env argument_mode
                body (mk_expected ty))
           sexpl types_and_modes
       in
@@ -4409,10 +4408,7 @@ and type_expect_
           end_def ();
           generalize_structure ty_arg
         end;
-      let mode =
-        if mode_cross env ty_arg
-          then Value_mode.global else mode
-      in
+      let mode = mode_cross_to_global env ty_arg mode in
       ruem ~mode ~expected_mode {
         exp_desc = Texp_field(record, lid, label, alloc_mode);
         exp_loc = loc; exp_extra = [];
@@ -4425,7 +4421,7 @@ and type_expect_
       let ty_record =
         if expected_type = None then newvar () else record.exp_type in
       let (label_loc, label, newval) =
-        type_label_exp false env (mode_nontail rmode) loc
+        type_label_exp false env (mode_default rmode) loc
           ty_record (lid, label, snewval) in
       unify_exp env record ty_record;
       if label.lbl_mut = Immutable then
@@ -5377,12 +5373,9 @@ and type_function ?in_function loc attrs env (expected_mode : expected_mode)
       let ret_value_mode = Value_mode.of_alloc ret_mode in
       let ret_value_mode =
         if region_locked then mode_return (Value_mode.local_to_regional ret_value_mode)
-        else mode_nontail ret_value_mode
+        else mode_default ret_value_mode
       in
-      let ret_value_mode =
-        if mode_cross env ty_res
-          then mode_local else ret_value_mode
-      in
+      let ret_value_mode = expect_mode_cross env ty_res ret_value_mode in
       ret_value_mode,
       Final_arg { partial_mode = Alloc_mode.join [arg_mode; alloc_mode] }
     end
@@ -5435,7 +5428,7 @@ and type_function ?in_function loc attrs env (expected_mode : expected_mode)
 and type_label_access env srecord usage lid =
   if !Clflags.principal then begin_def ();
   let mode = Value_mode.newvar () in
-  let record = type_exp ~recarg:Allowed env (mode_nontail mode) srecord in
+  let record = type_exp ~recarg:Allowed env (mode_default mode) srecord in
   if !Clflags.principal then begin
     end_def ();
     generalize_structure record.exp_type
@@ -5942,10 +5935,7 @@ and type_argument ?explanation ?recarg env (mode : expected_mode) sarg
       end
       end
   | None ->
-      let mode =
-        if mode_cross env ty_expected'
-        then {mode with mode = Value_mode.local} else mode
-      in
+      let mode = expect_mode_cross env ty_expected' mode in
       let texp = type_expect ?recarg env mode sarg
         (mk_expected ?explanation ty_expected') in
       unify_exp env texp ty_expected;
@@ -6043,8 +6033,7 @@ and type_application env app_loc expected_mode position funct funct_mode sargs r
         generalize_structure ty_res
       end;
       let mode_res =
-        if mode_cross env ty_res
-          then Value_mode.global else Value_mode.of_alloc mres
+        mode_cross_to_global env ty_res (Value_mode.of_alloc mres)
       in
       submode ~loc:app_loc ~env ~reason:Other
         mode_res expected_mode;
@@ -6095,8 +6084,7 @@ and type_application env app_loc expected_mode position funct funct_mode sargs r
         generalize_structure ty_ret
       end;
       let mode_ret =
-        if mode_cross env ty_ret
-          then Value_mode.global else Value_mode.of_alloc mode_ret
+        mode_cross_to_global env ty_ret (Value_mode.of_alloc mode_ret)
       in
       submode ~loc:app_loc ~env ~reason:(Application ty_ret)
         mode_ret expected_mode;
@@ -6568,7 +6556,7 @@ and type_let
                match pat_tuple_arity spat with
                | Not_local_tuple | Maybe_local_tuple ->
                    let mode = Value_mode.newvar () in
-                   simple_pat_mode mode, mode_nontail mode
+                   simple_pat_mode mode, mode_default mode
                | Local_tuple arity ->
                    let modes =
                      List.init arity (fun _ -> Value_mode.newvar ())
@@ -6892,10 +6880,8 @@ and type_generic_array
   let to_unify = type_ ty in
   with_explanation explanation (fun () ->
     unify_exp_types loc env to_unify (generic_instance ty_expected));
-  let argument_mode =
-    if mode_cross env ty
-    then mode_local else mode_global
-  in
+  let argument_mode = mode_default Value_mode.global in
+  let argument_mode = expect_mode_cross env ty argument_mode in
   let argl =
     List.map
       (fun sarg -> type_expect env argument_mode sarg (mk_expected ty))
