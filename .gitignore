@@ -295,3 +295,5 @@ _build
 /.for-jane-street-merlin/
 /.merlin-binaries
 /.ocaml-lib
+/.local-merlin-binaries
+/.local-ocaml-lib
