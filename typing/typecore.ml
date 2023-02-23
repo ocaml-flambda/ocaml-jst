@@ -189,6 +189,7 @@ type error =
   | Param_mode_mismatch of type_expr
   | Uncurried_function_escapes
   | Local_return_annotation_mismatch of Location.t
+  | Function_returns_local
   | Bad_tail_annotation of [`Conflict|`Not_a_tailcall]
   | Optional_poly_param
 
@@ -583,14 +584,10 @@ let mode_cross_to_global env ty mode =
   else
     mode
 
-let mode_cross_to_local env ty mode =
-  if mode_cross env ty then
-    Value_mode.local
-  else
-    mode
-
 let expect_mode_cross env ty (expected_mode : expected_mode) =
-  {expected_mode with mode = mode_cross_to_local env ty expected_mode.mode}
+  if mode_cross env ty then
+  {expected_mode with mode = Value_mode.local; exact = false}
+  else expected_mode
 
 (* Typing of patterns *)
 
@@ -4002,9 +3999,9 @@ and type_expect_
       if txt = "extension.local" && not (Clflags.Extension.is_enabled Local) then
         raise (Typetexp.Error (loc, Env.empty, Unsupported_extension Local));
       (* note that we inherit position from expected_mode *)
+      (* we can safely assume expected_mode.exact = true *)
       let mode = {expected_mode with mode = Value_mode.local; exact = true} in
-      if not (mode_cross env ty_expected) then
-        submode ~loc ~env ~reason:Other mode.mode expected_mode;
+      submode ~loc ~env ~reason:Other mode.mode expected_mode;
       let exp =
         type_expect ?in_function ~recarg env mode sbody
           ty_expected_explained
@@ -5373,7 +5370,11 @@ and type_function ?in_function loc attrs env (expected_mode : expected_mode)
       let ret_value_mode = Value_mode.of_alloc ret_mode in
       let ret_value_mode =
         if region_locked then mode_return (Value_mode.local_to_regional ret_value_mode)
-        else mode_default ret_value_mode
+        else begin
+          match Alloc_mode.submode Alloc_mode.local ret_mode with
+          | Ok () -> mode_local
+          | Error () -> raise (Error (loc_fun, env, Function_returns_local))
+        end
       in
       let ret_value_mode = expect_mode_cross env ty_res ret_value_mode in
       ret_value_mode,
@@ -7845,6 +7846,9 @@ let report_error ~loc env = function
   | Optional_poly_param ->
       Location.errorf ~loc
         "Optional parameters cannot be polymorphic"
+  | Function_returns_local ->
+      Location.errorf ~loc
+        "This function is local returning, but was expected otherwise"
 
 let report_error ~loc env err =
   Printtyp.wrap_printing_env ~error:true env
