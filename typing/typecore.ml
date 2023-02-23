@@ -3998,10 +3998,19 @@ and type_expect_
        [Nolabel, sbody]) ->
       if txt = "extension.local" && not (Clflags.Extension.is_enabled Local) then
         raise (Typetexp.Error (loc, Env.empty, Unsupported_extension Local));
-      (* note that we inherit position from expected_mode *)
-      (* we can safely assume expected_mode.exact = true *)
-      let mode = {expected_mode with mode = Value_mode.local; exact = true} in
-      submode ~loc ~env ~reason:Other mode.mode expected_mode;
+
+      let mode = if mode_cross env ty_expected then begin
+        (* when mode crosses, we check the inner expr with the most relaxed mode *)
+        {expected_mode with mode = Value_mode.local}
+        (* moreover, because mode crosses, expected_mode is completely useless *)
+      end else begin
+        (* if mode does not cross, we require the inner expr to be exact local *)
+        let mode = {expected_mode with mode = Value_mode.local; exact = true} in
+        (* morever, expected.mode must be local too *)
+        submode ~loc ~env ~reason:Other Value_mode.local expected_mode;
+        mode
+      end
+      in
       let exp =
         type_expect ?in_function ~recarg env mode sbody
           ty_expected_explained
