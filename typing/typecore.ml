@@ -4001,7 +4001,7 @@ and type_expect_
 
       let mode = if mode_cross env ty_expected then begin
         (* when mode crosses, we check the inner expr with the most relaxed mode *)
-        {expected_mode with mode = Value_mode.local}
+        {expected_mode with mode = Value_mode.local; exact = false}
         (* moreover, because mode crosses, expected_mode is completely useless *)
       end else begin
         (* if mode does not cross, we require the inner expr to be exact local *)
