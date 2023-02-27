@@ -187,17 +187,17 @@ Iarray.sub iarray 0 2, Iarray.sub iarray 2 3;;
 
 Iarray.sub iarray (-1) 3;;
 [%%expect{|
-Exception: Invalid_argument "Array.sub".
+Exception: Invalid_argument "Iarray.sub".
 |}];;
 
 Iarray.sub iarray 1 (-3);;
 [%%expect{|
-Exception: Invalid_argument "Array.sub".
+Exception: Invalid_argument "Iarray.sub".
 |}];;
 
 Iarray.sub iarray 3 10;;
 [%%expect{|
-Exception: Invalid_argument "Array.sub".
+Exception: Invalid_argument "Iarray.sub".
 |}];;
 
 Iarray.to_list iarray;;

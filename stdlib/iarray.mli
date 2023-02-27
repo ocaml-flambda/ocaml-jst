@@ -10,9 +10,6 @@ open! Stdlib
    iarrayLabels.mli instead.
  *)
 
-(* If you update any types in this module, you need to update iarray.ml as well;
-   it uses Obj.magic, so changes won't be detected. *)
-
 (** Operations on immutable arrays.  This module mirrors the API of [Array], but
     omits functions that assume mutability; in particular, it omits [copy] along
     with the functions [make], [create_float], and [make_matrix] that produce
