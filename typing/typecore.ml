@@ -4002,10 +4002,10 @@ and type_expect_
               Env.find_value_by_name (Longident.Lident ("self-" ^ cl_num)) env
             in
             maybe_force_shared ~env ~loc mode;
-            Texp_ident(path, lid, desc, kind, {mode = mode.uniqueness; mode' = mode.linearity})
+            Texp_ident(path, lid, desc, kind, (mode.uniqueness, mode.linearity))
         | _ ->
             maybe_force_shared ~env ~loc mode;
-            Texp_ident(path, lid, desc, kind, {mode = mode.uniqueness; mode' = mode.linearity})
+            Texp_ident(path, lid, desc, kind, (mode.uniqueness, mode.linearity))
       in
       ruem ~mode
            ~expected_mode:(mode_with_shared_context shared_reasons expected_mode) {
@@ -4623,7 +4623,7 @@ and type_expect_
       let mode = mode_cross_to_min env ty_arg mode in
       ruem ~mode ~expected_mode {
         exp_desc = Texp_field(record, lid, label,
-            {mode = mode.uniqueness; mode' = mode.linearity},
+            (mode.uniqueness, mode.linearity),
             alloc_mode);
         exp_loc = loc; exp_extra = [];
         exp_type = ty_arg;
@@ -6139,7 +6139,7 @@ and type_argument ?explanation ?recarg env (mode : expected_mode) sarg
          exp_extra = []; exp_attributes = [];
          exp_desc =
          Texp_ident(Path.Pident id, mknoloc (Longident.Lident name),
-                    desc, Id_value, {mode = mode.uniqueness; mode' = mode.linearity})}
+                    desc, Id_value, (mode.uniqueness, mode.linearity))}
       in
       let eta_mode = Mode.Value.local_to_regional (Mode.Value.of_alloc marg) in
       let eta_pat, eta_var = var_pair ~mode:eta_mode "eta" ty_arg in

@@ -6,14 +6,14 @@
 (* unique means the value is the only usage *)
 let dup x = unique_ (x, x)
 [%%expect{|
-Line 1, characters 24-25:
-1 | let dup x = unique_ (x, x)
-                            ^
-Error: x is used uniquely here so cannot be used twice. It will be used again at:
 Line 1, characters 21-22:
 1 | let dup x = unique_ (x, x)
                          ^
-
+Error: This is used uniquely here so cannot be used twice.  Another use is
+Line 1, characters 24-25:
+1 | let dup x = unique_ (x, x)
+                            ^
+  which used as an alias
 |}]
 
 (* unique value can be used more than once *)
@@ -25,28 +25,28 @@ val dup : unique_ 'a -> 'a * 'a = <fun>
 (* once value can be used only once*)
 let dup (once_ x) = (x, x)
 [%%expect{|
-Line 1, characters 24-25:
-1 | let dup (once_ x) = (x, x)
-                            ^
-Error: x is defined as once so cannot be used twice. It will be used again at:
 Line 1, characters 21-22:
 1 | let dup (once_ x) = (x, x)
                          ^
-
+Error: This is defined as once so cannot be used twice.  Another use is
+Line 1, characters 24-25:
+1 | let dup (once_ x) = (x, x)
+                            ^
+  which used as an alias
 |}]
 
 (* CR zqian: the precedence of unique_ needs to be higher without the
     parenthesis it binds lower than comma which is counter-intuitive *)
 let dup (unique_ x) = (unique_ x, x, x)
 [%%expect{|
-Line 1, characters 37-38:
+Line 1, characters 31-32:
 1 | let dup (unique_ x) = (unique_ x, x, x)
-                                         ^
-Error: x is used uniquely here so cannot be used twice. It will be used again at:
+                                   ^
+Error: This is used uniquely here so cannot be used twice.  Another use is
 Line 1, characters 34-35:
 1 | let dup (unique_ x) = (unique_ x, x, x)
                                       ^
-
+  which used as an alias
 |}]
 
 let dup (unique_ x) = ((unique_ x), x)
@@ -54,11 +54,11 @@ let dup (unique_ x) = ((unique_ x), x)
 Line 1, characters 23-34:
 1 | let dup (unique_ x) = ((unique_ x), x)
                            ^^^^^^^^^^^
-Error: x is used uniquely here so cannot be used twice. It was used previously at:
+Error: This is used uniquely here so cannot be used twice.  Another use is
 Line 1, characters 36-37:
 1 | let dup (unique_ x) = ((unique_ x), x)
                                         ^
-
+  which used as an alias
 |}]
 
 (* below we define a tuple that can be used multiple times,
@@ -74,14 +74,14 @@ let f () =
   let g () = (unique_ k) ^ (unique_ k) in
   g () ^ g ()
 [%%expect{|
-Line 3, characters 27-38:
-3 |   let g () = (unique_ k) ^ (unique_ k) in
-                               ^^^^^^^^^^^
-Error: k is used uniquely here so cannot be used twice. It will be used again at:
 Line 3, characters 13-24:
 3 |   let g () = (unique_ k) ^ (unique_ k) in
                  ^^^^^^^^^^^
-
+Error: This is used uniquely here so cannot be used twice.  Another use is
+Line 3, characters 27-38:
+3 |   let g () = (unique_ k) ^ (unique_ k) in
+                               ^^^^^^^^^^^
+  which used as an alias
 |}]
 
 (* but if the closure doesn't utilize the uniqueness,
@@ -181,14 +181,14 @@ let f () =
   let g () = k in
   (g (), g () )
 [%%expect{|
-Line 4, characters 9-10:
-4 |   (g (), g () )
-             ^
-Error: g is defined as once so cannot be used twice. It will be used again at:
 Line 4, characters 3-4:
 4 |   (g (), g () )
        ^
-
+Error: This is defined as once so cannot be used twice.  Another use is
+Line 4, characters 9-10:
+4 |   (g (), g () )
+             ^
+  which used as an alias
 |}]
 
 let x = "foo"
@@ -363,11 +363,11 @@ let inf4 (b : bool) (y : float) (unique_ x : float) =
 Line 2, characters 58-59:
 2 |   let _ = shared_id y in let unique_ z = if b then x else y in z
                                                               ^
-Error: y is used uniquely here so cannot be used twice. It was used previously at:
+Error: This is used uniquely here so cannot be used twice.  Another use is
 Line 2, characters 20-21:
 2 |   let _ = shared_id y in let unique_ z = if b then x else y in z
                         ^
-
+  which used as an alias
 |}]
 
 
@@ -511,14 +511,14 @@ let curry =
   let bar = foo ~a:3 ~b:2 ~c:4 in
   (bar ~d:3, bar ~d:5)
 [%%expect{|
-Line 4, characters 13-16:
-4 |   (bar ~d:3, bar ~d:5)
-                 ^^^
-Error: bar is defined as once so cannot be used twice. It will be used again at:
 Line 4, characters 3-6:
 4 |   (bar ~d:3, bar ~d:5)
        ^^^
-
+Error: This is defined as once so cannot be used twice.  Another use is
+Line 4, characters 13-16:
+4 |   (bar ~d:3, bar ~d:5)
+                 ^^^
+  which used as an alias
 |}]
 
 let curry =
@@ -526,14 +526,14 @@ let curry =
   let bar = foo ~a:3 ~c:4 in
   let baz = bar ~b:4 in (baz ~d:3, baz ~d:5)
 [%%expect{|
-Line 4, characters 35-38:
-4 |   let baz = bar ~b:4 in (baz ~d:3, baz ~d:5)
-                                       ^^^
-Error: baz is defined as once so cannot be used twice. It will be used again at:
 Line 4, characters 25-28:
 4 |   let baz = bar ~b:4 in (baz ~d:3, baz ~d:5)
                              ^^^
-
+Error: This is defined as once so cannot be used twice.  Another use is
+Line 4, characters 35-38:
+4 |   let baz = bar ~b:4 in (baz ~d:3, baz ~d:5)
+                                       ^^^
+  which used as an alias
 |}]
 
 let curry =
@@ -541,14 +541,14 @@ let curry =
   let foo y = unique_ x in
   (foo 1, foo 2)
 [%%expect{|
-Line 4, characters 10-13:
-4 |   (foo 1, foo 2)
-              ^^^
-Error: foo is defined as once so cannot be used twice. It will be used again at:
 Line 4, characters 3-6:
 4 |   (foo 1, foo 2)
        ^^^
-
+Error: This is defined as once so cannot be used twice.  Another use is
+Line 4, characters 10-13:
+4 |   (foo 1, foo 2)
+              ^^^
+  which used as an alias
 |}]
 
 type box = { x : int }
@@ -618,12 +618,12 @@ let rec make_tree = fun n ->
        in Node (x, x)
 [%%expect{|
 type tree = Leaf | Node of tree * tree
-Line 5, characters 19-20:
-5 |        in Node (x, x)
-                       ^
-Error: x is used uniquely here so cannot be used twice. It will be used again at:
 Line 5, characters 16-17:
 5 |        in Node (x, x)
                     ^
-
+Error: This is used uniquely here so cannot be used twice.  Another use is
+Line 5, characters 19-20:
+5 |        in Node (x, x)
+                       ^
+  which used as an alias
 |}]

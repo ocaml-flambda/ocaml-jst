@@ -50,14 +50,14 @@ val branching : bool -> box = <fun>
 
 let sequence (unique_ x : float) = unique_ let y = x in (x, y)
 [%%expect{|
-Line 1, characters 60-61:
-1 | let sequence (unique_ x : float) = unique_ let y = x in (x, y)
-                                                                ^
-Error: y is used uniquely here so cannot be used twice. It will be used again at:
 Line 1, characters 57-58:
 1 | let sequence (unique_ x : float) = unique_ let y = x in (x, y)
                                                              ^
-  y was used because x is an alias of y.
+Error: This is used uniquely here so cannot be used twice.  Another use is
+Line 1, characters 60-61:
+1 | let sequence (unique_ x : float) = unique_ let y = x in (x, y)
+                                                                ^
+  which used as an alias
 |}]
 
 let sequence =
@@ -78,11 +78,11 @@ let sequence =
 Line 3, characters 18-19:
 3 |   let _s = update r in
                       ^
-Error: r is used uniquely here so cannot be used twice. It will be used again at:
+Error: This is used uniquely here so cannot be used twice.  Another use is
 Line 4, characters 17-18:
 4 |   let t = update r in
                      ^
-
+  which used as an alias
 |}]
 
 let children_unique (unique_ xs : float list) = match xs with
@@ -113,11 +113,11 @@ let dup_child (unique_ fs : 'a list) = unique_ match fs with
 Line 3, characters 22-24:
 3 |   | x :: xs as gs -> (gs, xs)
                           ^^
-Error: gs is used uniquely here so cannot be used twice. It was used previously at:
+Error: This is used uniquely here so cannot be used twice.  Another use is
 Line 3, characters 26-28:
 3 |   | x :: xs as gs -> (gs, xs)
                               ^^
-  gs was used because xs is a child of gs.
+  which used as an alias
 |}]
 
 
@@ -149,11 +149,11 @@ let or_patterns3 p =
 Line 4, characters 50-51:
 4 |   | true, z, _ | false, _, z -> let _ = unique_id z in unique_id y
                                                       ^
-Error: z is used uniquely here so cannot be used twice. It will be used again at:
+Error: This is used uniquely here so cannot be used twice.  Another use is
 Line 4, characters 65-66:
 4 |   | true, z, _ | false, _, z -> let _ = unique_id z in unique_id y
                                                                      ^
-  z was used because y is an alias of z.
+  which used as an alias
 |}]
 
 let or_patterns4 p =
@@ -172,11 +172,11 @@ let or_patterns5 p =
 Line 4, characters 50-51:
 4 |   | true, z, _ | false, _, z -> let _ = unique_id z in unique_id x
                                                       ^
-Error: z is used uniquely here so cannot be used twice. It will be used again at:
+Error: This is used uniquely here so cannot be used twice.  Another use is
 Line 4, characters 65-66:
 4 |   | true, z, _ | false, _, z -> let _ = unique_id z in unique_id x
                                                                      ^
-  z was used because x is an alias of z.
+  which used as an alias
 |}]
 
 let mark_top_shared =
@@ -190,8 +190,8 @@ let mark_top_shared =
 Line 5, characters 24-26:
 5 |       let _ = unique_id xs in
                             ^^
-Error: xs is used uniquely here so cannot be used twice. It will be used again at:
-  xs was used because xx is a child of xs.
+Error: This is used uniquely here so cannot be used twice.  Another use is
+  which used as an alias
 |}]
 
 let mark_top_shared =
@@ -204,11 +204,8 @@ let mark_top_shared =
 Line 3, characters 20-22:
 3 |   let _ = unique_id xs in
                         ^^
-Error: xs is used uniquely here so cannot be used twice. It will be used again at:
-Line 4, characters 8-10:
-4 |   match xs with
-            ^^
-
+Error: This is used uniquely here so cannot be used twice.  Another use is
+  which used as an alias
 |}]
 
 let mark_shared_in_one_branch b x =
@@ -250,11 +247,11 @@ let expr_tuple_match f x y =
 Line 3, characters 40-41:
 3 |   | (a, b) as t, c -> let d = unique_id t in unique_ (a, d)
                                             ^
-Error: t is used uniquely here so cannot be used twice. It will be used again at:
+Error: This is used uniquely here so cannot be used twice.  Another use is
 Line 3, characters 54-55:
 3 |   | (a, b) as t, c -> let d = unique_id t in unique_ (a, d)
                                                           ^
-  t was used because a is a child of t.
+  which used as an alias
 |}]
 
 let tuple_parent_marked a b =
@@ -272,11 +269,11 @@ let tuple_parent_marked a b =
 Line 2, characters 12-13:
 2 |   match (a, b) with
                 ^
-Error: b is used uniquely here so cannot be used twice (_t refers to a tuple containing it). It will be used again at:
+Error: This is used uniquely here so cannot be used twice. It is used because the tuple containing it is @ matched to a variable. Another use is
 Line 3, characters 28-30:
 3 |   | (true, b') -> unique_id b'
                                 ^^
-  b was used because b' is an alias of b.
+  which used as an alias
 |}]
 
 let tuple_parent_marked a b =
@@ -287,11 +284,11 @@ let tuple_parent_marked a b =
 Line 2, characters 12-13:
 2 |   match (a, b) with
                 ^
-Error: b is used uniquely here so cannot be used twice (_t refers to a tuple containing it). It will be used again at:
+Error: This is used uniquely here so cannot be used twice. It is used because the tuple containing it is @ matched to a variable. Another use is
 Line 4, characters 27-28:
 4 |   | (true, b) -> unique_id b
                                ^
-
+  which used as an alias
 |}]
 
 let unique_match_on a b =
@@ -321,11 +318,11 @@ let unique_match_on a =
 Line 2, characters 21-26:
 2 |   let _p = { unique_ a.foo with foo = (); bar = () } in
                          ^^^^^
-Error: a.foo is used uniquely here so cannot be used twice. It will be used again at:
+Error: This is used uniquely here so cannot be used twice.  Another use is
 Line 4, characters 21-24:
 4 |   | { foo; bar } -> (foo, bar)
                          ^^^
-  a.foo was used because foo is a parent of a.foo.
+  which used as an alias
 |}]
 
 let unique_match_on a =
@@ -336,38 +333,38 @@ let unique_match_on a =
 Line 2, characters 21-26:
 2 |   let _p = { unique_ a.foo with foo = (); bar = () } in
                          ^^^^^
-Error: a.foo is used uniquely here so cannot be used twice. It will be used again at:
+Error: This is used uniquely here so cannot be used twice.  Another use is
 Line 3, characters 8-9:
 3 |   match a with
             ^
-  a.foo was used because a is an alias of a.foo.
+  which used as an alias
 |}]
 
 let match_function : unique_ 'a * 'b -> 'a * ('a * 'b) = function
   | (a, b) as t -> unique_ (a, t)
 [%%expect{|
-Line 2, characters 31-32:
-2 |   | (a, b) as t -> unique_ (a, t)
-                                   ^
-Error: t is used uniquely here so cannot be used twice. It will be used again at:
 Line 2, characters 28-29:
 2 |   | (a, b) as t -> unique_ (a, t)
                                 ^
-  t was used because a is a child of t.
+Error: This is used uniquely here so cannot be used twice.  Another use is
+Line 2, characters 31-32:
+2 |   | (a, b) as t -> unique_ (a, t)
+                                   ^
+  which used as an alias
 |}]
 
 let tuple_parent_marked a b =
   match (a, b) with
   | (a, b) as t -> unique_ (a, t)
 [%%expect{|
-Line 3, characters 31-32:
-3 |   | (a, b) as t -> unique_ (a, t)
-                                   ^
-Error: t is used uniquely here so cannot be used twice. It will be used again at:
 Line 3, characters 28-29:
 3 |   | (a, b) as t -> unique_ (a, t)
                                 ^
-  t was used because a is a child of t.
+Error: This is used uniquely here so cannot be used twice.  Another use is
+Line 3, characters 31-32:
+3 |   | (a, b) as t -> unique_ (a, t)
+                                   ^
+  which used as an alias
 |}]
 
 (* CR-someday anlorenzen: This one shouldn't fail in a more clever analysis. *)
@@ -375,14 +372,14 @@ let or_patterns6 flag f x y =
   match flag, f x, y with
   | true, a, (_, b) | false, b, (_, a) -> (unique_id a, unique_id b)
 [%%expect{|
-Line 3, characters 66-67:
-3 |   | true, a, (_, b) | false, b, (_, a) -> (unique_id a, unique_id b)
-                                                                      ^
-Error: b is used uniquely here so cannot be used twice. It will be used again at:
 Line 3, characters 53-54:
 3 |   | true, a, (_, b) | false, b, (_, a) -> (unique_id a, unique_id b)
                                                          ^
-  b was used because a is an alias of b.
+Error: This is used uniquely here so cannot be used twice.  Another use is
+Line 3, characters 66-67:
+3 |   | true, a, (_, b) | false, b, (_, a) -> (unique_id a, unique_id b)
+                                                                      ^
+  which used as an alias
 |}]
 
 
@@ -408,11 +405,11 @@ let record_mode_vars (p : point) =
 Line 2, characters 20-23:
 2 |   let x = unique_id p.x in
                         ^^^
-Error: p.x is used uniquely here so cannot be used twice. It will be used again at:
+Error: This is used uniquely here so cannot be used twice.  Another use is
 Line 3, characters 11-14:
 3 |   let y = (p.x, p.y) in
                ^^^
-
+  which is used because the tuple containing it is matched to a variable
 |}]
 
 let record_mode_vars (p : point) =
@@ -423,11 +420,11 @@ let record_mode_vars (p : point) =
 Line 3, characters 20-23:
 3 |   let x = unique_id p.x in
                         ^^^
-Error: p.x is used uniquely here so cannot be used twice. It was used previously at:
+Error: This is used uniquely here so cannot be used twice.  Another use is
 Line 2, characters 11-14:
 2 |   let y = (p.x, p.y) in
                ^^^
-  p.x was used because y refers to a tuple containing it.
+  which is used because the tuple containing it is matched to a variable
 |}]
 
 let record_mode_vars (p : point) =
@@ -438,9 +435,9 @@ let record_mode_vars (p : point) =
 Line 2, characters 21-22:
 2 |   let p2 = { unique_ p with x = 4.0 } in
                          ^
-Error: p is used uniquely here so cannot be used twice. It will be used again at:
+Error: This is used uniquely here so cannot be used twice.  Another use is
 Line 3, characters 10-11:
 3 |   let x = p.x in
               ^
-
+  which used as an alias
 |}]

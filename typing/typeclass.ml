@@ -132,7 +132,7 @@ let unbound_class =
 
 
 (* All class identifiers are used shared. *)
-let shared_use = {mode = Mode.Uniqueness.shared; mode' = Mode.Linearity.many}
+let shared_use = (Mode.Uniqueness.shared, Mode.Linearity.many)
 
                 (************************************)
                 (*  Some operations on class types  *)

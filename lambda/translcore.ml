@@ -237,7 +237,7 @@ let rec push_defaults loc bindings use_lhs arg_mode cases partial warnings =
             ({exp with exp_type = pat.pat_type; exp_env = env; exp_desc =
               Texp_ident
                 (Path.Pident param, mknoloc (Longident.Lident name),
-                 desc, Id_value, {mode = Mode.Uniqueness.shared; mode' = Mode.Linearity.many})},
+                 desc, Id_value, (Mode.Uniqueness.shared, Mode.Linearity.many))},
              cases, partial) }
       in
       [{c_lhs = {pat with pat_desc = Tpat_var (param, mknoloc name, mode)};
