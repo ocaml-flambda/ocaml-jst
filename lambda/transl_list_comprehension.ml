@@ -84,8 +84,8 @@ open Lambda_utils.Constants
           Nil)
          ]}
 
-    See [CamlinternalComprehension] the types and functions we desugar to, along
-    with some more documentation. *)
+    See [CamlinternalComprehension] for the types and functions we desugar to,
+    along with some more documentation. *)
 
 (** An implementation note: Many of the functions in this file need to translate
     expressions from Typedtree to Lambda; to avoid strange dependency ordering,
