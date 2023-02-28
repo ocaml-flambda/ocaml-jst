@@ -208,7 +208,8 @@ let iterator ~transl_exp ~scopes = function
     so bindings are just like iterators with a possible annotation.  As a
     result, this function is essentially the same as [iterator], which see. *)
 let binding ~transl_exp ~scopes { comp_cb_iterator; comp_cb_attributes = _ } =
-  (* CR aspectorzabusky: What do we do with attributes here? *)
+  (* No attributes are meaningful here; see the definition of
+     [comp_cb_attributes]. *)
   iterator ~transl_exp ~scopes comp_cb_iterator
 
 (** Translate all the bindings of a single [for ... and ...] clause (the

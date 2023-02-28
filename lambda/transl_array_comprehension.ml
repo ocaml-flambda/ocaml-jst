@@ -509,7 +509,8 @@ let binding
       ~scopes
       ~loc
       { comp_cb_iterator; comp_cb_attributes = _ } =
-  (* CR aspectorzabusky: What do we do with attributes here? *)
+  (* No attributes are meaningful here; see the definition of
+     [comp_cb_attributes]. *)
   iterator ~transl_exp ~loc ~scopes comp_cb_iterator
 
 (** Translate the contents of a single [for ... and ...] clause (the contents of

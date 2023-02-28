@@ -36,7 +36,7 @@ module Comprehensions : sig
     { pattern    : Parsetree.pattern
     ; iterator   : iterator
     ; attributes : Parsetree.attribute list }
-    (** PAT (in/=) ... [@...] *)
+    (** [@...] PAT (in/=) ... *)
 
   type clause =
     | For of clause_binding list
