@@ -69,7 +69,7 @@ let transl_arr_clause ~transl_exp ~scopes ~loc clause body =
             Matching.for_let ~scopes pat.pat_loc Not_void
               (Lprim(Parrayrefu(in_kind),
                      [Lvar(in_var); Lvar(index)], loc))
-              Types.Sort.value pat (valuekind_of_arraykind in_kind) body;
+              Layouts.Sort.value pat (valuekind_of_arraykind in_kind) body;
           for_region = true
         }
         in
@@ -485,7 +485,7 @@ let transl_list_comp type_comp body acc_var mats ~transl_exp ~scopes ~loc =
       let func = in_comp_prim () in
       let body =
         Matching.for_let ~scopes pat.pat_loc Not_void (Lvar(pat_id))
-          Types.Sort.value pat pval body
+          Layouts.Sort.value pat pval body
       in
       let mats = (in_var, transl_exp ~scopes in_)::mats in
       pat_id , pval, args, func, body, mats

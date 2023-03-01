@@ -30,7 +30,7 @@ val for_trywith:
         lambda
 val for_let:
         scopes:scopes -> Location.t ->
-        void_continuation -> lambda -> Types.sort -> pattern ->
+        void_continuation -> lambda -> Layouts.sort -> pattern ->
         value_kind -> lambda ->
         lambda
 val for_multiple_match:

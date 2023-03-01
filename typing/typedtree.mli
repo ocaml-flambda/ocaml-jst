@@ -240,7 +240,7 @@ and expression_desc =
                          (Labelled "y", Some (Texp_constant Const_int 3))
                         ])
          *)
-  | Texp_match of expression * Types.sort * computation case list * partial
+  | Texp_match of expression * Layouts.sort * computation case list * partial
         (** match E0 with
             | P1 -> E1
             | P2 | exception P3 -> E2
@@ -281,13 +281,13 @@ and expression_desc =
       expression * Longident.t loc * Types.label_description * expression
   | Texp_array of expression list
   | Texp_ifthenelse of expression * expression * expression option
-  | Texp_sequence of expression * Types.layout * expression
+  | Texp_sequence of expression * Layouts.layout * expression
   | Texp_while of {
       wh_cond : expression;
       wh_cond_region : bool; (* False means allocates in outer region *)
       wh_body : expression;
       wh_body_region : bool;  (* False means allocates in outer region *)
-      wh_body_layout : Types.layout
+      wh_body_layout : Layouts.layout
     }
   | Texp_list_comprehension of
       expression * comprehension list
@@ -300,7 +300,7 @@ and expression_desc =
       for_to   : expression;
       for_dir  : direction_flag;
       for_body : expression;
-      for_body_layout : Types.layout;
+      for_body_layout : Layouts.layout;
       for_region : bool;
       (* for_region = true means we create a region for the body.  false means
          it may allocated in the containing region *)
@@ -493,7 +493,7 @@ and structure_item =
   }
 
 and structure_item_desc =
-    Tstr_eval of expression * Types.layout * attributes
+    Tstr_eval of expression * Layouts.layout * attributes
   | Tstr_value of rec_flag * value_binding list
   | Tstr_primitive of value_description
   | Tstr_type of rec_flag * type_declaration list
@@ -522,7 +522,7 @@ and value_binding =
   {
     vb_pat: pattern;
     vb_expr: expression;
-    vb_sort: Types.sort;
+    vb_sort: Layouts.sort;
     vb_attributes: attributes;
     vb_loc: Location.t;
   }
@@ -903,7 +903,7 @@ val exists_pattern: (pattern -> bool) -> pattern -> bool
 val let_bound_idents: value_binding list -> Ident.t list
 val let_bound_idents_with_modes_and_sorts:
   value_binding list
-  -> (Ident.t * (Location.t * Types.value_mode * Types.sort) list) list
+  -> (Ident.t * (Location.t * Types.value_mode * Layouts.sort) list) list
 
 (** Alpha conversion of patterns *)
 val alpha_pat:
@@ -916,8 +916,8 @@ val pat_bound_idents: 'k general_pattern -> Ident.t list
 val pat_bound_idents_with_types:
   'k general_pattern -> (Ident.t * Types.type_expr) list
 val pat_bound_idents_full:
-  Types.sort -> 'k general_pattern
-  -> (Ident.t * string loc * Types.type_expr * Types.sort) list
+  Layouts.sort -> 'k general_pattern
+  -> (Ident.t * string loc * Types.type_expr * Layouts.sort) list
 
 (** Splits an or pattern into its value (left) and exception (right) parts. *)
 val split_pattern:

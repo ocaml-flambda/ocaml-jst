@@ -19,6 +19,7 @@ open Misc
 open Asttypes
 open Parsetree
 open Primitive
+open Layouts
 open Types
 open Typetexp
 

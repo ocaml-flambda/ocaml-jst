@@ -16,6 +16,7 @@
 (* Predefined type constructors (with special typing rules in typecore) *)
 
 open Path
+open Layouts
 open Types
 open Btype
 

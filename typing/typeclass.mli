@@ -14,6 +14,7 @@
 (**************************************************************************)
 
 open Asttypes
+open Layouts
 open Types
 open Format
 

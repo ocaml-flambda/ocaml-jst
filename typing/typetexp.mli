@@ -15,6 +15,7 @@
 
 (* Typechecking of type expressions for the core language *)
 
+open Layouts
 open Types
 
 val valid_tyvar_name : string -> bool

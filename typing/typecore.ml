@@ -18,6 +18,7 @@
 open Misc
 open Asttypes
 open Parsetree
+open Layouts
 open Types
 open Typedtree
 open Btype

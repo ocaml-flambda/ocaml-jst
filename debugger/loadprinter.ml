@@ -17,6 +17,7 @@
 
 open Misc
 open Longident
+open Layouts
 open Types
 
 (* Error report *)

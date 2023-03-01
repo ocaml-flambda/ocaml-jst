@@ -49,6 +49,7 @@
     path
     primitive
     shape
+    layouts
     types
     btype
     lazy_backtrack
@@ -127,6 +128,7 @@
 (copy_files ../../typing/path.ml)
 (copy_files ../../typing/primitive.ml)
 (copy_files ../../typing/shape.ml)
+(copy_files ../../typing/layouts.ml)
 (copy_files ../../typing/types.ml)
 (copy_files ../../typing/btype.ml)
 (copy_files ../../typing/subst.ml)
@@ -178,6 +180,7 @@
 (copy_files ../../typing/path.mli)
 (copy_files ../../typing/primitive.mli)
 (copy_files ../../typing/shape.mli)
+(copy_files ../../typing/layouts.mli)
 (copy_files ../../typing/types.mli)
 (copy_files ../../typing/btype.mli)
 (copy_files ../../typing/subst.mli)
@@ -261,6 +264,7 @@
       .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Syntaxerr.cmo
       .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Ast_helper.cmo
       .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Builtin_attributes.cmo
+      .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Layouts.cmo
       .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Types.cmo
       .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Bytesections.cmo
       .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Cmi_format.cmo
@@ -327,6 +331,7 @@
       .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Syntaxerr.cmx
       .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Ast_helper.cmx
       .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Builtin_attributes.cmx
+      .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Layouts.cmx
       .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Types.cmx
       .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Bytesections.cmx
       .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Cmi_format.cmx

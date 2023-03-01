@@ -21,6 +21,7 @@ open Asttypes
 open Misc
 open Parsetree
 open Typedtree
+open Layouts
 open Types
 open Ctype
 

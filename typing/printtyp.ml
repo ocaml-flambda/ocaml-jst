@@ -21,6 +21,7 @@ open Format
 open Longident
 open Path
 open Asttypes
+open Layouts
 open Types
 open Btype
 open Outcometree

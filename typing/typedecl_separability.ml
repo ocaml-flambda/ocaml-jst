@@ -14,6 +14,7 @@
 (*                                                                        *)
 (**************************************************************************)
 
+open Layouts
 open Types
 
 type type_definition = type_declaration

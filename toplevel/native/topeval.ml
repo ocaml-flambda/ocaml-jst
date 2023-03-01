@@ -18,6 +18,7 @@
 open Format
 open Misc
 open Parsetree
+open Layouts
 open Types
 open Typedtree
 open Outcometree

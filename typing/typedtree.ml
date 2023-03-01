@@ -16,6 +16,7 @@
 (* Abstract syntax tree after typing *)
 
 open Asttypes
+open Layouts
 open Types
 
 (* Value expressions for the core language *)
@@ -148,7 +149,7 @@ and expression_desc =
       for_to   : expression;
       for_dir  : direction_flag;
       for_body : expression;
-      for_body_layout : Types.layout;
+      for_body_layout : Layouts.layout;
       for_region : bool;
     }
   | Texp_send of expression * meth * apply_position
