@@ -107,7 +107,7 @@ module Layout = struct
   let immediate64 = Immediate64
   let immediate = Immediate
 
-  type const = Builtin_attributes.const_layout =
+  type const = Asttypes.const_layout =
     | Any
     | Value
     | Void

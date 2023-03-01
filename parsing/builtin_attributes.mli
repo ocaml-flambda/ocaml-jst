@@ -127,16 +127,7 @@ val filter_attributes :
 val warn_on_literal_pattern: Parsetree.attributes -> bool
 val explicit_arity: Parsetree.attributes -> bool
 
-(* constant layouts are parsed as layout annotations, and also used
-   in the type checker as already-inferred (i.e. non-variable) layouts *)
-type const_layout =
-  | Any
-  | Value
-  | Void
-  | Immediate64
-  | Immediate
-
-val layout: Parsetree.attributes -> const_layout option
+val layout: Parsetree.attributes -> Asttypes.const_layout option
 
 val has_unboxed: Parsetree.attributes -> bool
 val has_boxed: Parsetree.attributes -> bool

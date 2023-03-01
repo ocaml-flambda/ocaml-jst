@@ -68,7 +68,7 @@ module Layout : sig
 
   (** Constant layouts are used both for user-written annotations and within
       the type checker when we know a layout has no variables *)
-  type const = Builtin_attributes.const_layout =
+  type const = Asttypes.const_layout =
     | Any
     | Value
     | Void
@@ -105,7 +105,7 @@ module Layout : sig
   val of_const : const -> t
 
   (** Translate a user layout annotation to a layout *)
-  val of_const_option : Builtin_attributes.const_layout option -> default:t -> t
+  val of_const_option : const option -> default:t -> t
 
   (** Find a layout in attributes, defaulting to ~default *)
   val of_attributes : default:t -> Parsetree.attributes -> t

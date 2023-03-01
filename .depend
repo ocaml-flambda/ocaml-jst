@@ -360,7 +360,8 @@ parsing/builtin_attributes.cmx : \
 parsing/builtin_attributes.cmi : \
     parsing/parsetree.cmi \
     utils/misc.cmi \
-    parsing/location.cmi
+    parsing/location.cmi \
+    parsing/asttypes.cmi
 parsing/camlinternalMenhirLib.cmo : \
     parsing/camlinternalMenhirLib.cmi
 parsing/camlinternalMenhirLib.cmx : \
@@ -950,14 +951,16 @@ typing/includemod_errorprinter.cmi : \
 typing/layouts.cmo : \
     utils/misc.cmi \
     parsing/builtin_attributes.cmi \
+    parsing/asttypes.cmi \
     typing/layouts.cmi
 typing/layouts.cmx : \
     utils/misc.cmx \
     parsing/builtin_attributes.cmx \
+    parsing/asttypes.cmi \
     typing/layouts.cmi
 typing/layouts.cmi : \
     parsing/parsetree.cmi \
-    parsing/builtin_attributes.cmi
+    parsing/asttypes.cmi
 typing/mtype.cmo : \
     typing/types.cmi \
     typing/subst.cmi \
@@ -1734,7 +1737,6 @@ typing/typedtree.cmo : \
     typing/layouts.cmi \
     typing/ident.cmi \
     typing/env.cmi \
-    parsing/builtin_attributes.cmi \
     parsing/asttypes.cmi \
     typing/typedtree.cmi
 typing/typedtree.cmx : \
@@ -1749,7 +1751,6 @@ typing/typedtree.cmx : \
     typing/layouts.cmx \
     typing/ident.cmx \
     typing/env.cmx \
-    parsing/builtin_attributes.cmx \
     parsing/asttypes.cmi \
     typing/typedtree.cmi
 typing/typedtree.cmi : \
@@ -1764,7 +1765,6 @@ typing/typedtree.cmi : \
     typing/layouts.cmi \
     typing/ident.cmi \
     typing/env.cmi \
-    parsing/builtin_attributes.cmi \
     parsing/asttypes.cmi
 typing/typemod.cmo : \
     utils/warnings.cmi \
