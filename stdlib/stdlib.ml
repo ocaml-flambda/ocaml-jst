@@ -229,10 +229,6 @@ external unsafe_char_of_int : int -> char = "%identity"
 let char_of_int n =
   if n < 0 || n > 255 then invalid_arg "char_of_int" else unsafe_char_of_int n
 
-(* Array operations -- more in modules Array and Iarray *)
-
-external ( .:() ) : 'a iarray -> int -> 'a = "%array_safe_get"
-
 (* Unit operations *)
 
 external ignore : 'a -> unit = "%ignore"
