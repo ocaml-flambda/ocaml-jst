@@ -4,6 +4,9 @@
 
 (* Copied from [test.ml], but with all the [Array.fill] tests deleted *)
 
+(* The get operator isn't available in the stdlib *)
+let ( .:() ) = Iarray.( .:() );;
+
 (* [iarray]s don't have the [make*] functions, so we redefine them here *)
 let make n x = Iarray.init n (fun _ -> x);;
 let make_matrix m n x = make m (make n x);;

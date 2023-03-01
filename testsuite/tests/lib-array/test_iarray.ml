@@ -3,6 +3,13 @@
    * expect
 *)
 
+(** The get operator isn't available in the stdlib *)
+
+let ( .:() ) = Iarray.( .:() );;
+[%%expect{|
+val ( .:() ) : 'a iarray -> int -> 'a = <fun>
+|}];;
+
 (** Create some immutable and mutable arrays *)
 
 let iarray  : int   iarray = [:1;2;3;4;5:];;
