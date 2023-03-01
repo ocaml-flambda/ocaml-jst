@@ -221,18 +221,6 @@ Iarray.of_array mfarray;;
 - : float iarray = [:1.5; 2.5; 3.5; 4.5; 5.5:]
 |}];;
 
-(* [Array] has an analog to [Iarray.to_array] *)
-Array.of_iarray ifarray;;
-[%%expect{|
-- : float array = [|1.5; 2.5; 3.5; 4.5; 5.5|]
-|}];;
-
-(* [Array] has an analog to [Iarray.of_array] *)
-Array.to_iarray marray;;
-[%%expect{|
-- : int iarray = [:1; 2; 3; 4; 5:]
-|}];;
-
 (* [Iarray.to_array] creates a fresh mutable array every time *)
 Iarray.to_array iarray == marray;;
 [%%expect{|

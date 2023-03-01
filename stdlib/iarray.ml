@@ -65,6 +65,7 @@ external concat : 'a iarray list -> 'a iarray = "caml_array_concat"
 external append_prim : 'a iarray -> 'a iarray -> 'a iarray = "caml_array_append"
 external unsafe_sub : 'a iarray -> int -> int -> 'a iarray = "caml_array_sub"
 external unsafe_of_array : 'a array -> 'a iarray = "%obj_magic"
+external unsafe_to_array : 'a iarray -> 'a array = "%obj_magic"
 
 let init l f = unsafe_of_array (Array.init l f)
 
@@ -135,8 +136,9 @@ let to_list a =
 
 let of_list l = unsafe_of_array (Array.of_list l)
 
-let to_array = Array.of_iarray
-let of_array = Array.to_iarray
+let to_array ia = Array.copy (unsafe_to_array ia)
+
+let of_array ma = unsafe_of_array (Array.copy ma)
 
 let fold_left f x a =
   let r = ref x in
@@ -275,7 +277,7 @@ let combine a b =
 
 (* Must be fully applied due to the value restriction *)
 let lift_sort sorter cmp iarr =
-  let arr = Array.of_iarray iarr in
+  let arr = to_array iarr in
   sorter cmp arr;
   unsafe_of_array arr
 
