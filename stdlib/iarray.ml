@@ -64,8 +64,8 @@ external concat : 'a iarray list -> 'a iarray = "caml_array_concat"
 
 external append_prim : 'a iarray -> 'a iarray -> 'a iarray = "caml_array_append"
 external unsafe_sub : 'a iarray -> int -> int -> 'a iarray = "caml_array_sub"
-external unsafe_of_array : 'a array -> 'a iarray = "%obj_magic"
-external unsafe_to_array : 'a iarray -> 'a array = "%obj_magic"
+external unsafe_of_array : 'a array -> 'a iarray = "%array_to_iarray"
+external unsafe_to_array : 'a iarray -> 'a array = "%array_of_iarray"
 
 let init l f = unsafe_of_array (Array.init l f)
 
