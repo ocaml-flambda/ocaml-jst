@@ -80,16 +80,17 @@ let of_seq =
 
 (* Only safe if the array isn't used after this call *)
 let unsafe_of_array : 'a array -> 'a iarray = Obj.magic
+let unsafe_to_array : 'a iarray -> 'a array = Obj.magic
+
+let to_array ia = Array.copy (unsafe_to_array ia)
+let of_array ma = unsafe_of_array (Array.copy ma)
 
 (* Must be fully applied due to the value restriction *)
 let lift_sort sorter cmp iarr =
-  let arr = Array.of_iarray iarr in
+  let arr = to_array iarr in
   sorter cmp arr;
   unsafe_of_array arr
 
 let sort cmp iarr = lift_sort Array.sort cmp iarr
 let stable_sort cmp iarr = lift_sort Array.stable_sort cmp iarr
 let fast_sort cmp iarr = lift_sort Array.fast_sort cmp iarr
-
-let to_array = Array.of_iarray
-let of_array = Array.to_iarray
