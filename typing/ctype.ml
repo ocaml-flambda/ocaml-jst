@@ -5697,3 +5697,31 @@ let immediacy env typ =
       else
         Type_immediacy.Always
   | _ -> Type_immediacy.Unknown
+
+(* For use with ocamldebug *)
+type global_state =
+  { current_level : int ref;
+    nongen_level : int ref;
+    global_level : int ref;
+  }
+
+let global_state : global_state =
+  { current_level;
+    nongen_level;
+    global_level;
+  }
+
+let print_global_state fmt { current_level; nongen_level; global_level } =
+  let record_fields =
+    [ "current_level", current_level;
+      "nongen_level", nongen_level;
+      "global_level", global_level;
+    ]
+  in
+  !Oprint.out_value
+    fmt
+    (Oval_record
+      (List.map
+        (fun (printed_name, value) ->
+          Outcometree.Oide_ident { printed_name }, Outcometree.Oval_int !value)
+        record_fields))
