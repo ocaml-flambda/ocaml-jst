@@ -578,7 +578,7 @@ let rec close t env (lam : Lambda.lambda) : Flambda.t =
         [Simplif.simplify_lets]"
   | Lregion (body, _) ->
     Region (close t env body)
-  | Lunregion body ->
+  | Lexclave body ->
     Tail (close t env body)
 
 (** Perform closure conversion on a set of function declarations, returning a

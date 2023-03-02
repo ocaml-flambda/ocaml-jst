@@ -399,7 +399,7 @@ type lambda =
   | Levent of lambda * lambda_event
   | Lifused of Ident.t * lambda
   | Lregion of lambda * layout
-  | Lunregion of lambda
+  | Lexclave of lambda
 
 and lfunction = private
   { kind: function_kind;

@@ -186,7 +186,7 @@ type error =
   | Function_returns_local
   | Bad_tail_annotation of [`Conflict|`Not_a_tailcall]
   | Optional_poly_param
-  | Unregion_in_nontail_position
+  | Exclave_in_nontail_position
 
 exception Error of Location.t * Env.t * error
 exception Error_forward of Location.error
@@ -3217,7 +3217,7 @@ let rec is_nonexpansive exp =
   | Texp_letop _
   | Texp_extension_constructor _ ->
     false
-  | Texp_unregion e -> is_nonexpansive e
+  | Texp_exclave e -> is_nonexpansive e
 
 and is_nonexpansive_mod mexp =
   match mexp.mod_desc with
@@ -3648,7 +3648,7 @@ let check_partial_application ~statement exp =
                 check e1; check e2
             | Texp_let (_, _, e) | Texp_sequence (_, e) | Texp_open (_, e)
             | Texp_letexception (_, e) | Texp_letmodule (_, _, _, _, e)
-            | Texp_unregion e ->
+            | Texp_exclave e ->
                 check e
             | Texp_apply _ | Texp_send _ | Texp_new _ | Texp_letop _ ->
                 Location.prerr_warning exp_loc
@@ -4179,14 +4179,14 @@ and type_expect_
       { exp with exp_loc = loc }
   | Pexp_apply
       ({ pexp_desc = Pexp_extension({
-         txt = "extension.unregion" | "ocaml.unregion" | "unregion" as txt}, PStr []) },
+         txt = "extension.exclave" | "ocaml.exclave" | "exclave" as txt}, PStr []) },
        [Nolabel, sbody]) ->
-      if (txt = "extension.unregion") && not (Language_extension.is_enabled Local) then
+      if (txt = "extension.exclave") && not (Language_extension.is_enabled Local) then
           raise (Typetexp.Error (loc, Env.empty, Unsupported_extension Local));
       begin
         match expected_mode.position with
         | RNontail ->
-          raise (Error (loc, env, Unregion_in_nontail_position))
+          raise (Error (loc, env, Exclave_in_nontail_position))
         | RTail (mode, _) ->
           (* mode' is non-tail-of-region, because currently our language cannot construct
            region in the tail of another region.
@@ -4195,13 +4195,13 @@ and type_expect_
           (* enforce to be local; part of the compiler depends on this bit to know
           if it allocate in parent region. *)
           submode ~loc ~env ~reason:Other Value_mode.local mode';
-          let env' = Env.add_unregion_lock env in
+          let env' = Env.add_exclave_lock env in
           let exp =
             type_expect ?in_function ~recarg env' mode' sbody ty_expected_explained
           in
           (* this whole thing returns regional value *)
           submode ~loc ~env ~reason:Other Value_mode.regional expected_mode;
-          { exp_desc = Texp_unregion exp;
+          { exp_desc = Texp_exclave exp;
             exp_loc = loc;
             exp_extra = [];
             exp_type = exp.exp_type;
@@ -7996,9 +7996,9 @@ let report_error ~loc env = function
         (match err with
          | `Conflict -> "is contradictory"
          | `Not_a_tailcall -> "is not on a tail call")
-  | Unregion_in_nontail_position ->
+  | Exclave_in_nontail_position ->
     Location.errorf ~loc
-        "Unregion expression should only be in tail position of the current region"
+        "Exclave expression should only be in tail position of the current region"
   | Optional_poly_param ->
       Location.errorf ~loc
         "Optional parameters cannot be polymorphic"

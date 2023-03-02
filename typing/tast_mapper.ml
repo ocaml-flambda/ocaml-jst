@@ -438,8 +438,8 @@ let expr sub x =
     | Texp_probe {name; handler} ->
       Texp_probe {name; handler = sub.expr sub handler }
     | Texp_probe_is_enabled _ as e -> e
-    | Texp_unregion exp ->
-        Texp_unregion (sub.expr sub exp)
+    | Texp_exclave exp ->
+        Texp_exclave (sub.expr sub exp)
   in
   {x with exp_extra; exp_desc; exp_env}
 

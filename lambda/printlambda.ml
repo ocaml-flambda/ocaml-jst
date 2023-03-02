@@ -833,8 +833,8 @@ let rec lam ppf = function
       fprintf ppf "@[<2>(ifused@ %a@ %a)@]" Ident.print id lam expr
   | Lregion (expr, _) ->
       fprintf ppf "@[<2>(region@ %a)@]" lam expr
-  | Lunregion expr ->
-      fprintf ppf "@[<2>(unregion@ %a)@]" lam expr
+  | Lexclave expr ->
+      fprintf ppf "@[<2>(exclave@ %a)@]" lam expr
 
 and sequence ppf = function
   | Lsequence(l1, l2) ->

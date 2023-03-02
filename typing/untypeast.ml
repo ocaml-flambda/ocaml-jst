@@ -604,11 +604,11 @@ let expression sub exp =
                      , [])
                ; pstr_loc = loc
                }]))
-    | Texp_unregion exp ->
+    | Texp_exclave exp ->
         Pexp_apply ({
         pexp_desc =
           Pexp_extension
-            ({ txt = "ocaml.unregion"; loc}
+            ({ txt = "ocaml.exclave"; loc}
             , PStr []);
         pexp_loc = loc;
         pexp_loc_stack = [];

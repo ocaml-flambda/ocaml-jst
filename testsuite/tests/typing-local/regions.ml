@@ -22,7 +22,7 @@ let check_empty ?(verbose=true) name =
 
 let () = check_empty "startup"
 
-let check_region name f = [%unregion] (
+let check_region name f = [%exclave] (
   let offs0 = local_stack_offset () in
   last_offset := offs0;
   Printf.printf "%25s: start\n%!" name;
@@ -39,12 +39,12 @@ let check_region name f = [%unregion] (
    instead of reusing the stack; this is because the allocations happen outside
    of the loop body region.
 *)
-let loop_unregion () =
+let loop_exclave () =
   let local_ x = ref 0 in
   let _ = opaque_identity x in
   check_empty ~verbose:false "pre loop";
   for i = 1 to 4 do  (* 4 is enough *)
-    [%unregion] (
+    [%exclave] (
       let _ = check_empty ~verbose:false "pre alloc" in
       let local_ y = ref !x in
       let _ = opaque_identity y in
@@ -54,14 +54,14 @@ let loop_unregion () =
   done
 
 let () =
-  check_region "loop_unregion" loop_unregion
+  check_region "loop_exclave" loop_exclave
 
 (* Below, we will observe that the allocations in the function body keep growing
    the stack, instead of the default behaviour of tail call of constant space.
    This is because the function doesn't have a region, which blurs the stack boundary
    between recursive calls *)
-let rec fun_unregion n =
-  [%unregion] (
+let rec fun_exclave n =
+  [%exclave] (
     if n = 0 then
       ()
     else begin
@@ -69,20 +69,20 @@ let rec fun_unregion n =
       let local_ r = ref n in
       check_empty ~verbose:false "post alloc";
       let _ = opaque_identity r in
-      fun_unregion (n - 1)
+      fun_exclave (n - 1)
     end
   )
 
   (* we went a long way to ensure that this function has its own stack frame;
   so we can observe that the space freed afterwards
      *)
-let fun_unregion' () =
+let fun_exclave' () =
   let local_ r = ref 42 in
   let _ = opaque_identity r in
-  fun_unregion 4;
+  fun_exclave 4;
   ()
 
-let () = check_region "fun_unregion" fun_unregion'
+let () = check_region "fun_exclave" fun_exclave'
 
 
 let[@inline never] uses_local x =

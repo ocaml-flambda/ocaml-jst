@@ -508,8 +508,8 @@ and expression i ppf x =
       expression i ppf handler;
   | Texp_probe_is_enabled {name} ->
       line i ppf "Texp_probe_is_enabled \"%s\"\n" name;
-  | Texp_unregion (e) ->
-      line i ppf "Texp_unregion";
+  | Texp_exclave (e) ->
+      line i ppf "Texp_exclave";
       expression i ppf e;
 
 and value_description i ppf x =

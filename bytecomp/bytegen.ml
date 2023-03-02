@@ -1029,7 +1029,7 @@ let rec comp_expr env exp sz cont =
       comp_expr env exp sz cont
   | Lregion (exp, _) ->
       comp_expr env exp sz cont
-  | Lunregion exp ->
+  | Lexclave exp ->
       comp_expr env exp sz cont
 
 (* Compile a list of arguments [e1; ...; eN] to a primitive operation.

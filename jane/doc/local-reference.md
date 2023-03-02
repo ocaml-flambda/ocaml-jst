@@ -441,7 +441,7 @@ function is a local-returning function, then the nearest enclosing region will
 be the caller's (or that of the caller's caller, etc., if the caller is also
 local-returning).
 
-## Unregion
+## Exclave
 
 In the previous section, a function can return local values by not having its own
 region; as a result, it works in the caller's region. This has downsides;
@@ -460,35 +460,35 @@ allocation are released upon `f` returning and rewrite the example as
 ```
 let f (local_ x) =
   let local_ y = (complex computation on x) in
-  if y then [%unregion] (local_ None)
-  else [%unregion] (local_ (Some x))
+  if y then [%exclave] (local_ None)
+  else [%exclave] (local_ (Some x))
 ```
-The new primitive `[%unregion]` early-terminates the current region, and runs
+The new primitive `[%exclave]` early-terminates the current region, and runs
 whatever follows in the outer region. In this example, the function `f` still
 has its own region, where the allocation of the complex computation will happen.
-This region will be early-terminated by `[%unregion]`, releasing all the
+This region will be early-terminated by `[%exclave]`, releasing all the
 temporary allocations. Next, both `local_ None` and `local_ (Some x)` are "local"
 relative to the outer region and thus allowed to escape. In summary, we have
 temporary allocations on stack and released promptly, and have the result
 allocations on stack and escaped.
 
-`[%unregion]` terminates the current region, and all values therein are
+`[%exclave]` terminates the current region, and all values therein are
 deleted. For example, the following is error because `x` is deleted after
-[%unregion] and cannot be refered to.
+[%exclave] and cannot be refered to.
 ```
   let local_ x = "hello" in
-  [%unregion] (
+  [%exclave] (
     let local_ y = "world" in
     local_ (x ^ y)
   )
 ```
 
-For a similar reason, `[%unregion]` can only appear at the tail position of a
+For a similar reason, `[%exclave]` can only appear at the tail position of a
 region - one cannot re-enter a region that has been
 terminated. For example, the following is error.
 ```
   let local_ x = "hello" in
-  [%unregion] (
+  [%exclave] (
     let local_ y = "world" in
     ()
   );

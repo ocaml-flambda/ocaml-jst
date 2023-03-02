@@ -323,7 +323,7 @@ type escaping_context =
 type value_lock =
   | Lock of { mode : Alloc_mode.t; escaping_context : escaping_context option }
   | Region_lock
-  | Unregion_lock
+  | Exclave_lock
 
 module IdTbl =
   struct
@@ -692,7 +692,7 @@ type lookup_error =
   | Illegal_reference_to_recursive_module
   | Cannot_scrape_alias of Longident.t * Path.t
   | Local_value_used_in_closure of Longident.t * escaping_context option
-  | Local_value_used_in_unregion of Longident.t
+  | Local_value_used_in_exclave of Longident.t
 
 type error =
   | Missing_module of Location.t * Path.t * Path.t
@@ -2351,8 +2351,8 @@ let add_lock ?escaping_context mode env =
 let add_region_lock env =
   { env with values = IdTbl.add_lock Region_lock env.values }
 
-let add_unregion_lock env =
-  { env with values = IdTbl.add_lock Unregion_lock env.values }
+let add_exclave_lock env =
+  { env with values = IdTbl.add_lock Exclave_lock env.values }
 
 (* Insertion of all components of a signature *)
 
@@ -2870,12 +2870,12 @@ let lock_mode ~errors ~loc env id vmode locks =
               may_lookup_error errors loc env
                 (Local_value_used_in_closure (id, escaping_context))
         end
-      | Unregion_lock ->
+      | Exclave_lock ->
         match Value_mode.submode vmode Value_mode.regional with
         | Ok () -> Value_mode.regional_to_local vmode
         | Error _ ->
           may_lookup_error errors loc env
-            (Local_value_used_in_unregion id);
+            (Local_value_used_in_exclave id);
     )
     vmode locks
 
@@ -3756,9 +3756,9 @@ let report_lookup_error _loc env ppf = function
                           is an argument to a tail call@]"
       | _ -> ()
       end
-  | Local_value_used_in_unregion lid ->
+  | Local_value_used_in_exclave lid ->
     fprintf ppf "@[The value %a is local, so cannot be used \
-                 inside unregion @]"
+                 inside exclave @]"
       !print_longident lid
 
 let report_error ppf = function

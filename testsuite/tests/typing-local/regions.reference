@@ -1,5 +1,5 @@
                   startup: OK
-            loop_unregion: start
+             loop_exclave: start
                  pre loop: leaked
                 pre alloc: OK
                post alloc: leaked
@@ -9,8 +9,8 @@
                post alloc: leaked
                 pre alloc: OK
                post alloc: leaked
-            loop_unregion: stop - no leak
-             fun_unregion: start
+             loop_exclave: stop - no leak
+              fun_exclave: start
                 pre alloc: leaked
                post alloc: leaked
                 pre alloc: OK
@@ -19,7 +19,7 @@
                post alloc: leaked
                 pre alloc: OK
                post alloc: leaked
-             fun_unregion: stop - no leak
+              fun_exclave: stop - no leak
             function call: OK
         exn function call: OK
  during indirect tailcall: OK

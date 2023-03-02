@@ -508,7 +508,7 @@ type lambda =
   | Levent of lambda * lambda_event
   | Lifused of Ident.t * lambda
   | Lregion of lambda * layout
-  | Lunregion of lambda
+  | Lexclave of lambda
 
 and lfunction =
   { kind: function_kind;
@@ -722,7 +722,7 @@ let make_key e =
         Lsend (m,tr_rec env e1,tr_rec env e2,tr_recs env es,pos,mo,Loc_unknown,layout)
     | Lifused (id,e) -> Lifused (id,tr_rec env e)
     | Lregion (e,layout) -> Lregion (tr_rec env e,layout)
-    | Lunregion e -> Lunregion (tr_rec env e)
+    | Lexclave e -> Lexclave (tr_rec env e)
     | Lletrec _|Lfunction _
     | Lfor _ | Lwhile _
 (* Beware: (PR#6412) the event argument to Levent
@@ -823,7 +823,7 @@ let shallow_iter ~tail ~non_tail:f = function
       tail e
   | Lregion (e, _) ->
       f e
-  | Lunregion e ->
+  | Lexclave e ->
       tail e
 
 let iter_head_constructor f l =
@@ -907,7 +907,7 @@ let rec free_variables = function
       free_variables e
   | Lregion (e, _) ->
       free_variables e
-  | Lunregion e ->
+  | Lexclave e ->
       free_variables e
 
 and free_variables_list set exprs =
@@ -1114,8 +1114,8 @@ let subst update_env ?(freshen_bound_variables = false) s input_lam =
         Lifused (id, subst s l e)
     | Lregion (e, layout) ->
         Lregion (subst s l e, layout)
-    | Lunregion e ->
-        Lunregion (subst s l e)
+    | Lexclave e ->
+        Lexclave (subst s l e)
   and subst_list s l li = List.map (subst s l) li
   and subst_decl s l (id, exp) = (id, subst s l exp)
   and subst_case s l (key, case) = (key, subst s l case)
@@ -1215,8 +1215,8 @@ let shallow_map ~tail ~non_tail:f = function
       Lifused (v, tail e)
   | Lregion (e, layout) ->
       Lregion (f e, layout)
-  | Lunregion e ->
-      Lunregion (tail e)
+  | Lexclave e ->
+      Lexclave (tail e)
 
 let map f =
   let rec g lam = f (shallow_map ~tail:g ~non_tail:g lam) in

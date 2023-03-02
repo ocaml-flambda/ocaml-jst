@@ -1443,7 +1443,7 @@ let rec close ({ backend; fenv; cenv ; mutable_vars; kinds; catch_env } as env) 
   | Lregion (lam, _) ->
       let ulam, approx = close env lam in
       region ulam, approx
-  | Lunregion lam ->
+  | Lexclave lam ->
       let ulam, approx = close env lam in
       tail ulam, approx
 

@@ -20,7 +20,7 @@ let print_offsets (name,allocs) =
 let loc_for () =
   let offset_loop = ref (-1) in
   let offset1 = local_stack_offset () in
-  for i = 0 to 0 do [%unregion] (
+  for i = 0 to 0 do [%exclave] (
     let z = local_ (Some (Sys.opaque_identity 42)) in
     let _ = (opaque_local z) in
     offset_loop := local_stack_offset ()
@@ -46,7 +46,7 @@ let loc_while_body () =
   let offset_loop = ref (-1) in
   let offset1 = local_stack_offset () in
   let cond = ref true in
-  while !cond do [%unregion] (
+  while !cond do [%exclave] (
     let z = local_ (Some (Sys.opaque_identity 42)) in
     let _ = (opaque_local z) in
     offset_loop := local_stack_offset ();
@@ -74,7 +74,7 @@ let nonloc_while_body () =
 let loc_while_cond () =
   let offset_loop = ref (-1) in
   let offset1 = local_stack_offset () in
-  while [%unregion] (
+  while [%exclave] (
     let z = local_ (Some (Sys.opaque_identity 42)) in
     let _ = (opaque_local z) in
     offset_loop := local_stack_offset ();

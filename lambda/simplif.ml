@@ -97,8 +97,8 @@ let rec eliminate_ref id = function
       Lifused(v, eliminate_ref id e)
   | Lregion (e, layout) ->
       Lregion(eliminate_ref id e, layout)
-  | Lunregion e ->
-      Lunregion(eliminate_ref id e)
+  | Lexclave e ->
+      Lexclave(eliminate_ref id e)
 
 (* Simplification of exits *)
 
@@ -187,7 +187,7 @@ let simplify_exits lam =
   | Levent(l, _) -> count ~try_depth l
   | Lifused(_v, l) -> count ~try_depth l
   | Lregion (l, _) -> count ~try_depth:(try_depth+1) l
-  | Lunregion l -> count ~try_depth l
+  | Lexclave l -> count ~try_depth l
 
   and count_default ~try_depth sw = match sw.sw_failaction with
   | None -> ()
@@ -356,7 +356,7 @@ let simplify_exits lam =
   | Lregion (l, ly) -> Lregion (
       simplif ~layout ~try_depth:(try_depth + 1) l,
       result_layout ly) (* lwhite suggest to double check this case *)
-  | Lunregion l -> Lunregion (simplif ~layout ~try_depth l)
+  | Lexclave l -> Lexclave (simplif ~layout ~try_depth l)
   in
   simplif ~layout:None ~try_depth:0 lam
 
@@ -491,7 +491,7 @@ let simplify_lets lam =
       if count_var v > 0 then count bv l
   | Lregion (l, _) ->
       count bv l
-  | Lunregion l ->
+  | Lexclave l ->
       count bv l
 
   and count_default bv sw = match sw.sw_failaction with
@@ -643,7 +643,7 @@ let simplify_lets lam =
   | Lifused(v, l) ->
       if count_var v > 0 then simplif l else lambda_unit
   | Lregion (l, layout) -> Lregion (simplif l, layout)
-  | Lunregion l -> Lunregion (simplif l)
+  | Lexclave l -> Lexclave (simplif l)
   in
   simplif lam
 
@@ -739,7 +739,7 @@ let rec emit_tail_infos is_tail lambda =
       emit_tail_infos is_tail lam
   | Lregion (lam, _) ->
       emit_tail_infos is_tail lam
-  | Lunregion lam ->
+  | Lexclave lam ->
       emit_tail_infos is_tail lam
 and list_emit_tail_infos_fun f is_tail =
   List.iter (fun x -> emit_tail_infos is_tail (f x))
@@ -781,7 +781,7 @@ let split_default_wrapper ~id:fun_id ~kind ~params ~return ~body
         let wrapper_body, inner = aux ((optparam, id) :: map) add_region rest in
         Llet(Strict, k, id, def, wrapper_body), inner
     | Lregion (rest, _) -> aux map true rest
-    | Lunregion rest -> aux map true rest
+    | Lexclave rest -> aux map true rest
     | _ when map = [] -> raise Exit
     | body ->
         (* Check that those *opt* identifiers don't appear in the remaining
@@ -950,7 +950,7 @@ let simplify_local_functions lam =
         check_static lf;
         function_definition lf
     | Lregion (lam, _) -> region lam
-    | Lunregion lam -> unregion lam
+    | Lexclave lam -> exclave lam
     | lam ->
         Lambda.shallow_iter ~tail ~non_tail lam
   and non_tail lam =
@@ -962,7 +962,7 @@ let simplify_local_functions lam =
     tail lam;
     current_scope := Option.get !current_region_scope;
     current_region_scope := old_tail_scope
-  and unregion lam =
+  and exclave lam =
     current_scope := Option.get !current_region_scope;
     tail lam
   and function_definition lf =
