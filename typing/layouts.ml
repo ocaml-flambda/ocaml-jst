@@ -84,6 +84,22 @@ module Sort = struct
   and equate s1 s2 = match s1 with
     | Const c1 -> equate_sort_const s2 c1
     | Var v1 -> equate_var v1 s2
+
+  module Debug_printers = struct
+    open Format
+
+    let rec t ppf = function
+      | Var v   -> fprintf ppf "Var %a" var v
+      | Const c -> fprintf ppf (match c with
+                                | Void  -> "Void"
+                                | Value -> "Value")
+
+    and opt_t ppf = function
+      | Some s -> fprintf ppf "Some %a" t s
+      | None   -> fprintf ppf "None"
+
+    and var ppf v = fprintf ppf "{ contents = %a }" opt_t (!v)
+  end
 end
 
 type sort = Sort.t
@@ -287,6 +303,19 @@ module Layout = struct
   let can_make_void l = Void = constrain_default_void l
   let default_to_value t =
     ignore (get_defaulting ~default:Value t)
+
+  (*********************************)
+  (* debugging *)
+
+  module Debug_printers = struct
+    open Format
+
+    let t ppf : t -> unit = function
+      | Any         -> fprintf ppf "Any"
+      | Sort s      -> fprintf ppf "Sort %a" Sort.Debug_printers.t s
+      | Immediate64 -> fprintf ppf "Immediate64"
+      | Immediate   -> fprintf ppf "Immediate"
+  end
 end
 
 type layout = Layout.t

@@ -40,6 +40,11 @@ module Sort : sig
   (** This checks for equality, and sets any variables to make two sorts
       equal, if possible *)
   val equate : t -> t -> bool
+
+  module Debug_printers : sig
+    val t : Format.formatter -> t -> unit
+    val var : Format.formatter -> var -> unit
+  end
 end
 
 type sort = Sort.t
@@ -179,6 +184,13 @@ module Layout : sig
      would be better to default to value before we actually ship. *)
 
   val default_to_value : t -> unit
+
+  (*********************************)
+  (* debugging *)
+
+  module Debug_printers : sig
+    val t : Format.formatter -> t -> unit
+  end
 end
 
 type layout = Layout.t

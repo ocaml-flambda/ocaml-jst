@@ -993,12 +993,14 @@ typing/mtype.cmi : \
 typing/oprint.cmo : \
     parsing/pprintast.cmi \
     typing/outcometree.cmi \
+    typing/layouts.cmi \
     utils/clflags.cmi \
     parsing/asttypes.cmi \
     typing/oprint.cmi
 typing/oprint.cmx : \
     parsing/pprintast.cmx \
     typing/outcometree.cmi \
+    typing/layouts.cmx \
     utils/clflags.cmx \
     parsing/asttypes.cmi \
     typing/oprint.cmi
