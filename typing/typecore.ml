@@ -7058,7 +7058,9 @@ and type_comprehension_clauses
 and type_comprehension_clause ~loc ~comprehension_type ~container_type env
   : Extensions.Comprehensions.clause -> _ = function
   | For bindings ->
-      reset_pattern true;
+      (* TODO: fix handling of first-class module patterns so we can pass
+       * "true" here. *)
+      reset_pattern false;
       let tbindings =
         List.map
           (type_comprehension_binding
