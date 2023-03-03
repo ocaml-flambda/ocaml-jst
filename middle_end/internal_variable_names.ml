@@ -137,6 +137,8 @@ let plsrbint = "Plsrbint"
 let plsrint = "Plsrint"
 let pmakearray = "Pmakearray"
 let pmakeblock = "Pmakeblock"
+let preuseblock = "Preuseblock"
+let preusefloatblock = "Preusefloatblock"
 let pmakefloatblock = "Pmakefloatblock"
 let pmodbint = "Pmodbint"
 let pmodint = "Pmodint"
@@ -241,6 +243,8 @@ let plsrbint_arg = "Plsrbint_arg"
 let plsrint_arg = "Plsrint_arg"
 let pmakearray_arg = "Pmakearray_arg"
 let pmakeblock_arg = "Pmakeblock_arg"
+let preuseblock_arg = "Preuseblock_arg"
+let preusefloatblock_arg = "Preusefloatblock_arg"
 let pmakefloatblock_arg = "Pmakefloatblock_arg"
 let pmodbint_arg = "Pmodbint_arg"
 let pmodint_arg = "Pmodint_arg"
@@ -322,6 +326,8 @@ let of_primitive : Lambda.primitive -> string = function
   | Psetglobal _ -> psetglobal
   | Pgetpredef _ -> pgetpredef
   | Pmakeblock _ -> pmakeblock
+  | Preuseblock _ -> preuseblock
+  | Preusefloatblock _ -> preusefloatblock
   | Pmakefloatblock _ -> pmakefloatblock
   | Pfield _ -> pfield
   | Pfield_computed _ -> pfield_computed
@@ -430,6 +436,8 @@ let of_primitive_arg : Lambda.primitive -> string = function
   | Psetglobal _ -> psetglobal_arg
   | Pgetpredef _ -> pgetpredef_arg
   | Pmakeblock _ -> pmakeblock_arg
+  | Preuseblock _ -> preuseblock_arg
+  | Preusefloatblock _ -> preusefloatblock_arg
   | Pmakefloatblock _ -> pmakefloatblock_arg
   | Pfield _ -> pfield_arg
   | Pfield_computed _ -> pfield_computed_arg

@@ -56,6 +56,8 @@
     shape
     types
     btype
+    modes
+    mode
     lazy_backtrack
     subst
     predef
@@ -139,6 +141,8 @@
 (copy_files ../../typing/shape.ml)
 (copy_files ../../typing/types.ml)
 (copy_files ../../typing/btype.ml)
+(copy_files ../../typing/modes.ml)
+(copy_files ../../typing/mode.ml)
 (copy_files ../../typing/subst.ml)
 (copy_files ../../typing/predef.ml)
 (copy_files ../../typing/datarepr.ml)
@@ -195,6 +199,8 @@
 (copy_files ../../typing/shape.mli)
 (copy_files ../../typing/types.mli)
 (copy_files ../../typing/btype.mli)
+(copy_files ../../typing/mode.mli)
+(copy_files ../../typing/modes.mli)
 (copy_files ../../typing/subst.mli)
 (copy_files ../../typing/predef.mli)
 (copy_files ../../typing/datarepr.mli)
@@ -251,6 +257,7 @@
       %{deps}))
   (deps
       ; NOTE: Be sure to keep these arguments in dependency order!
+      .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Modes.cmo
       .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Int_replace_polymorphic_compare.cmo
       .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Binutils.cmo
       .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Local_store.cmo
@@ -279,6 +286,7 @@
       .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Cmi_format.cmo
       .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Debuginfo.cmo
       .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Btype.cmo
+      .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Mode.cmo
       .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Consistbl.cmo
       .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Shape.cmo
       .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Datarepr.cmo
@@ -322,6 +330,7 @@
       %{deps}))
   (deps
       ; NOTE: Be sure to keep these arguments in dependency order!
+      .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Modes.cmx
       .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Int_replace_polymorphic_compare.cmx
       .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Binutils.cmx
       .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Local_store.cmx
@@ -350,6 +359,7 @@
       .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Cmi_format.cmx
       .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Debuginfo.cmx
       .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Btype.cmx
+      .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Mode.cmx
       .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Consistbl.cmx
       .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Shape.cmx
       .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Datarepr.cmx

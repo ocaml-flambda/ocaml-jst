@@ -337,11 +337,11 @@ let expr sub x =
         in
         Texp_record {
           fields; representation;
-          extended_expression = Option.map (sub.expr sub) extended_expression;
+          extended_expression = Option.map (fun (u, e) -> (u, sub.expr sub e)) extended_expression;
           alloc_mode
         }
-    | Texp_field (exp, lid, ld, am) ->
-        Texp_field (sub.expr sub exp, lid, ld, am)
+    | Texp_field (exp, lid, ld, mode, am) ->
+        Texp_field (sub.expr sub exp, lid, ld, mode, am)
     | Texp_setfield (exp1, am, lid, ld, exp2) ->
         Texp_setfield (
           sub.expr sub exp1,

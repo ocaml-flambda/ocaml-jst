@@ -75,10 +75,10 @@ and 'k pattern_desc =
   (* value patterns *)
   | Tpat_any : value pattern_desc
         (** _ *)
-  | Tpat_var : Ident.t * string loc * Types.value_mode -> value pattern_desc
+  | Tpat_var : Ident.t * string loc * Modes.Value.t -> value pattern_desc
         (** x *)
   | Tpat_alias :
-      value general_pattern * Ident.t * string loc * Types.value_mode -> value pattern_desc
+      value general_pattern * Ident.t * string loc * Modes.Value.t -> value pattern_desc
         (** P as a *)
   | Tpat_constant : constant -> value pattern_desc
         (** 1, 'a', "true", 1.0, 1l, 1L, 1n *)
@@ -173,10 +173,10 @@ and exp_extra =
         (** fun (type t) ->  *)
 
 and fun_curry_state =
-  | More_args of { partial_mode : Types.alloc_mode }
+  | More_args of { partial_mode : Mode.Alloc.t }
         (** [partial_mode] is the mode of the resulting closure
             if this function is partially applied *)
-  | Final_arg of { partial_mode : Types.alloc_mode }
+  | Final_arg of { partial_mode : Mode.Alloc.t }
         (** [partial_mode] is relevant for the final arg only
             because of an optimisation that Simplif does to merge
             functions, which might result in this arg no longer being
@@ -184,7 +184,7 @@ and fun_curry_state =
 
 and expression_desc =
     Texp_ident of
-      Path.t * Longident.t loc * Types.value_description * ident_kind
+      Path.t * Longident.t loc * Types.value_description * ident_kind * unique_use
         (** x
             M.x
          *)
@@ -198,8 +198,8 @@ and expression_desc =
       cases : value case list; partial : partial;
       region : bool; curry : fun_curry_state;
       warnings : Warnings.state;
-      arg_mode : Types.alloc_mode;
-      alloc_mode : Types.alloc_mode}
+      arg_mode : Modes.Alloc.t;
+      alloc_mode : Modes.Alloc.t}
         (** [Pexp_fun] and [Pexp_function] both translate to [Texp_function].
             See {!Parsetree} for more details.
 
@@ -213,7 +213,7 @@ and expression_desc =
             partial_mode is the mode of the resulting closure if this function
             is partially applied to a single argument.
          *)
-  | Texp_apply of expression * (arg_label * apply_arg) list * apply_position * Types.alloc_mode
+  | Texp_apply of expression * (arg_label * apply_arg) list * apply_position * Modes.Alloc.t
         (** E0 ~l1:E1 ... ~ln:En
 
             The expression can be Omitted if the expression is abstracted over
@@ -240,10 +240,10 @@ and expression_desc =
          *)
   | Texp_try of expression * value case list
         (** try E with P1 -> E1 | ... | PN -> EN *)
-  | Texp_tuple of expression list * Types.alloc_mode
+  | Texp_tuple of expression list * Modes.Alloc.t
         (** (E1, ..., EN) *)
   | Texp_construct of
-      Longident.t loc * Types.constructor_description * expression list * Types.alloc_mode option
+      Longident.t loc * Types.constructor_description * expression list * Modes.Alloc.t option
         (** C                []
             C E              [E]
             C (E1, ..., En)  [E1;...;En]
@@ -252,7 +252,7 @@ and expression_desc =
             or [None] if the constructor is [Cstr_unboxed] or [Cstr_constant],
             in which case it does not need allocation.
          *)
-  | Texp_variant of label * (expression * Types.alloc_mode) option
+  | Texp_variant of label * (expression * Modes.Alloc.t) option
         (** [alloc_mode] is the allocation mode of the variant,
             or [None] if the variant has no argument,
             in which case it does not need allocation.
@@ -260,11 +260,12 @@ and expression_desc =
   | Texp_record of {
       fields : ( Types.label_description * record_label_definition ) array;
       representation : Types.record_representation;
-      extended_expression : expression option;
-      alloc_mode : Types.alloc_mode option
+      extended_expression : (update_kind * expression) option;
+      alloc_mode : Modes.Alloc.t option
     }
-        (** { l1=P1; ...; ln=Pn }           (extended_expression = None)
-            { E0 with l1=P1; ...; ln=Pn }   (extended_expression = Some E0)
+        (** { l1=P1; ...; ln=Pn }                   (extended_expression = None)
+            { E0 with l1=P1; ...; ln=Pn }           (extended_expression = Some (Create_new, E0))
+            { unique_ E0 with l1=P1; ...; ln=Pn }   (extended_expression = Some (In_place, E0))
 
             Invariant: n > 0
 
@@ -277,14 +278,14 @@ and expression_desc =
             or [None] if it is [Record_unboxed],
             in which case it does not need allocation.
           *)
-  | Texp_field of expression * Longident.t loc * Types.label_description * Types.alloc_mode option
+  | Texp_field of expression * Longident.t loc * Types.label_description * unique_use * Modes.Alloc.t option
     (** [alloc_mode] is the allocation mode of the result; available ONLY
-        when getting a (float) field from a [Record_float] record
+        only when getting a (float) field from a [Record_float] record
       *)
   | Texp_setfield of
-      expression * Types.alloc_mode * Longident.t loc * Types.label_description * expression
+      expression * Modes.Locality.t * Longident.t loc * Types.label_description * expression
     (** [alloc_mode] translates to the [modify_mode] of the record *)
-  | Texp_array of mutable_flag * expression list * Types.alloc_mode
+  | Texp_array of mutable_flag * expression list * Modes.Alloc.t
   | Texp_list_comprehension of comprehension
   | Texp_array_comprehension of mutable_flag * comprehension
   | Texp_ifthenelse of expression * expression * expression option
@@ -306,7 +307,7 @@ and expression_desc =
       (* for_region = true means we create a region for the body.  false means
          it may allocated in the containing region *)
     }
-  | Texp_send of expression * meth * apply_position * Types.alloc_mode
+  | Texp_send of expression * meth * apply_position * Modes.Alloc.t
     (** [alloc_mode] is the allocation mode of the result *)
   | Texp_new of
       Path.t * Longident.t loc * Types.class_declaration * apply_position
@@ -336,7 +337,12 @@ and expression_desc =
   | Texp_probe of { name:string; handler:expression; }
   | Texp_probe_is_enabled of { name:string }
 
-and ident_kind = Id_value | Id_prim of Types.alloc_mode option
+and ident_kind = Id_value | Id_prim of Mode.Locality.t option
+
+and unique_use =
+  { mode : Mode.Uniqueness.t;
+    mode' : Mode.Linearity.t;
+  }
 
 and meth =
     Tmeth_name of string
@@ -384,6 +390,10 @@ and record_label_definition =
   | Kept of Types.type_expr
   | Overridden of Longident.t loc * expression
 
+and update_kind =
+  | Create_new
+  | In_place
+
 and binding_op =
   {
     bop_op_path : Path.t;
@@ -401,9 +411,9 @@ and ('a, 'b) arg_or_omitted =
   | Omitted of 'b
 
 and omitted_parameter =
-  { mode_closure : Types.alloc_mode;
-    mode_arg : Types.alloc_mode;
-    mode_ret : Types.alloc_mode }
+  { mode_closure : Mode.Alloc.t;
+    mode_arg : Mode.Alloc.t;
+    mode_ret : Mode.Alloc.t }
 
 and apply_arg = (expression, omitted_parameter) arg_or_omitted
 
@@ -575,7 +585,7 @@ and primitive_coercion =
   {
     pc_desc: Primitive.description;
     pc_type: Types.type_expr;
-    pc_poly_mode: Types.alloc_mode option;
+    pc_poly_mode: Mode.Locality.t option;
     pc_env: Env.t;
     pc_loc : Location.t;
   }
@@ -924,7 +934,7 @@ val let_bound_idents_full:
     value_binding list -> (Ident.t * string loc * Types.type_expr) list
 val let_bound_idents_with_modes:
   value_binding list
-  -> (Ident.t * (Location.t * Types.value_mode) list) list
+  -> (Ident.t * (Location.t * Mode.Value.t) list) list
 
 (** Alpha conversion of patterns *)
 val alpha_pat:

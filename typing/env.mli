@@ -174,6 +174,14 @@ type escaping_context =
   | Tailcall_function
   | Partial_application
 
+type shared_context =
+  | For_loop
+  | While_loop
+  | Letop
+  | Closure
+  | Comprehension
+  | Class
+
 type lookup_error =
   | Unbound_value of Longident.t * unbound_value_hint
   | Unbound_type of Longident.t
@@ -196,6 +204,8 @@ type lookup_error =
   | Illegal_reference_to_recursive_module
   | Cannot_scrape_alias of Longident.t * Path.t
   | Local_value_used_in_closure of Longident.t * escaping_context option
+  | Unique_value_used_in of Longident.t * shared_context
+  | Once_value_used_in of Longident.t * shared_context
 
 val lookup_error: Location.t -> t -> lookup_error -> 'a
 
@@ -213,7 +223,7 @@ val lookup_error: Location.t -> t -> lookup_error -> 'a
 
 val lookup_value:
   ?use:bool -> loc:Location.t -> Longident.t -> t ->
-  Path.t * value_description * Types.value_mode
+  Path.t * value_description * Modes.Value.t * shared_context list
 val lookup_type:
   ?use:bool -> loc:Location.t -> Longident.t -> t ->
   Path.t * type_declaration
@@ -293,7 +303,7 @@ val make_copy_of_types: t -> (t -> t)
 (* Insertion by identifier *)
 
 val add_value:
-    ?check:(string -> Warnings.t) -> ?mode:(Types.value_mode) ->
+    ?check:(string -> Warnings.t) -> ?mode:(Modes.Value.t) ->
     Ident.t -> value_description -> t -> t
 val add_type: check:bool -> Ident.t -> type_declaration -> t -> t
 val add_extension:
@@ -387,7 +397,8 @@ val enter_unbound_module : string -> module_unbound_reason -> t -> t
 
 (* Lock the environment *)
 
-val add_lock : ?escaping_context:escaping_context -> Types.alloc_mode -> t -> t
+val add_locality_lock : ?escaping_context:escaping_context -> Modes.Locality.t -> t -> t
+val add_linearity_lock : shared_context:shared_context -> Modes.Linearity.t -> t -> t
 val add_region_lock : t -> t
 
 (* Initialize the cache of in-core module interfaces. *)

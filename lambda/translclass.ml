@@ -275,7 +275,7 @@ let output_methods tbl methods lam =
       lsequence (mkappl(oo_prim "set_method", [Lvar tbl; lab; code], Lambda.layout_unit)) lam
   | _ ->
       let methods =
-        Lprim(Pmakeblock(0,Immutable,None,alloc_heap), methods, Loc_unknown)
+        Lprim(Pmakeblock(0,Immutable,None,(alloc_heap, alloc_shared)), methods, Loc_unknown)
       in
       lsequence (mkappl(oo_prim "set_methods",
                         [Lvar tbl; Lprim (Popaque, [methods], Loc_unknown)], Lambda.layout_unit))
@@ -548,7 +548,7 @@ let transl_class_rebind ~scopes cl vf =
     Strict, Lambda.layout_function, new_init, lfunction Lambda.layout_top [obj_init, Lambda.layout_top] obj_init',
     Llet(
     Alias, Lambda.layout_class, cla, path_lam,
-    Lprim(Pmakeblock(0, Immutable, None, alloc_heap),
+    Lprim(Pmakeblock(0, Immutable, None, (alloc_heap, alloc_shared)),
           [mkappl(Lvar new_init, [lfield cla 0], Lambda.layout_object);
            lfunction Lambda.layout_top [table, Lambda.layout_top]
              (Llet(Strict, Lambda.layout_top, env_init,
@@ -844,12 +844,12 @@ let transl_class ~scopes ids cl_id pub_meths cl vflag =
       Strict, Lambda.layout_top, env_init, mkappl (Lvar class_init, [Lvar table], Lambda.layout_top),
       Lsequence(
       mkappl (oo_prim "init_class", [Lvar table], Lambda.layout_top),
-      Lprim(Pmakeblock(0, Immutable, None, alloc_heap),
+      Lprim(Pmakeblock(0, Immutable, None, (alloc_heap, alloc_shared)),
             [mkappl (Lvar env_init, [lambda_unit], Lambda.layout_top);
              Lvar class_init; Lvar env_init; lambda_unit],
             Loc_unknown))))
   and lbody_virt lenvs =
-    Lprim(Pmakeblock(0, Immutable, None, alloc_heap),
+    Lprim(Pmakeblock(0, Immutable, None, (alloc_heap, alloc_shared)),
           [lambda_unit; Lambda.lfunction
                           ~kind:(Curried {nlocal=0})
                           ~attr:default_function_attribute
@@ -875,11 +875,11 @@ let transl_class ~scopes ids cl_id pub_meths cl vflag =
   let lenv =
     let menv =
       if !new_ids_meths = [] then lambda_unit else
-      Lprim(Pmakeblock(0, Immutable, None, alloc_heap),
+      Lprim(Pmakeblock(0, Immutable, None, (alloc_heap, alloc_shared)),
             List.map (fun id -> Lvar id) !new_ids_meths,
             Loc_unknown) in
     if !new_ids_init = [] then menv else
-    Lprim(Pmakeblock(0, Immutable, None, alloc_heap),
+    Lprim(Pmakeblock(0, Immutable, None, (alloc_heap, alloc_shared)),
           menv :: List.map (fun id -> Lvar id) !new_ids_init,
           Loc_unknown)
   and linh_envs =
@@ -890,7 +890,7 @@ let transl_class ~scopes ids cl_id pub_meths cl vflag =
   let make_envs lam =
     Llet(StrictOpt, Lambda.layout_top, envs,
          (if linh_envs = [] then lenv else
-         Lprim(Pmakeblock(0, Immutable, None, alloc_heap),
+         Lprim(Pmakeblock(0, Immutable, None, (alloc_heap, alloc_shared)),
                lenv :: linh_envs, Loc_unknown)),
          lam)
   and def_ids cla lam =
@@ -922,7 +922,7 @@ let transl_class ~scopes ids cl_id pub_meths cl vflag =
     if inh_keys = [] then Llet(Alias, Lambda.layout_top, cached, Lvar tables, lam) else
     Llet(Strict, Lambda.layout_top, cached,
          mkappl (oo_prim "lookup_tables",
-                [Lvar tables; Lprim(Pmakearray(Paddrarray, Immutable, alloc_heap),
+                [Lvar tables; Lprim(Pmakearray(Paddrarray, Immutable, (alloc_heap, alloc_shared)),
                                     inh_keys, Loc_unknown)], Lambda.layout_top),
          lam)
   and lset cached i lam =
@@ -965,7 +965,7 @@ let transl_class ~scopes ids cl_id pub_meths cl vflag =
   Lsequence(lcheck_cache,
   make_envs (
   if ids = [] then mkappl (lfield cached 0, [lenvs], Lambda.layout_top) else
-  Lprim(Pmakeblock(0, Immutable, None, alloc_heap),
+  Lprim(Pmakeblock(0, Immutable, None, (alloc_heap, alloc_shared)),
         (if concrete then
           [mkappl (lfield cached 0, [lenvs], Lambda.layout_top);
            lfield cached 1;

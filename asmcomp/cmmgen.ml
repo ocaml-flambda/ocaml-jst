@@ -36,8 +36,8 @@ open Cmm_helpers
 (* Environments used for translation to Cmm. *)
 
 type boxed_number =
-  | Boxed_float of alloc_mode * Debuginfo.t
-  | Boxed_integer of boxed_integer * alloc_mode * Debuginfo.t
+  | Boxed_float of locality_mode * Debuginfo.t
+  | Boxed_integer of boxed_integer * locality_mode * Debuginfo.t
 
 type env = {
   unboxed_ids : (V.t * boxed_number) V.tbl;
@@ -134,8 +134,8 @@ let rec expr_size env = function
   | Uclosure { functions ; not_scanned_slots ; scanned_slots } ->
       (* should all have the same mode *)
       let fn_mode = (List.hd functions).mode in
-      List.iter (fun f -> assert (Lambda.eq_mode fn_mode f.mode)) functions;
-      RHS_block (fn_mode,
+      List.iter (fun f -> assert (Lambda.eq_mode_locality fn_mode f.mode)) functions;
+      RHS_block ((fn_mode, alloc_shared), (* functions are always shared *)
                  fundecls_size functions + List.length not_scanned_slots
                  + List.length scanned_slots)
   | Ulet(_str, _kind, id, exp, body) ->
@@ -158,13 +158,13 @@ let rec expr_size env = function
         check in Translcore.check_recursive_lambda *)
      RHS_nonrec
   | Uprim (Pduprecord ((Record_regular | Record_inlined _), sz), _, _) ->
-      RHS_block (Lambda.alloc_heap, sz)
+      RHS_block ((Lambda.alloc_heap, Lambda.alloc_shared), sz)
   | Uprim (Pduprecord (Record_unboxed _, _), _, _) ->
       assert false
   | Uprim (Pduprecord (Record_extension _, sz), _, _) ->
-      RHS_block (Lambda.alloc_heap, sz + 1)
+      RHS_block ((Lambda.alloc_heap, Lambda.alloc_shared), sz + 1)
   | Uprim (Pduprecord (Record_float, sz), _, _) ->
-      RHS_floatblock (Lambda.alloc_heap, sz)
+      RHS_floatblock ((Lambda.alloc_heap, Lambda.alloc_shared), sz)
   | Uprim (Pccall { prim_name; _ }, closure::_, _)
         when prim_name = "caml_check_value_is_closure" ->
       (* Used for "-clambda-checks". *)
@@ -270,7 +270,7 @@ let equal_boxed_number bn1 bn2 =
   match bn1, bn2 with
   | Boxed_float _, Boxed_float _ -> true
   | Boxed_integer(ui1, m, _), Boxed_integer(ui2, m', _) ->
-    equal_unboxed_integer ui1 ui2 && Lambda.eq_mode m m'
+    equal_unboxed_integer ui1 ui2 && Lambda.eq_mode_locality m m'
   | _, _ -> false
 
 let box_number bn arg =
@@ -393,7 +393,7 @@ let rec transl env e =
           match s with
           | None -> Some mode
           | Some m' ->
-             if not (Lambda.eq_mode mode m') then
+             if not (Lambda.eq_mode_locality mode m') then
                Misc.fatal_errorf "Inconsistent modes in let rec at %s"
                  (Debuginfo.to_string dbg);
              s) None functions in
@@ -494,11 +494,41 @@ let rec transl env e =
           Cconst_symbol (sym, dbg)
       | (Pmakeblock _, []) ->
           assert false
-      | (Pmakeblock(tag, _mut, _kind, mode), args) ->
+      | (Pmakeblock(tag, _mut, _kind, (mode, _)), args) ->
           make_alloc ~mode dbg tag (List.map (transl env) args)
+      | (Preuseblock _, []) ->
+          assert false (* the reused memory cell is the first arg *)
+      | (Preuseblock(_tag, _mut, reuses, mode), id :: args) ->
+          let id = transl env id in
+          let (exp, _ , _) = List.fold_left (fun (exp, args, n) r ->
+              match r, args with
+              | Reuse_keep, _ -> (exp, args, n + 1)
+              | Reuse_set _, [] -> assert false
+              | Reuse_set (Pvalue vk), (arg :: args) ->
+                  (Csequence(remove_unit(
+                       setfield n (Lambda.immediate_or_pointer_of_value_kind vk)
+                         (Lambda.Assignment mode) id (transl env arg) dbg), exp),
+                   args, n + 1)
+              ) (id, args, 0) reuses
+          in exp
+      | (Preusefloatblock _, []) ->
+          assert false (* the reused memory cell is the first arg *)
+      | (Preusefloatblock(_mut, reuses, mode), id :: args) ->
+          let id = transl env id in
+          let (exp, _ , _) = List.fold_left (fun (exp, args, n) r ->
+              match r, args with
+              | Reuse_keep, _ -> (exp, args, n + 1)
+              | Reuse_set _, [] -> assert false
+              | Reuse_set _, (arg :: args) ->
+                  (Csequence(remove_unit(
+                       setfloatfield n
+                         (Lambda.Assignment mode) id (transl_unbox_float dbg env arg) dbg), exp),
+                   args, n + 1)
+            ) (id, args, 0) reuses
+          in exp
       | (Pccall prim, args) ->
           transl_ccall env prim args dbg
-      | (Pduparray (kind, _), [Uprim (Pmakearray (kind', _, _), args, _dbg)]) ->
+      | (Pduparray (kind, _, _), [Uprim (Pmakearray (kind', _, _), args, _dbg)]) ->
           (* We arrive here in two cases:
              1. When using Closure, all the time.
              2. When using Flambda, if a float array longer than
@@ -518,7 +548,7 @@ let rec transl env e =
           transl_ccall env prim_obj_dup [arg] dbg
       | (Pmakearray _, []) ->
           Misc.fatal_error "Pmakearray is not allowed for an empty array"
-      | (Pmakearray (kind, _, mode), args) ->
+      | (Pmakearray (kind, _, (mode, _)), args) ->
          transl_make_array dbg env kind mode args
       | (Pbigarrayref(unsafe, _num_dims, elt_kind, layout), arg1 :: argl) ->
           let elt =
@@ -572,7 +602,7 @@ let rec transl env e =
       | (Pread_symbol _, _::_::_::_::_)
       | (Pbigarrayset (_, _, _, _), [])
       | (Pbigarrayref (_, _, _, _), [])
-      | ((Pbigarraydim _ | Pduparray (_, _)), ([] | _::_::_::_::_))
+      | ((Pbigarraydim _ | Pduparray (_, _, _)), ([] | _::_::_::_::_))
       | (Pprobe_is_enabled _, _)
         ->
           fatal_error "Cmmgen.transl:prim, wrong arity"
@@ -782,7 +812,7 @@ and transl_make_array dbg env kind mode args =
   match kind with
   | Pgenarray ->
       let prim =
-        match (mode : Lambda.alloc_mode) with
+        match (mode : Lambda.locality_mode) with
         | Alloc_heap -> "caml_make_array"
         | Alloc_local ->
           assert Config.stack_allocation;
@@ -849,7 +879,7 @@ and transl_prim_1 env p arg dbg =
   (* Heap operations *)
   | Pfield n ->
       get_field env (transl env arg) n dbg
-  | Pfloatfield (n,mode) ->
+  | Pfloatfield (n,(mode, _)) ->
       let ptr = transl env arg in
       box_float dbg mode (floatfield n ptr dbg)
   | Pint_as_pointer ->
@@ -865,13 +895,13 @@ and transl_prim_1 env p arg dbg =
   | Poffsetref n ->
       offsetref n (transl env arg) dbg
   (* Floating-point operations *)
-  | Pfloatofint m ->
+  | Pfloatofint (m, _) ->
       box_float dbg m (Cop(Cfloatofint, [untag_int(transl env arg) dbg], dbg))
   | Pintoffloat ->
      tag_int(Cop(Cintoffloat, [transl_unbox_float dbg env arg], dbg)) dbg
-  | Pnegfloat m ->
+  | Pnegfloat (m, _) ->
       box_float dbg m (Cop(Cnegf, [transl_unbox_float dbg env arg], dbg))
-  | Pabsfloat m ->
+  | Pabsfloat (m, _) ->
       box_float dbg m (Cop(Cabsf, [transl_unbox_float dbg env arg], dbg))
   (* String operations *)
   | Pstringlength | Pbyteslength ->
@@ -889,17 +919,17 @@ and transl_prim_1 env p arg dbg =
   | Pisint ->
       tag_int(Cop(Cand, [transl env arg; Cconst_int (1, dbg)], dbg)) dbg
   (* Boxed integers *)
-  | Pbintofint (bi, m) ->
+  | Pbintofint (bi, (m, _)) ->
       box_int dbg bi m (untag_int (transl env arg) dbg)
   | Pintofbint bi ->
       tag_int (transl_unbox_int dbg env bi arg) dbg
-  | Pcvtbint(bi1, bi2, m) ->
+  | Pcvtbint(bi1, bi2, (m, _)) ->
       box_int dbg bi2 m (transl_unbox_int dbg env bi1 arg)
-  | Pnegbint (bi, m) ->
+  | Pnegbint (bi, (m, _)) ->
       box_int dbg bi m
         (Cop(Csubi, [Cconst_int (0, dbg); transl_unbox_int dbg env bi arg],
           dbg))
-  | Pbbswap (bi, m) ->
+  | Pbbswap (bi, (m, _)) ->
       box_int dbg bi m (bbswap bi (transl_unbox_int dbg env bi arg) dbg)
   | Pbswap16 ->
       tag_int (bswap16 (ignore_high_bit_int (untag_int
@@ -911,10 +941,11 @@ and transl_prim_1 env p arg dbg =
     | Pstringrefu | Pstringrefs | Pbytesrefu | Pbytessetu
     | Pbytesrefs | Pbytessets | Pisout | Pread_symbol _
     | Pmakeblock (_, _, _, _) | Psetfield (_, _, _) | Psetfield_computed (_, _)
+    | Preuseblock (_, _, _, _) | Preusefloatblock (_, _, _)
     | Psetfloatfield (_, _) | Pduprecord (_, _) | Pccall _ | Pdivint _
     | Pmodint _ | Pintcomp _ | Pfloatcomp _ | Pmakearray (_, _, _)
     | Pcompare_ints | Pcompare_floats | Pcompare_bints _
-    | Pduparray (_, _) | Parrayrefu _ | Parraysetu _
+    | Pduparray (_, _, _) | Parrayrefu _ | Parraysetu _
     | Parrayrefs _ | Parraysets _ | Paddbint _ | Psubbint _ | Pmulbint _
     | Pdivbint _ | Pmodbint _ | Pandbint _ | Porbint _ | Pxorbint _
     | Plslbint _ | Plsrbint _ | Pasrbint _ | Pbintcomp (_, _)
@@ -994,22 +1025,22 @@ and transl_prim_2 env p arg1 arg2 dbg =
   | Pisout ->
       transl_isout (transl env arg1) (transl env arg2) dbg
   (* Float operations *)
-  | Paddfloat m ->
+  | Paddfloat (m, _) ->
       box_float dbg m (Cop(Caddf,
                     [transl_unbox_float dbg env arg1;
                      transl_unbox_float dbg env arg2],
                     dbg))
-  | Psubfloat m ->
+  | Psubfloat (m, _) ->
       box_float dbg m (Cop(Csubf,
                     [transl_unbox_float dbg env arg1;
                      transl_unbox_float dbg env arg2],
                     dbg))
-  | Pmulfloat m ->
+  | Pmulfloat (m, _) ->
       box_float dbg m (Cop(Cmulf,
                     [transl_unbox_float dbg env arg1;
                      transl_unbox_float dbg env arg2],
                     dbg))
-  | Pdivfloat m ->
+  | Pdivfloat (m, _) ->
       box_float dbg m (Cop(Cdivf,
                     [transl_unbox_float dbg env arg1;
                      transl_unbox_float dbg env arg2],
@@ -1025,9 +1056,9 @@ and transl_prim_2 env p arg1 arg2 dbg =
       stringref_unsafe (transl env arg1) (transl env arg2) dbg
   | Pstringrefs | Pbytesrefs ->
       stringref_safe (transl env arg1) (transl env arg2) dbg
-  | Pstring_load(size, unsafe, mode) | Pbytes_load(size, unsafe, mode) ->
+  | Pstring_load(size, unsafe, (mode, _)) | Pbytes_load(size, unsafe, (mode, _)) ->
       string_load size unsafe mode (transl env arg1) (transl env arg2) dbg
-  | Pbigstring_load(size, unsafe, mode) ->
+  | Pbigstring_load(size, unsafe, (mode, _)) ->
       bigstring_load size unsafe mode (transl env arg1) (transl env arg2) dbg
 
   (* Array operations *)
@@ -1037,50 +1068,50 @@ and transl_prim_2 env p arg1 arg2 dbg =
       arrayref_safe kind (transl env arg1) (transl env arg2) dbg
 
   (* Boxed integers *)
-  | Paddbint (bi, mode) ->
+  | Paddbint (bi, (mode, _)) ->
       box_int dbg bi mode (add_int
                         (transl_unbox_int_low dbg env bi arg1)
                         (transl_unbox_int_low dbg env bi arg2) dbg)
-  | Psubbint (bi, mode) ->
+  | Psubbint (bi, (mode, _)) ->
       box_int dbg bi mode (sub_int
                         (transl_unbox_int_low dbg env bi arg1)
                         (transl_unbox_int_low dbg env bi arg2) dbg)
-  | Pmulbint (bi, mode) ->
+  | Pmulbint (bi, (mode, _)) ->
       box_int dbg bi mode (mul_int
                         (transl_unbox_int_low dbg env bi arg1)
                         (transl_unbox_int_low dbg env bi arg2) dbg)
-  | Pdivbint { size = bi; is_safe; mode } ->
+  | Pdivbint { size = bi; is_safe; mode = (mode, _) } ->
       box_int dbg bi mode (safe_div_bi is_safe
                       (transl_unbox_int dbg env bi arg1)
                       (transl_unbox_int dbg env bi arg2)
                       bi dbg)
-  | Pmodbint { size = bi; is_safe; mode } ->
+  | Pmodbint { size = bi; is_safe; mode = (mode, _) } ->
       box_int dbg bi mode (safe_mod_bi is_safe
                       (transl_unbox_int dbg env bi arg1)
                       (transl_unbox_int dbg env bi arg2)
                       bi dbg)
-  | Pandbint (bi,mode) ->
+  | Pandbint (bi,(mode, _)) ->
       box_int dbg bi mode (Cop(Cand,
                      [transl_unbox_int_low dbg env bi arg1;
                       transl_unbox_int_low dbg env bi arg2], dbg))
-  | Porbint (bi, mode) ->
+  | Porbint (bi, (mode, _)) ->
       box_int dbg bi mode (Cop(Cor,
                      [transl_unbox_int_low dbg env bi arg1;
                       transl_unbox_int_low dbg env bi arg2], dbg))
-  | Pxorbint (bi, mode) ->
+  | Pxorbint (bi, (mode, _)) ->
       box_int dbg bi mode (Cop(Cxor,
                      [transl_unbox_int_low dbg env bi arg1;
                       transl_unbox_int_low dbg env bi arg2], dbg))
-  | Plslbint (bi, mode) ->
+  | Plslbint (bi, (mode, _)) ->
       box_int dbg bi mode (lsl_int
                         (transl_unbox_int_low dbg env bi arg1)
                         (untag_int(transl env arg2) dbg) dbg)
-  | Plsrbint (bi, mode) ->
+  | Plsrbint (bi, (mode, _)) ->
       box_int dbg bi mode (lsr_int
                         (make_unsigned_int bi (transl_unbox_int dbg env bi arg1)
                                         dbg)
                         (untag_int(transl env arg2) dbg) dbg)
-  | Pasrbint (bi, mode) ->
+  | Pasrbint (bi, (mode, _)) ->
       box_int dbg bi mode (asr_int
                         (transl_unbox_int dbg env bi arg1)
                         (untag_int(transl env arg2) dbg) dbg)
@@ -1092,9 +1123,9 @@ and transl_prim_2 env p arg1 arg2 dbg =
   | Pabsfloat _ | Pstringlength | Pbyteslength | Pbytessetu | Pbytessets
   | Pisint | Pbswap16 | Pint_as_pointer | Popaque | Pread_symbol _
   | Pmakeblock (_, _, _, _) | Pfield _ | Psetfield_computed (_, _)
-  | Pfloatfield _
+  | Pfloatfield _ | Preuseblock (_, _, _, _) | Preusefloatblock (_, _, _)
   | Pduprecord (_, _) | Pccall _ | Praise _ | Poffsetint _ | Poffsetref _
-  | Pmakearray (_, _, _) | Pduparray (_, _) | Parraylength _ | Parraysetu _
+  | Pmakearray (_, _, _) | Pduparray (_, _, _) | Parraylength _ | Parraysetu _
   | Parraysets _ | Pbintofint _ | Pintofbint _ | Pcvtbint (_, _, _)
   | Pnegbint _ | Pbigarrayref (_, _, _, _) | Pbigarrayset (_, _, _, _)
   | Pbigarraydim _ | Pbytes_set _ | Pbigstring_set _ | Pbbswap _
@@ -1147,12 +1178,12 @@ and transl_prim_3 env p arg1 arg2 arg3 dbg =
   | Pmulfloat _ | Pdivfloat _ | Pstringlength | Pstringrefu | Pstringrefs
   | Pbyteslength | Pbytesrefu | Pbytesrefs | Pisint | Pisout
   | Pbswap16 | Pint_as_pointer | Popaque | Pread_symbol _
-  | Pmakeblock (_, _, _, _)
+  | Pmakeblock (_, _, _, _) | Preuseblock(_, _, _, _) | Preusefloatblock(_, _, _)
   | Pfield _ | Psetfield (_, _, _) | Pfloatfield _ | Psetfloatfield (_, _)
   | Pduprecord (_, _) | Pccall _ | Praise _ | Pdivint _ | Pmodint _ | Pintcomp _
   | Pcompare_ints | Pcompare_floats | Pcompare_bints _
   | Poffsetint _ | Poffsetref _ | Pfloatcomp _ | Pmakearray (_, _, _)
-  | Pduparray (_, _) | Parraylength _ | Parrayrefu _ | Parrayrefs _
+  | Pduparray (_, _, _) | Parraylength _ | Parrayrefu _ | Parrayrefs _
   | Pbintofint _ | Pintofbint _ | Pcvtbint _ | Pnegbint _ | Paddbint _
   | Psubbint _ | Pmulbint _ | Pdivbint _ | Pmodbint _ | Pandbint _ | Porbint _
   | Pxorbint _ | Plslbint _ | Plsrbint _ | Pasrbint _ | Pbintcomp (_, _)
@@ -1394,18 +1425,18 @@ and transl_letrec env bindings cont =
   let rec init_blocks = function
     | [] -> fill_nonrec bsz
     | (_, _,
-       (RHS_block (Alloc_local, _) |
-        RHS_infix {blockmode=Alloc_local; _} |
-        RHS_floatblock (Alloc_local, _))) :: _ ->
+       (RHS_block ((Alloc_local, _), _) |
+        RHS_infix {blockmode=(Alloc_local, _); _} |
+        RHS_floatblock ((Alloc_local, _), _))) :: _ ->
       Misc.fatal_error "Invalid stack allocation found"
-    | (id, _exp, RHS_block (Alloc_heap, sz)) :: rem ->
+    | (id, _exp, RHS_block ((Alloc_heap, _), sz)) :: rem ->
         Clet(id, op_alloc "caml_alloc_dummy" [int_const dbg sz],
           init_blocks rem)
-    | (id, _exp, RHS_infix { blocksize; offset; blockmode=Alloc_heap }) :: rem ->
+    | (id, _exp, RHS_infix { blocksize; offset; blockmode=(Alloc_heap, _) }) :: rem ->
         Clet(id, op_alloc "caml_alloc_dummy_infix"
              [int_const dbg blocksize; int_const dbg offset],
              init_blocks rem)
-    | (id, _exp, RHS_floatblock (Alloc_heap, sz)) :: rem ->
+    | (id, _exp, RHS_floatblock ((Alloc_heap, _), sz)) :: rem ->
         Clet(id, op_alloc "caml_alloc_dummy_float" [int_const dbg sz],
           init_blocks rem)
     | (id, _exp, RHS_nonrec) :: rem ->

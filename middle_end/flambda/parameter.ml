@@ -23,7 +23,7 @@ open! Int_replace_polymorphic_compare
 
 type parameter = {
   var : Variable.t;
-  mode : Lambda.alloc_mode;
+  mode : Lambda.locality_mode;
   kind : Lambda.layout;
 }
 

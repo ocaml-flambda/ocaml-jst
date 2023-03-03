@@ -20,9 +20,9 @@ type effects = No_effects | Only_generative_effects | Arbitrary_effects
 type coeffects = No_coeffects | Has_coeffects
 
 let coeffects_of : Lambda.alloc_mode -> coeffects = function
-  | Alloc_heap ->
+  | Alloc_heap, _ ->
      No_coeffects
-  | Alloc_local ->
+  | Alloc_local, _ ->
      (* Ensure that local allocations are not reordered wrt. regions *)
      Has_coeffects
 
@@ -30,12 +30,15 @@ let for_primitive (prim : Clambda_primitives.primitive) =
   match prim with
   | Pmakeblock (_, _, _, m)
   | Pmakearray (_, Mutable, m) -> Only_generative_effects, coeffects_of m
+  | Preuseblock _ -> No_effects, Has_coeffects
+  | Preusefloatblock _ -> No_effects, Has_coeffects
   | Pmakearray (_, (Immutable | Immutable_unique), m) ->
      No_effects, coeffects_of m
-  | Pduparray (_, (Immutable | Immutable_unique)) ->
+  | Pduparray (_, (Immutable | Immutable_unique), (_, Alloc_shared)) ->
       No_effects, No_coeffects  (* Pduparray (_, Immutable) is allowed only on
                                    immutable arrays. *)
-  | Pduparray (_, Mutable) | Pduprecord _ ->
+  | Pduparray (_, (Immutable | Immutable_unique), (_, Alloc_unique))
+  | Pduparray (_, Mutable, _) | Pduprecord _ ->
       Only_generative_effects, Has_coeffects
   | Pccall { prim_name =
                ( "caml_format_float" | "caml_format_int" | "caml_int32_format"
@@ -164,14 +167,16 @@ let return_type_of_primitive (prim:Clambda_primitives.primitive) =
       Other
 
 let is_local_alloc = function
-  | Lambda.Alloc_local -> true
-  | Lambda.Alloc_heap -> false
+  | Lambda.Alloc_local, _ -> true
+  | Lambda.Alloc_heap, _ -> false
 
 let may_locally_allocate (prim:Clambda_primitives.primitive) : bool =
   match prim with
   | Pmakeblock (_, _, _, m)
   | Pmakearray (_, _, m) -> is_local_alloc m
-  | Pduparray (_, _)
+  | Preuseblock _ -> false
+  | Preusefloatblock _ -> false
+  | Pduparray (_, _,_)
   | Pduprecord (_,_) -> false
   | Pccall { prim_name =
                ( "caml_format_float" | "caml_format_int" | "caml_int32_format"

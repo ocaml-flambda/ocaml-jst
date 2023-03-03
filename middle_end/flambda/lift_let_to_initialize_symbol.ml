@@ -82,7 +82,7 @@ let rec accumulate ~substitution ~copied_lets ~extracted_lets
       let renamed = Variable.rename var in
       match named with
       | Prim (Pmakeblock (tag, (Immutable | Immutable_unique),
-                          _value_kind, Alloc_heap),
+                          _value_kind, (Alloc_heap, Alloc_shared)),
               args, _dbg) ->
         let tag = Tag.create_exn tag in
         let args =
@@ -130,7 +130,7 @@ let rec accumulate ~substitution ~copied_lets ~extracted_lets
           (Let_rec (renamed_defs,
                     Flambda_utils.name_expr ~name
                       (Prim (Pmakeblock (0, Immutable, None,
-                                         Lambda.alloc_heap),
+                                         Lambda.(alloc_heap, alloc_shared)),
                              List.map fst renamed_defs,
                              Debuginfo.none))))
       in

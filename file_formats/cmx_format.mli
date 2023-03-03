@@ -37,7 +37,7 @@ type export_info =
 type machtype_component = Val | Addr | Int | Float
 type machtype = machtype_component array
 
-type apply_fn := machtype list * machtype * Lambda.alloc_mode
+type apply_fn := machtype list * machtype * Lambda.locality_mode
 
 type unit_infos =
   { mutable ui_unit: Compilation_unit.t;  (* Compilation unit implemented *)

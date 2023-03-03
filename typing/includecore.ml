@@ -90,6 +90,10 @@ let value_descriptions ~loc env name
     loc
     vd1.val_attributes vd2.val_attributes
     name;
+  if !Clflags.verbose then
+  Format.eprintf "error5 %a \n %a \n %!"
+    !Btype.print_raw vd1.val_type
+    !Btype.print_raw vd2.val_type;
   match vd1.val_kind with
   | Val_prim p1 -> begin
      match vd2.val_kind with
@@ -97,19 +101,34 @@ let value_descriptions ~loc env name
          let ty1_global, _ = Ctype.instance_prim_mode p1 vd1.val_type in
          let ty2_global =
            let ty2, mode2 = Ctype.instance_prim_mode p2 vd2.val_type in
-           Option.iter Alloc_mode.make_global_exn mode2;
+           Option.iter (fun m -> Mode.Locality.submode_exn m Mode.Locality.global) mode2 ;
            ty2
          in
+         if !Clflags.verbose then
+         Format.eprintf "error6 %a \n %a \n %!"
+         !Btype.print_raw ty1_global
+         !Btype.print_raw ty2_global;
          (try Ctype.moregeneral env true ty1_global ty2_global
-          with Ctype.Moregen err -> raise (Dont_match (Type err)));
+          with Ctype.Moregen err ->  begin
+            if !Clflags.verbose then
+            Format.eprintf "error1: %a %a \n %!" !Btype.print_raw ty1_global !Btype.print_raw ty2_global;
+            raise (Dont_match (Type err))
+          end
+            )
+            ;
          let ty1_local, _ = Ctype.instance_prim_mode p1 vd1.val_type in
          let ty2_local =
            let ty2, mode2 = Ctype.instance_prim_mode p2 vd2.val_type in
-           Option.iter Alloc_mode.make_local_exn mode2;
+           Option.iter (fun m -> Mode.Locality.submode_exn Mode.Locality.local m) mode2;
            ty2
          in
          (try Ctype.moregeneral env true ty1_local ty2_local
-          with Ctype.Moregen err -> raise (Dont_match (Type err)));
+          with Ctype.Moregen err -> begin
+            if !Clflags.verbose then
+            Format.eprintf "error2: %a %a \n %!" !Btype.print_raw ty1_local !Btype.print_raw ty2_local;
+            raise (Dont_match (Type err))
+          end
+            );
          match primitive_descriptions p1 p2 with
          | None -> Tcoerce_none
          | Some err -> raise (Dont_match (Primitive_mismatch err))
@@ -508,7 +527,7 @@ module Record_diffing = struct
           Some (Mutability ord)
         else begin
           match compare_global_flags ld1.ld_global ld2.ld_global with
-          | None -> 
+          | None ->
             let tl1 = params1 @ [ld1.ld_type] in
             let tl2 = params2 @ [ld2.ld_type] in
             begin
@@ -516,9 +535,9 @@ module Record_diffing = struct
             | exception Ctype.Equality err ->
                 Some (Type err : label_mismatch)
             | () -> None
-            end 
+            end
           | Some e -> Some (Nonlocality e : label_mismatch)
-        end         
+        end
 
   let rec equal ~loc env params1 params2
       (labels1 : Types.label_declaration list)
@@ -644,7 +663,7 @@ let rec find_map_idx f ?(off = 0) l =
       match f x with
       | None -> find_map_idx f ~off:(off+1) xs
       | Some y -> Some (off, y)
-    end  
+    end
 
 module Variant_diffing = struct
 
@@ -656,7 +675,7 @@ module Variant_diffing = struct
         else begin
           let arg1_tys, arg1_gfs = List.split arg1
           and arg2_tys, arg2_gfs = List.split arg2
-          in          
+          in
           (* Ctype.equal must be called on all arguments at once, cf. PR#7378 *)
           match Ctype.equal env true (params1 @ arg1_tys) (params2 @ arg2_tys) with
           | exception Ctype.Equality err -> Some (Type err)

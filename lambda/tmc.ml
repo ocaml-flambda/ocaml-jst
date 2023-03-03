@@ -120,7 +120,7 @@ end = struct
 
   let apply constr t =
     let block_args = List.append constr.before @@ t :: constr.after in
-    Lprim (Pmakeblock (constr.tag, constr.flag, constr.shape, alloc_heap),
+    Lprim (Pmakeblock (constr.tag, constr.flag, constr.shape, (alloc_heap, alloc_shared)),
            block_args, constr.loc)
 
   let tmc_placeholder =
@@ -886,6 +886,9 @@ let rec choice ctx t =
 
     (* we don't handle { foo with x = ...; y = recursive-call } *)
     | Pduprecord _
+    (* similarly, we don't handle { unique_ foo with x = ...; y = recursive-call } *)
+    | Preuseblock _
+    | Preusefloatblock _
 
     (* we don't handle all-float records *)
     | Pmakefloatblock _

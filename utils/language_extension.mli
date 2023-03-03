@@ -4,6 +4,7 @@
 type t =
   | Comprehensions
   | Local
+  | Unique
   | Include_functor
   | Polymorphic_parameters
   | Immutable_arrays

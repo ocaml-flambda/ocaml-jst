@@ -149,7 +149,7 @@ and operation =
           The [exttype list] describes the unboxing types of the arguments.
           An empty list means "all arguments are machine words [XInt]". *)
   | Cload of memory_chunk * Asttypes.mutable_flag
-  | Calloc of Lambda.alloc_mode
+  | Calloc of Lambda.locality_mode
   | Cstore of memory_chunk * initialization_or_assignment
   | Caddi | Csubi | Cmuli | Cmulhi | Cdivi | Cmodi
   | Cand | Cor | Cxor | Clsl | Clsr | Casr

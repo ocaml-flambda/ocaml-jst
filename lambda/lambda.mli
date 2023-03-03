@@ -34,7 +34,7 @@ type immediate_or_pointer =
   | Immediate
   | Pointer
 
-type alloc_mode = private
+type locality_mode = private
   | Alloc_heap
   | Alloc_local
 
@@ -42,10 +42,19 @@ type modify_mode = private
   | Modify_heap
   | Modify_maybe_stack
 
-val alloc_heap : alloc_mode
+type uniqueness_mode =
+  | Alloc_unique
+  | Alloc_shared
+
+type alloc_mode = locality_mode * uniqueness_mode
+
+val alloc_heap : locality_mode
 
 (* Actually [Alloc_heap] if [Config.stack_allocation] is [false] *)
-val alloc_local : alloc_mode
+val alloc_local : locality_mode
+
+val alloc_unique : uniqueness_mode
+val alloc_shared : uniqueness_mode
 
 val modify_heap : modify_mode
 
@@ -88,6 +97,9 @@ type primitive =
   (* Operations on heap blocks *)
   | Pmakeblock of int * mutable_flag * block_shape * alloc_mode
   | Pmakefloatblock of mutable_flag * alloc_mode
+  (* modify_mode describe the existing block (similar to setfield) *)
+  | Preuseblock of int * mutable_flag * reuse_status list * modify_mode
+  | Preusefloatblock of mutable_flag * reuse_status list * modify_mode
   | Pfield of int * field_read_semantics
   | Pfield_computed of field_read_semantics
   | Psetfield of int * immediate_or_pointer * initialization_or_assignment
@@ -122,7 +134,7 @@ type primitive =
   | Pbyteslength | Pbytesrefu | Pbytessetu | Pbytesrefs | Pbytessets
   (* Array operations *)
   | Pmakearray of array_kind * mutable_flag * alloc_mode
-  | Pduparray of array_kind * mutable_flag
+  | Pduparray of array_kind * mutable_flag * alloc_mode
   (** For [Pduparray], the argument must be an immutable array.
       The arguments of [Pduparray] give the kind and mutability of the
       array being *produced* by the duplication. *)
@@ -217,6 +229,10 @@ and layout =
 and block_shape =
   value_kind list option
 
+and reuse_status =
+  | Reuse_set of layout
+  | Reuse_keep
+
 and boxed_integer = Primitive.boxed_integer =
     Pnativeint | Pint32 | Pint64
 
@@ -238,6 +254,8 @@ and raise_kind =
   | Raise_regular
   | Raise_reraise
   | Raise_notrace
+
+val immediate_or_pointer_of_value_kind : value_kind -> immediate_or_pointer
 
 val equal_primitive : primitive -> primitive -> bool
 
@@ -380,7 +398,7 @@ type lambda =
   | Lfor of lambda_for
   | Lassign of Ident.t * lambda
   | Lsend of meth_kind * lambda * lambda * lambda list
-             * region_close * alloc_mode * scoped_location * layout
+             * region_close * locality_mode * scoped_location * layout
   | Levent of lambda * lambda_event
   | Lifused of Ident.t * lambda
   | Lregion of lambda * layout
@@ -392,7 +410,7 @@ and lfunction = private
     body: lambda;
     attr: function_attribute; (* specified with [@inline] attribute *)
     loc : scoped_location;
-    mode : alloc_mode;     (* alloc mode of the closure itself *)
+    mode : locality_mode;  (* locality mode of the closure itself *)
     region : bool;         (* false if this function may locally
                               allocate in the caller's region *)
   }
@@ -421,7 +439,7 @@ and lambda_apply =
     ap_args : lambda list;
     ap_result_layout : layout;
     ap_region_close : region_close;
-    ap_mode : alloc_mode;
+    ap_mode : locality_mode;
     ap_loc : scoped_location;
     ap_tailcall : tailcall_attribute;
     ap_inlined : inlined_attribute; (* [@inlined] attribute in code *)
@@ -511,7 +529,7 @@ val lfunction :
   body:lambda ->
   attr:function_attribute -> (* specified with [@inline] attribute *)
   loc:scoped_location ->
-  mode:alloc_mode ->
+  mode:locality_mode ->
   region:bool ->
   lambda
 
@@ -602,12 +620,15 @@ val max_arity : unit -> int
       (currently to 126) for native code. *)
 
 val join_mode : alloc_mode -> alloc_mode -> alloc_mode
+val join_locality_mode : locality_mode -> locality_mode -> locality_mode
 val sub_mode : alloc_mode -> alloc_mode -> bool
+val sub_mode_locality : locality_mode -> locality_mode -> bool
 val eq_mode : alloc_mode -> alloc_mode -> bool
-val is_local_mode : alloc_mode -> bool
-val is_heap_mode : alloc_mode -> bool
+val eq_mode_locality : locality_mode -> locality_mode -> bool
+val is_local_mode : locality_mode -> bool
+val is_heap_mode : locality_mode -> bool
 
-val primitive_may_allocate : primitive -> alloc_mode option
+val primitive_may_allocate : primitive -> locality_mode option
   (** Whether and where a primitive may allocate.
       [Some Alloc_local] permits both options: that is, primitives that
       may allocate on both the GC heap and locally report this value. *)

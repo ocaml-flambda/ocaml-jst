@@ -476,8 +476,8 @@ let remove_mode_variables ty =
       visited := TypeSet.add ty !visited;
       match get_desc ty with
       | Tarrow ((_,marg,mret),targ,tret,_) ->
-         let _ = Alloc_mode.constrain_lower marg in
-         let _ = Alloc_mode.constrain_lower mret in
+         let _ = Mode.Alloc.constrain_legacy marg in
+         let _ = Mode.Alloc.constrain_legacy mret in
          go targ; go tret
       | _ -> iter_type_expr go ty
     end
@@ -1476,8 +1476,8 @@ let instance_label fixed lbl =
   )
 
 let prim_mode mvar = function
-  | Primitive.Prim_global, _ -> Alloc_mode.global
-  | Primitive.Prim_local, _ -> Alloc_mode.local
+  | Primitive.Prim_global, _ -> Mode.Locality.global
+  | Primitive.Prim_local, _ -> Mode.Locality.local
   | Primitive.Prim_poly, _ ->
     match mvar with
     | Some mvar -> mvar
@@ -1485,12 +1485,16 @@ let prim_mode mvar = function
 
 let rec instance_prim_locals locals mvar macc finalret ty =
   match locals, get_desc ty with
-  | l :: locals, Tarrow ((lbl,_,mret),arg,ret,commu) ->
-     let marg = prim_mode (Some mvar) l in
-     let macc = Alloc_mode.join [marg; mret; macc] in
+  | l :: locals, Tarrow ((lbl,marg,mret),arg,ret,commu) ->
+     let marg = Mode.Alloc.with_locality (prim_mode (Some mvar) l) marg in
+     let locality = Mode.Locality.join [marg.locality; mret.locality; macc.Mode.locality] in
+     let uniqueness = Mode.Uniqueness.shared in
+     let linearity = Mode.Linearity.join [marg.linearity; mret.linearity; macc.Mode.linearity] in
+     let linearity = Mode.Linearity.join [linearity; (Mode.Linearity.from_dual marg.uniqueness)] in
+     let macc = {Mode.locality; uniqueness; linearity} in
      let mret =
        match locals with
-       | [] -> finalret
+       | [] -> Mode.Alloc.with_locality finalret mret
        | _ :: _ -> macc (* curried arrow *)
      in
      let ret = instance_prim_locals locals mvar macc finalret ret in
@@ -1503,10 +1507,10 @@ let instance_prim_mode (desc : Primitive.description) ty =
   let is_poly = function Primitive.Prim_poly, _ -> true | _ -> false in
   if is_poly desc.prim_native_repr_res ||
        List.exists is_poly desc.prim_native_repr_args then
-    let mode = Alloc_mode.newvar () in
+    let mode = Mode.Locality.newvar () in
     let finalret = prim_mode (Some mode) desc.prim_native_repr_res in
     instance_prim_locals desc.prim_native_repr_args
-      mode Alloc_mode.global finalret ty,
+      mode Mode.Alloc.legacy finalret ty,
     Some mode
   else
     ty, None
@@ -2652,9 +2656,9 @@ let unify_package env unify_list lv1 p1 fl1 lv2 p2 fl2 =
   && !package_subtype env p2 fl2 p1 fl1 then () else raise Not_found
 
 let unify_alloc_mode_for tr_exn a b =
-  match Alloc_mode.equate a b with
+  match Mode.Alloc.equate a b with
   | Ok () -> ()
-  | Error () -> raise_unexplained_for tr_exn
+  | Error _ -> raise_unexplained_for tr_exn
 
 (* force unification in Reither when one side has a non-conjunctive type *)
 let rigid_variants = ref false
@@ -3338,8 +3342,8 @@ let filter_arrow env t l ~force_tpoly =
       end
     in
     let t2 = newvar2 level in
-    let marg = Alloc_mode.newvar () in
-    let mret = Alloc_mode.newvar () in
+    let marg = Mode.Alloc.newvar () in
+    let mret = Mode.Alloc.newvar () in
     let t' = newty2 ~level (Tarrow ((l,marg,mret), t1, t2, commu_ok)) in
     t', marg, t1, mret, t2
   in
@@ -3816,13 +3820,13 @@ let relevant_pairs pairs v =
 let moregen_alloc_mode v a1 a2 =
   match
     match v with
-    | Invariant -> Alloc_mode.equate a1 a2
-    | Covariant -> Alloc_mode.submode a1 a2
-    | Contravariant -> Alloc_mode.submode a2 a1
+    | Invariant -> Mode.Alloc.equate a1 a2
+    | Covariant -> Mode.Alloc.submode a1 a2
+    | Contravariant -> Mode.Alloc.submode a2 a1
     | Bivariant -> Ok ()
   with
   | Ok () -> ()
-  | Error () -> raise_unexplained_for Moregen
+  | Error _  -> raise_unexplained_for Moregen
 
 let may_instantiate inst_nongen t1 =
   let level = get_level t1 in
@@ -4746,11 +4750,11 @@ let has_constr_row' env t =
 
 let build_submode posi m =
   if posi then begin
-    let m', changed = Alloc_mode.newvar_below m in
+    let m', changed = Mode.Alloc.newvar_below m in
     let c = if changed then Changed else Unchanged in
     m', c
   end else begin
-    let m', changed = Alloc_mode.newvar_above m in
+    let m', changed = Mode.Alloc.newvar_above m in
     let c = if changed then Changed else Unchanged in
     m', c
   end
@@ -4960,9 +4964,9 @@ let subtype_error ~env ~trace ~unification_trace =
                     ~unification_trace))
 
 let subtype_alloc_mode env trace a1 a2 =
-  match Alloc_mode.submode a1 a2 with
+  match Mode.Alloc.submode a1 a2 with
   | Ok () -> ()
-  | Error () -> subtype_error ~env ~trace ~unification_trace:[]
+  | Error _ -> subtype_error ~env ~trace ~unification_trace:[]
 
 let rec subtype_rec env trace t1 t2 cstrs =
   if eq_type t1 t2 then cstrs else

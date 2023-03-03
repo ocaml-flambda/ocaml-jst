@@ -90,7 +90,7 @@ module Function_decls = struct
       let_rec_ident : Ident.t;
       closure_bound_var : Variable.t;
       kind : Lambda.function_kind;
-      mode : Lambda.alloc_mode;
+      mode : Lambda.locality_mode;
       region : bool;
       params : (Ident.t * Lambda.layout) list;
       return_layout : Lambda.layout;

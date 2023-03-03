@@ -173,7 +173,7 @@ val raise_symbol : Debuginfo.t -> string -> expression
 val test_bool : Debuginfo.t -> expression -> expression
 
 (** Float boxing and unboxing *)
-val box_float : Debuginfo.t -> Lambda.alloc_mode -> expression -> expression
+val box_float : Debuginfo.t -> Lambda.locality_mode -> expression -> expression
 val unbox_float : Debuginfo.t -> expression -> expression
 
 (** Complex number creation and access *)
@@ -308,11 +308,11 @@ val call_cached_method :
 
 (** Allocate a block of regular values with the given tag *)
 val make_alloc :
-  mode:Lambda.alloc_mode -> Debuginfo.t -> int -> expression list -> expression
+  mode:Lambda.locality_mode -> Debuginfo.t -> int -> expression list -> expression
 
 (** Allocate a block of unboxed floats with the given tag *)
 val make_float_alloc :
-  mode:Lambda.alloc_mode -> Debuginfo.t -> int -> expression list -> expression
+  mode:Lambda.locality_mode -> Debuginfo.t -> int -> expression list -> expression
 
 (** Bounds checking *)
 
@@ -340,7 +340,7 @@ val machtype_identifier : machtype -> string
 (** Get the symbol for the generic application with [n] arguments, and ensure
     its presence in the set of defined symbols *)
 val apply_function_sym :
-  machtype list -> machtype -> Lambda.alloc_mode -> string
+  machtype list -> machtype -> Lambda.locality_mode -> string
 
 (** Get the symbol for the generic currying or tuplifying wrapper with [n]
     arguments, and ensure its presence in the set of defined symbols. *)
@@ -389,7 +389,7 @@ val caml_int64_ops : string
 
 (** Box a given integer, without sharing of constants *)
 val box_int_gen :
-  Debuginfo.t -> Primitive.boxed_integer -> Lambda.alloc_mode ->
+  Debuginfo.t -> Primitive.boxed_integer -> Lambda.locality_mode ->
   expression -> expression
 
 (** Unbox a given boxed integer *)
@@ -424,7 +424,7 @@ val unaligned_load :
 
 (** [box_sized size dbg exp] *)
 val box_sized :
-  Clambda_primitives.memory_access_size -> Lambda.alloc_mode ->
+  Clambda_primitives.memory_access_size -> Lambda.locality_mode ->
   Debuginfo.t -> expression -> expression
 
 (** Primitives *)
@@ -499,10 +499,10 @@ val stringref_safe : binary_primitive
 (** Load by chunk from string/bytes, bigstring. Args: string, index *)
 val string_load :
   Clambda_primitives.memory_access_size -> Lambda.is_safe ->
-  Lambda.alloc_mode -> binary_primitive
+  Lambda.locality_mode -> binary_primitive
 val bigstring_load :
   Clambda_primitives.memory_access_size -> Lambda.is_safe ->
-  Lambda.alloc_mode -> binary_primitive
+  Lambda.locality_mode -> binary_primitive
 
 (** Arrays *)
 

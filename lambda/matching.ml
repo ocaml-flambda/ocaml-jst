@@ -2085,7 +2085,7 @@ let get_expr_args_record ~scopes head (arg, _mut) rem =
         | Record_unboxed _ -> arg
         | Record_float ->
            (* TODO: could optimise to Alloc_local sometimes *)
-           Lprim (Pfloatfield (lbl.lbl_pos, sem, alloc_heap), [ arg ], loc)
+           Lprim (Pfloatfield (lbl.lbl_pos, sem, (alloc_heap, alloc_shared)), [ arg ], loc)
         | Record_extension _ ->
             Lprim (Pfield (lbl.lbl_pos + 1, sem), [ arg ], loc)
       in
@@ -3515,7 +3515,7 @@ let failure_handler ~scopes loc ~failer () =
     Lprim
       ( Praise Raise_regular,
         [ Lprim
-            ( Pmakeblock (0, Immutable, None, alloc_heap),
+            ( Pmakeblock (0, Immutable, None, (alloc_heap, alloc_shared)),
               [ slot;
                 Lconst
                   (Const_block

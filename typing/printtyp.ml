@@ -524,7 +524,7 @@ and raw_type_desc ppf = function
     Tvar name -> fprintf ppf "Tvar %a" print_name name
   | Tarrow((l,arg,ret),t1,t2,c) ->
       fprintf ppf "@[<hov1>Tarrow((\"%s\",%a,%a),@,%a,@,%a,@,%s)@]"
-        (string_of_label l) Alloc_mode.print arg Alloc_mode.print ret
+        (string_of_label l) (Mode.Alloc.print' ~verbose:true) arg (Mode.Alloc.print' ~verbose:true) ret
         raw_type t1 raw_type t2
         (if is_commu_ok c then "Cok" else "Cunknown")
   | Ttuple tl ->
@@ -1092,6 +1092,26 @@ let add_type_to_preparation = prepare_type
 (* Disabled in classic mode when printing an unification error *)
 let print_labels = ref true
 
+let tree_of_mode mode =
+  let {Modes.locality = locality; uniqueness; linearity} = Mode.Alloc.check_const mode in
+  let locality = match locality with
+    | Some Global -> Olm_global
+    | Some Local -> Olm_local
+    | None -> Olm_unknown
+  in
+  let uniqueness = match uniqueness with
+    | Some Unique -> Oum_unique
+    | Some Shared -> Oum_shared
+    | None -> Oum_unknown
+  in
+  let linearity = match linearity with
+    | Some Many -> Olinm_many
+    | Some Once -> Olinm_once
+    | None -> Olinm_unknown
+  in
+  {Modes.locality = locality; uniqueness; linearity}
+
+
 let rec tree_of_typexp mode ty =
   let px = proxy ty in
   if List.memq px !printed_aliases && not (List.memq px !delayed) then
@@ -1123,19 +1143,9 @@ let rec tree_of_typexp mode ty =
           else
             tree_of_typexp mode ty1
         in
-        let am =
-          match Alloc_mode.check_const marg with
-          | Some Global -> Oam_global
-          | Some Local -> Oam_local
-          | None -> Oam_unknown
-        in
+        let am = tree_of_mode marg in
         let t2 = tree_of_typexp mode ty2 in
-        let rm =
-          match Alloc_mode.check_const mret with
-          | Some Global -> Oam_global
-          | Some Local -> Oam_local
-          | None -> Oam_unknown
-        in
+        let rm = tree_of_mode mret in
         Otyp_arrow (lab, am, t1, rm, t2)
     | Ttuple tyl ->
         Otyp_tuple (tree_of_typlist mode tyl)
@@ -1248,7 +1258,7 @@ and tree_of_typ_gf (ty, gf) =
     | Unrestricted -> Ogf_unrestricted
   in
   (tree_of_typexp Type ty, gf)
-  
+
 and tree_of_typobject mode fi nm =
   begin match nm with
   | None ->

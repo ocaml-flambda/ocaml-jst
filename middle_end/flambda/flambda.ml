@@ -32,7 +32,7 @@ type apply = {
   kind : call_kind;
   dbg : Debuginfo.t;
   reg_close : Lambda.region_close;
-  mode : Lambda.alloc_mode;
+  mode : Lambda.locality_mode;
   inlined : Lambda.inlined_attribute;
   specialise : Lambda.specialise_attribute;
   probe : Lambda.probe;
@@ -50,7 +50,7 @@ type send = {
   args : Variable.t list;
   dbg : Debuginfo.t;
   reg_close : Lambda.region_close;
-  mode : Lambda.alloc_mode;
+  mode : Lambda.locality_mode;
   result_layout : Lambda.layout;
 }
 
@@ -118,7 +118,7 @@ and set_of_closures = {
   free_vars : specialised_to Variable.Map.t;
   specialised_args : specialised_to Variable.Map.t;
   direct_call_surrogates : Variable.t Variable.Map.t;
-  alloc_mode : Lambda.alloc_mode;
+  alloc_mode : Lambda.locality_mode;
 }
 
 and function_declarations = {
@@ -132,7 +132,7 @@ and function_declaration = {
   closure_origin: Closure_origin.t;
   params : Parameter.t list;
   return_layout : Lambda.layout;
-  alloc_mode : Lambda.alloc_mode;
+  alloc_mode : Lambda.locality_mode;
   region : bool;
   body : t;
   free_variables : Variable.Set.t;
@@ -1062,7 +1062,7 @@ let rec check_param_modes mode = function
   | [] -> ()
   | p :: params ->
      let m = Parameter.alloc_mode p in
-     if not (Lambda.sub_mode mode m) then
+     if not (Lambda.sub_mode_locality mode m) then
        Misc.fatal_errorf "Nonmonotonic partial modes";
      check_param_modes m params
 
@@ -1232,7 +1232,7 @@ let create_set_of_closures ~function_decls ~free_vars ~specialised_args
     match Variable.Map.data function_decls.funs with
     | f :: fs ->
        assert (List.for_all (fun (g : function_declaration) ->
-                   Lambda.eq_mode f.alloc_mode g.alloc_mode) fs);
+                   Lambda.eq_mode_locality f.alloc_mode g.alloc_mode) fs);
        f.alloc_mode
     | [] -> assert false
   in

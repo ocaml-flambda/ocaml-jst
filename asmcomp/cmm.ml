@@ -155,7 +155,7 @@ and operation =
     Capply of machtype * Lambda.region_close
   | Cextcall of string * machtype * exttype list * bool
   | Cload of memory_chunk * Asttypes.mutable_flag
-  | Calloc of Lambda.alloc_mode
+  | Calloc of Lambda.locality_mode
   | Cstore of memory_chunk * initialization_or_assignment
   | Caddi | Csubi | Cmuli | Cmulhi | Cdivi | Cmodi
   | Cand | Cor | Cxor | Clsl | Clsr | Casr

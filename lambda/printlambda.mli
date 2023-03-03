@@ -31,6 +31,7 @@ val value_kind : formatter -> value_kind -> unit
 val value_kind' : formatter -> value_kind -> unit
 val layout : formatter -> layout -> unit
 val block_shape : formatter -> value_kind list option -> unit
+val reuse_statuses : formatter -> reuse_status list -> unit
 val record_rep : formatter -> Types.record_representation -> unit
 val print_bigarray :
   string -> bool -> Lambda.bigarray_kind -> formatter ->

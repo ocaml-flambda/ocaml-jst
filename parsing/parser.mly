@@ -167,8 +167,8 @@ let include_functor_ext_loc loc = mkloc "extension.include_functor" loc
 let include_functor_attr loc =
   mk_attr ~loc:loc (include_functor_ext_loc loc) (PStr [])
 
-let mkexp_stack ~loc ~kwd_loc exp =
-  ghexp ~loc (Pexp_apply(local_extension (make_loc kwd_loc), [Nolabel, exp]))
+let mkexp_stack exp loc eloc =
+  ghexp ~loc:eloc (Pexp_apply(local_extension loc, [Nolabel, exp]))
 
 let mkpat_stack pat loc =
   {pat with ppat_attributes = local_attr loc :: pat.ppat_attributes}
@@ -179,17 +179,90 @@ let mktyp_stack typ loc =
 let wrap_exp_stack exp loc =
   {exp with pexp_attributes = local_attr loc :: exp.pexp_attributes}
 
-let mkexp_local_if p ~loc ~kwd_loc exp =
-  if p then mkexp_stack ~loc ~kwd_loc exp else exp
+let unique_ext_loc loc = mkloc "extension.unique" loc
 
-let mkpat_local_if p pat loc =
-  if p then mkpat_stack pat (make_loc loc) else pat
+let once_ext_loc loc = mkloc "extension.once" loc
 
-let mktyp_local_if p typ loc =
-  if p then mktyp_stack typ (make_loc loc) else typ
 
-let wrap_exp_local_if p exp loc =
-  if p then wrap_exp_stack exp (make_loc loc) else exp
+let unique_attr loc =
+  mk_attr ~loc (unique_ext_loc loc) (PStr [])
+
+let once_attr loc =
+  mk_attr ~loc (once_ext_loc loc) (PStr [])
+
+let unique_extension loc =
+  Exp.mk ~loc:Location.none (Pexp_extension(unique_ext_loc loc, PStr []))
+
+let once_extension loc =
+  Exp.mk ~loc:Location.none (Pexp_extension(once_ext_loc loc, PStr []))
+
+let mkexp_unique exp loc eloc =
+  ghexp ~loc:eloc (Pexp_apply(unique_extension loc, [Nolabel, exp]))
+
+let mkexp_once exp loc eloc =
+  ghexp ~loc:eloc (Pexp_apply(once_extension loc, [Nolabel, exp]))
+
+let mkpat_unique pat loc =
+  {pat with ppat_attributes = unique_attr loc :: pat.ppat_attributes}
+
+let mkpat_once pat loc =
+  {pat with ppat_attributes = once_attr loc :: pat.ppat_attributes}
+
+let mktyp_unique typ loc =
+  {typ with ptyp_attributes = unique_attr loc :: typ.ptyp_attributes}
+
+let mktyp_once typ loc =
+  {typ with ptyp_attributes = once_attr loc :: typ.ptyp_attributes}
+
+let wrap_exp_unique exp loc =
+  {exp with pexp_attributes = unique_attr loc :: exp.pexp_attributes}
+
+let wrap_exp_once exp loc =
+  {exp with pexp_attributes = once_attr loc :: exp.pexp_attributes}
+
+(* modes including local and unique *)
+(** the location of unique/local attributes is a mess right now.
+See the following: unique and local attribute has the same
+location, which is not correct; in the future we should have a generic way
+to add more mode dimensions. **)
+
+type modes = Local | Unique | Once
+
+let mkexp_with_mode flag exp loc eloc =
+  match flag with
+  | Local -> mkexp_stack exp loc eloc
+  | Unique -> mkexp_unique exp loc eloc
+  | Once -> mkexp_once exp loc eloc
+
+let mkexp_with_modes flags exp eloc =
+  List.fold_left (fun exp (flag, loc) -> mkexp_with_mode flag exp loc eloc) exp flags
+
+let mkpat_with_mode flag pat loc =
+  match flag with
+  | Local -> mkpat_stack pat loc
+  | Unique -> mkpat_unique pat loc
+  | Once -> mkpat_once pat loc
+
+let mkpat_with_modes flags pat =
+  List.fold_left (fun pat (flag, loc) -> mkpat_with_mode flag pat loc) pat flags
+
+let mktyp_with_mode flag typ loc =
+  match flag with
+  | Local -> mktyp_stack typ loc
+  | Unique -> mktyp_unique typ loc
+  | Once -> mktyp_once typ loc
+
+let mktyp_with_modes flags typ =
+  List.fold_left (fun typ (flag, loc) -> mktyp_with_mode flag typ loc) typ flags
+
+let wrap_exp_with_mode flag exp loc =
+  match flag with
+  | Local -> wrap_exp_stack exp loc
+  | Unique -> wrap_exp_unique exp loc
+  | Once -> wrap_exp_once exp loc
+
+let wrap_exp_with_modes flags exp =
+  List.fold_left (fun exp (flag, loc) -> wrap_exp_with_mode flag exp loc) exp flags
 
 let curry_attr loc =
   mk_attr ~loc:Location.none (mkloc "extension.curry" loc) (PStr [])
@@ -846,6 +919,7 @@ let mk_directive ~loc name arg =
 %token NONREC                 "nonrec"
 %token OBJECT                 "object"
 %token OF                     "of"
+%token ONCE                   "once_"
 %token OPEN                   "open"
 %token <string> OPTLABEL      "?label:" (* just an example *)
 %token OR                     "or"
@@ -883,6 +957,7 @@ let mk_directive ~loc name arg =
 %token TYPE                   "type"
 %token <string> UIDENT        "UIdent" (* just an example *)
 %token UNDERSCORE             "_"
+%token UNIQUE                 "unique_"
 %token VAL                    "val"
 %token VIRTUAL                "virtual"
 %token WHEN                   "when"
@@ -2328,31 +2403,31 @@ seq_expr:
       mkexp ~loc:$sloc (Pexp_extension ($4, payload)) }
 ;
 labeled_simple_pattern:
-    QUESTION LPAREN optional_local label_let_pattern opt_default RPAREN
-      { (Optional (fst $4), $5, mkpat_local_if $3 (snd $4) $loc($3)) }
+    QUESTION LPAREN imode_flags label_let_pattern opt_default RPAREN
+      { (Optional (fst $4), $5, mkpat_with_modes $3 (snd $4) ) }
   | QUESTION label_var
       { (Optional (fst $2), None, snd $2) }
-  | OPTLABEL LPAREN optional_local let_pattern opt_default RPAREN
-      { (Optional $1, $5, mkpat_local_if $3 $4 $loc($3)) }
+  | OPTLABEL LPAREN imode_flags let_pattern opt_default RPAREN
+      { (Optional $1, $5, mkpat_with_modes $3 $4) }
   | OPTLABEL pattern_var
       { (Optional $1, None, $2) }
-  | TILDE LPAREN optional_local label_let_pattern RPAREN
+  | TILDE LPAREN imode_flags label_let_pattern RPAREN
       { (Labelled (fst $4), None,
-         mkpat_local_if $3 (snd $4) $loc($3)) }
+         mkpat_with_modes $3 (snd $4) ) }
   | TILDE label_var
       { (Labelled (fst $2), None, snd $2) }
   | LABEL simple_pattern
       { (Labelled $1, None, $2) }
-  | LABEL LPAREN LOCAL pattern RPAREN
-      { (Labelled $1, None, mkpat_stack $4 (make_loc $loc($3))) }
+  | LABEL LPAREN mode_flags_nonempty pattern RPAREN
+      { (Labelled $1, None, mkpat_with_modes $3 $4 ) }
   | simple_pattern
       { (Nolabel, None, $1) }
-  | LPAREN LOCAL let_pattern RPAREN
-      { (Nolabel, None, mkpat_stack $3 (make_loc $loc($2))) }
+  | LPAREN mode_flags_nonempty let_pattern RPAREN
+      { (Nolabel, None, mkpat_with_modes $2 $3 ) }
   | LABEL LPAREN poly_pattern RPAREN
       { (Labelled $1, None, $3) }
-  | LABEL LPAREN LOCAL poly_pattern RPAREN
-      { (Labelled $1, None, mkpat_stack $4 (make_loc $loc($2))) }
+  | LABEL LPAREN mode_flags_nonempty poly_pattern RPAREN
+      { (Labelled $1, None, mkpat_with_modes $3 $4) }
   | LPAREN poly_pattern RPAREN
       { (Nolabel, None, $2) }
 ;
@@ -2456,8 +2531,8 @@ expr:
   | UNDERSCORE
      { not_expecting $loc($1) "wildcard \"_\"" }
 /* END AVOID */
-  | LOCAL seq_expr
-     { mkexp_stack ~loc:$sloc ~kwd_loc:($loc($1)) $2 }
+  | mode_flag seq_expr
+     { mkexp_with_modes [$1] $2 $sloc }
 ;
 %inline expr_attrs:
   | LET MODULE ext_attributes mkrhs(module_name) module_binding_body IN seq_expr
@@ -2572,7 +2647,7 @@ comprehension_clause_binding:
   | attributes LOCAL pattern IN expr
       { Extensions.Comprehensions.
           { pattern    = $3
-          ; iterator   = In (mkexp_stack ~loc:$sloc ~kwd_loc:($loc($2)) $5)
+          ; iterator   = In (mkexp_stack $5 (make_loc $loc($2)) $sloc)
           ; attributes = $1
           }
       }
@@ -2747,7 +2822,7 @@ labeled_simple_expr:
 let_binding_body_no_punning:
     let_ident strict_binding
       { ($1, $2) }
-  | optional_local let_ident type_constraint EQUAL seq_expr
+  | imode_flags let_ident type_constraint EQUAL seq_expr
       { let v = $2 in (* PR#7344 *)
         let t =
           match $3 with
@@ -2756,28 +2831,24 @@ let_binding_body_no_punning:
           | _ -> assert false
         in
         let loc = Location.(t.ptyp_loc.loc_start, t.ptyp_loc.loc_end) in
-        let local_loc = $loc($1) in
         let typ = ghtyp ~loc (Ptyp_poly([],t)) in
         let patloc = ($startpos($2), $endpos($3)) in
         let pat =
-          mkpat_local_if $1 (ghpat ~loc:patloc (Ppat_constraint(v, typ)))
-            local_loc
+          mkpat_with_modes $1 (ghpat ~loc:patloc (Ppat_constraint(v, typ)))
         in
         let exp =
-          mkexp_local_if $1 ~loc:$sloc ~kwd_loc:($loc($1))
-            (wrap_exp_local_if $1 (mkexp_constraint ~loc:$sloc $5 $3)
-               local_loc)
+          mkexp_with_modes $1
+            (wrap_exp_with_modes $1 (mkexp_constraint ~loc:$sloc $5 $3)) $sloc
         in
         (pat, exp) }
-  | optional_local let_ident COLON poly(core_type) EQUAL seq_expr
+  | imode_flags let_ident COLON poly(core_type) EQUAL seq_expr
       { let patloc = ($startpos($2), $endpos($4)) in
         let pat =
-          mkpat_local_if $1
+          mkpat_with_modes $1
             (ghpat ~loc:patloc
                (Ppat_constraint($2, ghtyp ~loc:($loc($4)) $4)))
-            $loc($1)
         in
-        let exp = mkexp_local_if $1 ~loc:$sloc ~kwd_loc:($loc($1)) $6 in
+        let exp = mkexp_with_modes $1 $6 $sloc  in
         (pat, exp) }
   | let_ident COLON TYPE lident_list DOT core_type EQUAL seq_expr
       { let exp, poly =
@@ -2789,8 +2860,8 @@ let_binding_body_no_punning:
   | simple_pattern_not_ident COLON core_type EQUAL seq_expr
       { let loc = ($startpos($1), $endpos($3)) in
         (ghpat ~loc (Ppat_constraint($1, $3)), $5) }
-  | LOCAL let_ident local_strict_binding
-      { ($2, mkexp_stack ~loc:$sloc ~kwd_loc:($loc($1)) $3) }
+  | mode_flags_nonempty let_ident strict_binding_modes
+    { ($2, mkexp_with_modes $1 ($3 $1) $sloc)}
 ;
 let_binding_body:
   | let_binding_body_no_punning
@@ -2855,33 +2926,23 @@ letop_bindings:
         let and_ = {pbop_op; pbop_pat; pbop_exp; pbop_loc} in
         let_pat, let_exp, and_ :: rev_ands }
 ;
-fun_binding:
-    strict_binding
+fun_binding_gen:
+    strict_binding_modes
       { $1 }
   | type_constraint EQUAL seq_expr
-      { mkexp_constraint ~loc:$sloc $3 $1 }
+      { fun flags -> wrap_exp_with_modes flags (mkexp_constraint ~loc:$sloc $3 $1 )}
 ;
-strict_binding:
+strict_binding_modes:
     EQUAL seq_expr
-      { $2 }
-  | labeled_simple_pattern fun_binding
-      { let (l, o, p) = $1 in ghexp ~loc:$sloc (Pexp_fun(l, o, p, $2)) }
-  | LPAREN TYPE lident_list RPAREN fun_binding
-      { mk_newtypes ~loc:$sloc $3 $5 }
+      { fun _ -> $2 }
+  | labeled_simple_pattern fun_binding_gen
+      { fun flags -> let (l, o, p) = $1 in ghexp ~loc:$sloc (Pexp_fun(l, o, p, $2 flags)) }
+  | LPAREN TYPE lident_list RPAREN fun_binding_gen
+      { fun flags -> mk_newtypes ~loc:$sloc $3 ($5 flags) }
 ;
-local_fun_binding:
-    local_strict_binding
-      { $1 }
-  | type_constraint EQUAL seq_expr
-      { wrap_exp_stack (mkexp_constraint ~loc:$sloc $3 $1) (make_loc $sloc) }
-;
-local_strict_binding:
-    EQUAL seq_expr
-      { $2 }
-  | labeled_simple_pattern local_fun_binding
-      { let (l, o, p) = $1 in ghexp ~loc:$sloc (Pexp_fun(l, o, p, $2)) }
-  | LPAREN TYPE lident_list RPAREN local_fun_binding
-      { mk_newtypes ~loc:$sloc $3 $5 }
+%inline strict_binding:
+  strict_binding_modes
+  {$1 []}
 ;
 %inline match_cases:
   xs = preceded_or_separated_nonempty_llist(BAR, match_case)
@@ -2914,8 +2975,15 @@ fun_def:
   es = separated_nontrivial_llist(COMMA, expr)
     { es }
 ;
+record_with_content:
+  UNIQUE
+  e = simple_expr
+  { wrap_exp_unique e (make_loc $loc($1)) }
+  | e = simple_expr
+  { e }
+;
 record_expr_content:
-  eo = ioption(terminated(simple_expr, WITH))
+  eo = ioption(terminated(record_with_content, WITH))
   fields = separated_or_terminated_nonempty_list(SEMI, record_expr_field)
     { eo, fields }
 ;
@@ -3632,25 +3700,24 @@ function_type:
 strict_function_type:
   | mktyp(
       label = arg_label
-      local = optional_local
+      unique_local = imode_flags
       domain = extra_rhs(param_type)
       MINUSGREATER
       codomain = strict_function_type
-        { Ptyp_arrow(label, mktyp_local_if local domain $loc(local), codomain) }
+        { Ptyp_arrow(label, mktyp_with_modes unique_local domain , codomain) }
     )
     { $1 }
   | mktyp(
       label = arg_label
-      arg_local = optional_local
+      arg_unique_local = imode_flags
       domain = extra_rhs(param_type)
       MINUSGREATER
-      ret_local = optional_local
+      ret_unique_local = imode_flags
       codomain = tuple_type
       %prec MINUSGREATER
         { Ptyp_arrow(label,
-            mktyp_local_if arg_local domain $loc(arg_local),
-            mktyp_local_if ret_local (maybe_curry_typ codomain $loc(codomain))
-              $loc(ret_local)) }
+            mktyp_with_modes arg_unique_local domain ,
+            mktyp_with_modes ret_unique_local (maybe_curry_typ codomain $loc(codomain))) }
     )
     { $1 }
 ;
@@ -3662,11 +3729,14 @@ strict_function_type:
   | /* empty */
       { Nolabel }
 ;
-%inline optional_local:
-  | /* empty */
-    { false }
-  | LOCAL
-    { true }
+
+%inline mode_flag:
+     LOCAL {(Local, make_loc $sloc)}
+  //  | GLOBAL l = mode_flags { (Global, $loc($1)) :: l}
+   | UNIQUE {(Unique, make_loc $sloc)}
+  //  | SHARED l = mode_flags {(Shared, $loc($1)) :: l}
+   | ONCE {(Once, make_loc $sloc)}
+  //  | MANY l = mode_flags {(Many, $loc($1)) :: l}
 ;
 %inline param_type:
   | mktyp(
@@ -3677,6 +3747,18 @@ strict_function_type:
   | ty = tuple_type
     { ty }
 ;
+
+mode_flags:
+  {[]}
+  | mode_flag mode_flags {$1 :: $2}
+
+%inline imode_flags:
+  {[]}
+  | mode_flags_nonempty {$1}
+
+%inline mode_flags_nonempty:
+  mode_flag mode_flags {$1 :: $2}
+
 (* Tuple types include:
    - atomic types (see below);
    - proper tuple types:                  int * int * int list

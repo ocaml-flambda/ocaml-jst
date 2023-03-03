@@ -123,7 +123,7 @@ and uconstant ppf = function
   | Uconst_int i -> fprintf ppf "%i" i
 
 and apply_kind ppf : apply_kind -> unit = function
-  | (Rc_normal | Rc_nontail) , Alloc_heap -> fprintf ppf "apply"
+  | (Rc_normal | Rc_nontail), Alloc_heap -> fprintf ppf "apply"
   | Rc_close_at_apply, Alloc_heap -> fprintf ppf "apply[end_region]"
   | (Rc_normal | Rc_nontail), Alloc_local -> fprintf ppf "apply[L]"
   | Rc_close_at_apply, Alloc_local -> fprintf ppf "apply[end_region][L]"

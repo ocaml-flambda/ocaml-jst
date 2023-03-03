@@ -108,7 +108,7 @@ let primitive (p : Clambda_primitives.primitive) (args, approxs)
     : Flambda.named * A.t * Inlining_cost.Benefit.t =
   let fpc = !Clflags.float_const_prop in
   match p with
-  | Pmakeblock(tag_int, (Immutable | Immutable_unique), shape, mode) ->
+  | Pmakeblock(tag_int, ((Immutable | Immutable_unique) as immutability), shape, mode) ->
     let tag = Tag.create_exn tag_int in
     let shape = match shape with
       | None -> List.map (fun _ -> Lambda.Pgenval) args
@@ -116,7 +116,7 @@ let primitive (p : Clambda_primitives.primitive) (args, approxs)
     in
     let approxs = List.map2 A.augment_with_kind approxs shape in
     let shape = List.map2 A.augment_kind_with_approx approxs shape in
-    Prim (Pmakeblock(tag_int, Lambda.Immutable, Some shape, mode), args, dbg),
+    Prim (Pmakeblock(tag_int, immutability, Some shape, mode), args, dbg),
     A.value_block tag (Array.of_list approxs), C.Benefit.zero
   | Praise _ ->
     expr, A.value_bottom, C.Benefit.zero

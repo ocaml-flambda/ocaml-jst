@@ -27,8 +27,8 @@ let boxed_integer_mark name = function
   | Lambda.Pint64 -> Printf.sprintf "Int64.%s" name
 
 let alloc_kind = function
-  | Lambda.Alloc_heap -> ""
-  | Lambda.Alloc_local -> "[L]"
+  | Lambda.Alloc_heap, _ -> ""
+  | Lambda.Alloc_local, _ -> "[L]"
 
 let print_boxed_integer name ppf bi m =
   fprintf ppf "%s%s" (boxed_integer_mark name bi) (alloc_kind m);;
@@ -62,8 +62,8 @@ let primitive ppf (prim:Clambda_primitives.primitive) =
       fprintf ppf "read_symbol %s" sym
   | Pmakeblock(tag, mut, shape, mode) ->
       let mode = match mode with
-        | Alloc_heap -> ""
-        | Alloc_local -> "local"
+        | Alloc_heap, _ -> ""
+        | Alloc_local, _ -> "local"
       in
       let mut = match mut with
         | Immutable -> "block"
@@ -72,6 +72,30 @@ let primitive ppf (prim:Clambda_primitives.primitive) =
       in
       let name = "make" ^ mode ^ mut in
       fprintf ppf "%s %i%a" name tag Printlambda.block_shape shape
+  | Preuseblock(tag, mut, reuse_statuses, mode) ->
+      let mode = match mode with
+        | Modify_heap -> ""
+        | Modify_maybe_stack -> "maybe-stack"
+      in
+      let mut = match mut with
+        | Immutable -> "block"
+        | Immutable_unique -> "block_unique"
+        | Mutable -> "mutable"
+      in
+      let name = "reuse" ^ mode ^ mut in
+      fprintf ppf "%s %i%a" name tag Printlambda.reuse_statuses reuse_statuses
+  | Preusefloatblock(mut, reuse_statuses, mode) ->
+      let mode = match mode with
+        | Modify_heap -> ""
+        | Modify_maybe_stack -> "maybe-stack"
+      in
+      let mut = match mut with
+        | Immutable -> "floatblock"
+        | Immutable_unique -> "floatblock_unique"
+        | Mutable -> "floatmutable"
+      in
+      let name = "reuse" ^ mode ^ mut in
+      fprintf ppf "%s %a" name Printlambda.reuse_statuses reuse_statuses
   | Pfield n -> fprintf ppf "field %i" n
   | Pfield_computed -> fprintf ppf "field_computed"
   | Psetfield(n, ptr, init) ->
@@ -102,8 +126,8 @@ let primitive ppf (prim:Clambda_primitives.primitive) =
         | Assignment Modify_maybe_stack -> "(maybe-stack)"
       in
       fprintf ppf "setfield_%s%s_computed" instr init
-  | Pfloatfield (n, Alloc_heap) -> fprintf ppf "floatfield %i" n
-  | Pfloatfield (n, Alloc_local) -> fprintf ppf "floatfieldlocal %i" n
+  | Pfloatfield (n, (Alloc_heap, _)) -> fprintf ppf "floatfield %i" n
+  | Pfloatfield (n, (Alloc_local, _)) -> fprintf ppf "floatfieldlocal %i" n
   | Psetfloatfield (n, init) ->
       let init =
         match init with
@@ -160,16 +184,18 @@ let primitive ppf (prim:Clambda_primitives.primitive) =
 
   | Parraylength k -> fprintf ppf "array.length[%s]" (array_kind k)
   | Pmakearray (k, mut, mode) ->
-     let mode = match mode with Alloc_local -> "local" | Alloc_heap -> "" in
+     let mode = match mode with (Alloc_local, _) -> "local" | (Alloc_heap, _) -> "" in
      let mut = match mut with
        | Mutable -> ""
        | Immutable -> "_imm"
        | Immutable_unique -> "_unique"
      in
      fprintf ppf "make%sarray%s[%s]" mut mode (array_kind k)
-  | Pduparray (k, Mutable) -> fprintf ppf "duparray[%s]" (array_kind k)
-  | Pduparray (k, Immutable) -> fprintf ppf "duparray_imm[%s]" (array_kind k)
-  | Pduparray (k, Immutable_unique) ->
+  | Pduparray (k, Immutable, (_, Alloc_unique))
+  | Pduparray (k, Immutable_unique, (_, Alloc_unique))
+  | Pduparray (k, Mutable, _) -> fprintf ppf "duparray[%s]" (array_kind k)
+  | Pduparray (k, Immutable, (_, Alloc_shared)) -> fprintf ppf "duparray_imm[%s]" (array_kind k)
+  | Pduparray (k, Immutable_unique, (_, Alloc_shared)) ->
     fprintf ppf "duparray_unique[%s]" (array_kind k)
   | Parrayrefu k -> fprintf ppf "array.unsafe_get[%s]" (array_kind k)
   | Parraysetu k -> fprintf ppf "array.unsafe_set[%s]" (array_kind k)
@@ -178,7 +204,7 @@ let primitive ppf (prim:Clambda_primitives.primitive) =
   | Pisint -> fprintf ppf "isint"
   | Pisout -> fprintf ppf "isout"
   | Pbintofint (bi,m) -> print_boxed_integer "of_int" ppf bi m
-  | Pintofbint bi -> print_boxed_integer "to_int" ppf bi alloc_heap
+  | Pintofbint bi -> print_boxed_integer "to_int" ppf bi (alloc_heap, alloc_shared)
   | Pcvtbint (bi1, bi2, m) ->
       fprintf ppf "%s_of_%s%s" (boxed_integer_name bi2) (boxed_integer_name bi1)
         (alloc_kind m)
@@ -200,12 +226,12 @@ let primitive ppf (prim:Clambda_primitives.primitive) =
   | Plslbint (bi,m) -> print_boxed_integer "lsl" ppf bi m
   | Plsrbint (bi,m) -> print_boxed_integer "lsr" ppf bi m
   | Pasrbint (bi,m) -> print_boxed_integer "asr" ppf bi m
-  | Pbintcomp(bi, Ceq) -> print_boxed_integer "==" ppf bi alloc_heap
-  | Pbintcomp(bi, Cne) -> print_boxed_integer "!=" ppf bi alloc_heap
-  | Pbintcomp(bi, Clt) -> print_boxed_integer "<" ppf bi alloc_heap
-  | Pbintcomp(bi, Cgt) -> print_boxed_integer ">" ppf bi alloc_heap
-  | Pbintcomp(bi, Cle) -> print_boxed_integer "<=" ppf bi alloc_heap
-  | Pbintcomp(bi, Cge) -> print_boxed_integer ">=" ppf bi alloc_heap
+  | Pbintcomp(bi, Ceq) -> print_boxed_integer "==" ppf bi (alloc_heap, alloc_shared)
+  | Pbintcomp(bi, Cne) -> print_boxed_integer "!=" ppf bi (alloc_heap, alloc_shared)
+  | Pbintcomp(bi, Clt) -> print_boxed_integer "<" ppf bi (alloc_heap, alloc_shared)
+  | Pbintcomp(bi, Cgt) -> print_boxed_integer ">" ppf bi (alloc_heap, alloc_shared)
+  | Pbintcomp(bi, Cle) -> print_boxed_integer "<=" ppf bi (alloc_heap, alloc_shared)
+  | Pbintcomp(bi, Cge) -> print_boxed_integer ">=" ppf bi (alloc_heap, alloc_shared)
   | Pbigarrayref(unsafe, _n, kind, layout) ->
       Printlambda.print_bigarray "get" unsafe kind ppf layout
   | Pbigarrayset(unsafe, _n, kind, layout) ->

@@ -79,7 +79,7 @@ val inline_by_copying_function_body
   -> args:Variable.t list
   -> dbg:Debuginfo.t
   -> reg_close:Lambda.region_close
-  -> mode:Lambda.alloc_mode
+  -> mode:Lambda.locality_mode
   -> simplify:Inlining_decision_intf.simplify
   -> Flambda.t * Inline_and_simplify_aux.Result.t
 
@@ -107,6 +107,6 @@ val inline_by_copying_function_declaration
   -> direct_call_surrogates:Closure_id.t Closure_id.Map.t
   -> dbg:Debuginfo.t
   -> reg_close:Lambda.region_close
-  -> mode:Lambda.alloc_mode
+  -> mode:Lambda.locality_mode
   -> simplify:Inlining_decision_intf.simplify
   -> (Flambda.t * Inline_and_simplify_aux.Result.t) option

@@ -99,10 +99,23 @@ and out_variant =
   | Ovar_fields of (string * bool * out_type list) list
   | Ovar_typ of out_type
 
+and out_locality =
+  | Olm_local
+  | Olm_global
+  | Olm_unknown
+
+and out_uniqueness =
+  | Oum_unique
+  | Oum_shared
+  | Oum_unknown
+
+and out_linearity =
+  | Olinm_many
+  | Olinm_once
+  | Olinm_unknown
+
 and out_alloc_mode =
-  | Oam_local
-  | Oam_global
-  | Oam_unknown
+  (out_locality, out_uniqueness, out_linearity) Modes.modes
 
 type out_class_type =
   | Octy_constr of out_ident * out_type list

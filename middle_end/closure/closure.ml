@@ -513,19 +513,23 @@ let simplif_prim_pure ~backend fpc p (args, approxs) dbg =
   let open Clambda_primitives in
   match p, args, approxs with
   (* Block construction *)
-  | Pmakeblock(tag, Immutable, _kind, mode), _, _ ->
+  | Pmakeblock(tag, Immutable, _kind, (locality, uniqueness)), _, _ ->
       let field = function
         | Value_const c -> c
         | _ -> raise Exit
       in
       begin try
+        (match uniqueness with
+        | Alloc_shared -> ()
+        | Alloc_unique -> raise Exit
+        );
         let cst = Uconst_block (tag, List.map field approxs) in
         let name =
           Compilenv.new_structured_constant cst ~shared:true
         in
         make_const (Uconst_ref (name, Some cst))
       with Exit ->
-        (Uprim(p, args, dbg), Value_tuple (mode, Array.of_list approxs))
+        (Uprim(p, args, dbg), Value_tuple (locality, Array.of_list approxs))
       end
   (* Field access *)
   | Pfield n, _, [ Value_const(Uconst_ref(_, Some (Uconst_block(_, l)))) ]
@@ -564,7 +568,7 @@ let simplif_prim ~backend fpc p (args, approxs as args_approxs) dbg =
     (* XXX : always return the same approxs as simplif_prim_pure? *)
     let approx =
       match p with
-      | P.Pmakeblock(_, Immutable, _kind, mode) ->
+      | P.Pmakeblock(_, Immutable, _kind, (mode, _)) ->
           Value_tuple (mode, Array.of_list approxs)
       | _ ->
           Value_unknown

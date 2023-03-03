@@ -25,7 +25,7 @@ type arity = {
   params_layout : Lambda.layout list ;
   return_layout : Lambda.layout ;
 }
-type apply_kind = Lambda.region_close * Lambda.alloc_mode
+type apply_kind = Lambda.region_close * Lambda.locality_mode
 
 type ustructured_constant =
   | Uconst_float of float
@@ -117,7 +117,7 @@ and ufunction = {
   body   : ulambda;
   dbg    : Debuginfo.t;
   env    : Backend_var.t option;
-  mode   : Lambda.alloc_mode;
+  mode   : Lambda.locality_mode;
   poll   : poll_attribute;
 }
 
@@ -143,8 +143,8 @@ type function_description =
 (* Approximation of values *)
 
 type value_approximation =
-    Value_closure of alloc_mode * function_description * value_approximation
-  | Value_tuple of alloc_mode * value_approximation array
+    Value_closure of locality_mode * function_description * value_approximation
+  | Value_tuple of locality_mode * value_approximation array
   | Value_unknown
   | Value_const of uconstant
   | Value_global_field of string * int

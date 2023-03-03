@@ -321,23 +321,15 @@ and expression_extra i ppf (x,_,attrs) =
       attributes i ppf attrs;
 
 and alloc_mode i ppf m =
-  line i ppf "alloc_mode %s\n"
-  (match Types.Alloc_mode.check_const m with
-  | Some Global ->  "global"
-  | Some Local ->  "local"
-  | None -> "<modevar>"
-  )
+  line i ppf "alloc_mode %a\n" (Mode.Alloc.print' ~verbose:false) m
 
 and alloc_mode_option i ppf m = Option.iter (alloc_mode i ppf) m
 
+and locality_mode i ppf m =
+  line i ppf "locality_mode %a\n" (Mode.Locality.print' ~verbose:false ?label:None) m
+
 and value_mode i ppf m =
-  line i ppf "alloc_mode %s\n"
-  (match Types.Value_mode.check_const m with
-  | Some Global ->  "global"
-  | Some Local ->  "local"
-  | Some Regional -> "regional"
-  | None -> "<modevar>"
-  )
+  line i ppf "value_mode %a\n" (Mode.Value.print' ~verbose:false) m
 
 and expression_alloc_mode i ppf (expr, am) =
   alloc_mode i ppf am;
@@ -354,7 +346,7 @@ and expression i ppf x =
     List.iter (expression_extra (i+1) ppf) extra;
   end;
   match x.exp_desc with
-  | Texp_ident (li,_,_,_) -> line i ppf "Texp_ident %a\n" fmt_path li;
+  | Texp_ident (li,_,_,_,_) -> line i ppf "Texp_ident %a\n" fmt_path li;
   | Texp_instvar (_, li,_) -> line i ppf "Texp_instvar %a\n" fmt_path li;
   | Texp_constant (c) -> line i ppf "Texp_constant %a\n" fmt_constant c;
   | Texp_let (rf, l, e) ->
@@ -396,7 +388,7 @@ and expression i ppf x =
   | Texp_variant (l, eo) ->
       line i ppf "Texp_variant \"%s\"\n" l;
       option i expression_alloc_mode ppf eo;
-  | Texp_record { fields; representation; extended_expression; alloc_mode = am} ->
+  | Texp_record { fields; representation; extended_expression = ext_expr; alloc_mode = am } ->
       line i ppf "Texp_record\n";
       let i = i+1 in
       alloc_mode_option i ppf am;
@@ -405,15 +397,15 @@ and expression i ppf x =
       line i ppf "representation =\n";
       record_representation (i+1) ppf representation;
       line i ppf "extended_expression =\n";
-      option (i+1) expression ppf extended_expression;
-  | Texp_field (e, li, _, am) ->
+      option (i+1) extended_expression ppf ext_expr;
+  | Texp_field (e, li, _, _, am) ->
       line i ppf "Texp_field\n";
       alloc_mode_option i ppf am;
       expression i ppf e;
       longident i ppf li;
   | Texp_setfield (e1, am, li, _, e2) ->
       line i ppf "Texp_setfield\n";
-      alloc_mode i ppf am;
+      locality_mode i ppf am;
       expression i ppf e1;
       longident i ppf li;
       expression i ppf e2;
@@ -1035,6 +1027,13 @@ and record_field i ppf = function
       expression (i+1) ppf e;
   | _, Kept _ ->
       line i ppf "<kept>"
+
+and extended_expression i ppf = function
+  | (Create_new, e) ->
+      expression i ppf e;
+  | (In_place, e) ->
+      line i ppf "<in-place>\n";
+      expression (i+1) ppf e;
 
 and label_x_apply_arg i ppf (l, e) =
   line i ppf "<arg>\n";

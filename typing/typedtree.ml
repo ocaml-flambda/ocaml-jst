@@ -53,9 +53,9 @@ and pat_extra =
 and 'k pattern_desc =
   (* value patterns *)
   | Tpat_any : value pattern_desc
-  | Tpat_var : Ident.t * string loc * value_mode -> value pattern_desc
+  | Tpat_var : Ident.t * string loc * Modes.Value.t -> value pattern_desc
   | Tpat_alias :
-      value general_pattern * Ident.t * string loc * value_mode -> value pattern_desc
+      value general_pattern * Ident.t * string loc * Modes.Value.t -> value pattern_desc
   | Tpat_constant : constant -> value pattern_desc
   | Tpat_tuple : value general_pattern list -> value pattern_desc
   | Tpat_construct :
@@ -99,37 +99,37 @@ and exp_extra =
 
 
 and fun_curry_state =
-  | More_args of { partial_mode : Types.alloc_mode }
-  | Final_arg of { partial_mode : Types.alloc_mode }
+  | More_args of { partial_mode : Mode.Alloc.t }
+  | Final_arg of { partial_mode : Mode.Alloc.t }
 
 and expression_desc =
     Texp_ident of
-      Path.t * Longident.t loc * Types.value_description * ident_kind
+      Path.t * Longident.t loc * Types.value_description * ident_kind * unique_use
   | Texp_constant of constant
   | Texp_let of rec_flag * value_binding list * expression
   | Texp_function of { arg_label : arg_label; param : Ident.t;
       cases : value case list; partial : partial;
       region : bool; curry : fun_curry_state;
       warnings : Warnings.state;
-      arg_mode : Types.alloc_mode;
-      alloc_mode : Types.alloc_mode }
-  | Texp_apply of expression * (arg_label * apply_arg) list * apply_position * Types.alloc_mode
+      arg_mode : Modes.Alloc.t;
+      alloc_mode : Modes.Alloc.t }
+  | Texp_apply of expression * (arg_label * apply_arg) list * apply_position * Modes.Alloc.t
   | Texp_match of expression * computation case list * partial
   | Texp_try of expression * value case list
-  | Texp_tuple of expression list * Types.alloc_mode
+  | Texp_tuple of expression list * Modes.Alloc.t
   | Texp_construct of
-      Longident.t loc * constructor_description * expression list * Types.alloc_mode option
-  | Texp_variant of label * (expression * Types.alloc_mode) option
+      Longident.t loc * constructor_description * expression list * Modes.Alloc.t option
+  | Texp_variant of label * (expression * Modes.Alloc.t) option
   | Texp_record of {
       fields : ( Types.label_description * record_label_definition ) array;
       representation : Types.record_representation;
-      extended_expression : expression option;
-      alloc_mode : Types.alloc_mode option
+      extended_expression : (update_kind * expression) option;
+      alloc_mode : Modes.Alloc.t option
     }
-  | Texp_field of expression * Longident.t loc * label_description * Types.alloc_mode option
+  | Texp_field of expression * Longident.t loc * label_description * unique_use * Modes.Alloc.t option
   | Texp_setfield of
-      expression * Types.alloc_mode * Longident.t loc * label_description * expression
-  | Texp_array of mutable_flag * expression list * Types.alloc_mode
+      expression * Modes.Locality.t * Longident.t loc * label_description * expression
+  | Texp_array of mutable_flag * expression list * Modes.Alloc.t
   | Texp_list_comprehension of comprehension
   | Texp_array_comprehension of mutable_flag * comprehension
   | Texp_ifthenelse of expression * expression * expression option
@@ -149,7 +149,7 @@ and expression_desc =
       for_body : expression;
       for_region : bool;
     }
-  | Texp_send of expression * meth * apply_position * Types.alloc_mode
+  | Texp_send of expression * meth * apply_position * Modes.Alloc.t
   | Texp_new of
       Path.t * Longident.t loc * Types.class_declaration * apply_position
   | Texp_instvar of Path.t * Path.t * string loc
@@ -177,7 +177,12 @@ and expression_desc =
   | Texp_probe of { name:string; handler:expression; }
   | Texp_probe_is_enabled of { name:string }
 
-and ident_kind = Id_value | Id_prim of Types.alloc_mode option
+and ident_kind = Id_value | Id_prim of Mode.Locality.t option
+
+and unique_use =
+  { mode: Mode.Uniqueness.t;
+    mode': Mode.Linearity.t;
+  }
 
 and meth =
   | Tmeth_name of string
@@ -222,6 +227,10 @@ and record_label_definition =
   | Kept of Types.type_expr
   | Overridden of Longident.t loc * expression
 
+and update_kind =
+  | Create_new
+  | In_place
+
 and binding_op =
   {
     bop_op_path : Path.t;
@@ -237,9 +246,9 @@ and ('a, 'b) arg_or_omitted =
   | Omitted of 'b
 
 and omitted_parameter =
-  { mode_closure : alloc_mode;
-    mode_arg : alloc_mode;
-    mode_ret : alloc_mode }
+  { mode_closure : Mode.Alloc.t;
+    mode_arg : Mode.Alloc.t;
+    mode_ret : Mode.Alloc.t}
 
 and apply_arg = (expression, omitted_parameter) arg_or_omitted
 
@@ -405,7 +414,7 @@ and primitive_coercion =
   {
     pc_desc: Primitive.description;
     pc_type: type_expr;
-    pc_poly_mode: alloc_mode option;
+    pc_poly_mode: Mode.Locality.t option;
     pc_env: Env.t;
     pc_loc : Location.t;
   }

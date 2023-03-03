@@ -214,7 +214,7 @@ end = struct
     (* CR aspectorzabusky: Should I call [Translprim.event_after] here?
        [Translcore.asssert_failed] does (via a local intermediary). *)
     Lprim(Praise Raise_regular,
-          [Lprim(Pmakeblock(0, Immutable, None, alloc_heap),
+          [Lprim(Pmakeblock(0, Immutable, None, (alloc_heap, alloc_shared)),
                  [ slot
                  ; string
                      ~loc:loc'
@@ -417,7 +417,7 @@ module Resizable_array = struct
       default value and sometimes it will be the first element of the
       comprehension. *)
   let make ~loc array_kind elt =
-    Lprim(Pmakearray(array_kind, Mutable, alloc_heap),
+    Lprim(Pmakearray(array_kind, Mutable, (alloc_heap, alloc_shared)),
           Misc.replicate_list elt starting_size,
           loc)
 
@@ -683,7 +683,7 @@ let initial_array ~loc ~array_kind ~array_size ~array_sizing =
     (* Case 1: Float array optimization difficulties *)
     | (Fixed_size | Dynamic_size), Pgenarray ->
         Mutable,
-        Lprim(Pmakearray(Pgenarray, Immutable, Lambda.alloc_heap), [], loc)
+        Lprim(Pmakearray(Pgenarray, Immutable, Lambda.(alloc_heap, alloc_shared)), [], loc)
     (* Case 2: Fixed size, known array kind *)
     | Fixed_size, (Pintarray | Paddrarray) ->
         Immutable StrictOpt,
@@ -838,7 +838,7 @@ let comprehension
            (* If the array is known to be empty, we short-circuit and return
               the empty array *)
            Lprim(
-             Pmakearray(Pgenarray, Immutable, Lambda.alloc_heap),
+             Pmakearray(Pgenarray, Immutable, Lambda.(alloc_heap, alloc_shared)),
              [],
              loc),
            (* Otherwise, we translate it normally *)

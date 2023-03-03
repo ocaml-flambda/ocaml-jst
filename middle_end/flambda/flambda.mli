@@ -40,7 +40,7 @@ type apply = {
   kind : call_kind;
   dbg : Debuginfo.t;
   reg_close : Lambda.region_close;
-  mode : Lambda.alloc_mode;
+  mode : Lambda.locality_mode;
   inlined : Lambda.inlined_attribute;
   (** Instructions from the source code as to whether the callee should
       be inlined. *)
@@ -66,7 +66,7 @@ type send = {
   args : Variable.t list;
   dbg : Debuginfo.t;
   reg_close : Lambda.region_close;
-  mode : Lambda.alloc_mode;
+  mode : Lambda.locality_mode;
   result_layout : Lambda.layout;
 }
 
@@ -290,7 +290,7 @@ and set_of_closures = private {
       functions (which will be inlined at direct call sites, but will
       penalise indirect call sites).
       [direct_call_surrogates] may not be transitively closed. *)
-  alloc_mode : Lambda.alloc_mode;
+  alloc_mode : Lambda.locality_mode;
   (** Whether these closures are allocated on the heap or locally. *)
 }
 
@@ -316,7 +316,7 @@ and function_declaration = private {
   closure_origin: Closure_origin.t;
   params : Parameter.t list;
   return_layout : Lambda.layout;
-  alloc_mode : Lambda.alloc_mode;
+  alloc_mode : Lambda.locality_mode;
   region : bool;
   body : t;
   (* CR-soon mshinwell: inconsistent naming free_variables/free_vars here and
@@ -567,7 +567,7 @@ end
     symbols occurring in the specified [body]. *)
 val create_function_declaration
    : params:Parameter.t list
-  -> alloc_mode:Lambda.alloc_mode
+  -> alloc_mode:Lambda.locality_mode
   -> region:bool
   -> body:t
   -> stub:bool

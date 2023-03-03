@@ -109,7 +109,7 @@ let alloc_float_header mode dbg =
   | Lambda.Alloc_local -> Cconst_natint (float_local_header, dbg)
 let alloc_floatarray_header len dbg = Cconst_natint (floatarray_header len, dbg)
 let alloc_closure_header ~mode sz dbg =
-  match (mode : Lambda.alloc_mode) with
+  match (mode : Lambda.locality_mode) with
   | Alloc_heap -> Cconst_natint (white_closure_header sz, dbg)
   | Alloc_local -> Cconst_natint (local_closure_header sz, dbg)
 let alloc_infix_header ofs dbg = Cconst_natint (infix_header ofs, dbg)
@@ -848,11 +848,13 @@ let unique_arity_identifier arity =
   then Int.to_string (List.length arity)
   else String.concat "_" (List.map machtype_identifier arity)
 
-let send_function_name arity result (mode : Lambda.alloc_mode) =
+let send_function_name arity result (mode : Lambda.locality_mode) =
   let res =
     match result with [| Val |] -> "" | _ -> "_R" ^ machtype_identifier result
   in
-  let suff = match mode with Alloc_heap -> "" | Alloc_local -> "L" in
+  let suff = match mode with
+    | Alloc_heap -> ""
+    | Alloc_local -> "L" in
   "caml_send" ^ unique_arity_identifier arity ^ res ^ suff
 
 let call_cached_method obj tag cache pos args args_type result (apos,mode) dbg =
@@ -906,11 +908,13 @@ let make_checkbound dbg = function
       Cop(Ccheckbound, args, dbg)
 
 (* Record application and currying functions *)
-let apply_function_name arity result (mode : Lambda.alloc_mode) =
+let apply_function_name arity result (mode : Lambda.locality_mode) =
   let res =
     match result with [| Val |] -> "" | _ -> "_R" ^ machtype_identifier result
   in
-  let suff = match mode with Alloc_heap -> "" | Alloc_local -> "L" in
+  let suff = match mode with
+    | Alloc_heap -> ""
+    | Alloc_local -> "L" in
   "caml_apply" ^ unique_arity_identifier arity ^ res ^ suff
 
 let apply_function_sym arity result mode =
@@ -1947,7 +1951,7 @@ let placeholder_fun_dbg ~human_name:_ = Debuginfo.none
            (app closN-1.code aN closN-1))))
 *)
 
-let apply_function_body arity result (mode : Lambda.alloc_mode) =
+let apply_function_body arity result (mode : Lambda.locality_mode) =
   let dbg = placeholder_dbg in
   let args = List.map (fun _ -> V.create_local "arg") arity in
   let clos = V.create_local "clos" in
@@ -2276,7 +2280,7 @@ let intermediate_curry_functions ~nlocal ~arity result =
       let name2 = if num = 0 then name1 else name1 ^ "_" ^ Int.to_string num in
       let arg = V.create_local "arg" and clos = V.create_local "clos" in
       let fun_dbg = placeholder_fun_dbg ~human_name:name2 in
-      let mode : Lambda.alloc_mode =
+      let mode : Lambda.locality_mode =
         if num >= narity - nlocal then Lambda.alloc_local else Lambda.alloc_heap
       in
       let has_nary = curry_clos_has_nary_application ~narity (num + 1) in
@@ -2364,8 +2368,8 @@ let default_apply =
 module Generic_fns_tbl = struct
   type t =
     { curry : (Lambda.function_kind * machtype list * machtype, unit) Hashtbl.t;
-      apply : (machtype list * machtype * Lambda.alloc_mode, unit) Hashtbl.t;
-      send : (machtype list * machtype * Lambda.alloc_mode, unit) Hashtbl.t
+      apply : (machtype list * machtype * Lambda.locality_mode, unit) Hashtbl.t;
+      send : (machtype list * machtype * Lambda.locality_mode, unit) Hashtbl.t
     }
 
   let make () =

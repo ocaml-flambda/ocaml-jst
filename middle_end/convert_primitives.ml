@@ -26,8 +26,12 @@ let convert (prim : Lambda.primitive) : Clambda_primitives.primitive =
   match prim with
   | Pmakeblock (tag, mutability, shape, mode) ->
       Pmakeblock (tag, mutability, shape, mode)
+  | Preuseblock (tag, mutability, reuse_statuses, mode) ->
+      Preuseblock (tag, mutability, reuse_statuses, mode)
   | Pmakefloatblock (mutability, mode) ->
       Pmakearray (Pfloatarray, mutability, mode)
+  | Preusefloatblock (mutability, reuse_statuses, mode) ->
+      Preusefloatblock (mutability, reuse_statuses, mode)
   | Pfield (field, _) -> Pfield field
   | Pfield_computed _sem -> Pfield_computed
   | Psetfield (field, imm_or_pointer, init_or_assign) ->
@@ -79,7 +83,7 @@ let convert (prim : Lambda.primitive) : Clambda_primitives.primitive =
   | Pbytesrefs -> Pbytesrefs
   | Pbytessets -> Pbytessets
   | Pmakearray (kind, mutability, mode) -> Pmakearray (kind, mutability, mode)
-  | Pduparray (kind, mutability) -> Pduparray (kind, mutability)
+  | Pduparray (kind, mutability, mode) -> Pduparray (kind, mutability, mode)
   | Parraylength kind -> Parraylength kind
   | Parrayrefu kind -> Parrayrefu kind
   | Parraysetu kind -> Parraysetu kind
@@ -109,13 +113,13 @@ let convert (prim : Lambda.primitive) : Clambda_primitives.primitive =
   | Pbigarrayset (safe, dims, kind, layout) ->
       Pbigarrayset (safe, dims, kind, layout)
   | Pstring_load_16 is_unsafe ->
-      Pstring_load (Sixteen, convert_unsafety is_unsafe, Lambda.alloc_heap)
+      Pstring_load (Sixteen, convert_unsafety is_unsafe, Lambda.(alloc_heap, alloc_shared))
   | Pstring_load_32 (is_unsafe,m) ->
       Pstring_load (Thirty_two, convert_unsafety is_unsafe, m)
   | Pstring_load_64 (is_unsafe, m) ->
       Pstring_load (Sixty_four, convert_unsafety is_unsafe, m)
   | Pbytes_load_16 is_unsafe ->
-      Pbytes_load (Sixteen, convert_unsafety is_unsafe, Lambda.alloc_heap)
+      Pbytes_load (Sixteen, convert_unsafety is_unsafe, Lambda.(alloc_heap, alloc_shared))
   | Pbytes_load_32 (is_unsafe, m) ->
       Pbytes_load (Thirty_two, convert_unsafety is_unsafe, m)
   | Pbytes_load_64 (is_unsafe, m) ->
@@ -127,7 +131,7 @@ let convert (prim : Lambda.primitive) : Clambda_primitives.primitive =
   | Pbytes_set_64 is_unsafe ->
       Pbytes_set (Sixty_four, convert_unsafety is_unsafe)
   | Pbigstring_load_16 is_unsafe ->
-      Pbigstring_load (Sixteen, convert_unsafety is_unsafe, Lambda.alloc_heap)
+      Pbigstring_load (Sixteen, convert_unsafety is_unsafe, Lambda.(alloc_heap, alloc_shared))
   | Pbigstring_load_32 (is_unsafe, m) ->
       Pbigstring_load (Thirty_two, convert_unsafety is_unsafe, m)
   | Pbigstring_load_64 (is_unsafe, m) ->

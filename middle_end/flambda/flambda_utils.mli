@@ -65,7 +65,7 @@ val description_of_toplevel_node : Flambda.t -> string
 val make_closure_declaration
    : is_classic_mode:bool
   -> id:Variable.t
-  -> alloc_mode:Lambda.alloc_mode
+  -> alloc_mode:Lambda.locality_mode
   -> region:bool
   -> body:Flambda.t
   -> params:Parameter.t list

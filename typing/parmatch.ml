@@ -36,7 +36,7 @@ let omega_list = Patterns.omega_list
 
 let extra_pat =
   make_pat
-    (Tpat_var (Ident.create_local "+", mknoloc "+", Value_mode.max_mode))
+    (Tpat_var (Ident.create_local "+", mknoloc "+", Mode.Value.max_mode))
     Ctype.none Env.empty
 
 
@@ -926,7 +926,7 @@ let build_other ext env =
           make_pat
             (Tpat_var (Ident.create_local "*extension*",
                        {txt="*extension*"; loc = d.pat_loc},
-                       Value_mode.max_mode))
+                       Mode.Value.max_mode))
             Ctype.none Env.empty
       | Construct _ ->
           begin match ext with
@@ -2454,7 +2454,7 @@ let all_rhs_idents exp =
   let open Tast_iterator in
   let expr_iter iter exp =
     (match exp.exp_desc with
-      | Texp_ident (path, _lid, _descr, _kind) ->
+      | Texp_ident (path, _lid, _descr, _kind, _mode) ->
         List.iter (fun id -> ids := Ident.Set.add id !ids) (Path.heads path)
       (* Use default iterator methods for rest of match.*)
       | _ -> Tast_iterator.default_iterator.expr iter exp);
@@ -2463,7 +2463,7 @@ let all_rhs_idents exp =
     | Texp_letmodule
         (id_mod,_,_,
          {mod_desc=
-          Tmod_unpack ({exp_desc=Texp_ident (Path.Pident id_exp,_,_,_)},_)},
+          Tmod_unpack ({exp_desc=Texp_ident (Path.Pident id_exp,_,_,_,_)},_)},
          _) ->
            assert (Ident.Set.mem id_exp !ids) ;
            begin match id_mod with

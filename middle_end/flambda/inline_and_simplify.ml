@@ -846,7 +846,7 @@ and simplify_partial_application env r ~lhs_of_application
     List.fold_left (fun _mode (p,_) -> Parameter.alloc_mode p)
       function_decl.A.alloc_mode applied_args
   in
-  if not (Lambda.sub_mode partial_mode mode) then
+  if not (Lambda.sub_mode_locality partial_mode mode) then
     Misc.fatal_errorf "Partial application of %a with wrong mode at %s"
       Closure_id.print closure_id_being_applied
       (Debuginfo.to_string dbg);

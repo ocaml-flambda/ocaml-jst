@@ -23,8 +23,8 @@ type allocation_point =
 
 type allocated_const =
   | Normal of Allocated_const.t
-  | Array of Lambda.array_kind * Lambda.mutable_flag * Variable.t list
-  | Duplicate_array of Lambda.array_kind * Lambda.mutable_flag * Variable.t
+  | Array of Lambda.array_kind * Lambda.mutable_flag * Lambda.alloc_mode * Variable.t list
+  | Duplicate_array of Lambda.array_kind * Lambda.mutable_flag * Lambda.alloc_mode * Variable.t
 
 type constant_defining_value =
   | Allocated_const of allocated_const
@@ -49,10 +49,10 @@ type definitions = {
 
 let print_constant_defining_value ppf = function
   | Allocated_const (Normal const) -> Allocated_const.print ppf const
-  | Allocated_const (Array (_, _, vars)) ->
+  | Allocated_const (Array (_, _, _, vars)) ->
     Format.fprintf ppf "[| %a |]"
       (Format.pp_print_list Variable.print) vars
-  | Allocated_const (Duplicate_array (_, _, var)) ->
+  | Allocated_const (Duplicate_array (_, _, _, var)) ->
     Format.fprintf ppf "dup_array(%a)" Variable.print var
   | Block (tag, vars) ->
     Format.fprintf ppf "[|%a: %a|]"

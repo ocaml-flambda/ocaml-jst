@@ -2769,3 +2769,28 @@ Error: This local value escapes its region
   Hint: This is a partial application
         Adding 1 more argument will make the value non-local
 |}]
+
+(* reported internal to Jane Street as TANDC-1742 *)
+
+module M = struct
+  let fold_until :
+    'a list -> init:'accum ->
+    f:local_ ('accum -> 'a -> ('accum, 'final) Either.t) ->
+    finish:local_ ('accum -> 'final) ->
+    'final =
+    fun _ -> assert false
+
+  (* this led to a poor error message about a value that escapes its region,
+     but really it's just under-applied *)
+  let f () = fold_until [] ~init:0 ~f:(fun _ _ -> Right ())
+end
+
+[%%expect {|
+Line 11, characters 13-59:
+11 |   let f () = fold_until [] ~init:0 ~f:(fun _ _ -> Right ())
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: This local value escapes its region
+  Hint: Cannot return local value without an explicit "local_" annotation
+  Hint: This is a partial application
+        Adding 1 more argument will make the value non-local
+|}]

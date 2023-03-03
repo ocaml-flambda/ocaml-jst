@@ -1,6 +1,7 @@
 type t =
   | Comprehensions
   | Local
+  | Unique
   | Include_functor
   | Polymorphic_parameters
   | Immutable_arrays
@@ -10,6 +11,7 @@ let equal (a : t) (b : t) = (a = b)
 let all =
   [ Comprehensions
   ; Local
+  ; Unique
   ; Include_functor
   ; Polymorphic_parameters
   ; Immutable_arrays
@@ -24,6 +26,7 @@ let default_extensions =
 let to_string = function
   | Comprehensions -> "comprehensions_experimental"
   | Local -> "local"
+  | Unique -> "unique"
   | Include_functor -> "include_functor"
   | Polymorphic_parameters -> "polymorphic_parameters"
   | Immutable_arrays -> "immutable_arrays_experimental"
@@ -31,6 +34,7 @@ let to_string = function
 let of_string extn = match String.lowercase_ascii extn with
   | "comprehensions_experimental" -> Some Comprehensions
   | "local" -> Some Local
+  | "unique" -> Some Unique
   | "include_functor" -> Some Include_functor
   | "polymorphic_parameters" -> Some Polymorphic_parameters
   | "immutable_arrays_experimental" -> Some Immutable_arrays
@@ -45,6 +49,7 @@ let of_string_exn extn =
 let is_erasable = function
   | Local ->
       true
+  | Unique (* have no idea what I'm doing *)
   | Comprehensions
   | Include_functor
   | Polymorphic_parameters

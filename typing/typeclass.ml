@@ -131,6 +131,9 @@ let unbound_class =
   Path.Pident (Ident.create_local "*undef*")
 
 
+(* All class identifiers are used shared. *)
+let shared_use = {mode = Mode.Uniqueness.shared; mode' = Mode.Linearity.many}
+
                 (************************************)
                 (*  Some operations on class types  *)
                 (************************************)
@@ -193,7 +196,7 @@ let rec constructor_type constr cty =
   | Cty_signature _ ->
       constr
   | Cty_arrow (l, ty, cty) ->
-      let arrow_desc = l, Alloc_mode.global, Alloc_mode.global in
+      let arrow_desc = l, Mode.Alloc.legacy, Mode.Alloc.legacy in
       let ty = Ctype.newmono ty in
       Ctype.newty
         (Tarrow (arrow_desc, ty, constructor_type constr cty, commu_ok))
@@ -259,9 +262,9 @@ let unify_delayed_method_type loc env label ty expected_ty=
       raise(Error(loc, env, Field_type_mismatch ("method", label, trace)))
 
 let type_constraint val_env sty sty' loc =
-  let cty  = transl_simple_type val_env ~closed:false Global sty in
+  let cty  = transl_simple_type val_env ~closed:false Global Many sty in
   let ty = cty.ctyp_type in
-  let cty' = transl_simple_type val_env ~closed:false Global sty' in
+  let cty' = transl_simple_type val_env ~closed:false Global Many sty' in
   let ty' = cty'.ctyp_type in
   begin
     try Ctype.unify val_env ty ty' with Ctype.Unify err ->
@@ -301,7 +304,7 @@ let rec class_type_field env sign self_scope ctf =
   | Pctf_val ({txt=lab}, mut, virt, sty) ->
       mkctf_with_attrs
         (fun () ->
-          let cty = transl_simple_type env ~closed:false Global sty in
+          let cty = transl_simple_type env ~closed:false Global Many sty in
           let ty = cty.ctyp_type in
           add_instance_variable ~strict:false loc env lab mut virt ty sign;
           Tctf_val (lab, mut, virt, cty))
@@ -325,7 +328,7 @@ let rec class_type_field env sign self_scope ctf =
                  ) :: !delayed_meth_specs;
                Tctf_method (lab, priv, virt, returned_cty)
            | _ ->
-               let cty = transl_simple_type env ~closed:false Global sty in
+               let cty = transl_simple_type env ~closed:false Global Many sty in
                let ty = cty.ctyp_type in
                add_method loc env lab priv virt ty sign;
                Tctf_method (lab, priv, virt, cty))
@@ -349,7 +352,7 @@ and class_signature virt env pcsig self_scope loc =
   (* Introduce a dummy method preventing self type from being closed. *)
   Ctype.add_dummy_method env ~scope:self_scope sign;
 
-  let self_cty = transl_simple_type env ~closed:false Global sty in
+  let self_cty = transl_simple_type env ~closed:false Global Many sty in
   let self_type = self_cty.ctyp_type in
   begin try
     Ctype.unify env self_type sign.csig_self
@@ -399,7 +402,7 @@ and class_type_aux env virt self_scope scty =
                                                    List.length styl)));
       let ctys = List.map2
         (fun sty ty ->
-          let cty' = transl_simple_type env ~closed:false Global sty in
+          let cty' = transl_simple_type env ~closed:false Global Many sty in
           let ty' = cty'.ctyp_type in
           begin
            try Ctype.unify env ty' ty with Ctype.Unify err ->
@@ -419,7 +422,7 @@ and class_type_aux env virt self_scope scty =
       cltyp (Tcty_signature clsig) typ
 
   | Pcty_arrow (l, sty, scty) ->
-      let cty = transl_simple_type env ~closed:false Global sty in
+      let cty = transl_simple_type env ~closed:false Global Many sty in
       let ty = cty.ctyp_type in
       let ty =
         if Btype.is_optional l
@@ -651,7 +654,7 @@ let rec class_field_first_pass self_loc cl_num sign self_scope acc cf =
       with_attrs
         (fun () ->
            if !Clflags.principal then Ctype.begin_def ();
-           let cty = Typetexp.transl_simple_type val_env ~closed:false Global styp in
+           let cty = Typetexp.transl_simple_type val_env ~closed:false Global Many styp in
            let ty = cty.ctyp_type in
            if !Clflags.principal then begin
              Ctype.end_def ();
@@ -725,7 +728,7 @@ let rec class_field_first_pass self_loc cl_num sign self_scope acc cf =
       with_attrs
         (fun () ->
            let sty = Ast_helper.Typ.force_poly sty in
-           let cty = transl_simple_type val_env ~closed:false Global sty in
+           let cty = transl_simple_type val_env ~closed:false Global Many sty in
            let ty = cty.ctyp_type in
            add_method loc val_env label.txt priv Virtual ty sign;
            let field =
@@ -765,7 +768,7 @@ let rec class_field_first_pass self_loc cl_num sign self_scope acc cf =
              | Some sty ->
                  let sty = Ast_helper.Typ.force_poly sty in
                  let cty' =
-                   Typetexp.transl_simple_type val_env ~closed:false Global sty
+                   Typetexp.transl_simple_type val_env ~closed:false Global Many sty
                  in
                  cty'.ctyp_type
            in
@@ -909,7 +912,7 @@ and class_field_second_pass cl_num sign met_env field =
         (fun () ->
            let ty = Btype.method_type label.txt sign in
            let self_type = sign.Types.csig_self in
-           let arrow_desc = Nolabel, Alloc_mode.global, Alloc_mode.global in
+           let arrow_desc = Nolabel, Mode.Alloc.legacy, Mode.Alloc.legacy in
            let self_param_type = Btype.newgenty (Tpoly(self_type, [])) in
            let meth_type =
              mk_expected (Btype.newgenty
@@ -930,7 +933,7 @@ and class_field_second_pass cl_num sign met_env field =
            Ctype.raise_nongen_level ();
            let unit_type = Ctype.instance Predef.type_unit in
            let self_param_type = Ctype.newmono sign.Types.csig_self in
-           let arrow_desc = Nolabel, Alloc_mode.global, Alloc_mode.global in
+           let arrow_desc = Nolabel, Mode.Alloc.legacy, Mode.Alloc.legacy in
            let meth_type =
              mk_expected (Ctype.newty
                (Tarrow (arrow_desc, self_param_type, unit_type, commu_ok)))
@@ -967,8 +970,10 @@ and class_fields_second_pass cl_num sign met_env fields =
 and class_structure cl_num virt self_scope final val_env met_env loc
   { pcstr_self = spat; pcstr_fields = str } =
   (* Environment for substructures *)
-  let val_env = Env.add_lock Alloc_mode.global val_env in
-  let met_env = Env.add_lock Alloc_mode.global met_env in
+  let val_env = Env.add_locality_lock Mode.Locality.global val_env in
+  let val_env = Env.add_linearity_lock ~shared_context:Class Mode.Linearity.many val_env in
+  let met_env = Env.add_locality_lock Mode.Locality.global met_env in
+  let met_env = Env.add_linearity_lock ~shared_context:Class Mode.Linearity.many met_env in
   let par_env = met_env in
 
   (* Location of self. Used for locations of self arguments *)
@@ -1073,7 +1078,7 @@ and class_expr_aux cl_num val_env met_env virt self_scope scl =
       if Path.same decl.cty_path unbound_class then
         raise(Error(scl.pcl_loc, val_env, Unbound_class_2 lid.txt));
       let tyl = List.map
-          (fun sty -> transl_simple_type val_env ~closed:false Global sty)
+          (fun sty -> transl_simple_type val_env ~closed:false Global Many sty)
           styl
       in
       let (params, clty) =
@@ -1175,7 +1180,7 @@ and class_expr_aux cl_num val_env met_env virt self_scope scl =
             (id,
              {exp_desc =
               Texp_ident(path, mknoloc (Longident.Lident (Ident.name id)), vd,
-                         Id_value);
+                         Id_value, shared_use);
               exp_loc = Location.none; exp_extra = [];
               exp_type = Ctype.instance vd.val_type;
               exp_attributes = []; (* check *)
@@ -1193,7 +1198,8 @@ and class_expr_aux cl_num val_env met_env virt self_scope scl =
         Typecore.check_partial val_env pat.pat_type pat.pat_loc
           [{c_lhs = pat; c_guard = None; c_rhs = dummy}]
       in
-      let val_env' = Env.add_lock Alloc_mode.global val_env' in
+      let val_env' = Env.add_locality_lock Mode.Locality.global val_env' in
+      let val_env' = Env.add_linearity_lock ~shared_context:Class Mode.Linearity.many val_env' in
       Ctype.raise_nongen_level ();
       let cl = class_expr cl_num val_env' met_env virt self_scope scl' in
       Ctype.end_def ();
@@ -1251,7 +1257,7 @@ and class_expr_aux cl_num val_env met_env virt self_scope scl =
                   let ty' = extract_option_type val_env ty
                   and ty0' = extract_option_type val_env ty0 in
                   let arg = type_argument val_env sarg ty' ty0' in
-                  option_some val_env arg Value_mode.global
+                  option_some val_env arg Mode.Value.legacy
               )
             in
             let eliminate_optional_arg () =
@@ -1287,9 +1293,9 @@ and class_expr_aux cl_num val_env met_env virt self_scope scl =
                     if Btype.is_optional l && List.mem_assoc Nolabel sargs then
                       eliminate_optional_arg ()
                     else begin
-                      let mode_closure = Alloc_mode.global in
-                      let mode_arg = Alloc_mode.global in
-                      let mode_ret = Alloc_mode.global in
+                      let mode_closure = Mode.Alloc.legacy in
+                      let mode_arg = Mode.Alloc.legacy in
+                      let mode_ret = Mode.Alloc.legacy in
                       Omitted { mode_closure; mode_arg; mode_ret }
                     end
             in
@@ -1339,7 +1345,7 @@ and class_expr_aux cl_num val_env met_env virt self_scope scl =
              let expr =
                {exp_desc =
                 Texp_ident(path, mknoloc(Longident.Lident (Ident.name id)),vd,
-                           Id_value);
+                           Id_value, shared_use);
                 exp_loc = Location.none; exp_extra = [];
                 exp_type = Ctype.instance vd.val_type;
                 exp_attributes = [];
@@ -1437,7 +1443,7 @@ let rec approx_declaration cl =
         else Ctype.newvar ()
       in
       let arg = Ctype.newmono arg in
-      let arrow_desc = l, Alloc_mode.global, Alloc_mode.global in
+      let arrow_desc = l, Mode.Alloc.legacy, Mode.Alloc.legacy in
       Ctype.newty
         (Tarrow (arrow_desc, arg, approx_declaration cl, commu_ok))
   | Pcl_let (_, _, cl) ->
@@ -1454,7 +1460,7 @@ let rec approx_description ct =
         else Ctype.newvar ()
       in
       let arg = Ctype.newmono arg in
-      let arrow_desc = l, Alloc_mode.global, Alloc_mode.global in
+      let arrow_desc = l, Mode.Alloc.legacy, Mode.Alloc.legacy in
       Ctype.newty
         (Tarrow (arrow_desc, arg, approx_description ct, commu_ok))
   | _ -> Ctype.newvar ()

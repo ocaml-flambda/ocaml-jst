@@ -62,9 +62,9 @@ val need_curry_fun:
   Cmx_format.machtype ->
   unit
 val need_apply_fun:
-  Cmx_format.machtype list -> Cmx_format.machtype -> Lambda.alloc_mode -> unit
+  Cmx_format.machtype list -> Cmx_format.machtype -> Lambda.locality_mode -> unit
 val need_send_fun:
-  Cmx_format.machtype list -> Cmx_format.machtype -> Lambda.alloc_mode -> unit
+  Cmx_format.machtype list -> Cmx_format.machtype -> Lambda.locality_mode -> unit
         (* Record the need of a currying (resp. application,
            message sending) function with the given arity *)
 

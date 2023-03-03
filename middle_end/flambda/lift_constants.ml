@@ -89,13 +89,13 @@ let assign_symbols_and_collect_constant_definitions
       | Prim (Pfield _, _, _) ->
         Misc.fatal_errorf "[Pfield] with the wrong number of arguments"
           Flambda.print_named named
-      | Prim (Pmakearray (Pfloatarray as kind, mutability, _mode), args, _) ->
+      | Prim (Pmakearray (Pfloatarray as kind, mutability, mode), args, _) ->
         assign_symbol ();
-        record_definition (AA.Allocated_const (Array (kind, mutability, args)))
-      | Prim (Pduparray (kind, mutability), [arg], _) ->
+        record_definition (AA.Allocated_const (Array (kind, mutability, mode, args)))
+      | Prim (Pduparray (kind, mutability, mode), [arg], _) ->
         assign_symbol ();
         record_definition (AA.Allocated_const (
-          Duplicate_array (kind, mutability, arg)))
+          Duplicate_array (kind, mutability, mode, arg)))
       | Prim _ ->
         Misc.fatal_errorf "Primitive not expected to be constant: @.%a@."
           Flambda.print_named named
@@ -288,7 +288,7 @@ let translate_definition_and_resolve_alias inconstants
     ~(backend : (module Backend_intf.S))
     : Flambda.constant_defining_value option =
   let resolve_float_array_involving_variables
-        ~(mutability : Lambda.mutable_flag) ~vars =
+        ~(mutability : Lambda.mutable_flag) ~mode ~vars =
     (* Resolve an [Allocated_const] of the form:
         [Array (Pfloatarray, _, _)]
        (which references its contents via variables; it does not contain
@@ -320,9 +320,10 @@ let translate_definition_and_resolve_alias inconstants
         vars
     in
     let const : Allocated_const.t =
-      match mutability with
-      | Immutable | Immutable_unique -> Immutable_float_array floats
-      | Mutable -> Float_array floats
+      match mutability, mode with
+      | (Immutable | Immutable_unique), (_, Lambda.Alloc_shared) -> Immutable_float_array floats
+      | (Immutable | Immutable_unique), (_, Lambda.Alloc_unique) -> Float_array floats
+      | Mutable, _ -> Float_array floats
     in
     Some (Flambda.Allocated_const const)
   in
@@ -333,7 +334,7 @@ let translate_definition_and_resolve_alias inconstants
           var_to_definition_tbl)
         fields))
   | Allocated_const (Normal const) -> Some (Flambda.Allocated_const const)
-  | Allocated_const (Duplicate_array (Pfloatarray, mutability, var)) ->
+  | Allocated_const (Duplicate_array (Pfloatarray, mutability, mode, var)) ->
     (* CR-someday mshinwell: This next section could do with cleanup.
        What happens is:
         - Duplicate contains a variable, which is resolved to
@@ -426,15 +427,16 @@ let translate_definition_and_resolve_alias inconstants
       Misc.fatal_error "Pduparray is not allowed on mutable arrays"
     | Allocated_const (Normal (Immutable_float_array floats)) ->
       let const : Allocated_const.t =
-        match mutability with
-        | Immutable | Immutable_unique -> Immutable_float_array floats
-        | Mutable -> Float_array floats
+        match mutability, mode with
+        | (Immutable | Immutable_unique), (_, Alloc_shared) -> Immutable_float_array floats
+        | (Immutable | Immutable_unique), (_, Alloc_unique) -> Float_array floats
+        | Mutable, _ -> Float_array floats
       in
       Some (Flambda.Allocated_const const)
-    | Allocated_const (Array (Pfloatarray, _, vars)) ->
+    | Allocated_const (Array (Pfloatarray, _, _, vars)) ->
       (* Important: [mutability] is from the [Duplicate_array]
          construction above. *)
-      resolve_float_array_involving_variables ~mutability ~vars
+      resolve_float_array_involving_variables ~mutability ~mode ~vars
     | const ->
       Misc.fatal_errorf
         "Lift_constants.translate_definition_and_resolve_alias: \
@@ -442,13 +444,13 @@ let translate_definition_and_resolve_alias inconstants
         Variable.print var
         Alias_analysis.print_constant_defining_value const
     end
-  | Allocated_const (Duplicate_array (_, _, _)) ->
+  | Allocated_const (Duplicate_array (_, _, _, _)) ->
     Misc.fatal_errorf "Lift_constants.translate_definition_and_resolve_alias: \
         Duplicate_array with non-Pfloatarray kind: %a"
       Alias_analysis.print_constant_defining_value definition
-  | Allocated_const (Array (Pfloatarray, mutability, vars)) ->
-    resolve_float_array_involving_variables ~mutability ~vars
-  | Allocated_const (Array (_, _, _)) ->
+  | Allocated_const (Array (Pfloatarray, mutability, mode, vars)) ->
+    resolve_float_array_involving_variables ~mutability ~mode ~vars
+  | Allocated_const (Array (_, _, _, _)) ->
     Misc.fatal_errorf "Lift_constants.translate_definition_and_resolve_alias: \
         Array with non-Pfloatarray kind: %a"
       Alias_analysis.print_constant_defining_value definition
