@@ -7058,9 +7058,7 @@ and type_comprehension_clauses
 and type_comprehension_clause ~loc ~comprehension_type ~container_type env
   : Extensions.Comprehensions.clause -> _ = function
   | For bindings ->
-      (* TODO: fix handling of first-class module patterns so we can pass
-       * "true" here. *)
-      reset_pattern false;
+      reset_pattern true;
       let tbindings =
         List.map
           (type_comprehension_binding
@@ -7139,6 +7137,9 @@ and type_comprehension_iterator
              ~explanation:(Comprehension_in_iterator comprehension_type)
              seq_ty)
       in
+      (* TODO: fix handling of first-class module patterns so we can remove
+       * this line. *)
+      allow_modules := false;
       let pattern =
         (* To understand why we can currently only provide [global] bindings for
            the contents of sequences comprehensions iterate over, see "What
