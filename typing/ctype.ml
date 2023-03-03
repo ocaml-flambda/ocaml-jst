@@ -5711,17 +5711,11 @@ let global_state : global_state =
     global_level;
   }
 
-let print_global_state fmt { current_level; nongen_level; global_level } =
-  let record_fields =
-    [ "current_level", current_level;
-      "nongen_level", nongen_level;
-      "global_level", global_level;
-    ]
+let print_global_state fmt global_state =
+  let print_field fmt s r = Format.fprintf fmt "%s = %d;@;" s !r in
+  let print_fields fmt { current_level; nongen_level; global_level; } =
+    print_field fmt "current_level" current_level;
+    print_field fmt "nongen_level" nongen_level;
+    print_field fmt "global_level" global_level;
   in
-  !Oprint.out_value
-    fmt
-    (Oval_record
-      (List.map
-        (fun (printed_name, value) ->
-          Outcometree.Oide_ident { printed_name }, Outcometree.Oval_int !value)
-        record_fields))
+  Format.fprintf fmt "@[<1>{@;%a}@]" print_fields global_state
