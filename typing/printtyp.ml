@@ -1465,17 +1465,7 @@ let rec tree_of_type_decl id decl =
   in
   let (name, args) = type_defined decl in
   let constraints = tree_of_constraints params in
-  let olayout_of_layout = Layout.(function
-    | Any -> Olay_any
-    | Value -> Olay_value
-    | Void -> Olay_void
-    | Immediate64 -> Olay_immediate64
-    | Immediate -> Olay_immediate)
-  in
-  let lay =
-    Option.map olayout_of_layout
-      (Builtin_attributes.layout decl.type_attributes)
-  in
+  let lay = Builtin_attributes.layout decl.type_attributes in
   let ty, priv, unboxed =
     match decl.type_kind with
     | Type_abstract _ ->

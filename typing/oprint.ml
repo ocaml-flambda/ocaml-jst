@@ -740,11 +740,7 @@ and print_out_type_decl kwd ppf td =
   let print_layout ppf =
     match td.otype_layout with
     | None -> ()
-    | Some Olay_any -> fprintf ppf " [%@%@any]"
-    | Some Olay_value -> fprintf ppf " [%@%@value]"
-    | Some Olay_void -> fprintf ppf " [%@%@void]"
-    | Some Olay_immediate64 -> fprintf ppf " [%@%@immediate64]"
-    | Some Olay_immediate -> fprintf ppf " [%@%@immediate]"
+    | Some lay -> fprintf ppf " [%@%@%s]" (Layouts.Layout.string_of_const lay)
   in
   let print_unboxed ppf =
     if td.otype_unboxed then fprintf ppf " [%@%@unboxed]" else ()
