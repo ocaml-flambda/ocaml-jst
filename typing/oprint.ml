@@ -277,6 +277,10 @@ let join_modes rm1 am2 =
   | _, Oam_unknown -> Oam_unknown
   | Oam_global, Oam_global -> Oam_global
 
+let print_out_layout ppf = function
+  | Olay_const lay -> fprintf ppf "%s" (Layouts.Layout.string_of_const lay)
+  | Olay_var       -> fprintf ppf "'_concrete_layout"
+
 let rec print_out_type_0 mode ppf =
   function
   | Otyp_alias (ty, s) ->
@@ -393,6 +397,10 @@ and print_out_type_3 mode ppf =
   | Otyp_attribute (t, attr) ->
       fprintf ppf "@[<1>(%a [@@%s])@]"
         (print_out_type_0 mode) t attr.oattr_name
+  | Otyp_layout_annot (t, lay) ->
+    fprintf ppf "@[<1>(%a@ :@ %a)@]"
+      (print_out_type_0 mode) t
+      print_out_layout lay
 and print_out_type ppf typ =
   print_out_type_0 Oam_global ppf typ
 and print_simple_out_type ppf typ =
