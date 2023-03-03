@@ -993,17 +993,23 @@ typing/includemod_errorprinter.cmx : \
 typing/includemod_errorprinter.cmi : \
     typing/includemod.cmi
 typing/layouts.cmo : \
+    typing/path.cmi \
     utils/misc.cmi \
+    typing/ident.cmi \
     parsing/builtin_attributes.cmi \
     parsing/asttypes.cmi \
     typing/layouts.cmi
 typing/layouts.cmx : \
+    typing/path.cmx \
     utils/misc.cmx \
+    typing/ident.cmx \
     parsing/builtin_attributes.cmx \
     parsing/asttypes.cmi \
     typing/layouts.cmi
 typing/layouts.cmi : \
+    typing/path.cmi \
     parsing/parsetree.cmi \
+    typing/ident.cmi \
     parsing/asttypes.cmi
 typing/mtype.cmo : \
     typing/types.cmi \

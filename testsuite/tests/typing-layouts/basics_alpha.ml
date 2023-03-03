@@ -26,6 +26,36 @@ type void_unboxed_record = { vur_void : t_void; } [@@unboxed]
 
 (*************************************************)
 (* Test 1: Reject non-value function arg/returns *)
+
+(* CJC XXX errors: the F1 and F1' errors should ideally mention that the layout
+   restriction is coming from the function type
+
+   ASZ XXX errors: I think this will be easier when we switch to introducing
+   restrictions on [fun] *)
+module F1 (X : sig val x : t_void end) = struct
+  let f () = X.x
+end;;
+[%%expect{|
+Line 2, characters 13-16:
+2 |   let f () = X.x
+                 ^^^
+Error: This expression has type t_void but an expression was expected of type
+         ('a : value)
+       t_void has layout void, which is not a sublayout of value.
+|}];;
+
+module F1 (X : sig val f : void_record -> unit end) = struct
+  let g z = X.f { vr_void = z; vr_int = 42 }
+end;;
+[%%expect{|
+Line 2, characters 28-29:
+2 |   let g z = X.f { vr_void = z; vr_int = 42 }
+                                ^
+Error: This expression has type ('a : value)
+       but an expression was expected of type t_void
+       t_void has layout void, which is not a sublayout of value.
+|}];;
+
 module type S = sig
   val f : t_any -> int
 end;;
@@ -56,7 +86,8 @@ Line 2, characters 10-29:
 2 |   val f : void_unboxed_record -> int
               ^^^^^^^^^^^^^^^^^^^
 Error: Function argument types must have layout value.
-        void_unboxed_record has layout void, which is not a sublayout of value.
+        void_unboxed_record has layout void,
+          which is not a sublayout of value.
 |}];;
 
 module type S = sig
@@ -67,7 +98,8 @@ Line 2, characters 17-36:
 2 |   val f : int -> void_unboxed_record
                      ^^^^^^^^^^^^^^^^^^^
 Error: Function return types must have layout value.
-        void_unboxed_record has layout void, which is not a sublayout of value.
+        void_unboxed_record has layout void,
+          which is not a sublayout of value.
 |}];;
 
 module type S = sig
@@ -423,7 +455,8 @@ Line 2, characters 54-78:
                                                           ^^^^^^^^^^^^^^^^^^^^^^^^
 Error: The type constraints are not consistent.
        Type ('a : value) is not compatible with type void_unboxed_record
-       void_unboxed_record has layout void, which is not a sublayout of value.
+       void_unboxed_record has layout void,
+         which is not a sublayout of value.
 |}];;
 
 module type S8_5 = sig
@@ -460,7 +493,8 @@ Line 2, characters 31-50:
 2 |   type result = V of (string * void_unboxed_record) | I of int
                                    ^^^^^^^^^^^^^^^^^^^
 Error: Tuple element types must have layout value.
-        void_unboxed_record has layout void, which is not a sublayout of value.
+        void_unboxed_record has layout void,
+          which is not a sublayout of value.
 |}];;
 
 module M9_3 = struct
@@ -477,7 +511,8 @@ Line 7, characters 13-14:
                  ^
 Error: This expression has type void_unboxed_record
        but an expression was expected of type ('a : value)
-       void_unboxed_record has layout void, which is not a sublayout of value.
+       void_unboxed_record has layout void,
+         which is not a sublayout of value.
 |}];;
 
 module M9_4 = struct
@@ -491,7 +526,8 @@ Line 4, characters 8-16:
             ^^^^^^^^
 Error: The record field vur_void belongs to the type void_unboxed_record
        but is mixed here with fields of type ('a : value)
-       void_unboxed_record has layout void, which is not a sublayout of value.
+       void_unboxed_record has layout void,
+         which is not a sublayout of value.
 |}];;
 
 module M9_5 = struct
@@ -516,7 +552,8 @@ Line 2, characters 34-58:
                                       ^^^^^^^^^^^^^^^^^^^^^^^^
 Error: The type constraints are not consistent.
        Type ('a : value) is not compatible with type void_unboxed_record
-       void_unboxed_record has layout void, which is not a sublayout of value.
+       void_unboxed_record has layout void,
+         which is not a sublayout of value.
 |}];;
 
 module type S9_7 = sig

@@ -101,6 +101,69 @@ module Layout : sig
   val immediate : t
 
   (******************************)
+  (* errors *)
+
+  (* XXX ASZ: Rename to "xxx_layout_context"? *)
+  type fixed_layout_reason =
+    | Let_binding
+    | Function_argument
+    | Function_result
+    | Tuple_element
+    | Probe
+    | Package_hack
+    | Object
+    | Instance_variable
+    | Object_field (* XXX ASZ: Is this different than [Instance_variable]? *)
+    | Class_field
+
+  type concrete_layout_reason =
+    | Match
+    | Constructor_declaration of int
+    | Label_declaration of Ident.t
+
+  type annotation_location =
+    | Type_declaration of Path.t
+    | Type_parameter of Path.t * string
+    | With_constraint of Location.t
+    | Newtype_declaration of string Location.loc
+
+  type reason =
+    | Fixed_layout of fixed_layout_reason
+    | Concrete_layout of concrete_layout_reason
+    | Annotated of annotation_location
+    | Gadt_equation of Path.t
+    | Unified_with_tvar of string option
+        (* XXX ASZ: RAE thinks this will want to take a type, not a tvar name
+           (string option) in case that type gets further unified.  He's
+           probably right but we'll see how errors look. *)
+    | Dummy_reason_result_ignored
+        (* XXX ASZ: Is this the best approach?  Where could we insert a "last
+           resort" check to indicate that we shouldn't be seeing this? *)
+
+  module Violation : sig
+    type nonrec t =
+      | Not_a_sublayout of t * t
+      | No_intersection of t * t
+
+    (* CR layouts: Having these options for printing a violation was a choice
+       made based on the needs of expedient debugging during development, but
+       probably should be rethought at some point. *)
+    (** Prints a violation and the thing that had an unexpected layout
+        ([offender], which you supply an arbitrary printer for). *)
+    val report_with_offender :
+      offender:(Format.formatter -> unit) -> Format.formatter -> t -> unit
+
+    (** Like [report_with_offender], but additionally prints that the issue is
+        that a representable layout was expected. *)
+    val report_with_offender_sort :
+      offender:(Format.formatter -> unit) -> Format.formatter -> t -> unit
+
+    (** Simpler version of [report_with_offender] for when the thing that had an
+        unexpected layout is available as a string. *)
+    val report_with_name : name:string -> Format.formatter -> t -> unit
+  end
+
+  (******************************)
   (* construction *)
 
   (** Create a fresh sort variable, packed into a layout. *)
@@ -113,14 +176,15 @@ module Layout : sig
       present, but always allows immediate attributes if ~legacy_immediate is
       true.  See comment on [Builtin_attributes.layout].  *)
   val of_attributes :
-    legacy_immediate:bool -> Parsetree.attributes ->
+    legacy_immediate:bool -> reason:annotation_location -> Parsetree.attributes ->
     (t option, Location.t * const) result
 
   (** Find a layout in attributes, defaulting to ~default.  Returns error if a
       disallowed layout is present, but always allows immediate if
       ~legacy_immediate is true.  See comment on [Builtin_attributes.layout]. *)
   val of_attributes_default :
-    legacy_immediate:bool -> default:t -> Parsetree.attributes ->
+    legacy_immediate:bool -> reason:annotation_location ->
+    default:t -> Parsetree.attributes ->
     (t, Location.t * const) result
 
   (******************************)
@@ -146,32 +210,9 @@ module Layout : sig
 
   val to_string : t -> string
   val format : Format.formatter -> t -> unit
-
-  (******************************)
-  (* errors *)
-  module Violation : sig
-    type nonrec t =
-      | Not_a_sublayout of t * t
-      | No_intersection of t * t
-
-
-    (* CR layouts: Having these options for printing a violation was a choice
-       made based on the needs of expedient debugging during development, but
-       probably should be rethought at some point. *)
-    (** Prints a violation and the thing that had an unexpected layout
-        ([offender], which you supply an arbitrary printer for). *)
-    val report_with_offender :
-      offender:(Format.formatter -> unit) -> Format.formatter -> t -> unit
-
-    (** Like [report_with_offender], but additionally prints that the issue is
-        that a representable layout was expected. *)
-    val report_with_offender_sort :
-      offender:(Format.formatter -> unit) -> Format.formatter -> t -> unit
-
-    (** Simpler version of [report_with_offender] for when the thing that had an
-        unexpected layout is available as a string. *)
-    val report_with_name : name:string -> Format.formatter -> t -> unit
-  end
+  val format_history :
+    pp_name:(Format.formatter -> 'a -> unit) -> name:'a ->
+    Format.formatter -> t -> unit
 
   (******************************)
   (* relations *)
@@ -181,10 +222,21 @@ module Layout : sig
       variable to be [value] *)
   val equate : t -> t -> bool
 
+  (** This checks for equality, but has the invariant that it can only be called
+      when there is no need for unification; e.g. [equal] on a var and [value]
+      will crash.
+
+      XXX ASZ: At the moment, this is actually the same as [equate]! *)
+  val equal : t -> t -> bool
+
   (** Finds the intersection of two layouts, constraining sort variables to
       create one if needed, or returns a [Violation.t] if an intersection does
-      not exist. *)
-  val intersection : t -> t -> (t, Violation.t) Result.t
+      not exist.  Can update the layouts.  The returned layout's history
+      consists of the provided reason followed by the history of the first
+      layout argument.  That is, due to histories, this function is asymmetric;
+      it should be thought of as modifying the first layout to be the
+      intersection of the two, not something that modifies the second layout. *)
+  val intersection : reason:reason -> t -> t -> (t, Violation.t) Result.t
 
   (** [sub t1 t2] returns [Ok t1] iff [t1] is a sublayout of
     of [t2].  The current hierarchy is:
@@ -195,7 +247,7 @@ module Layout : sig
     Return [Error _] if the coercion is not possible. We return a layout in the
     success case because it sometimes saves time / is convenient to have the
     same return type as intersection. *)
-  val sub : t -> t -> (t, Violation.t) result
+  val sub : reason:reason -> t -> t -> (t, Violation.t) result
 
   (*********************************)
   (* defaulting *)

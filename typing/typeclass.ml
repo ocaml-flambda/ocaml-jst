@@ -306,7 +306,10 @@ let rec class_type_field env sign self_scope ctf =
         (fun () ->
           let cty = transl_simple_type env ~closed:false Global sty in
           let ty = cty.ctyp_type in
-          begin match Ctype.constrain_type_layout env ty Layout.value with
+          begin match
+            Ctype.constrain_type_layout ~reason:(Fixed_layout Instance_variable)
+              env ty Layout.value
+          with
           | Ok _ -> ()
           | Error err -> raise (Error(loc, env, Non_value_binding(lab, err)))
           end;
@@ -665,7 +668,10 @@ let rec class_field_first_pass self_loc cl_num sign self_scope acc cf =
              Ctype.generalize_structure ty
            end;
            begin
-             match Ctype.constrain_type_layout val_env ty Layout.value with
+             match
+               Ctype.constrain_type_layout ~reason:(Fixed_layout Class_field)
+                 val_env ty Layout.value
+             with
              | Ok _ -> ()
              | Error err -> raise (Error(label.loc, val_env,
                                          Non_value_binding(label.txt, err)))
@@ -711,8 +717,10 @@ let rec class_field_first_pass self_loc cl_num sign self_scope acc cf =
              Ctype.generalize_structure definition.exp_type
            end;
            begin
-             match Ctype.constrain_type_layout val_env definition.exp_type
-                     Layout.value with
+             match
+               Ctype.constrain_type_layout ~reason:(Fixed_layout Class_field)
+                 val_env definition.exp_type Layout.value
+             with
              | Ok _ -> ()
              | Error err -> raise (Error(label.loc, val_env,
                                          Non_value_binding(label.txt, err)))
@@ -1351,7 +1359,10 @@ and class_expr_aux cl_num val_env met_env virt self_scope scl =
              List.iter
                (fun (loc, mode, sort) ->
                   Typecore.escape ~loc ~env:val_env ~reason:Other mode;
-                  match Layout.sub (Layout.of_sort sort) Layout.value with
+                  match
+                    Layout.sub ~reason:(Fixed_layout Let_binding)
+                      (Layout.of_sort sort) Layout.value
+                  with
                   | Ok _ -> ()
                   | Error err ->
                     raise (Error(loc,met_env,

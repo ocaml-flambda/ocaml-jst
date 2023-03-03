@@ -77,7 +77,8 @@ Line 2, characters 0-29:
 2 | and 'b t1_constraint' = t_any
     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Error:
-       'a t1_constraint' has layout any, which is not a sublayout of <sort variable>.
+       'a t1_constraint' has layout any,
+         which is not a sublayout of <sort variable>.
 |}]
 
 (******************************************************)

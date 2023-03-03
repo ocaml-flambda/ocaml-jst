@@ -418,6 +418,28 @@ let equal_tag t1 t2 =
   | Extension (path1,_), Extension (path2,_) -> Path.same path1 path2
   | (Ordinary _ | Extension _), _ -> false
 
+let equal_variant_representation r1 r2 = r1 == r2 || match r1, r2 with
+  | Variant_unboxed lay1, Variant_unboxed lay2 ->
+      Layout.equal lay1 lay2
+  | Variant_boxed lays1, Variant_boxed lays2 ->
+      Misc.Stdlib.Array.equal (Misc.Stdlib.Array.equal Layout.equal) lays1 lays2
+  | Variant_extensible, Variant_extensible ->
+      true
+  | (Variant_unboxed _ | Variant_boxed _ | Variant_extensible), _ ->
+      false
+
+let equal_record_representation r1 r2 = match r1, r2 with
+  | Record_unboxed lay1, Record_unboxed lay2 ->
+      Layout.equal lay1 lay2
+  | Record_inlined (tag1, vr1), Record_inlined (tag2, vr2) ->
+      equal_tag tag1 tag2 && equal_variant_representation vr1 vr2
+  | Record_boxed lays1, Record_boxed lays2 ->
+      Misc.Stdlib.Array.equal Layout.equal lays1 lays2
+  | Record_float, Record_float ->
+      true
+  | (Record_unboxed _ | Record_inlined _ | Record_boxed _ | Record_float), _ ->
+      false
+
 let may_equal_constr c1 c2 =
   c1.cstr_arity = c2.cstr_arity
   && (match c1.cstr_tag,c2.cstr_tag with

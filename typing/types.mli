@@ -719,6 +719,14 @@ val equal_tag :  tag -> tag -> bool
 val may_equal_constr :
     constructor_description ->  constructor_description -> bool
 
+(* Equality *)
+
+val equal_record_representation :
+  record_representation -> record_representation -> bool
+
+val equal_variant_representation :
+  variant_representation -> variant_representation -> bool
+
 type label_description =
   { lbl_name: string;                   (* Short name *)
     lbl_res: type_expr;                 (* Type of the result *)

@@ -3561,8 +3561,11 @@ let check_univars env kind exp ty_expected vars =
              2) [polyfy] actually calls [expand_head] twice!  why?!
           *)
           match get_desc (expand_head env var) with
-          | Tvar { layout = layout2; _ } -> begin
-              match check_type_layout env uvar layout2 with
+          | Tvar { name; layout = layout2; } -> begin
+              match
+                check_type_layout ~reason:(Unified_with_tvar name)
+                  env uvar layout2
+              with
               | Ok _ -> ()
               | Error err ->
                 error exp_ty ty_expected
@@ -5169,9 +5172,10 @@ and type_expect_
       in
       re { exp with exp_extra =
              (Texp_poly cty, loc, sexp.pexp_attributes) :: exp.exp_extra }
-  | Pexp_newtype({txt=name}, sbody) ->
+  | Pexp_newtype({txt=name} as lname, sbody) ->
       let layout =
         match Layout.of_attributes_default ~legacy_immediate:false
+                ~reason:(Newtype_declaration lname)
                 ~default:Layout.value sexp.pexp_attributes
         with
         | Ok l -> l

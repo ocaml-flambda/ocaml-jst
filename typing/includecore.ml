@@ -1005,9 +1005,12 @@ let type_declarations ?(equality = false) ~loc env ~mark name
           have a manifest, which we're already checking for equality
           above. Similarly, [decl1]'s kind may conservatively approximate its
           layout, but [check_decl_layout] will expand its manifest.  *)
-       (match Ctype.check_decl_layout env decl1 layout with
-        | Ok _ -> None
-        | Error v -> Some (Layout v))
+        (match
+           Ctype.check_decl_layout ~reason:Dummy_reason_result_ignored
+             env decl1 layout
+         with
+         | Ok _ -> None
+         | Error v -> Some (Layout v))
     | (Type_variant (cstrs1, rep1), Type_variant (cstrs2, rep2)) ->
         if mark then begin
           let mark usage cstrs =
