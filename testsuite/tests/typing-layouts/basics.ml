@@ -98,7 +98,10 @@ Error: The type constraints are not consistent.
 |}]
 
 (* CJC XXX errors: the F1 and F1' errors should ideally mention that the layout
-   restriction is coming from the function type *)
+   restriction is coming from the function type
+
+   ASZ XXX errors: I think this will be easier when we switch to introducing
+   restrictions on [fun] *)
 module F1 (X : sig val x : t_void end) = struct
   let f () = X.x
 end;;
