@@ -13,7 +13,7 @@ Error: This is used uniquely here so cannot be used twice.  Another use is
 Line 1, characters 24-25:
 1 | let dup x = unique_ (x, x)
                             ^
-  which used as an alias
+
 |}]
 
 (* unique value can be used more than once *)
@@ -32,7 +32,7 @@ Error: This is defined as once so cannot be used twice.  Another use is
 Line 1, characters 24-25:
 1 | let dup (once_ x) = (x, x)
                             ^
-  which used as an alias
+
 |}]
 
 (* CR zqian: the precedence of unique_ needs to be higher without the
@@ -46,7 +46,7 @@ Error: This is used uniquely here so cannot be used twice.  Another use is
 Line 1, characters 34-35:
 1 | let dup (unique_ x) = (unique_ x, x, x)
                                       ^
-  which used as an alias
+
 |}]
 
 let dup (unique_ x) = ((unique_ x), x)
@@ -58,7 +58,7 @@ Error: This is used uniquely here so cannot be used twice.  Another use is
 Line 1, characters 36-37:
 1 | let dup (unique_ x) = ((unique_ x), x)
                                         ^
-  which used as an alias
+
 |}]
 
 (* below we define a tuple that can be used multiple times,
@@ -81,7 +81,7 @@ Error: This is used uniquely here so cannot be used twice.  Another use is
 Line 3, characters 27-38:
 3 |   let g () = (unique_ k) ^ (unique_ k) in
                                ^^^^^^^^^^^
-  which used as an alias
+
 |}]
 
 (* but if the closure doesn't utilize the uniqueness,
@@ -188,7 +188,7 @@ Error: This is defined as once so cannot be used twice.  Another use is
 Line 4, characters 9-10:
 4 |   (g (), g () )
              ^
-  which used as an alias
+
 |}]
 
 let x = "foo"
@@ -367,7 +367,7 @@ Error: This is used uniquely here so cannot be used twice.  Another use is
 Line 2, characters 20-21:
 2 |   let _ = shared_id y in let unique_ z = if b then x else y in z
                         ^
-  which used as an alias
+
 |}]
 
 
@@ -518,7 +518,7 @@ Error: This is defined as once so cannot be used twice.  Another use is
 Line 4, characters 13-16:
 4 |   (bar ~d:3, bar ~d:5)
                  ^^^
-  which used as an alias
+
 |}]
 
 let curry =
@@ -533,7 +533,7 @@ Error: This is defined as once so cannot be used twice.  Another use is
 Line 4, characters 35-38:
 4 |   let baz = bar ~b:4 in (baz ~d:3, baz ~d:5)
                                        ^^^
-  which used as an alias
+
 |}]
 
 let curry =
@@ -548,7 +548,7 @@ Error: This is defined as once so cannot be used twice.  Another use is
 Line 4, characters 10-13:
 4 |   (foo 1, foo 2)
               ^^^
-  which used as an alias
+
 |}]
 
 type box = { x : int }
@@ -625,5 +625,5 @@ Error: This is used uniquely here so cannot be used twice.  Another use is
 Line 5, characters 19-20:
 5 |        in Node (x, x)
                        ^
-  which used as an alias
+
 |}]

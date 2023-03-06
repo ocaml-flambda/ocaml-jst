@@ -57,7 +57,7 @@ Error: This is used uniquely here so cannot be used twice.  Another use is
 Line 1, characters 60-61:
 1 | let sequence (unique_ x : float) = unique_ let y = x in (x, y)
                                                                 ^
-  which used as an alias
+
 |}]
 
 let sequence =
@@ -82,7 +82,7 @@ Error: This is used uniquely here so cannot be used twice.  Another use is
 Line 4, characters 17-18:
 4 |   let t = update r in
                      ^
-  which used as an alias
+
 |}]
 
 let children_unique (unique_ xs : float list) = match xs with
@@ -117,7 +117,8 @@ Error: This is used uniquely here so cannot be used twice.  Another use is
 Line 3, characters 26-28:
 3 |   | x :: xs as gs -> (gs, xs)
                               ^^
-  which used as an alias
+
+here|::.1 = there
 |}]
 
 
@@ -153,7 +154,7 @@ Error: This is used uniquely here so cannot be used twice.  Another use is
 Line 4, characters 65-66:
 4 |   | true, z, _ | false, _, z -> let _ = unique_id z in unique_id y
                                                                      ^
-  which used as an alias
+
 |}]
 
 let or_patterns4 p =
@@ -176,7 +177,7 @@ Error: This is used uniquely here so cannot be used twice.  Another use is
 Line 4, characters 65-66:
 4 |   | true, z, _ | false, _, z -> let _ = unique_id z in unique_id x
                                                                      ^
-  which used as an alias
+
 |}]
 
 let mark_top_shared =
@@ -191,7 +192,8 @@ Line 5, characters 24-26:
 5 |       let _ = unique_id xs in
                             ^^
 Error: This is used uniquely here so cannot be used twice.  Another use is
-  which used as an alias
+
+here|::.1 = there
 |}]
 
 let mark_top_shared =
@@ -205,7 +207,8 @@ Line 3, characters 20-22:
 3 |   let _ = unique_id xs in
                         ^^
 Error: This is used uniquely here so cannot be used twice.  Another use is
-  which used as an alias
+
+here|::.1 = there
 |}]
 
 let mark_shared_in_one_branch b x =
@@ -251,7 +254,8 @@ Error: This is used uniquely here so cannot be used twice.  Another use is
 Line 3, characters 54-55:
 3 |   | (a, b) as t, c -> let d = unique_id t in unique_ (a, d)
                                                           ^
-  which used as an alias
+
+here.0 = there
 |}]
 
 let tuple_parent_marked a b =
@@ -273,7 +277,7 @@ Error: This is used uniquely here so cannot be used twice. It is used because th
 Line 3, characters 28-30:
 3 |   | (true, b') -> unique_id b'
                                 ^^
-  which used as an alias
+
 |}]
 
 let tuple_parent_marked a b =
@@ -288,7 +292,7 @@ Error: This is used uniquely here so cannot be used twice. It is used because th
 Line 4, characters 27-28:
 4 |   | (true, b) -> unique_id b
                                ^
-  which used as an alias
+
 |}]
 
 let unique_match_on a b =
@@ -322,7 +326,8 @@ Error: This is used uniquely here so cannot be used twice.  Another use is
 Line 4, characters 21-24:
 4 |   | { foo; bar } -> (foo, bar)
                          ^^^
-  which used as an alias
+
+here = there.*
 |}]
 
 let unique_match_on a =
@@ -337,7 +342,7 @@ Error: This is used uniquely here so cannot be used twice.  Another use is
 Line 3, characters 8-9:
 3 |   match a with
             ^
-  which used as an alias
+
 |}]
 
 let match_function : unique_ 'a * 'b -> 'a * ('a * 'b) = function
@@ -350,21 +355,23 @@ Error: This is used uniquely here so cannot be used twice.  Another use is
 Line 2, characters 31-32:
 2 |   | (a, b) as t -> unique_ (a, t)
                                    ^
-  which used as an alias
+
+here = there.0
 |}]
 
 let tuple_parent_marked a b =
   match (a, b) with
-  | (a, b) as t -> unique_ (a, t)
+  | ((_, a), b) as t -> unique_ (a, t)
 [%%expect{|
-Line 3, characters 28-29:
-3 |   | (a, b) as t -> unique_ (a, t)
-                                ^
+Line 3, characters 33-34:
+3 |   | ((_, a), b) as t -> unique_ (a, t)
+                                     ^
 Error: This is used uniquely here so cannot be used twice.  Another use is
-Line 3, characters 31-32:
-3 |   | (a, b) as t -> unique_ (a, t)
-                                   ^
-  which used as an alias
+Line 3, characters 36-37:
+3 |   | ((_, a), b) as t -> unique_ (a, t)
+                                        ^
+
+here = there.0.1
 |}]
 
 (* CR-someday anlorenzen: This one shouldn't fail in a more clever analysis. *)
@@ -379,7 +386,7 @@ Error: This is used uniquely here so cannot be used twice.  Another use is
 Line 3, characters 66-67:
 3 |   | true, a, (_, b) | false, b, (_, a) -> (unique_id a, unique_id b)
                                                                       ^
-  which used as an alias
+
 |}]
 
 
@@ -439,5 +446,5 @@ Error: This is used uniquely here so cannot be used twice.  Another use is
 Line 3, characters 10-11:
 3 |   let x = p.x in
               ^
-  which used as an alias
+
 |}]

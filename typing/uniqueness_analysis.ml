@@ -62,10 +62,6 @@ module SharedUnique = struct
     here : Occurrence.t;
     (* the other occurrence that triggers the forcind *)
     there : Occurrence.t;
-    (* CR zqian:
-    describe the relation between here and there,
-    including the full path from the ancestor to the descendant as a list of
-    projections *)
     (* which axis failed to force? *)
     error : error
   }
@@ -184,6 +180,11 @@ module Usage = struct
 
   let _print ppf t = Format.fprintf ppf "%s" (_to_string t)
 
+  let extract_occurrence = function
+  | Unused -> assert false
+  | BorrowedShared t -> BorrowedShared.extract_occurrence t
+  | SharedUnique t -> SharedUnique.extract_occurrence t
+
   let par m0 m1 = match m0, m1 with
   | Unused, m | m, Unused -> m
   | BorrowedShared m0, BorrowedShared m1 -> BorrowedShared (BorrowedShared.par m0 m1)
@@ -270,6 +271,9 @@ module UsageTree = struct
 
   end
 
+  type relation = Ancestor | Descendant
+
+
   (* the definition of trees;
     only record direct use; i.e. `x.y` does not register as using `x` or `x.y.z`.
     Implicitly of course, using `x.y` implies using all descendants of `x.y`.
@@ -302,10 +306,31 @@ module UsageTree = struct
 
   module Path = struct
     type t = Projection.t list
+
     let child (p : t) (a : Projection.t) : t= p @ [a]
 
     let root : t = []
+
+    let _print ppf = Format.pp_print_list Projection._print ppf
   end
+
+
+  exception CannotForce of
+  {
+    (* the occurrence that's failing forcing *)
+    here : Occurrence.t;
+    (* the other occurrence for reference *)
+    there : Occurrence.t;
+    (* which axis failed to force? *)
+    error : SharedUnique.error;
+
+    (* descentdant means there is a descendant of here *)
+    there_is_of_here : relation;
+
+    path : Path.t
+  }
+
+
 
   let leaf usage = {usage; children = Projection.Map.empty}
   let empty = leaf Usage.Unused
@@ -324,26 +349,37 @@ module UsageTree = struct
       t0.children t1.children
     }
 
-
-  (* m0 is the lowest mode among the ancestors of t0
-  similar for m1;
-  This is needed to find conflict between parent in one tree
-  and child in the other tree. *)
-  (* CR zqian: _proj is ignored; of course we should use it for
-  better error info *)
-  let rec seq t0 t1 =
-    (* Format.eprintf "UsageTree.seq %a and %a \n" _print t0 _print t1; *)
+  (* projs0 is the list of projections for t0.
+  It is from the ancestor that t0.usage actually comes from,
+  to t0.*)
+  let rec seq t0 projs0 t1 projs1 =
+    let usage = try Usage.seq t0.usage t1.usage with
+    | SharedUnique.CannotForce {here; there; error} ->
+      (* t' is ancestor *)
+      let t', path = match projs0, projs1 with
+      | [], _ -> t1.usage, projs1
+      | _, [] -> t0.usage, projs0
+      | _, _ -> assert false
+      in
+      let path = List.rev path in
+      let there_is_of_here =
+        if (Usage.extract_occurrence t').loc = here.loc
+          then Descendant else Ancestor
+      in
+      raise (CannotForce {here; there; error; there_is_of_here; path})
+    in
     {
-      usage = Usage.seq t0.usage t1.usage;
-      children = Projection.Map.merge (fun _proj c0 c1 ->
-        (* CR zqian: leaf is allocation here; surely we can optimize away;
-          solution: observe that children is very often empty.  Have seq takes
-          usage and children, instead of {usage;children}. children can be None.
-            *)
-        let c0 = Option.value c0 ~default:(leaf t0.usage) in
-        let c1 = Option.value c1 ~default:(leaf t1.usage) in
-        (* Format.eprintf "UsageTree: diving into %a\n" Projection._print _proj; *)
-        Some (seq c0 c1)
+      usage;
+      children = Projection.Map.merge (fun proj c0 c1 ->
+        let c0, projs0 = match c0 with
+        | None -> leaf t0.usage, proj :: projs0
+        | Some c -> c, []
+        in
+        let c1, projs1 = match c1 with
+        | None -> leaf t1.usage, proj :: projs1
+        | Some c -> c, []
+        in
+        Some (seq c0 projs0 c1 projs1)
       ) t0.children t1.children
     }
 
@@ -417,7 +453,7 @@ module UsageForest = struct
     Root_id.Map.merge (fun _rootid t0 t1 ->
       let t0 = Option.value t0 ~default:UsageTree.empty in
       let t1 = Option.value t1 ~default:UsageTree.empty in
-      Some (UsageTree.seq t0 t1)) t0 t1
+      Some (UsageTree.seq t0 [] t1 [])) t0 t1
 
   let pars l = List.fold_left par empty l
 
@@ -864,8 +900,10 @@ and check_uniqueness_exp' exp ienv =
       match ident_option_from_path p with
       | None -> None, Uenv.empty
       | Some id ->
-        (* TODO: why not in ienv? *)
           match Ident.Map.find_opt id ienv with
+          (* it is not in ienv, probably because it is a previously defined
+          value in the same file. That value is forced as top-level by typecore
+          so nothing we need to do here *)
           | None -> None, Uenv.empty
           | Some ps ->
               let occ = {Occurrence.loc = exp.exp_loc; reason = DirectUse} in
@@ -990,25 +1028,32 @@ let check_uniqueness_value_bindings vbs =
   in ()
 
 let report_error = function
-  | SharedUnique.CannotForce err ->
-      let why_cannot_use_twice = match err.error with
+  | UsageTree.CannotForce {here; there; error; there_is_of_here; path} ->
+      let why_cannot_use_twice = match error with
         | `Uniqueness -> "This is used uniquely here"
         | `Linearity -> "This is defined as once"
       in
-      let there_reason = match err.there.reason with
-        | DirectUse -> Format.dprintf "which used as an alias"
+      let there_reason = match there.reason with
+        | DirectUse -> Format.dprintf ""
         | MatchTupleWithVar _loc' ->
             Format.dprintf
                 "which is used because the tuple containing it is matched to a variable"
       in
-      let sub = [Location.msg ~loc:err.there.loc "%t" there_reason] in
-      let here_reason = match err.here.reason with
+      let relation =
+        if List.length path = 0 then Format.dprintf "" else
+        let path = Format.dprintf "%a" UsageTree.Path._print path in
+          match there_is_of_here with
+          | Ancestor -> Format.dprintf "\nhere = there%t" path
+          | Descendant -> Format.dprintf "\nhere%t = there" path
+      in
+      let sub = [Location.msg ~loc:there.loc "%t%t" there_reason relation] in
+      let here_reason = match here.reason with
       | DirectUse -> ""
       | MatchTupleWithVar _ -> "It is used because the tuple containing it is @ \
       matched to a variable."
       in
       begin
-          Location.errorf ~loc:err.here.loc
+          Location.errorf ~loc:here.loc
             ~sub:sub
             "@[%s so cannot be used twice. %s Another use is @]" why_cannot_use_twice here_reason
       end
@@ -1021,8 +1066,8 @@ let report_error err =
 let () =
   Location.register_error_of_exn
     (function
-      | SharedUnique.CannotForce err ->
-          Some (report_error (SharedUnique.CannotForce err))
+      | UsageTree.CannotForce err ->
+          Some (report_error (UsageTree.CannotForce err))
       | _ ->
           None
     )
