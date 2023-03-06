@@ -37,6 +37,10 @@ type attributes = attribute list
 type value = Value_pattern
 type computation = Computation_pattern
 
+(* If the associate mode.uniqueness must be unique, then the projection
+  must be borrowed, meaning cannot code-motion. *)
+type unique_barrier = Mode.Uniqueness.t list
+
 type _ pattern_category =
 | Value : value pattern_category
 | Computation : computation pattern_category
@@ -278,7 +282,7 @@ and expression_desc =
             or [None] if it is [Record_unboxed],
             in which case it does not need allocation.
           *)
-  | Texp_field of expression * Longident.t loc * Types.label_description * unique_use * Modes.Alloc.t option
+  | Texp_field of expression * Longident.t loc * Types.label_description * (unique_use * (unique_barrier ref)) * Modes.Alloc.t option
     (** [alloc_mode] is the allocation mode of the result; available ONLY
         only when getting a (float) field from a [Record_float] record
       *)

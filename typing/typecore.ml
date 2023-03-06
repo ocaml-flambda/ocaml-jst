@@ -4621,9 +4621,10 @@ and type_expect_
         end;
       maybe_force_shared ~env ~loc mode;
       let mode = mode_cross_to_min env ty_arg mode in
+      let unique_barrier = ref [] in
       ruem ~mode ~expected_mode {
         exp_desc = Texp_field(record, lid, label,
-            (mode.uniqueness, mode.linearity),
+            ((mode.uniqueness, mode.linearity), unique_barrier),
             alloc_mode);
         exp_loc = loc; exp_extra = [];
         exp_type = ty_arg;

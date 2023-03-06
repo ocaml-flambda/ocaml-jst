@@ -48,6 +48,7 @@ module Occurrence = struct
 
 end
 
+
 module SharedUnique = struct
   (* this module is about the distinction
      between unique and shared *)
@@ -76,6 +77,10 @@ module SharedUnique = struct
   type t =
     | Shared of Occurrence.t
     | MaybeUnique of maybe_unique list
+
+  let _to_string = function
+    | Shared _ -> "shared"
+    | MaybeUnique _ -> "maybe_unique"
 
   let force t there =
     match t with
@@ -110,36 +115,129 @@ module SharedUnique = struct
 
 end
 
+module BorrowedShared = struct
+  type maybe_shared = {
+    barrier : unique_barrier ref;
+    occ : Occurrence.t
+  }
+
+  type t =
+    | Borrowed of Occurrence.t
+    (* it is a list, because of execution branches *)
+    | MaybeShared of maybe_shared list
+
+  let _to_string = function
+    | Borrowed _ -> "borrowed"
+    | MaybeShared _ -> "maybe_shared"
+
+  let extract_occurrence = function
+    | Borrowed occ -> occ
+    | MaybeShared l -> (List.hd l).occ
+
+  let par t0 t1 =
+    match t0, t1 with
+    | Borrowed _, t | t, Borrowed _ -> t
+    | MaybeShared l0, MaybeShared l1  -> MaybeShared (l0 @ l1)
+
+  let seq t0 t1 =
+    match t0, t1 with
+    | Borrowed _, t -> t
+    | MaybeShared s, Borrowed _ -> MaybeShared s
+    | MaybeShared l0, MaybeShared l1 -> MaybeShared (l0 @ l1)
+end
+
 module Usage = struct
   (* We have Unused (top) > Borrowed > Shared > Unique > Error (bot).
 
-      Unused and Borrowed are infered from syntax;
-      Shared and Unique are to be inferred by the analysis. We use the existing
-      infrastructure of mode var to represent that.
-      Error is represented by just exception
-      the Set of Meet must be non-empty
+    Some observations:
+    - It is sound (and usually helps performance) to relax mode towards Error.
+      For example, relaxing borrowed to shared allows code motion of projections.
+      Relaxing shared to unique allows in-place update.
 
+      The downside is the loss of completeness: if we relax too much the program
+        will fail type check. In the extreme case we relax it to Error which fails
+      type check outright (and extremely sound, hehe).
+
+    - The purpose of this uniqueness analysis is to figure out the most relaxed mode
+    for each use, such that we get the best performance, while still type-check.
+    Currently there are really only two choices worth figuring out, Namely
+    - borrowed or shared?
+    - shared or unique?
+
+    As a result, instead of having full-range inference, we only care about the following ranges:
+    - unused
+    - borrowed
+    - between borrowed and shared
+    - shared
+    - between shared and unique
+    - error
   *)
-  type t = Unused | Borrowed of Occurrence.t | SharedUnique of SharedUnique.t
+  type t =
+    | Unused
+    | BorrowedShared of BorrowedShared.t
+    | SharedUnique of SharedUnique.t
 
   let _to_string = function
   | Unused -> "unused"
-  | Borrowed _-> "borrow"
-  | SharedUnique _ -> "maybe_unique"
+  | BorrowedShared s-> BorrowedShared._to_string s
+  | SharedUnique s -> SharedUnique._to_string s
 
   let _print ppf t = Format.fprintf ppf "%s" (_to_string t)
 
   let par m0 m1 = match m0, m1 with
   | Unused, m | m, Unused -> m
-  | Borrowed _, m | m, Borrowed _ -> m
+  | BorrowedShared m0, BorrowedShared m1 -> BorrowedShared (BorrowedShared.par m0 m1)
+  | BorrowedShared _, m | m, BorrowedShared _ -> m (* m must be sharedunique *)
   | SharedUnique m0, SharedUnique m1 -> SharedUnique (SharedUnique.par m0 m1)
 
   let seq m0 m1 =
     match m0, m1 with
     | Unused, m | m, Unused -> m
-    | Borrowed _, m -> m
-    | SharedUnique m, Borrowed there ->
-      SharedUnique (SharedUnique.force m there)
+    | BorrowedShared m0, BorrowedShared m1 -> BorrowedShared (BorrowedShared.seq m0 m1)
+    | BorrowedShared m0, SharedUnique m1 -> begin
+        match m0, m1 with
+        | Borrowed _, Shared _ -> SharedUnique m1
+        | Borrowed _, MaybeUnique _ -> SharedUnique m1
+        | MaybeShared _, Shared _ -> SharedUnique m1
+        | MaybeShared l0, MaybeUnique l1 ->
+          (* four cases:
+            B;S = S
+            B;U = U
+            S;S = S
+            S;U /=
+
+            We record on the LHS that it is constrained by the RHS.
+            I.e. if RHS is U, it cannot be S.
+
+            The outcome is RHS. *)
+          let uniqs = List.map (
+            fun {SharedUnique.modes = (uniq, _); _} -> uniq
+          ) l1
+          in
+          (* let uniq = Mode.Uniqueness.meet uniqs in *)
+          List.iter (fun maybe_shared ->
+            assert (List.length (!(maybe_shared.BorrowedShared.barrier)) = 0);
+            maybe_shared.BorrowedShared.barrier := uniqs
+            ) l0;
+          SharedUnique m1
+        end
+    | SharedUnique m0, BorrowedShared m1 -> begin
+      match m0, m1 with
+      | Shared _, Borrowed _ -> SharedUnique m0
+      | MaybeUnique _, Borrowed _ -> SharedUnique (SharedUnique.force m0 (BorrowedShared.extract_occurrence m1))
+      | Shared _, MaybeShared _ -> SharedUnique m0
+      | MaybeUnique _, MaybeShared _ ->
+        (*  four cases:
+           S;B = S
+           S;S = S
+           U;B /=
+           U;S /=
+
+           as you can see, we need to force the LHS to shared, and RHS needn't constraint.
+           the result is precisely S.
+        *)
+        SharedUnique (SharedUnique.force m0 (BorrowedShared.extract_occurrence m1))
+      end
     | SharedUnique m0, SharedUnique m1 ->
       SharedUnique (SharedUnique.seq m0 m1)
 end
@@ -424,30 +522,40 @@ type value_to_match =
   that occurence *)
   | MatchSingle of single_value_to_match
 
-let mark_borrow_one path occ =
-  (* borrow the memory address of the parent *)
-  Uenv.singleton (Uenv.Path.child path UsageTree.Projection.Memory_address)
-  (Borrowed occ)
+(* mark something as either borrowed or shared *)
+let mark_maybe_shared paths maybe_shared =
+  let mark_one path =
+    (* borrow the memory address of the parent *)
+    Uenv.singleton (Uenv.Path.child path UsageTree.Projection.Memory_address)
+    (BorrowedShared (MaybeShared [maybe_shared]))
+  in
+  Uenv.pars (List.map (fun path -> mark_one path) paths)
 
-let mark_borrow paths occ =
-  Uenv.pars (List.map (fun path -> mark_borrow_one path occ) paths)
+(* mark something that must be borrowed *)
+let mark_borrowed paths occ =
+  let mark_one path =
+    (* borrow the memory address of the parent *)
+    Uenv.singleton (Uenv.Path.child path UsageTree.Projection.Memory_address)
+    (BorrowedShared (Borrowed occ))
+  in
+  Uenv.pars (List.map (fun path -> mark_one path) paths)
 
-let mark_borrow_value = function
+let mark_borrowed_value = function
   | MatchSingle (_, None) -> Uenv.empty
-  | MatchSingle (paths, Some maybe_unique) -> mark_borrow paths
+  | MatchSingle (paths, Some maybe_unique) -> mark_borrowed paths
   (maybe_unique.SharedUnique.occ)
   | MatchTuple _ -> Uenv.empty
 
-let mark_use_one path maybe_unique =
-  Uenv.singleton path (SharedUnique (MaybeUnique [maybe_unique]))
-
-let mark_use_all paths maybe_unique =
-  Uenv.pars (List.map (fun path -> mark_use_one path maybe_unique) paths)
+let mark_maybe_unique_paths paths maybe_unique =
+  let mark_one path =
+    Uenv.singleton path (SharedUnique (MaybeUnique [maybe_unique]))
+  in
+  Uenv.pars (List.map (fun path -> mark_one path ) paths)
 
 (* takes identier and occurrence *)
-let mark_use id maybe_unique ienv =
+let mark_maybe_unique_ident id maybe_unique ienv =
   match Ident.Map.find_opt id ienv with
-  | Some paths -> mark_use_all paths maybe_unique
+  | Some paths -> mark_maybe_unique_paths paths maybe_unique
   | None -> Uenv.empty
 
 (* returns:
@@ -473,12 +581,7 @@ let pattern_match_var ~loc id value =
               let occ = {maybe_unique.SharedUnique.occ with reason = MatchTupleWithVar loc}
               in
               let maybe_unique = {maybe_unique with SharedUnique.occ} in
-              mark_use_all ps maybe_unique) ps)
-
-let is_shared_field global_flag = match global_flag with
-  | Global -> true
-  | Nonlocal -> true
-  | Unrestricted -> false
+              mark_maybe_unique_paths ps maybe_unique) ps)
 
 (*
 handling pattern match of value against pat, returns ienv and uenv.
@@ -494,7 +597,7 @@ let rec pattern_match pat value =
       let value, ienv0, uenv0 = pattern_match_var ~loc:(pat.pat_loc) id value in
       let ienv1, uenv1 = pattern_match pat' value in
       Ienv.seq ienv0 ienv1, UsageForest.seq uenv0 uenv1
-  | Tpat_constant(_) -> Ienv.empty, mark_borrow_value value
+  | Tpat_constant(_) -> Ienv.empty, mark_borrowed_value value
   | Tpat_tuple(pats) ->
       pat_proj ~handle_tuple:(fun values ->
           (* We matched a tuple against a tuple parent and descend into each
@@ -510,7 +613,7 @@ let rec pattern_match pat value =
       pat_proj ~extract_pat:Fun.id ~mk_proj:(fun i _ -> (Some
       (UsageTree.Projection.Construct_field(Longident.last lbl.txt, i)))) value pats
   | Tpat_variant(lbl, mpat, _) -> begin
-      let uenv = mark_borrow_value value in
+      let uenv = mark_borrowed_value value in
       let pp, ps = match value with
         | MatchSingle(ps, pp) -> pp,
           Uenv.Path.child_of_many ps (UsageTree.Projection.Variant_field lbl)
@@ -524,10 +627,9 @@ let rec pattern_match pat value =
     end
   | Tpat_record((pats : (_ * _ * _) list), _) ->
       pat_proj ~extract_pat:(fun (_, _, pat) -> pat) ~mk_proj:(fun _ (_, l, _) ->
-          if is_shared_field l.lbl_global then None else
             Some (UsageTree.Projection.Record_field(l.lbl_name))) value pats
   | Tpat_array(_, pats) ->
-      let uenv = mark_borrow_value value in
+      let uenv = mark_borrowed_value value in
       let ienvs, uenvs =
         List.split (List.map
           (fun pat ->
@@ -547,7 +649,7 @@ and pat_proj : 'a. ?handle_tuple:_ -> extract_pat:('a -> _) -> mk_proj:(_ -> 'a 
     match value with
     | MatchSingle(values, pp) ->
 
-        let uenv = mark_borrow_value value in
+        let uenv = mark_borrowed_value value in
         let ienvs, uenvs = List.split(
           List.mapi
             (fun i patlike ->
@@ -574,20 +676,27 @@ let ident_option_from_path p =
   | Path.Pdot _ -> None (* TODO: what does this line mean? *)
   | Path.Papply _ -> assert false
 
-(* returns uenv, which is the usage of the expression *)
+(* There are two modes our algorithm will work at.
+
+  In the first mode, we care about if the expression can be considered as alias,
+  for example, we want `a.x.y` to return the alias of a.x.y in addition to the
+  usage of borrowing a and a.x. Note that a.x.y is not included in the usage, and
+  the caller is responsible to mark a.x.y accordingly. This mode is used on the
+  RHS of match.
+
+  In the second mode, we don't care about if the expression can be considered as
+  alias. Checking a.x.y will return the usage of borrowing a and a.x, and using
+  a.x.y. This mode is used in most occations.
+*)
+
+(* the following function corresponds to the second mode *)
 let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : Uenv.t =
   match exp.exp_desc with
-  | Texp_ident(p, _, _, _, use) -> begin
-      match ident_option_from_path p with
-      | Some id ->
-          let maybe_unique = {SharedUnique.modes = use;
-            occ = {
-              loc = exp.exp_loc;
-              reason = DirectUse
-              }
-          } in
-          mark_use id maybe_unique ienv
-      | _ -> UsageForest.empty
+  | Texp_ident _ -> begin
+      match check_uniqueness_exp' exp ienv with
+      | Some (ps, maybe_unique), uenv ->
+          Uenv.seq uenv (mark_maybe_unique_paths ps maybe_unique)
+      | None, uenv -> uenv
       end
   | Texp_constant _ -> Uenv.empty
   | Texp_let(_, vbs, exp') ->
@@ -641,53 +750,43 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : Uenv.t =
       match extended_expression with
       | None -> check_fields
       | Some (update_kind, exp) ->
-        let value, uenv = maybe_lvalue exp ienv in
+        let value, uenv0 = check_uniqueness_exp' exp ienv in
         match value with
         | None -> check_fields  (* {exp with ...}; don't know anything about exp
         so nothing we can do here*)
         | Some (ps, maybe_unique) -> (* {x with ...} *)
-            let uenv = Array.fold_right (fun field uenv -> match field with
+            let uenvs = Array.map (fun field -> match field with
               | l, Kept _ ->
-                  if is_shared_field l.lbl_global then uenv else
-                    let maybe_unique = {
-                      maybe_unique with
-                      SharedUnique.occ = {loc = exp.exp_loc;
-                                          reason = DirectUse
-                                          }
-                      }  in
                     let ps = Uenv.Path.child_of_many ps (UsageTree.Projection.Record_field l.lbl_name) in
-                    mark_use_all ps maybe_unique
-              | _, Overridden (_, e) -> check_uniqueness_exp_ e ienv) fields uenv
-            in match update_kind with
+                    mark_maybe_unique_paths ps maybe_unique
+              | _, Overridden (_, e) -> check_uniqueness_exp_ e ienv)
+               fields
+            in
+            let uenv1 = Uenv.seqs (Array.to_list uenvs) in
+            let uenv2 = match update_kind with
             | In_place ->
-                let maybe_unique = {
-                  maybe_unique with
-                  SharedUnique.occ =
-                  {loc = exp.exp_loc;
-                  reason = DirectUse}
-                  } in
                 let ps = Uenv.Path.child_of_many ps Memory_address in
-                mark_use_all ps maybe_unique
-            | Create_new -> uenv
+                mark_maybe_unique_paths ps maybe_unique
+            | Create_new -> Uenv.empty
+            in
+            Uenv.seqs [uenv0; uenv1; uenv2]
       end
-  | Texp_field(e, _, l, modes, _) -> begin
-      match maybe_lvalue e ienv with
-      | Some (ps, _), uenv ->
-          if is_shared_field l.lbl_global then uenv else
-            let occ = {Occurrence.loc = exp.exp_loc; reason = Occurrence.DirectUse} in
-            let maybe_unique = { SharedUnique.occ; modes} in
-            let ps = Uenv.Path.child_of_many ps (UsageTree.Projection.Record_field l.lbl_name) in
-            mark_use_all ps maybe_unique
+  | Texp_field _ -> begin
+      match check_uniqueness_exp' exp ienv with
+      | Some (ps, maybe_unique), uenv ->
+        Uenv.seq uenv (mark_maybe_unique_paths ps maybe_unique)
       | None, uenv -> uenv
     end
   | Texp_setfield(exp', _, _, _, e) ->
-      let _, uenv0 = maybe_lvalue exp' ienv in
+      (* assignment doesn't use the field itself, but only borrowing the record *)
+      let _, uenv0 = check_uniqueness_exp' exp' ienv in
       let uenv1 = check_uniqueness_exp_ e ienv in
       Uenv.seq uenv0 uenv1
   | Texp_array(_, es, _) ->
       Uenv.seqs (List.map (fun e -> check_uniqueness_exp_ e ienv ) es)
   | Texp_ifthenelse(if', then', else_opt) ->
-      let _, uenv0 = maybe_lvalue if' ienv in
+      (* TODO: if' is only borrowed, not used *)
+      let uenv0 = check_uniqueness_exp_ if' ienv in
       let uenv1 = match else_opt with
       | Some else' -> Uenv.par
         (check_uniqueness_exp_ then' ienv)
@@ -751,12 +850,15 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : Uenv.t =
   | Texp_probe { handler } -> check_uniqueness_exp_ handler ienv
   | Texp_probe_is_enabled _ -> Uenv.empty
 
-(* looks at exp and see if it can be treated as simple value.
+(*
+This function corresponds to the first mode.
+
+Look at exp and see if it can be treated as simple value.
 currently only texp_ident and texp_field (and recursively so) are treated so.
 return paths and use. paths is the list of possible memory locations.
 returns None if exp is not simple value
 *)
-and maybe_lvalue exp ienv =
+and check_uniqueness_exp' exp ienv =
   match exp.exp_desc with
   | Texp_ident(p, _, _, _, modes) -> begin
       match ident_option_from_path p with
@@ -770,12 +872,13 @@ and maybe_lvalue exp ienv =
               let maybe_unique = {SharedUnique.occ; modes} in
               Some(ps, maybe_unique), Uenv.empty
       end
-  | Texp_field(e, _, l, modes, _) -> begin
-      match maybe_lvalue e ienv with
-      | (Some(paths, maybe_unique), uenv) ->
-          (* accessing the field meaning borrowing the parent record .
-          note that the field itself is not borrowed or used *)
-          let uenv' = mark_borrow paths maybe_unique.SharedUnique.occ in
+  | Texp_field(e, _, l, (modes, barrier), _) -> begin
+      match check_uniqueness_exp' e ienv with
+      | (Some(paths, {SharedUnique.occ;_}), uenv) ->
+          (* accessing the field meaning borrowing the parent record's mem block.
+          Note that the field itself is not borrowed or used *)
+          let maybe_shared = {BorrowedShared.barrier; occ} in
+          let uenv' = mark_maybe_shared paths maybe_shared in
           let occ = {Occurrence.loc = exp.exp_loc; reason = DirectUse} in
           let maybe_unique = {SharedUnique.occ; modes} in
           let paths' = Uenv.Path.child_of_many paths (UsageTree.Projection.Record_field l.lbl_name) in
@@ -786,7 +889,7 @@ and maybe_lvalue exp ienv =
   | _ -> None, check_uniqueness_exp_ exp ienv
 
 and init_single_value_to_match exp ienv =
-  match maybe_lvalue exp ienv with
+  match check_uniqueness_exp' exp ienv with
   | Some (ps, pp), uenv -> (ps, Some pp), uenv
   | None, uenv -> ([Uenv.Path.fresh_root "match"], None), uenv
 
@@ -872,7 +975,7 @@ and check_uniqueness_binding_op bo exp ienv =
           Uniqueness.shared,
           Linearity.many
         )} in
-        mark_use id maybe_unique ienv
+        mark_maybe_unique_ident id maybe_unique ienv
     | None -> Uenv.empty
   in
   let uenv1 = check_uniqueness_exp_ bo.bop_exp ienv in

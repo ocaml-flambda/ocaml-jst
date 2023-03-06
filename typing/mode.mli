@@ -66,6 +66,7 @@ module Uniqueness : sig
   val submode_exn : t -> t -> unit
   val equate : t -> t -> (unit, unit) result
   val join : t list -> t
+  val meet : t list -> t
   val constrain_upper : t -> const
   val constrain_lower : t -> const
   val newvar : unit -> t

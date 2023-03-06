@@ -28,6 +28,8 @@ type attributes = attribute list
 type value = Value_pattern
 type computation = Computation_pattern
 
+type unique_barrier = Mode.Uniqueness.t list
+
 type _ pattern_category =
 | Value : value pattern_category
 | Computation : computation pattern_category
@@ -126,7 +128,7 @@ and expression_desc =
       extended_expression : (update_kind * expression) option;
       alloc_mode : Modes.Alloc.t option
     }
-  | Texp_field of expression * Longident.t loc * label_description * unique_use * Modes.Alloc.t option
+  | Texp_field of expression * Longident.t loc * label_description * (unique_use * (unique_barrier ref)) * Modes.Alloc.t option
   | Texp_setfield of
       expression * Modes.Locality.t * Longident.t loc * label_description * expression
   | Texp_array of mutable_flag * expression list * Modes.Alloc.t

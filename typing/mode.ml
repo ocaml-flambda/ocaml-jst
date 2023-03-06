@@ -204,6 +204,20 @@ module Solver (L : Lattice) = struct
       in
       Amodevar v
 
+  let meetvars vars =
+    match vars with
+    | [] -> max_mode
+    | v :: rest ->
+      let v =
+        if all_equal v rest then v
+        else begin
+          let v = fresh () in
+          List.iter (fun v' -> submode_exn (Amodevar v) (Amodevar v')) vars;
+          v
+        end
+      in
+      Amodevar v
+
   (* let meetvars vars =
     match vars with
     | [] -> max_mode
@@ -491,6 +505,15 @@ module Uniqueness = struct
       | Amode Shared :: _ -> Amode Shared
       | Amodevar v :: ms -> aux (v :: vars) ms
     in aux [] ms
+
+  let meet ms =
+    let rec aux vars = function
+      | [] -> meetvars vars
+      | Amode Unique :: _ -> Amode Unique
+      | Amode Shared :: ms -> aux vars ms
+      | Amodevar v :: ms -> aux (v :: vars) ms
+    in aux [] ms
+
 end
 
 module Linearity = struct
