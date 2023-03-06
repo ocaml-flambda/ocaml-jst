@@ -290,7 +290,7 @@ and lam ppf = function
       fprintf ppf "unreachable"
   | Uregion e ->
       fprintf ppf "@[<2>(region@ %a)@]" lam e
-  | Utail e ->
+  | Uexclave e ->
       fprintf ppf "@[<2>(tail@ %a)@]" lam e
 
 and sequence ppf ulam = match ulam with

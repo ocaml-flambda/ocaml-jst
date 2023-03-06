@@ -272,7 +272,7 @@ let rec expr ppf = function
              sequence e1 VP.print id sequence e2
   | Cregion e ->
       fprintf ppf "@[<2>(region@ %a)@]" sequence e
-  | Ctail e ->
+  | Cexclave e ->
       fprintf ppf "@[<2>(tail@ %a)@]" sequence e
 
 and sequence ppf = function
