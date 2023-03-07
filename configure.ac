@@ -2041,7 +2041,7 @@ AS_IF([test x"$enable_stack_allocation" = "xno"],
     [AC_DEFINE([STACK_ALLOCATION])
      stack_allocation=true],
     [AC_MSG_ERROR([Stack allocation is only supported on 64-bit platforms. \
-Please pass '--enable-stack-allocation=false'.])])])
+Please pass '--enable-stack-allocation=no'.])])])
 
 AS_IF([test x"$enable_poll_insertion" = "xyes"],
   [AC_DEFINE([POLL_INSERTION])

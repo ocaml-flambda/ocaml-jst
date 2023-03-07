@@ -19059,7 +19059,7 @@ then :
      stack_allocation=true
 else $as_nop
   as_fn_error $? "Stack allocation is only supported on 64-bit platforms. \
-Please pass '--enable-stack-allocation=false'." "$LINENO" 5
+Please pass '--enable-stack-allocation=no'." "$LINENO" 5
 fi
 fi
 
