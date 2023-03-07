@@ -7181,7 +7181,7 @@ and type_comprehension_iterator
       in
       (* TODO: fix handling of first-class module patterns so we can remove
        * this line. *)
-      allow_modules := false;
+      modules_allowed_at_scope := None;
       let pattern =
         (* To understand why we can currently only provide [global] bindings for
            the contents of sequences comprehensions iterate over, see "What
