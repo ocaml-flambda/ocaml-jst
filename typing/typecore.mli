@@ -129,7 +129,7 @@ val type_self_pattern:
         Env.t -> Parsetree.pattern ->
         Typedtree.pattern * pattern_variable list
 val check_partial:
-        ?lev:int -> Env.t -> type_expr ->
+        ?lev:int -> modules_allowed:int option -> Env.t -> type_expr ->
         Location.t -> Typedtree.value Typedtree.case list -> Typedtree.partial
 val type_expect:
         Env.t -> Parsetree.expression -> type_expected -> Typedtree.expression
