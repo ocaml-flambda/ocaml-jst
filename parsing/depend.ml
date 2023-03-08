@@ -340,7 +340,10 @@ and add_binding_op bv bv' pbop =
   add_pattern bv' pbop.pbop_pat
 
 and add_modtype bv mty =
-  match mty.pmty_desc with
+  match Extensions.Module_type.get_desc mty with
+  | Extension _ -> .
+  | Regular desc ->
+  match desc with
     Pmty_ident l -> add bv l
   | Pmty_alias l -> add_module_path bv l
   | Pmty_signature s -> add_signature bv s
@@ -382,7 +385,10 @@ and add_module_alias bv l =
     | _ -> add_module_path bv l; bound (* cannot delay *)
 
 and add_modtype_binding bv mty =
-  match mty.pmty_desc with
+  match Extensions.Module_type.get_desc mty with
+  | Extension _ -> .
+  | Regular desc ->
+  match desc with
     Pmty_alias l ->
       add_module_alias bv l
   | Pmty_signature s ->

@@ -287,6 +287,7 @@ module Module_type = Make_AST(struct
     let location mty = mty.pmty_loc
 
     let wrap_desc ~loc ~attrs = Ast_helper.Mty.mk ~loc ~attrs
+    let get_desc mty = mty.pmty_desc
 
     let make_extension_node = Ast_helper.Mty.extension
 

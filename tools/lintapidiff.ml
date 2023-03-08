@@ -123,7 +123,9 @@ module Ast = struct
   let rec add_item ~f path inherits map item =
     let rec add_module_type path ty (inherits, map) =
       let self = add_item ~f path inherits in
-      match ty.pmty_desc with
+      match Extensions.Module_type.get_desc ty with
+      | Extension _ -> .
+      | Regular desc -> match desc with
       | Pmty_signature lst -> List.fold_left self map lst
       | Pmty_functor ({txt;_}, _, m) ->
           let path = Path.Papply(path, Path.Pident (Ident.create txt)) in

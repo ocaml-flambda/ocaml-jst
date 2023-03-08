@@ -1520,7 +1520,9 @@ module Analyser =
     (** Return a module_type_kind from a Parsetree.module_type and a Types.module_type *)
     and analyse_module_type_kind
       ?(erased = Name.Map.empty) env current_module_name module_type sig_module_type =
-      match module_type.Parsetree.pmty_desc with
+      match Extensions.Module_type.get_desc module_type with
+      | Extension _ -> .
+      | Regular desc -> match desc with
         Parsetree.Pmty_ident longident ->
           let name =
             match sig_module_type with
@@ -1618,7 +1620,9 @@ module Analyser =
     (** analyse of a Parsetree.module_type and a Types.module_type.*)
     and analyse_module_kind
         ?(erased = Name.Map.empty) env current_module_name module_type sig_module_type =
-      match module_type.Parsetree.pmty_desc with
+      match Extensions.Module_type.get_desc module_type with
+      | Extension _ -> .
+      | Regular desc -> match desc with
       | Parsetree.Pmty_ident _longident ->
           let k = analyse_module_type_kind env current_module_name module_type sig_module_type in
           Module_with ( k, "" )

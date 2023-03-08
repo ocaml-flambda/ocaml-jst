@@ -816,6 +816,13 @@ and class_declaration = class_expr class_infos
 and module_type =
     {
      pmty_desc: module_type_desc;
+     (** Prefer [Extensions.Module_type.get_desc] instead of using
+         this field directly, as the former will detect extension nodes
+         correctly. Extensions are encoded as
+         [Pmty_functor(Named(_, Pmty_extension _), _)];
+         if your pattern match avoids
+         matching that pattern, it is OK to skip [get_desc]. *)
+
      pmty_loc: Location.t;
      pmty_attributes: attributes;  (** [... [\@id1] [\@id2]] *)
     }
