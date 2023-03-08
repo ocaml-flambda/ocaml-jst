@@ -92,6 +92,12 @@ module Error : sig
   exception Error of Location.t * error
 end
 
+(** The result of inspecting an AST is either a [Regular] AST
+    or an [Extension]. *)
+type ('ast_desc, 'ext_ast) desc =
+  | Regular of 'ast_desc
+  | Extension of 'ext_ast
+
 (** The type of modules that lift and lower language extension terms from and
     to an OCaml AST type ([ast]) *)
 module type AST = sig
@@ -136,6 +142,29 @@ module Expression : AST with type ast      = Parsetree.expression
 module Pattern    : AST with type ast      = Parsetree.pattern
                          and type ast_desc = Parsetree.pattern_desc
 
+(** The module type of language extension ASTs, instantiated once for each
+    syntactic category. Modules of this type allow interpreting an AST as
+    a structure holding extension information. *)
+module type Extended_ast = sig
+  (** The AST for all our ocaml-jst language extensions; one constructor per
+      language extension that extends the expression language.  Some extensions
+      are handled separately and thus are not listed here. *)
+  type t
+
+  (** The corresponding OCaml AST *)
+  type ast
+  (** The corresponding OCaml AST descriptor *)
+  type ast_desc
+
+  (** Inspect an AST node. For any AST type that supports extensions, prefer
+      using this function over a direct pattern-match, because this function
+      is extension-aware.
+
+      If this function spots an extension node for an extension that is not
+      enabled, it raises an error. *)
+  val of_ast : ast -> (ast_desc, t) desc
+end
+
 (** Each syntactic category will include a module that meets this signature.
     Then, the [Make_of_ast] functor produces the functions that actually
     convert from the Parsetree AST to the extensions one. *)
@@ -173,14 +202,10 @@ end
 (** Build the [of_ast] function from [Of_ast_parameters]. The result
     of this functor should be [include]d in modules implementing [Extensions.AST].
 *)
-module Make_of_ast (Params : Of_ast_parameters) : sig
-
-  (** Interpret an AST term in the specified syntactic category as a term of the
-      appropriate auxiliary language extension AST if possible.  Raises an error
-      if the extension it finds is disabled or if the language extension
-      embedding is malformed.  *)
-  val of_ast : Params.AST.ast -> Params.t option
-end
+module Make_of_ast (Params : Of_ast_parameters) :
+  Extended_ast with type t := Params.t
+                and type ast := Params.AST.ast
+                and type ast_desc := Params.AST.ast_desc
 
 (** Require that an extension is enabled, or else throw an exception (of an
     unexported type) at the provided location saying otherwise.  This is

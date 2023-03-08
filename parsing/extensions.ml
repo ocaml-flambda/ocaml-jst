@@ -301,14 +301,7 @@ module Immutable_arrays = struct
 end
 
 (******************************************************************************)
-(** The interface to language extensions, which we export *)
-
-module type AST = sig
-  type t
-  type ast
-
-  val of_ast : ast -> t option
-end
+(** Individaul syntactic category modules *)
 
 module Expression = struct
   module M = struct

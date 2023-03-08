@@ -140,6 +140,9 @@ module type AST_parameters = sig
   val wrap_desc :
     loc:Location.t -> attrs:Parsetree.attributes -> ast_desc -> ast
 
+  (** Extract an [ast_desc] from an [ast] *)
+  val get_desc : ast -> ast_desc
+
   (** How to construct an extension node for this AST (something of the shape
       [[%name]] or [[%%name]], depending on the AST).  Should just be
       [Ast_helper.CAT.extension] for the appropriate syntactic category
@@ -220,7 +223,7 @@ module Make_AST (AST_parameters : AST_parameters) :
                 raise (Error(ext_loc, Malformed_extension(names, err)))
               in
               match ext_payload with
-              | PStr [] -> Some (names, body)
+              | PStr [] -> Extension (names, body)
               | _ -> raise_malformed (Has_payload ext_payload)
             end
           | _ -> None
@@ -238,6 +241,7 @@ module Expression = Make_AST(struct
   let location expr = expr.pexp_loc
 
   let wrap_desc ~loc ~attrs = Ast_helper.Exp.mk ~loc ~attrs
+  let get_desc expr = expr.pexp_desc
 
   let make_extension_node = Ast_helper.Exp.extension
 
@@ -263,6 +267,7 @@ module Pattern = Make_AST(struct
   let location pat = pat.ppat_loc
 
   let wrap_desc ~loc ~attrs = Ast_helper.Pat.mk ~loc ~attrs
+  let get_desc pat = pat.ppat_desc
 
   let make_extension_node = Ast_helper.Pat.extension
 
@@ -281,26 +286,36 @@ end)
 (** Generically lift and lower our custom language extension ASTs from/to OCaml
     ASTs. *)
 
+type ('ast_desc, 'ext_ast) desc =
+  | Regular of 'ast_desc
+  | Extension of 'ext_ast
+
+module type Extended_AST = sig
+  type t
+  type ast
+  type ast_desc
+
+  val of_ast : ast -> (ast_desc, t) desc
+end
+
 module type Of_ast_parameters = sig
   module AST : AST
   type t
   val of_ast_internal : Language_extension.t -> AST.ast -> t option
 end
 
-module Make_of_ast (Params : Of_ast_parameters) : sig
-  val of_ast : Params.AST.ast -> Params.t option
-end = struct
+module Make_of_ast (Params : Of_ast_parameters) = struct
   let of_ast ast =
     let loc = Params.AST.location ast in
     let raise_error err = raise (Error (loc, err)) in
     match Params.AST.match_extension ast with
-    | None -> None
-    | Some ([name], ast) -> begin
+    | None -> Regular (Params.AST.get_desc ast)
+    | Extension ([name], ast) -> begin
         match Language_extension.of_string name with
         | Some ext -> begin
             assert_extension_enabled ~loc ext;
             match Params.of_ast_internal ext ast with
-            | Some ext_ast -> Some ext_ast
+            | Some ext_ast -> Extension ext_ast
             | None ->
                 raise_error (Wrong_syntactic_category(ext, Params.AST.plural))
           end

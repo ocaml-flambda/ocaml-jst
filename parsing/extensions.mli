@@ -17,6 +17,9 @@
     For details on the rationale behind this approach (and for some of the gory
     details), see [Extensions_parsing]. *)
 
+(*********************************************)
+(* Individual extensions *)
+
 (** The ASTs for list and array comprehensions *)
 module Comprehensions : sig
   type iterator =
@@ -76,58 +79,8 @@ module Immutable_arrays : sig
   val pat_of : loc:Location.t -> pattern -> Parsetree.pattern_desc
 end
 
-(** The module type of language extension ASTs, instantiated once for each
-    syntactic category.  We tend to call the pattern-matching functions here
-    with unusual indentation, not indenting the [None] branch further so as to
-    avoid merge conflicts with upstream. *)
-module type AST = sig
-  (** The AST for all our ocaml-jst language extensions; one constructor per
-      language extension that extends the expression language.  Some extensions
-      are handled separately and thus are not listed here. *)
-  type t
-
-  (** The corresponding OCaml AST *)
-  type ast
-
-  (** Given an OCaml AST node, check to see if it corresponds to a language
-      extension term.  If it is, and the extension is enabled, then return it;
-      if it's not a language extension term, return [None]; if it's a disabled
-      language extension term, raise an error.
-
-      AN IMPORTANT NOTE: We indent calls to this function *very* strangely: we
-      *do not change the indentation level* when we match on its result!
-      E.g. from [type_expect_] in [typecore.ml]:
-
-      {[
-        match Extensions.Expression.of_ast sexp with
-        | Some eexp ->
-            type_expect_extension
-              ~loc ~env ~expected_mode ~ty_expected ~explanation eexp
-        | None      -> match sexp.pexp_desc with
-        | Pexp_ident lid ->
-            let path, mode, desc, kind = type_ident env ~recarg lid in
-            (* ... *)
-        | Pexp_constant(Pconst_string (str, _, _) as cst) ->
-            register_allocation expected_mode;
-            (* ... *)
-        | (* ... *)
-        | Pexp_unreachable ->
-            re { exp_desc = Texp_unreachable;
-                 exp_loc = loc; exp_extra = [];
-                 exp_type = instance ty_expected;
-                 exp_mode = expected_mode.mode;
-                 exp_attributes = sexp.pexp_attributes;
-                 exp_env = env }
-      ]}
-
-      Note that we match on the result of this function, forward to
-      [type_expect_extension] if we get something, and otherwise do the real
-      match on [sexp.pexp_desc] *without going up an indentation level*.  This
-      is important to reduce the number of merge conflicts with upstream by
-      avoiding changing the body of every single important function in the type
-      checker to add pointless indentation. *)
-  val of_ast : ast -> t option
-end
+(******************************************)
+(* Individual syntactic categories *)
 
 (** Language extensions in expressions *)
 module Expression : sig
@@ -135,7 +88,9 @@ module Expression : sig
     | Eexp_comprehension   of Comprehensions.expression
     | Eexp_immutable_array of Immutable_arrays.expression
 
-  include AST with type t := t and type ast := Parsetree.expression
+  include Extended_AST with type t := t
+                        and type ast := Parsetree.expression
+                        and type ast_desc := Parsetree.expression_desc
 end
 
 (** Language extensions in patterns *)
@@ -143,5 +98,7 @@ module Pattern : sig
   type t =
     | Epat_immutable_array of Immutable_arrays.pattern
 
-  include AST with type t := t and type ast := Parsetree.pattern
+  include Extended_AST with type t := t
+                        and type ast := Parsetree.pattern
+                        and type ast_desc := Parsetree.pattern_desc
 end
