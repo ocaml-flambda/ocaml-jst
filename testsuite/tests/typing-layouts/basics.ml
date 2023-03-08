@@ -378,6 +378,9 @@ Error: This type int * int should be an instance of type 'a
 
 (**********************************************************)
 (* Test 7: Polymorphic variants take value args (for now) *)
+
+(* CR layouts: we'll eventually allow non-value arguments to polymorphic
+   variants *)
 module M7_1 = struct
   type foo1 = [ `Foo1 of int | `Baz1 of t_void | `Bar1 of string ];;
 end
@@ -452,6 +455,8 @@ Error: Polymorpic variant constructor argument types must have layout value.
 
 (************************************************)
 (* Test 8: Tuples only work on values (for now) *)
+
+(* CR layouts v5: these should work *)
 module M8_1 = struct
   type foo1 = int * t_void * [ `Foo1 of int | `Bar1 of string ];;
 end
@@ -846,6 +851,7 @@ Error: This expression has type 'a but an expression was expected of type
 |}];;
 
 (* option *)
+(* CR layouts v5: allow this *)
 type t12 = t_void option;;
 [%%expect{|
 Line 1, characters 11-17:
@@ -879,6 +885,7 @@ Error: This expression has type 'a but an expression was expected of type
 |}];;
 
 (* list *)
+(* CR layouts: should work after relaxing the mixed block restriction. *)
 type t12 = t_void list;;
 [%%expect{|
 Line 1, characters 11-17:
@@ -912,6 +919,7 @@ Error: This expression has type 'a but an expression was expected of type
 |}];;
 
 (* array *)
+(* CR layouts v4: should work *)
 type t12 = t_void array;;
 [%%expect{|
 Line 1, characters 11-17:

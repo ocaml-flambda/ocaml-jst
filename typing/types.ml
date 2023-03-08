@@ -691,7 +691,8 @@ type constructor_description =
 
 let equal_tag t1 t2 =
   match (t1, t2) with
-  | Ordinary {src_index=i1}, Ordinary {src_index=i2} -> i2 = i1
+  | Ordinary {src_index=i1}, Ordinary {src_index=i2} ->
+    i2 = i1 (* If i1 = i2, the runtime_tags will also be equal *)
   | Extension (path1,_), Extension (path2,_) -> Path.same path1 path2
   | (Ordinary _ | Extension _), _ -> false
 
@@ -714,6 +715,11 @@ let item_visibility = function
   | Sig_class_type (_, _, _, vis) -> vis
 
 let kind_abstract ~layout = Type_abstract { layout }
+(* CR-someday layouts: We could match on the layout and return one of the below
+   to share more - test whether the memory savings is worth the runtime cost of
+   the match.  I implemented a similar optimization in Subst.norm, but was
+   surprised to find basically no impact on artifact sizes. *)
+
 let kind_abstract_value = kind_abstract ~layout:Layout.value
 let kind_abstract_immediate = kind_abstract ~layout:Layout.immediate
 let kind_abstract_any = kind_abstract ~layout:Layout.any
@@ -776,7 +782,7 @@ type label_description =
     lbl_res: type_expr;                 (* Type of the result *)
     lbl_arg: type_expr;                 (* Type of the argument *)
     lbl_mut: mutable_flag;              (* Is this a mutable field? *)
-    lbl_global: global_flag;            (* Is this a global field? *)
+    lbl_global: global_flag;        (* Is this a global field? *)
     lbl_layout : layout;                (* Layout of the argument *)
     lbl_pos: int;                       (* Position in block *)
     lbl_num: int;                       (* Position in type *)

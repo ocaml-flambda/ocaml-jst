@@ -475,9 +475,12 @@ val type_layout : Env.t -> type_expr -> layout
    needed) *)
 val type_sort : Env.t -> type_expr -> (sort, Layout.Violation.t) result
 
-(* Layout checking.  For convenience, on success these functions return the most
-   precise layout we found for the given type during checking (which may be an
-   upper bound). *)
+(* Layout checking. [constrain_type_layout] will update the layout of type
+   variables to make the check true, if possible.  [check_decl_layout] and
+   [check_type_layout] won't, but will still instantiate sort variables.
+
+   For convenience, on success these functions return the most precise layout we
+   found for the given type during checking (which may be an upper bound). *)
 (* CJC XXX errors: probably changes these to raise on error, like unify, when we
    work on errors *)
 val check_decl_layout : Env.t -> type_declaration -> layout

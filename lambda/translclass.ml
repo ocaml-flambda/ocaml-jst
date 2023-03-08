@@ -87,7 +87,7 @@ let transl_meth_list lst =
 
 let set_inst_var ~scopes obj id expr =
   Lprim(Psetfield_computed (Typeopt.maybe_pointer expr, Assignment alloc_heap),
-    [Lvar obj; Lvar id; transl_exp ~scopes None expr], Loc_unknown)
+    [Lvar obj; Lvar id; transl_exp ~scopes Not_void expr], Loc_unknown)
 
 let transl_val tbl create name =
   mkappl (oo_prim (if create then "new_variable" else "get_variable"),
@@ -333,7 +333,7 @@ let rec build_class_init ~scopes cla cstr super inh_init cl_init msubst top cl =
             | Tcf_method (name, _, Tcfk_concrete (_, exp)) ->
                 let scopes = enter_method_definition ~scopes name.txt in
                 let met_code =
-                  msubst true (transl_scoped_exp ~scopes None exp) in
+                  msubst true (transl_scoped_exp ~scopes Not_void exp) in
                 let met_code =
                   if !Clflags.native_code && List.length met_code = 1 then
                     (* Force correct naming of method for profiles *)
@@ -346,10 +346,11 @@ let rec build_class_init ~scopes cla cstr super inh_init cl_init msubst top cl =
                  values)
             | Tcf_initializer exp ->
                 (inh_init,
-                 Lsequence(mkappl (oo_prim "add_initializer",
-                                   Lvar cla :: msubst false
-                                                 (transl_exp ~scopes None exp)),
-                           cl_init),
+                 Lsequence(
+                   mkappl (oo_prim "add_initializer",
+                           Lvar cla :: msubst false
+                                         (transl_exp ~scopes Not_void exp)),
+                   cl_init),
                  methods, values)
             | Tcf_attribute _ ->
                 (inh_init, cl_init, methods, values))

@@ -387,6 +387,17 @@ module Make(O : OBJ)(EVP : EVALPATH with type valu = O.t) = struct
                     tree_of_val depth obj
                       (instantiate_type env decl.type_params ty_list body)
                 | {type_kind = Type_variant (constr_list,rep)} ->
+                  (* Here we work backwards from the actual runtime value to
+                     find the appropriate `constructor_declaration` in
+                     `constr_list`.  `Datarepr.find_constr_by_tag` does most
+                     of the work, but needs two pieces of information in
+                     addition to the tag:
+                     1) Whether the value is a block or immediate (because tags
+                        are only unique within a category).
+                     2) The `constructor_description`s, because the declarations
+                        don't record the layout information needed to determine
+                        which constructors are immediate due to void arguments.
+                  *)
                     let cstrs =
                       Env.lookup_all_constructors_from_type ~use:false
                         ~loc:Location.none Positive path env
@@ -536,6 +547,9 @@ module Make(O : OBJ)(EVP : EVALPATH with type valu = O.t) = struct
         in
         Oval_record (tree_of_fields (pos = 0) pos lbl_list)
 
+      (* CR ccasinghino: When we allow other layouts in tuples, this should be
+         generalized to take a list or array of layouts, rather than just
+         pairing each type with a bool indicating whether it is void *)
       and tree_of_val_list start depth obj ty_list =
         let rec tree_list i = function
           | [] -> []
@@ -545,9 +559,6 @@ module Make(O : OBJ)(EVP : EVALPATH with type valu = O.t) = struct
               tree :: tree_list (i + 1) ty_list in
       tree_list start ty_list
 
-      (* CR ccasinghino: When we allow other layouts in tuples, this should be
-         generalized to take a list or array of layouts, rather than just
-         pairing each type with a bool indicating whether it is void *)
       and tree_of_constr_with_args
              tree_of_cstr cstr_name inlined start depth obj ty_args unboxed =
         let lid = tree_of_cstr (Out_name.create cstr_name) in

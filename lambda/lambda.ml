@@ -811,6 +811,8 @@ and free_variables_list set exprs =
   List.fold_left (fun set expr -> Ident.Set.union (free_variables expr) set)
     set exprs
 
+type void_continuation = Void_cont of int | Not_void
+
 (* Check if an action has a "when" guard *)
 let raise_count = ref 0
 

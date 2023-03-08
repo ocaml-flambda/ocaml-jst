@@ -69,6 +69,31 @@ val b' : baz =
 - : unit = ()
 |}];;
 
+(* Same thing, but showing that it's the order of the declaration that matters
+   *)
+
+let () = r := []
+
+let id1' {a1; a2; x; v; z; b1; b2} =
+  {a2 = (cons_r 9; {v = ((cons_r 10; a2).v)});
+   b2 = (cons_r 1; {v = ((cons_r 2; b2).v)});
+   x = (cons_r 8; x);
+   a1 = (cons_r 11; {v = ((cons_r 12; a1).v)});
+   z = (cons_r 5; z);
+   b1 = (cons_r 3; {v = ((cons_r 4; b1).v)});
+   v = (cons_r 6; {v = ((cons_r 7; v).v)});
+  }
+
+let b' = id1' b'
+
+let _ = assert (List.for_all2 (=) !r [12;11;10;9;8;7;6;5;4;3;2;1]);;
+[%%expect{|
+val id1' : baz -> baz = <fun>
+val b' : baz =
+  {a1 = <void>; a2 = <void>; x = 3; v = <void>; z = 42; b1 = <void>;
+   b2 = <void>}
+- : unit = ()
+|}];;
 
 (* Test 2: evaluation order of variants with voids *)
 type void_variant =
@@ -226,6 +251,20 @@ Error: Top-level module bindings must have layout value, but v has layout
        void.
 |}];;
 
+let () = r := []
+module M3_4 = struct
+  (* But it's fine if you don't bind it *)
+  let _ =
+    match cons_r 1; magic_B with
+    | B v -> cons_r 2; v
+    | _ -> assert false
+end;;
+let _ = assert (List.for_all2 (=) !r [2;1]);;
+[%%expect {|
+module M3_4 : sig end
+- : unit = ()
+|}];;
+
 (* Test 4: Void to left of semicolon *)
 let () = r := []
 
@@ -339,11 +378,13 @@ val z : int = 87
 (* Test 6: Compilation of exception patterns in void matches. *)
 exception Ex1 of int
 exception Ex2 of string
-exception Ex3 of bool;;
+exception Ex3 of bool
+exception Ex4 of t_void;;
 [%%expect{|
 exception Ex1 of int
 exception Ex2 of string
 exception Ex3 of bool
+exception Ex4 of t_void
 |}];;
 
 let [@warning "-10"] exnmatch1 (V v) =
@@ -424,6 +465,28 @@ val exnmatch4 : void_holder -> int = <fun>
 - : unit = ()
 |}];;
 
+let () = r := []
+let [@warning "-10-21"] exnmatch5 (V v) =
+  match
+    {v = (cons_r 1; v)};
+    (match vh with
+     | V v -> raise (Ex4 (cons_r 2; v)));
+    {v = (cons_r 99; v)}
+  with
+  | {v} -> V (cons_r 98; v)
+  | exception Ex4 v -> V (cons_r 3; v)
+
+let _ = exnmatch5 vh
+let l = !r
+let _ = assert (List.for_all2 (=) l [3;2;1]);;
+[%%expect{|
+val exnmatch5 : void_holder -> void_holder = <fun>
+- : void_holder = V <void>
+val l : int list = [3; 2; 1]
+- : unit = ()
+|}];;
+
+
 (* Test 7: compilation of unboxed inlined void records *)
 let () = r := []
 
@@ -489,6 +552,56 @@ let () = assert (x = 3)
 let () = assert (List.for_all2 (=) !r [4;3;2;1]);;
 [%%expect{|
 val x : int = 3
+|}];;
+
+(* Test 9: voids in let rec groups *)
+(* CR layouts v2: hard to do much interesting here, considering the restrictions
+   on non-function let-recs.  Revisit when we have more interesting functions?
+*)
+let () = r := []
+
+let let_rec_of_void_1 vh x =
+  let v = match vh with
+    | V v -> v
+  in
+  (* not all void *)
+  let rec y = (cons_r 1; x)
+  and v' = (cons_r 2; v)
+  in
+  (y, V v')
+
+let (x, _) = let_rec_of_void_1 vh 42
+
+let () = assert (x = 42);;
+let () = assert (List.for_all2 (=) !r [2;1]);;
+
+[%%expect{|
+val let_rec_of_void_1 : void_holder -> 'a -> 'a * void_holder = <fun>
+val x : int = 42
+|}];;
+
+let () = r := []
+
+let let_rec_of_void_2 vh x =
+  let v = match vh with
+    | V v -> v
+  in
+  (* all void *)
+  let rec v1 = cons_r 1; v
+  and v2 = cons_r 2; v
+  and v3 = cons_r 3; v
+  in
+  (x, V v1, V v2, V v3)
+
+let (x, _, _, _) = let_rec_of_void_2 vh 42
+
+let () = assert (x = 42);;
+let () = assert (List.for_all2 (=) !r [3;2;1]);;
+
+[%%expect{|
+val let_rec_of_void_2 :
+  void_holder -> 'a -> 'a * void_holder * void_holder * void_holder = <fun>
+val x : int = 42
 |}];;
 
 

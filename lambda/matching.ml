@@ -1754,12 +1754,9 @@ let get_key_constr = function
 
 let get_pat_args_constr p rem =
   match p with
-  | { pat_desc = Tpat_construct (_, {cstr_inlined=Some _}, args, _) } ->
-    (* Here there is one argument - the record - which may not be all void.
-       CR ccasinghino: relax the "not all void" restriction.
-    *)
-    args @ rem
   | { pat_desc = Tpat_construct (_, {cstr_arg_layouts}, args, _) } ->
+    (* CR layouts: This treatment of void can go when void is handled later in
+       the compiler. *)
     (List.filteri (fun i _ ->
        not (Layout.can_make_void cstr_arg_layouts.(i)))
        args) @ rem
@@ -3753,12 +3750,12 @@ let assign_pat ~scopes value_kind opt nraise catch_ids loc pat lam =
 
 let for_let ~scopes loc param_void_k param param_sort pat body_kind body =
   match param_void_k with
-  | Some k ->
+  | Void_cont k ->
       (* the param is void.  Any variables bound by the pattern must also be
          void, so we can just skip the whole pattern matching compiler and
          evaluate the param. *)
       Lstaticcatch(param, (k,[]), body, body_kind)
-  | None -> begin
+  | Not_void -> begin
       match pat.pat_desc with
       | Tpat_any ->
         (* This eliminates a useless variable (and stack slot in bytecode)

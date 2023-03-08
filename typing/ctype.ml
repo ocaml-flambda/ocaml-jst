@@ -344,9 +344,10 @@ let without_generating_equations f =
 
    - [Skip_checks] is for when we want to skip the checks entirely.  Sometimes
      unification is reached through apply/subst in contexts that make layout
-     checking unnecessary.  For now, we're only using this when reached through
-     [Subst.ctype_apply_env_empty], because the empty environment also makes it
-     impossible for us to perform the relevant checks.
+     checking unnecessary.  For now, we're only using this in the more specific
+     case that apply is reached through [Subst.ctype_apply_env_empty], because
+     the empty environment also makes it impossible for us to perform the
+     relevant checks.
 *)
 type layout_unification_mode =
   | Perform_checks

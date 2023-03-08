@@ -672,8 +672,7 @@ and type_decl_kind = (label_declaration, constructor_declaration) type_kind
 and ('lbl, 'cstr) type_kind =
     Type_abstract of {layout : layout}
   (* The layout here is authoritative if the manifest is [None].  Otherwise,
-     it's an upper bound; it may be necessary to look at the manifest for the
-     most precise layout. *)
+     it's an upper bound; look at the manifest for the most precise layout. *)
   | Type_record of 'lbl list  * record_representation
   | Type_variant of 'cstr list * variant_representation
   | Type_open
@@ -688,7 +687,7 @@ and record_representation =
   (* For an inlined record, we record the representation of the variant that
      contains it and the tag of the relevant constructor of that variant. *)
   | Record_boxed of layout array
-  | Record_float
+  | Record_float (* All fields are floats *)
 
 
 (* For unboxed variants, we record the layout of the mandatory single argument.
@@ -871,6 +870,7 @@ type constructor_description =
     cstr_loc: Location.t;
     cstr_attributes: Parsetree.attributes;
     cstr_inlined: type_declaration option;
+      (* [Some decl] here iff the cstr has an inline record (which is decl) *)
     cstr_uid: Uid.t;
    }
 
@@ -899,7 +899,11 @@ type label_description =
   }
 
 (** The special value we assign to lbl_pos for label descriptions corresponding
-    to void types, because they can't sensibly be projected. *)
+    to void types, because they can't sensibly be projected.
+
+    CR-someday layouts: This should be removed once we have unarization, as it
+    will be up to a later stage of the compiler to erase void.
+*)
 val lbl_pos_void : int
 
 (** Extracts the list of "value" identifiers bound by a signature.
@@ -938,13 +942,16 @@ val undo_compress: snapshot -> unit
  *)
 
 val link_type: type_expr -> type_expr -> unit
-        (* Set the desc field of [t1] to [Tlink t2], logging the old
-           value if there is an active snapshot *)
+        (* Set the desc field of [t1] to [Tlink t2], logging the old value if
+           there is an active snapshot.  Any layout information in [t1]'s desc
+           is thrown away without checking - calls to this in unification should
+           first check that [t2]'s layout is a sublayout of [t1]. *)
 val set_type_desc: type_expr -> type_desc -> unit
         (* Set directly the desc field, without sharing *)
 val set_level: type_expr -> int -> unit
 val set_scope: type_expr -> int -> unit
 val set_var_layout: type_expr -> layout -> unit
+        (* May only be called on Tvars *)
 val set_name:
     (Path.t * type_expr list) option ref ->
     (Path.t * type_expr list) option -> unit

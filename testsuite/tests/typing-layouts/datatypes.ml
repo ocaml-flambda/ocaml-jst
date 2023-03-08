@@ -13,7 +13,7 @@ type t_immediate [@@immediate];;
 (* Test 1: constructor arguments may have any sort *)
 type t1_void = T1_void of t_void
 type t1_value = T1_value of t_value
-type t1_immediate = T1_value of t_immediate
+type t1_immediate = T1_immediate of t_immediate
 
 type t1_mixed1 = T1_mixed1 of t_void * t_immediate
 type t1_mixed2 = T1_mixed2 of t_immediate * t_value * t_void
@@ -25,7 +25,7 @@ type t_value [@@value]
 type t_immediate [@@immediate]
 type t1_void = T1_void of t_void
 type t1_value = T1_value of t_value
-type t1_immediate = T1_value of t_immediate
+type t1_immediate = T1_immediate of t_immediate
 type t1_mixed1 = T1_mixed1 of t_void * t_immediate
 type t1_mixed2 = T1_mixed2 of t_immediate * t_value * t_void
 type t1_mixed3 = T1_mixed3 of t_value * t_immediate
@@ -104,6 +104,7 @@ type t3_cmixed2 = C of { x : t_immediate; y : t_value; z : t_void; }
 type t3_cmixed3 = C of { x : t_value; y : t_immediate; }
 |}];;
 
+(* CR layouts v5: allow this *)
 type t3_void = { x : t_void };;
 [%%expect {|
 Line 1, characters 0-29:
