@@ -308,30 +308,36 @@ and rw_exp iflag sexp =
   | Pexp_extension _ -> ()
   | Pexp_unreachable -> ()
 
-and rewrite_exp_extension iflag = function
+and rewrite_exp_extension iflag : Extensions.Expression.t -> _ = function
   | Eexp_comprehension cexp -> rewrite_comprehension_exp iflag cexp
   | Eexp_immutable_array iaexp -> rewrite_immutable_array_exp iflag iaexp
 
-and rewrite_comprehension_exp iflag = function
+and rewrite_comprehension_exp iflag :
+  Extensions.Comprehensions.expression -> _ = function
   | Cexp_list_comprehension comp -> rewrite_comprehension iflag comp
   | Cexp_array_comprehension (_, comp) -> rewrite_comprehension iflag comp
 
-and rewrite_comprehension iflag { body; clauses } =
+and rewrite_comprehension iflag
+      ({ body; clauses } : Extensions.Comprehensions.comprehension) =
   List.iter (rewrite_comprehension_clause iflag) clauses;
   rewrite_exp iflag body
 
-and rewrite_comprehension_clause iflag = function
+and rewrite_comprehension_clause iflag : Extensions.Comprehension.clause -> _ =
+  function
   | For cbs -> List.iter (rewrite_clause_binding iflag) cbs
   | When expr -> rewrite_exp iflag expr
 
-and rewrite_clause_binding iflag { pattern = _; iterator; attributes = _ } =
+and rewrite_clause_binding iflag
+      ({ pattern = _; iterator; attributes = _ } :
+         Extensions.Comprehension.clause_binding) =
   match iterator with
   | Range { start; stop; direction = _ } ->
     rewrite_exp iflag start;
     rewrite_exp iflag stop
   | In expr -> rewrite_exp iflag expr
 
-and rewrite_immutable_array_exp iflag = function
+and rewrite_immutable_array_exp iflag : Extensions.Immutable_arrays.t -> _ =
+  function
   | Iaexp_immutable_array exprs ->
     rewrite_exp_list iflag exprs
 
