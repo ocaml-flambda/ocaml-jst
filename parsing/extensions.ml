@@ -296,7 +296,36 @@ module Immutable_arrays = struct
 
   let of_pat expr = match expr.ppat_desc with
     | Ppat_array elts -> Iapat_immutable_array elts
-    | _ -> failwith "Malformed immutable array expression"
+    | _ -> failwith "Malformed immutable array pattern"
+end
+
+(** Strengthening *)
+module Strengthen = struct
+  type nonrec module_type =
+    { mty : Parsetree.module_type; mod_id : Longident.t Location.loc }
+
+  let extension_string = Language_extension.to_string Strengthen
+
+  (* Encoding: [S with M] becomes [functor (_ : S) -> M]. But remember
+     that this gets wrapped in an [[%extension.strengthen]] node, so
+     the what starts as [S with M] really becomes
+
+       {[
+         functor (_ : [%extension.strengthen]) ->
+           functor (_ : S) -> M
+       ]}
+  *)
+
+  let mty_of ~loc { mty; mod_id } =
+    (* See Note [Wrapping with make_extension] *)
+    Module_type.make_extension ~loc [extension_string] @@
+      Ast_helper.Mty.functor_ (Named (Location.mknoloc None, mty))
+        (Ast_helper.Mty.ident mod_id)
+
+  let of_mty mty = match mty.pmty_desc with
+    | Pmty_functor(Named(_, mty), {pmty_desc = Pmty_ident mod_id}) ->
+       { mty; mod_id }
+    | _ -> failwith "Malformed strengthen module type"
 end
 
 (******************************************************************************)
@@ -350,9 +379,12 @@ module Module_type = struct
   module M = struct
     module AST = Extensions_parsing.Module_type
 
-    type t = |
+    type t =
+      | Emty_strengthen of Strengthen.module_type
 
-    let of_ast_internal (ext : Language_extension.t) _mty = match ext with
+    let of_ast_internal (ext : Language_extension.t) mty = match ext with
+      | Strengthen ->
+        Some (Emty_strengthen (Strengthen.of_mty mty))
       | _ -> None
   end
 
