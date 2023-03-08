@@ -56,9 +56,13 @@ let iterator =
   in
   let pat self pat =
     begin match pat.ppat_desc with
-    | Ppat_construct (_, Some (_, ({ppat_desc = Ppat_tuple _} as p)))
+    | Ppat_construct (_, Some (_, p))
       when Builtin_attributes.explicit_arity pat.ppat_attributes ->
+      begin match Extensions.Pattern.get_desc p with
+      | Regular(Ppat_tuple _) ->
         super.pat self p (* allow unary tuple, see GPR#523. *)
+      | _ -> super.pat self pat
+      end
     | _ ->
         super.pat self pat
     end;
@@ -89,10 +93,10 @@ let iterator =
         super.expr self exp
     end;
     let loc = exp.pexp_loc in
-    match Extensions.Expression.of_ast exp with
-    | Some eexp -> eexpr self exp.pexp_loc eexp
-    | None ->
-    match exp.pexp_desc with
+    match Extensions.Expression.get_desc exp with
+    | Extension eexp -> eexpr self exp.pexp_loc eexp
+    | Regular desc ->
+    match desc with
     | Pexp_tuple ([] | [_]) -> invalid_tuple loc
     | Pexp_record ([], _) -> empty_record loc
     | Pexp_apply (_, []) -> no_args loc

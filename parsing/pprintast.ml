@@ -66,6 +66,8 @@ let fixity_of_string  = function
   | _ -> `Normal
 
 let view_fixity_of_exp = function
+  (* matching on pexp_desc is OK because we're looking for Pexp_ident,
+     which is different from the Pexp_apply node of an extension *)
   | {pexp_desc = Pexp_ident {txt=Lident l;_}; pexp_attributes = []} ->
       fixity_of_string l
   | _ -> `Normal
@@ -164,6 +166,8 @@ type construct =
   | `tuple ]
 
 let view_expr x =
+  (* matching on pexp_desc directly is OK because we don't look
+     for a Pexp_apply node here *)
   match x.pexp_desc with
   | Pexp_construct ( {txt= Lident "()"; _},_) -> `tuple
   | Pexp_construct ( {txt= Lident "[]";_},_) -> `nil
@@ -461,16 +465,18 @@ and pattern_or ctxt f x =
       pp f "@[<hov0>%a@]" (list ~sep:"@ | " (pattern1 ctxt)) orpats
 
 and pattern1 ctxt (f:Format.formatter) (x:pattern) : unit =
-  let rec pattern_list_helper f = function
+  let rec pattern_list_helper f p = match p with
     | {ppat_desc =
          Ppat_construct
            ({ txt = Lident("::") ;_},
-            Some ([], {ppat_desc = Ppat_tuple([pat1; pat2]);_}));
-       ppat_attributes = []}
-
-      ->
+            Some ([], inner_pat));
+       ppat_attributes = []} ->
+      begin match Extensions.Pattern.get_desc inner_pat with
+      | Regular(Ppat_tuple([pat1; pat2])) ->
         pp f "%a::%a" (simple_pattern ctxt) pat1 pattern_list_helper pat2 (*RA*)
-    | p -> pattern1 ctxt f p
+      | _ -> pattern1 ctxt f p
+      end
+    | _ -> pattern1 ctxt f p
   in
   if x.ppat_attributes <> [] then pattern ctxt f x
   else match x.ppat_desc with
@@ -495,9 +501,9 @@ and pattern1 ctxt (f:Format.formatter) (x:pattern) : unit =
 
 and simple_pattern ctxt (f:Format.formatter) (x:pattern) : unit =
   if x.ppat_attributes <> [] then pattern ctxt f x
-  else match Extensions.Pattern.of_ast x with
-    | Some epat -> simple_pattern_extension ctxt f epat
-    | None -> match x.ppat_desc with
+  else match Extensions.Pattern.get_desc x with
+    | Extension epat -> simple_pattern_extension ctxt f epat
+    | Regular desc -> match desc with
     | Ppat_construct (({txt=Lident ("()"|"[]" as x);_}), None) ->
         pp f  "%s" x
     | Ppat_any -> pp f "_";
@@ -541,11 +547,11 @@ and simple_pattern ctxt (f:Format.formatter) (x:pattern) : unit =
     | Ppat_extension e -> extension ctxt f e
     | Ppat_open (lid, p) ->
         let with_paren =
-        match Extensions.Pattern.of_ast p with
-        | Some epat -> begin match epat with
+        match Extensions.Pattern.get_desc p with
+        | Extension epat -> begin match epat with
         | Epat_immutable_array (Iapat_immutable_array _) -> false
         end
-        | None -> match p.ppat_desc with
+        | Regular desc -> match desc with
         | Ppat_array _ | Ppat_record _
         | Ppat_construct (({txt=Lident ("()"|"[]");_}), None) -> false
         | _ -> true in
@@ -597,6 +603,9 @@ and label_exp ctxt f (l,opt,p) =
 
 and sugar_expr ctxt f e =
   if e.pexp_attributes <> [] then false
+    (* matching on pexp_desc is OK here because we're looking for
+       a Pexp_ident applied to arguments; an extension looks like
+       a Pexp_extension applied to arguments *)
   else match e.pexp_desc with
   | Pexp_apply ({ pexp_desc = Pexp_ident {txt = id; _};
                   pexp_attributes=[]; _}, args)
@@ -675,9 +684,9 @@ and expression ctxt f x =
   if x.pexp_attributes <> [] then
     pp f "((%a)@,%a)" (expression ctxt) {x with pexp_attributes=[]}
       (attributes ctxt) x.pexp_attributes
-  else match Extensions.Expression.of_ast x with
-    | Some eexpr -> extension_expr ctxt f eexpr
-    | None -> match x.pexp_desc with
+  else match Extensions.Expression.get_desc x with
+    | Extension eexpr -> extension_expr ctxt f eexpr
+    | Regular desc -> match desc with
     | Pexp_function _ | Pexp_fun _ | Pexp_match _ | Pexp_try _ | Pexp_sequence _
     | Pexp_newtype _
       when ctxt.pipe || ctxt.semi ->
@@ -846,7 +855,10 @@ and expression2 ctxt f x =
 
 and simple_expr ctxt f x =
   if x.pexp_attributes <> [] then expression ctxt f x
-  else match x.pexp_desc with
+  else match Extensions.Expression.get_desc x with
+    | Extension _eext -> paren true (expression ctxt) f x
+    | Regular desc ->
+    match desc with
     | Pexp_construct _  when is_simple_construct (view_expr x) ->
         (match view_expr x with
          | `nil -> pp f "[]"

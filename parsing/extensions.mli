@@ -88,9 +88,10 @@ module Expression : sig
     | Eexp_comprehension   of Comprehensions.expression
     | Eexp_immutable_array of Immutable_arrays.expression
 
-  include Extended_AST with type t := t
-                        and type ast := Parsetree.expression
-                        and type ast_desc := Parsetree.expression_desc
+  include Extensions_parsing.Extended_ast
+    with type t := t
+     and type ast := Parsetree.expression
+     and type ast_desc := Parsetree.expression_desc
 end
 
 (** Language extensions in patterns *)
@@ -98,7 +99,8 @@ module Pattern : sig
   type t =
     | Epat_immutable_array of Immutable_arrays.pattern
 
-  include Extended_AST with type t := t
-                        and type ast := Parsetree.pattern
-                        and type ast_desc := Parsetree.pattern_desc
+  include Extensions_parsing.Extended_ast
+    with type t := t
+     and type ast := Parsetree.pattern
+     and type ast_desc := Parsetree.pattern_desc
 end

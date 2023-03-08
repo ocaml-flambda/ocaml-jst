@@ -11,7 +11,7 @@ open Extensions_parsing
    When we spot a comprehension for an immutable array, we need to make sure
    that both [comprehensions] and [immutable_arrays] are enabled.  But our
    general mechanism for checking for enabled extensions (in
-   Extensions_parsing.Translate(...).of_ast) won't work well here: it triggers
+   [get_desc]) won't work well here: it triggers
    when converting from e.g. [[%extensions.comprehensions.array] ...]  to the
    comprehensions-specific AST. But if we spot a
    [[%extensions.comprehensions.immutable]], there is no expression to
@@ -27,8 +27,8 @@ open Extensions_parsing
    Accordingly, during encoding, after doing the hard work of converting the
    extension syntax tree into e.g. Parsetree.expression, we need to make a final
    step of wrapping the result in an [%extension.xyz] node. Ideally, this step
-   would be done by part of our general structure, like we separate [of_ast]
-   and [of_ast_internal] in the decode structure; this design would make it
+   would be done by part of our general structure, like we separate [get_desc]
+   and [of_ast] in the decode structure; this design would make it
    structurally impossible/hard to forget taking this final step.
 
    However, the final step is only one line of code (a call to
@@ -205,9 +205,9 @@ module Comprehensions = struct
 
   let expand_comprehension_extension_expr expr =
     match Expression.match_extension expr with
-    | Some (comprehensions :: name, expr)
+    | Some (comprehensions :: names, expr)
       when String.equal comprehensions extension_string ->
-        name, expr
+        names, expr
     | Some (name, _) ->
         Desugaring_error.raise expr (Non_comprehension_extension_point name)
     | None ->
@@ -311,7 +311,7 @@ module Expression = struct
       | Eexp_comprehension   of Comprehensions.expression
       | Eexp_immutable_array of Immutable_arrays.expression
 
-    let of_ast_internal (ext : Language_extension.t) expr = match ext with
+    let of_ast (ext : Language_extension.t) expr = match ext with
       | Comprehensions ->
         Some (Eexp_comprehension (Comprehensions.comprehension_expr_of_expr expr))
       | Immutable_arrays ->
@@ -320,7 +320,7 @@ module Expression = struct
   end
 
   include M
-  include Make_of_ast(M)
+  include Make_get_desc(M)
 end
 
 module Pattern = struct
@@ -330,12 +330,12 @@ module Pattern = struct
     type t =
       | Epat_immutable_array of Immutable_arrays.pattern
 
-    let of_ast_internal (ext : Language_extension.t) pat = match ext with
+    let of_ast (ext : Language_extension.t) pat = match ext with
       | Immutable_arrays ->
         Some (Epat_immutable_array (Immutable_arrays.of_pat pat))
       | _ -> None
   end
 
   include M
-  include Make_of_ast(M)
+  include Make_get_desc(M)
 end

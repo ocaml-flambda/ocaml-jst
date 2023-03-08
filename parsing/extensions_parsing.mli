@@ -53,7 +53,7 @@
 
     Then, for each syntactic category, we define a module (in extensions.ml)
     that contains functions for converting between the Parsetree representation
-    and the extension representation. A little functor magic (see [Make_of_ast])
+    and the extension representation. A little functor magic (see [Make_get_desc])
     then allows us to make nice functions for export.
 
     This module contains the logic for moving to and from OCaml ASTs; the gory
@@ -119,6 +119,9 @@ module type AST = sig
   val wrap_desc :
     loc:Location.t -> attrs:Parsetree.attributes -> ast_desc -> ast
 
+  (** Extract an [ast_desc] from an [ast] *)
+  val get_desc : ast -> ast_desc
+
   (** Embed a language extension term in the AST with the given name
       and body (the [ast]).  The name will be joined with dots
       and preceded by [extension.].  Partial inverse of [match_extension]. *)
@@ -153,6 +156,7 @@ module type Extended_ast = sig
 
   (** The corresponding OCaml AST *)
   type ast
+
   (** The corresponding OCaml AST descriptor *)
   type ast_desc
 
@@ -162,13 +166,13 @@ module type Extended_ast = sig
 
       If this function spots an extension node for an extension that is not
       enabled, it raises an error. *)
-  val of_ast : ast -> (ast_desc, t) desc
+  val get_desc : ast -> (ast_desc, t) desc
 end
 
 (** Each syntactic category will include a module that meets this signature.
-    Then, the [Make_of_ast] functor produces the functions that actually
+    Then, the [Make_get_desc] functor produces the functions that actually
     convert from the Parsetree AST to the extensions one. *)
-module type Of_ast_parameters = sig
+module type Get_desc_parameters = sig
 
   (** Which syntactic category is this concerning? e.g. [module AST = Expression] *)
   module AST : AST
@@ -182,13 +186,13 @@ module type Of_ast_parameters = sig
       [[%extensions.comprehensions]] node, and the argument to that
       node is passed in as the [Parsetree] AST.
 
-      So, for example, if [of_ast] spots the expression
+      So, for example, if [get_desc] spots the expression
 
       {[
         [%extensions.comprehensions] blah
       ]}
 
-      then it will call [of_ast_internal Comprehensions blah].
+      then it will call [of_ast Comprehensions blah].
 
       If the given extension does not actually extend the
       syntactic category, return None; this will be reported
@@ -196,13 +200,13 @@ module type Of_ast_parameters = sig
       so when building the pattern extension AST, this function will
       return [None] when the extension in [Comprehensions].)
   *)
-  val of_ast_internal : Language_extension.t -> AST.ast -> t option
+  val of_ast : Language_extension.t -> AST.ast -> t option
 end
 
-(** Build the [of_ast] function from [Of_ast_parameters]. The result
+(** Build the [get_desc] function from [Get_desc_parameters]. The result
     of this functor should be [include]d in modules implementing [Extensions.AST].
 *)
-module Make_of_ast (Params : Of_ast_parameters) :
+module Make_get_desc (Params : Get_desc_parameters) :
   Extended_ast with type t := Params.t
                 and type ast := Params.AST.ast
                 and type ast_desc := Params.AST.ast_desc

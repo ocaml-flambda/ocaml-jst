@@ -175,8 +175,10 @@ and rewrite_exp iflag sexp =
            else rw_exp false sexp
 
 and rw_exp iflag sexp =
-  match sexp.pexp_desc with
-    Pexp_ident _lid -> ()
+  match Extensions.Expression.get_desc sexp with
+  | Extension eexp -> rewrite_exp_extension iflag eexp
+  | Regular desc -> match desc with
+  | Pexp_ident _lid -> ()
   | Pexp_constant _cst -> ()
 
   | Pexp_let(_, spat_sexp_list, sbody) ->
@@ -305,6 +307,33 @@ and rw_exp iflag sexp =
       rewrite_exp iflag body
   | Pexp_extension _ -> ()
   | Pexp_unreachable -> ()
+
+and rewrite_exp_extension iflag = function
+  | Eexp_comprehension cexp -> rewrite_comprehension_exp iflag cexp
+  | Eexp_immutable_array iaexp -> rewrite_immutable_array_exp iflag iaexp
+
+and rewrite_comprehension_exp iflag = function
+  | Cexp_list_comprehension comp -> rewrite_comprehension iflag comp
+  | Cexp_array_comprehension (_, comp) -> rewrite_comprehension iflag comp
+
+and rewrite_comprehension iflag { body; clauses } =
+  List.iter (rewrite_comprehension_clause iflag) clauses;
+  rewrite_exp iflag body
+
+and rewrite_comprehension_clause iflag = function
+  | For cbs -> List.iter (rewrite_clause_binding iflag) cbs
+  | When expr -> rewrite_exp iflag expr
+
+and rewrite_clause_binding iflag { pattern = _; iterator; attributes = _ } =
+  match iterator with
+  | Range { start; stop; direction = _ } ->
+    rewrite_exp iflag start;
+    rewrite_exp iflag stop
+  | In expr -> rewrite_exp iflag expr
+
+and rewrite_immutable_array_exp iflag = function
+  | Iaexp_immutable_array exprs ->
+    rewrite_exp_list iflag exprs
 
 and rewrite_ifbody iflag ghost sifbody =
   if !instr_if && not ghost then

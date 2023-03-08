@@ -209,6 +209,8 @@ and pattern i ppf x =
   line i ppf "pattern %a\n" fmt_location x.ppat_loc;
   attributes i ppf x.ppat_attributes;
   let i = i+1 in
+  (* We really want to print the raw AST here, so don't go
+     via Extensions.Pattern.get_desc *)
   match x.ppat_desc with
   | Ppat_any -> line i ppf "Ppat_any\n";
   | Ppat_var (s) -> line i ppf "Ppat_var %a\n" fmt_string_loc s;
@@ -267,6 +269,8 @@ and expression i ppf x =
   line i ppf "expression %a\n" fmt_location x.pexp_loc;
   attributes i ppf x.pexp_attributes;
   let i = i+1 in
+  (* We want to print the raw AST here, so don't use
+     Extension.Expression.get_desc *)
   match x.pexp_desc with
   | Pexp_ident (li) -> line i ppf "Pexp_ident %a\n" fmt_longident_loc li;
   | Pexp_constant (c) -> line i ppf "Pexp_constant %a\n" fmt_constant c;

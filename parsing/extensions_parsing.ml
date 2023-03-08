@@ -117,10 +117,10 @@ let () =
     language extensions.  One module per variety of AST (expressions, patterns,
     etc.). *)
 
-(** The parameters that define how to look for [[%extension.EXTNAME]] inside
-    ASTs of a certain syntactic category.  See also the [Make_AST] functor,
-    which uses these definitions to make the e.g. [Expression] module. *)
-module type AST_parameters = sig
+(** Parts of the [AST] module type that must be specified manually for each
+    syntactic category. This module type is included in both [AST] and
+    [AST_parameters] *)
+module type AST_common = sig
   (** The AST type (e.g., [Parsetree.expression]) *)
   type ast
 
@@ -142,6 +142,13 @@ module type AST_parameters = sig
 
   (** Extract an [ast_desc] from an [ast] *)
   val get_desc : ast -> ast_desc
+end
+
+(** The parameters that define how to look for [[%extension.EXTNAME]] inside
+    ASTs of a certain syntactic category.  See also the [Make_AST] functor,
+    which uses these definitions to make the e.g. [Expression] module. *)
+module type AST_parameters = sig
+  include AST_common
 
   (** How to construct an extension node for this AST (something of the shape
       [[%name]] or [[%%name]], depending on the AST).  Should just be
@@ -166,19 +173,8 @@ module type AST_parameters = sig
 end
 
 module type AST = sig
-  type ast
-
-  type ast_desc
-
-  val plural : string
-
-  val location : ast -> Location.t
-
-  val wrap_desc :
-    loc:Location.t -> attrs:Parsetree.attributes -> ast_desc -> ast
-
+  include AST_common
   val make_extension : loc:Location.t -> string list -> ast -> ast_desc
-
   val match_extension : ast -> (string list * ast) option
 end
 
@@ -223,7 +219,7 @@ module Make_AST (AST_parameters : AST_parameters) :
                 raise (Error(ext_loc, Malformed_extension(names, err)))
               in
               match ext_payload with
-              | PStr [] -> Extension (names, body)
+              | PStr [] -> Some (names, body)
               | _ -> raise_malformed (Has_payload ext_payload)
             end
           | _ -> None
@@ -290,31 +286,31 @@ type ('ast_desc, 'ext_ast) desc =
   | Regular of 'ast_desc
   | Extension of 'ext_ast
 
-module type Extended_AST = sig
+module type Extended_ast = sig
   type t
   type ast
   type ast_desc
 
-  val of_ast : ast -> (ast_desc, t) desc
+  val get_desc : ast -> (ast_desc, t) desc
 end
 
-module type Of_ast_parameters = sig
+module type Get_desc_parameters = sig
   module AST : AST
   type t
-  val of_ast_internal : Language_extension.t -> AST.ast -> t option
+  val of_ast : Language_extension.t -> AST.ast -> t option
 end
 
-module Make_of_ast (Params : Of_ast_parameters) = struct
-  let of_ast ast =
+module Make_get_desc (Params : Get_desc_parameters) = struct
+  let get_desc ast =
     let loc = Params.AST.location ast in
     let raise_error err = raise (Error (loc, err)) in
     match Params.AST.match_extension ast with
     | None -> Regular (Params.AST.get_desc ast)
-    | Extension ([name], ast) -> begin
+    | Some ([name], ast) -> begin
         match Language_extension.of_string name with
         | Some ext -> begin
             assert_extension_enabled ~loc ext;
-            match Params.of_ast_internal ext ast with
+            match Params.of_ast ext ast with
             | Some ext_ast -> Extension ext_ast
             | None ->
                 raise_error (Wrong_syntactic_category(ext, Params.AST.plural))
