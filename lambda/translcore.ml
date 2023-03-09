@@ -245,7 +245,7 @@ let rec push_defaults loc bindings use_lhs cases partial warnings =
               Texp_ident
                 (Path.Pident param, mknoloc (Longident.Lident name),
                  desc, Id_value)},
-             Layouts.Sort.value,
+             Sort.value,
              (* CR ccasinghino Value here will changes when functions take other
                 layouts *)
              cases, partial) }
@@ -1042,7 +1042,7 @@ and transl_exp0 ~in_new_scope ~scopes void_k e =
         let {val_type; _} = Env.find_value (Pident id) e.exp_env in
         match
           Ctype.check_type_layout e.exp_env (Ctype.correct_levels val_type)
-            Layouts.Layout.value
+            Layout.value
         with
         | Ok _ -> ()
         | Error _ -> raise (Error (e.exp_loc, Bad_probe_layout id))

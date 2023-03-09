@@ -71,7 +71,7 @@ type out_global =
 
 type out_layout =
   | Olay_const of Asttypes.const_layout
-  | Olay_var (* XXX ASZ do we need to invent names for these? *)
+  | Olay_var (* XXX ASZ We likely need to invent names for these *)
 
 type out_type =
   | Otyp_abstract
