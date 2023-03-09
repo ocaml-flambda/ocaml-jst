@@ -216,7 +216,12 @@ let f () =
   ignore k
 ;;
 [%%expect{|
-val f : unit -> unit = <fun>
+Line 2, characters 10-11:
+2 |   let rec k =
+              ^
+Error: This pattern matches values of type (module S with type t = A.t)
+       but a pattern was expected which matches values of type 'a
+       The type constructor A.t would escape its scope
 |}];;
 
 (* Unification *)

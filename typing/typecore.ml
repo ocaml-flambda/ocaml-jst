@@ -3957,7 +3957,7 @@ and type_expect_
         | [{Parsetree.attr_name = {txt="#default"};_}] -> in_function
         | _ -> None
       in
-      let body =
+      let extended_env, body =
         type_unpacks ?in_function
           new_env expected_mode unpacks sbody ty_expected_explained
       in
@@ -3967,7 +3967,10 @@ and type_expect_
       in
       if may_contain_modules then begin
         end_def ();
-        unify_exp new_env body (newvar ());
+        unify_exp extended_env body (newvar ());
+        List.iter
+          (fun pat -> unify_pat (ref extended_env) pat.vb_pat (newvar ()))
+          pat_exp_list;
       end;
       re {
         exp_desc = Texp_let(rec_flag, pat_exp_list, body);
@@ -6271,9 +6274,14 @@ and type_statement ?explanation env sexp =
     exp
   end
 
-and type_unpacks ?(in_function : (Location.t * type_expr * bool) option)
+(* Type the body within an environment where the unpacked modules are added *)
+and type_unpacks
+    ?(in_function : (Location.t * type_expr * bool) option)
     env (expected_mode : expected_mode) (unpacks : to_unpack list) sbody expected_ty =
-  if unpacks = [] then type_expect ?in_function env expected_mode sbody expected_ty else
+  if unpacks = [] then
+    let body = type_expect ?in_function env expected_mode sbody expected_ty in
+    env, body
+  else
   let extended_env =
     List.fold_left (fun env unpack ->
       Typetexp.TyVarEnv.with_local_scope begin fun () ->
@@ -6306,7 +6314,13 @@ and type_unpacks ?(in_function : (Location.t * type_expr * bool) option)
      in type_expect triggered by escaping identifiers from the local module
      and refine them into Scoping_let_module errors
   *)
-  type_expect ?in_function extended_env expected_mode sbody expected_ty
+  let body =
+    type_expect ?in_function extended_env expected_mode sbody expected_ty
+  in
+  extended_env, body
+
+and type_unpacks' ?in_function env expected_mode unpacks sbody expected_ty =
+  snd (type_unpacks ?in_function env expected_mode unpacks sbody expected_ty)
 
 (* Typing of match cases *)
 and type_cases
@@ -6462,11 +6476,11 @@ and type_cases
           | None -> None
           | Some scond ->
               Some
-                (type_unpacks ext_env mode_local unpacks scond
+                (type_unpacks' ext_env mode_local unpacks scond
                    (mk_expected ~explanation:When_guard Predef.type_bool))
         in
         let exp =
-          type_unpacks ?in_function ext_env emode
+          type_unpacks' ?in_function ext_env emode
             unpacks pc_rhs (mk_expected ?explanation ty_res')
         in
         {
@@ -6763,7 +6777,7 @@ and type_let
             let exp =
               Builtin_attributes.warning_scope pvb_attributes (fun () ->
                 if rec_flag = Recursive then
-                  type_unpacks exp_env mode
+                  type_unpacks' exp_env mode
                     unpacks sexp (mk_expected ty')
                 else
                   type_expect exp_env mode
@@ -6775,7 +6789,7 @@ and type_let
             let exp =
               Builtin_attributes.warning_scope pvb_attributes (fun () ->
                   if rec_flag = Recursive then
-                    type_unpacks exp_env mode
+                    type_unpacks' exp_env mode
                       unpacks sexp (mk_expected expected_ty)
                   else
                     type_expect exp_env mode
