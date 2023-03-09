@@ -175,10 +175,11 @@ and rewrite_exp iflag sexp =
            else rw_exp false sexp
 
 and rw_exp iflag sexp =
-  match Extensions.Expression.get_desc sexp with
-  | Extension eexp -> rewrite_exp_extension iflag eexp
-  | Regular desc -> match desc with
-  | Pexp_ident _lid -> ()
+  match Extensions.Expression.of_ast sexp with
+  | Some eexp -> rewrite_exp_extension iflag eexp
+  | None ->
+  match sexp.pexp_desc with
+    Pexp_ident _lid -> ()
   | Pexp_constant _cst -> ()
 
   | Pexp_let(_, spat_sexp_list, sbody) ->

@@ -10,13 +10,12 @@ open Extensions_parsing
 
    When we spot a comprehension for an immutable array, we need to make sure
    that both [comprehensions] and [immutable_arrays] are enabled.  But our
-   general mechanism for checking for enabled extensions (in
-   [get_desc]) won't work well here: it triggers
-   when converting from e.g. [[%extensions.comprehensions.array] ...]  to the
-   comprehensions-specific AST. But if we spot a
-   [[%extensions.comprehensions.immutable]], there is no expression to
-   translate.  So we just check for the immutable arrays extension when
-   processing a comprehension expression for an immutable array.
+   general mechanism for checking for enabled extensions (in [of_ast]) won't
+   work well here: it triggers when converting from
+   e.g. [[%extensions.comprehensions.array] ...]  to the comprehensions-specific
+   AST. But if we spot a [[%extensions.comprehensions.immutable]], there is no
+   expression to translate.  So we just check for the immutable arrays extension
+   when processing a comprehension expression for an immutable array.
 
    Note [Wrapping with make_extension]
    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -27,8 +26,8 @@ open Extensions_parsing
    Accordingly, during encoding, after doing the hard work of converting the
    extension syntax tree into e.g. Parsetree.expression, we need to make a final
    step of wrapping the result in an [%extension.xyz] node. Ideally, this step
-   would be done by part of our general structure, like we separate [get_desc]
-   and [of_ast] in the decode structure; this design would make it
+   would be done by part of our general structure, like we separate [of_ast]
+   and [of_ast_internal] in the decode structure; this design would make it
    structurally impossible/hard to forget taking this final step.
 
    However, the final step is only one line of code (a call to
@@ -301,7 +300,14 @@ module Immutable_arrays = struct
 end
 
 (******************************************************************************)
-(** Individaul syntactic category modules *)
+(** The interface to language extensions, which we export *)
+
+module type AST = sig
+  type t
+  type ast
+
+  val of_ast : ast -> t option
+end
 
 module Expression = struct
   module M = struct
@@ -311,7 +317,7 @@ module Expression = struct
       | Eexp_comprehension   of Comprehensions.expression
       | Eexp_immutable_array of Immutable_arrays.expression
 
-    let of_ast (ext : Language_extension.t) expr = match ext with
+    let of_ast_internal (ext : Language_extension.t) expr = match ext with
       | Comprehensions ->
         Some (Eexp_comprehension (Comprehensions.comprehension_expr_of_expr expr))
       | Immutable_arrays ->
@@ -320,7 +326,7 @@ module Expression = struct
   end
 
   include M
-  include Make_get_desc(M)
+  include Make_of_ast(M)
 end
 
 module Pattern = struct
@@ -330,12 +336,12 @@ module Pattern = struct
     type t =
       | Epat_immutable_array of Immutable_arrays.pattern
 
-    let of_ast (ext : Language_extension.t) pat = match ext with
+    let of_ast_internal (ext : Language_extension.t) pat = match ext with
       | Immutable_arrays ->
         Some (Epat_immutable_array (Immutable_arrays.of_pat pat))
       | _ -> None
   end
 
   include M
-  include Make_get_desc(M)
+  include Make_of_ast(M)
 end

@@ -427,18 +427,18 @@ module E = struct
     | Eexp_immutable_array iaexp -> Eexp_immutable_array (map_iaexp sub iaexp)
 
   let map sub
-        ({pexp_loc = loc; pexp_attributes = attrs} as exp) =
+        ({pexp_loc = loc; pexp_desc = desc; pexp_attributes = attrs} as exp) =
     let open Exp in
     let loc = sub.location sub loc in
     let attrs = sub.attributes sub attrs in
-    match Extensions.Expression.get_desc exp with
-    | Extension eexp -> begin
+    match Extensions.Expression.of_ast exp with
+    | Some eexp -> begin
         Extensions_parsing.Expression.wrap_desc ~loc ~attrs @@
         match sub.expr_extension sub eexp with
         | Eexp_comprehension   c -> Extensions.Comprehensions.expr_of   ~loc c
         | Eexp_immutable_array i -> Extensions.Immutable_arrays.expr_of ~loc i
     end
-    | Regular desc ->
+    | None ->
     match desc with
     | Pexp_ident x -> ident ~loc ~attrs (map_loc sub x)
     | Pexp_constant x -> constant ~loc ~attrs (sub.constant sub x)
@@ -537,17 +537,17 @@ module P = struct
     | Epat_immutable_array iapat -> Epat_immutable_array (map_iapat sub iapat)
 
   let map sub
-        ({ppat_loc = loc; ppat_attributes = attrs} as pat) =
+        ({ppat_desc = desc; ppat_loc = loc; ppat_attributes = attrs} as pat) =
     let open Pat in
     let loc = sub.location sub loc in
     let attrs = sub.attributes sub attrs in
-    match Extensions.Pattern.get_desc pat with
-    | Extension epat -> begin
+    match Extensions.Pattern.of_ast pat with
+    | Some epat -> begin
         Extensions_parsing.Pattern.wrap_desc ~loc ~attrs @@
         match sub.pat_extension sub epat with
         | Epat_immutable_array i -> Extensions.Immutable_arrays.pat_of ~loc i
     end
-    | Regular desc ->
+    | None ->
     match desc with
     | Ppat_any -> any ~loc ~attrs ()
     | Ppat_var s -> var ~loc ~attrs (map_loc sub s)

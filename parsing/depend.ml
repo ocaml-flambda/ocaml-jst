@@ -166,10 +166,10 @@ let add_type_exception bv te =
 let pattern_bv = ref String.Map.empty
 
 let rec add_pattern bv pat =
-  match Extensions.Pattern.get_desc pat with
-  | Extension epat -> add_pattern_extension bv epat
-  | Regular desc ->
-  match desc with
+  match Extensions.Pattern.of_ast pat with
+  | Some epat -> add_pattern_extension bv epat
+  | None      ->
+  match pat.ppat_desc with
     Ppat_any -> ()
   | Ppat_var _ -> ()
   | Ppat_alias(p, _) -> add_pattern bv p
@@ -205,10 +205,10 @@ let add_pattern bv pat =
   !pattern_bv
 
 let rec add_expr bv exp =
-  match Extensions.Expression.get_desc exp with
-  | Extension eexp -> add_expr_extension bv eexp
-  | Regular desc ->
-  match desc with
+  match Extensions.Expression.of_ast exp with
+  | Some eexp -> add_expr_extension bv eexp
+  | None ->
+  match exp.pexp_desc with
     Pexp_ident l -> add bv l
   | Pexp_constant _ -> ()
   | Pexp_let(rf, pel, e) ->

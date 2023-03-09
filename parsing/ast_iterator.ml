@@ -385,12 +385,12 @@ module E = struct
     | Eexp_immutable_array iarr_exp -> iter_iarr_exp sub iarr_exp
 
   let iter sub
-        ({pexp_loc = loc; pexp_attributes = attrs} as expr)=
+        ({pexp_loc = loc; pexp_desc = desc; pexp_attributes = attrs} as expr)=
     sub.location sub loc;
     sub.attributes sub attrs;
-    match Extensions.Expression.get_desc expr with
-    | Extension eexp -> sub.expr_extension sub eexp
-    | Regular desc ->
+    match Extensions.Expression.of_ast expr with
+    | Some eexp -> sub.expr_extension sub eexp
+    | None ->
     match desc with
     | Pexp_ident x -> iter_loc sub x
     | Pexp_constant _ -> ()
@@ -485,12 +485,12 @@ module P = struct
     | Epat_immutable_array iapat -> iter_iapat sub iapat
 
   let iter sub
-        ({ppat_loc = loc; ppat_attributes = attrs} as pat) =
+        ({ppat_desc = desc; ppat_loc = loc; ppat_attributes = attrs} as pat) =
     sub.location sub loc;
     sub.attributes sub attrs;
-    match Extensions.Pattern.get_desc pat with
-    | Extension epat -> sub.pat_extension sub epat
-    | Regular desc ->
+    match Extensions.Pattern.of_ast pat with
+    | Some epat -> sub.pat_extension sub epat
+    | None ->
     match desc with
     | Ppat_any -> ()
     | Ppat_var s -> iter_loc sub s

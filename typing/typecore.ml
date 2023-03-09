@@ -1704,9 +1704,9 @@ type 'case_pattern half_typed_case =
     contains_gadt: bool; }
 
 let rec has_literal_pattern p =
-  match Extensions.Pattern.get_desc p with
-  | Extension epat -> has_literal_pattern_extension epat
-  | Regular desc -> match desc with
+  match Extensions.Pattern.of_ast p with
+  | Some epat -> has_literal_pattern_extension epat
+  | None      -> match p.ppat_desc with
   | Ppat_constant _
   | Ppat_interval _ ->
      true
@@ -2041,8 +2041,8 @@ and type_pat_aux
         pat_attributes = sp.ppat_attributes;
         pat_env = !env })
   in
-  match Extensions.Pattern.get_desc sp with
-  | Extension epat -> begin
+  match Extensions.Pattern.of_ast sp with
+  | Some epat -> begin
       (* Normally this would go to an auxiliary function, but this function
          takes so many parameters, has such a complex type, and uses so many
          local definitions, it seems better to just put the pattern matching
@@ -2051,8 +2051,8 @@ and type_pat_aux
       | Epat_immutable_array (Iapat_immutable_array spl) ->
           type_pat_array Immutable spl
     end
-  | Regular desc ->
-  match desc with
+  | None ->
+  match sp.ppat_desc with
     Ppat_any ->
       let k' d = rvp k {
         pat_desc = d;
@@ -2219,21 +2219,20 @@ and type_pat_aux
       in
       let sargs =
         match sarg' with
-        | None -> []
-        | Some sp -> match Extensions.Pattern.get_desc sp with
-          | Regular(Ppat_tuple spl) when
-              constr.cstr_arity > 1 ||
-              Builtin_attributes.explicit_arity sp.ppat_attributes
-            -> spl
-          | Regular(Ppat_any) when
-              constr.cstr_arity = 0 && existential_styp = None
-            ->
-              Location.prerr_warning sp.ppat_loc
-                Warnings.Wildcard_arg_to_constant_constr;
-              []
-          | Regular(Ppat_any) when constr.cstr_arity > 1 ->
-              replicate_list sp constr.cstr_arity
-          | _ -> [sp] in
+          None -> []
+        | Some {ppat_desc = Ppat_tuple spl} when
+            constr.cstr_arity > 1 ||
+            Builtin_attributes.explicit_arity sp.ppat_attributes
+          -> spl
+        | Some({ppat_desc = Ppat_any} as sp) when
+            constr.cstr_arity = 0 && existential_styp = None
+          ->
+            Location.prerr_warning sp.ppat_loc
+              Warnings.Wildcard_arg_to_constant_constr;
+            []
+        | Some({ppat_desc = Ppat_any} as sp) when constr.cstr_arity > 1 ->
+            replicate_list sp constr.cstr_arity
+        | Some sp -> [sp] in
       if Builtin_attributes.warn_on_literal_pattern constr.cstr_attributes then
         begin match List.filter has_literal_pattern sargs with
         | sp :: _ ->
@@ -2661,10 +2660,10 @@ let combine_pat_tuple_arity a b =
       else Not_local_tuple
 
 let rec pat_tuple_arity spat =
-  match Extensions.Pattern.get_desc spat with
-  | Extension epat -> pat_tuple_arity_extension epat
-  | Regular desc ->
-  match desc with
+  match Extensions.Pattern.of_ast spat with
+  | Some epat -> pat_tuple_arity_extension epat
+  | None      ->
+  match spat.ppat_desc with
   | Ppat_tuple args -> Local_tuple (List.length args)
   | Ppat_any | Ppat_exception _ | Ppat_var _ -> Maybe_local_tuple
   | Ppat_constant _
@@ -3201,14 +3200,14 @@ let is_local_returning_expr e =
         raise(Error(loc2, Env.empty, Local_return_annotation_mismatch loc1))
   in
   let rec loop e =
-    match Extensions.Expression.get_desc e with
-    | Extension eexp -> begin
+    match Extensions.Expression.of_ast e with
+    | Some eexp -> begin
         match eexp with
         | Eexp_comprehension   _ -> false, e.pexp_loc
         | Eexp_immutable_array _ -> false, e.pexp_loc
       end
-    | Regular desc ->
-    match desc with
+    | None      ->
+    match e.pexp_desc with
     | Pexp_apply
         ({ pexp_desc = Pexp_extension(
            {txt = "extension.local"|"ocaml.local"|"local"}, PStr []) },
@@ -3323,10 +3322,10 @@ let type_pattern_approx_extension : Extensions.Pattern.t -> _ = function
   | Epat_immutable_array _ -> ()
 
 let type_pattern_approx env spat ty_expected =
-  match Extensions.Pattern.get_desc spat with
-  | Extension epat -> type_pattern_approx_extension epat
-  | Regular desc ->
-  match desc with
+  match Extensions.Pattern.of_ast spat with
+  | Some epat -> type_pattern_approx_extension epat
+  | None      ->
+  match spat.ppat_desc with
   | Ppat_constraint(_, ({ptyp_desc=Ptyp_poly _} as sty)) ->
       let arg_type_mode =
         if has_local_attr_pat spat then Alloc_mode.Local
@@ -3385,9 +3384,9 @@ let rec type_function_approx env loc label spato sexp in_function ty_expected =
   type_approx_aux env sexp in_function ty_res
 
 and type_approx_aux env sexp in_function ty_expected =
-  match Extensions.Expression.get_desc sexp with
-  | Extension eexp -> type_approx_aux_extension eexp
-  | Regular desc -> match desc with
+  match Extensions.Expression.of_ast sexp with
+  | Some eexp -> type_approx_aux_extension eexp
+  | None      -> match sexp.pexp_desc with
     Pexp_let (_, _, e) -> type_approx_aux env e None ty_expected
   | Pexp_fun (l, _, p, e) ->
       type_function_approx env sexp.pexp_loc l (Some p) e
@@ -3614,10 +3613,10 @@ let shallow_iter_ppat_extension f : Extensions.Pattern.t -> _ = function
   | Epat_immutable_array (Iapat_immutable_array pats) -> List.iter f pats
 
 let shallow_iter_ppat f p =
-  match Extensions.Pattern.get_desc p with
-  | Extension epat -> shallow_iter_ppat_extension f epat
-  | Regular desc ->
-  match desc with
+  match Extensions.Pattern.of_ast p with
+  | Some epat -> shallow_iter_ppat_extension f epat
+  | None      ->
+  match p.ppat_desc with
   | Ppat_any | Ppat_var _ | Ppat_constant _ | Ppat_interval _
   | Ppat_construct (_, None)
   | Ppat_extension _
@@ -3733,9 +3732,9 @@ let unify_exp env exp expected_ty =
    the "expected type" provided by the context. *)
 
 let rec is_inferred sexp =
-  match Extensions.Expression.get_desc sexp with
-  | Extension eexp -> is_inferred_extension eexp
-  | Regular desc -> match desc with
+  match Extensions.Expression.of_ast sexp with
+  | Some eexp -> is_inferred_extension eexp
+  | None      -> match sexp.pexp_desc with
   | Pexp_ident _ | Pexp_apply _ | Pexp_field _ | Pexp_constraint _
   | Pexp_coerce _ | Pexp_send _ | Pexp_new _ -> true
   | Pexp_sequence (_, e) | Pexp_open (_, e) -> is_inferred e
@@ -3827,11 +3826,11 @@ and type_expect_
     submode ~env ~loc:exp.exp_loc ~reason:Other mode expected_mode;
     exp
   in
-  match Extensions.Expression.get_desc sexp with
-  | Extension eexp ->
+  match Extensions.Expression.of_ast sexp with
+  | Some eexp ->
       type_expect_extension
         ~loc ~env ~expected_mode ~ty_expected ~explanation eexp
-  | Regular desc -> match desc with
+  | None      -> match sexp.pexp_desc with
   | Pexp_ident lid ->
       let path, mode, desc, kind = type_ident env ~recarg lid in
       let exp_desc =
@@ -4063,8 +4062,8 @@ and type_expect_
         rt, funct
       in
       let type_sfunct_args sfunct extra_args =
-        match Extensions.Expression.get_desc sfunct with
-        | Regular(Pexp_apply (sfunct, args)) ->
+        match Extensions.Expression.of_ast sfunct, sfunct.pexp_desc with
+        | None, Pexp_apply (sfunct, args) ->
            type_sfunct sfunct, args @ extra_args
         | _ ->
            type_sfunct sfunct, extra_args
@@ -6512,9 +6511,9 @@ and type_let
         false
   in
   let rec sexp_is_fun sexp =
-    match Extensions.Expression.get_desc sexp with
-    | Extension eexp -> eexp_is_fun eexp
-    | Regular desc -> match desc with
+    match Extensions.Expression.of_ast sexp with
+    | Some eexp -> eexp_is_fun eexp
+    | None      -> match sexp.pexp_desc with
     | Pexp_fun _ | Pexp_function _ -> true
     | Pexp_constraint (e, _)
     | Pexp_newtype (_, e)
