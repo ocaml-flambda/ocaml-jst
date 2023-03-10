@@ -6879,6 +6879,11 @@ and type_let
                                       | _ -> false) pat_extra) then
             check_partial_application ~statement:false vb_expr
       | _ -> ()) l;
+  (* Note that we take care to avoid calling [add_module_variables]
+     until needed. That's because this function checks that any
+     module variable is known to have a packed module type; this
+     may only be knowable after checking the RHS of the let bindings.
+  *)
   let new_env = add_module_variables new_env unpacks ~outer_level in
   (l, new_env)
 
