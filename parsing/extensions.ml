@@ -299,22 +299,15 @@ module Immutable_arrays = struct
     | _ -> failwith "Malformed immutable array pattern"
 end
 
-(** Strengthening *)
+(** Module strengthening *)
 module Strengthen = struct
   type nonrec module_type =
     { mty : Parsetree.module_type; mod_id : Longident.t Location.loc }
 
-  let extension_string = Language_extension.to_string Strengthen
+  let extension_string = Language_extension.to_string Module_strengthening
 
   (* Encoding: [S with M] becomes [functor (_ : S) -> (module M)], where
-     the [(module M)] is a [Pmty_alias]. But remember
-     that this gets wrapped in an [[%extension.strengthen]] node, so
-     the what starts as [S with M] really becomes
-
-       {[
-         functor (_ : [%extension.strengthen]) ->
-           functor (_ : S) -> (module M)
-       ]}
+     the [(module M)] is a [Pmty_alias].
   *)
 
   let mty_of ~loc { mty; mod_id } =
@@ -326,7 +319,7 @@ module Strengthen = struct
   let of_mty mty = match mty.pmty_desc with
     | Pmty_functor(Named(_, mty), {pmty_desc = Pmty_alias mod_id}) ->
        { mty; mod_id }
-    | _ -> failwith "Malformed strengthen module type"
+    | _ -> failwith "Malformed strengthened module type"
 end
 
 (******************************************************************************)
@@ -384,7 +377,7 @@ module Module_type = struct
       | Emty_strengthen of Strengthen.module_type
 
     let of_ast_internal (ext : Language_extension.t) mty = match ext with
-      | Strengthen ->
+      | Module_strengthening ->
         Some (Emty_strengthen (Strengthen.of_mty mty))
       | _ -> None
   end

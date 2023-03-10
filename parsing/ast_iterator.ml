@@ -309,7 +309,6 @@ module MT = struct
     | Emty_strengthen { mty; mod_id } ->
        iter sub mty;
        iter_loc sub mod_id
-
 end
 
 
