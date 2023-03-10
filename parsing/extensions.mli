@@ -97,14 +97,14 @@ module type AST = sig
       if it's not a language extension term, return [None]; if it's a disabled
       language extension term, raise an error.
 
-      AN IMPORTANT NOTE: The design of this function is careful to make
-      merge conflicts with upstream less likely: we want no edits at all
-      to surrounding code. This is why we return a [t option], not some
-      structure that could include the [ast_desc] if there is no extension.
+      AN IMPORTANT NOTE: The design of this function is careful to make merge
+      conflicts with upstream less likely: we want no edits at all -- not even
+      indentation -- to surrounding code. This is why we return a [t option],
+      not some structure that could include the [ast_desc] if there is no
+      extension.
 
-      In addition, we indent calls to this function *very* strangely: we
-      *do not change the indentation level* when we match on its result!
-      E.g. from [type_expect_] in [typecore.ml]:
+      Indentation: we *do not change the indentation level* when we match on
+      this function's result!  E.g. from [type_expect_] in [typecore.ml]:
 
       {[
         match Extensions.Expression.of_ast sexp with
