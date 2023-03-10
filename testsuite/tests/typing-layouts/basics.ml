@@ -33,7 +33,7 @@ Line 2, characters 10-15:
 2 |   val f : t_any -> int
               ^^^^^
 Error: Function argument types must have layout value.
-        t_any has layout any, which is not a sublayout of value.
+        t_any has layout any, which is not a sublayout[1] of value.
 |}]
 
 module type S = sig
@@ -44,7 +44,7 @@ Line 2, characters 17-23:
 2 |   val f : int -> t_void
                      ^^^^^^
 Error: Function return types must have layout value.
-        t_void has layout void, which is not a sublayout of value.
+        t_void has layout void, which is not a sublayout[1] of value.
 |}];;
 
 module type S = sig
@@ -55,7 +55,7 @@ Line 2, characters 10-29:
 2 |   val f : void_unboxed_record -> int
               ^^^^^^^^^^^^^^^^^^^
 Error: Function argument types must have layout value.
-        void_unboxed_record has layout void, which is not a sublayout of value.
+        void_unboxed_record has layout void, which is not a sublayout[1] of value.
 |}];;
 
 module type S = sig
@@ -66,7 +66,7 @@ Line 2, characters 17-36:
 2 |   val f : int -> void_unboxed_record
                      ^^^^^^^^^^^^^^^^^^^
 Error: Function return types must have layout value.
-        void_unboxed_record has layout void, which is not a sublayout of value.
+        void_unboxed_record has layout void, which is not a sublayout[1] of value.
 |}];;
 
 module type S = sig
@@ -80,7 +80,7 @@ Line 5, characters 2-11:
 5 |   and r = t
       ^^^^^^^^^
 Error:
-       r has layout void, which is not a sublayout of value.
+       r has layout void, which is not a sublayout[1] of value.
 |}]
 
 module type S = sig
@@ -94,7 +94,7 @@ Line 4, characters 35-41:
                                        ^^^^^^
 Error: The type constraints are not consistent.
        Type ('a : value) is not compatible with type t
-       t has layout void, which is not a sublayout of value.
+       t has layout void, which is not a sublayout[1] of value.
 |}]
 
 (* CJC XXX errors: the F1 and F1' errors should ideally mention that the layout
@@ -111,7 +111,7 @@ Line 2, characters 13-16:
                  ^^^
 Error: This expression has type t_void but an expression was expected of type
          ('a : value)
-       t_void has layout void, which is not a sublayout of value.
+       t_void has layout void, which is not a sublayout[1] of value.
 |}];;
 
 module F1 (X : sig val f : void_record -> unit end) = struct
@@ -123,7 +123,7 @@ Line 2, characters 28-29:
                                 ^
 Error: This expression has type ('a : value)
        but an expression was expected of type t_void
-       t_void has layout void, which is not a sublayout of value.
+       t_void has layout void, which is not a sublayout[1] of value.
 |}];;
 
 (*********************************************)
@@ -161,7 +161,7 @@ Line 1, characters 19-25:
 1 | let string_id (x : string imm_id) = x;;
                        ^^^^^^
 Error: This type string should be an instance of type ('a : immediate)
-       string has layout value, which is not a sublayout of immediate.
+       string has layout value, which is not a sublayout[1] of immediate.
 |}];;
 
 let id_for_imms (x : 'a imm_id) = x
@@ -181,7 +181,7 @@ Line 1, characters 33-46:
                                      ^^^^^^^^^^^^^
 Error: This expression has type string but an expression was expected of type
          'a imm_id = ('a : immediate)
-       string has layout value, which is not a sublayout of immediate.
+       string has layout value, which is not a sublayout[1] of immediate.
 |}]
 
 (************************************)
@@ -194,7 +194,7 @@ Line 2, characters 9-15:
 2 | and s4 = string t4;;
              ^^^^^^
 Error: This type string should be an instance of type ('a : immediate)
-       string has layout value, which is not a sublayout of immediate.
+       string has layout value, which is not a sublayout[1] of immediate.
 |}];;
 
 type s4 = string t4
@@ -205,7 +205,7 @@ Line 1, characters 10-16:
 1 | type s4 = string t4
               ^^^^^^
 Error: This type string should be an instance of type ('a : immediate)
-       string has layout value, which is not a sublayout of immediate.
+       string has layout value, which is not a sublayout[1] of immediate.
 |}]
 
 type s4 = int t4
@@ -235,7 +235,7 @@ Line 3, characters 0-15:
 3 | and s5 = string;;
     ^^^^^^^^^^^^^^^
 Error:
-       s5 has layout value, which is not a sublayout of immediate.
+       s5 has layout value, which is not a sublayout[1] of immediate.
 |}]
 (* CJC XXX errors: improve error *)
 
@@ -290,7 +290,7 @@ Line 1, characters 12-15:
 1 | let h4 (x : int void4) = f4 x
                 ^^^
 Error: This type int should be an instance of type ('a : void)
-       int has layout immediate, which is not a sublayout of void.
+       int has layout immediate, which is not a sublayout[1] of void.
 |}];;
 
 let h4' (x : int any4) = Void4 x
@@ -300,7 +300,7 @@ Line 1, characters 31-32:
                                    ^
 Error: This expression has type int any4
        but an expression was expected of type ('a : void)
-       int any4 has layout value, which is not a sublayout of void.
+       int any4 has layout value, which is not a sublayout[1] of void.
 |}];;
 
 (* disallowed - tries to return void *)
@@ -313,14 +313,14 @@ Line 3, characters 15-16:
                    ^
 Error: This expression has type ('a : void)
        but an expression was expected of type ('b : value)
-       'a has layout value, which does not overlap with void.
+       'a has layout value, which does not overlap[1] with void.
 |}, Principal{|
 Lines 2-3, characters 2-16:
 2 | ..match x with
 3 |   | Void4 x -> x..
 Error: This expression has type ('a : void)
        but an expression was expected of type ('b : value)
-       'a has layout value, which does not overlap with void.
+       'a has layout value, which does not overlap[1] with void.
 |}]
 (* CJC XXX errors: understand what's going on with Principal mode here (and improve
    error messages generally *)
@@ -348,7 +348,7 @@ Line 2, characters 2-32:
       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Error: This definition has type 'b -> unit which is less general than
          'a. 'a -> unit
-       'a has layout value, which is not a sublayout of immediate.
+       'a has layout value, which is not a sublayout[1] of immediate.
 |}];;
 
 let o5 = object
@@ -361,7 +361,7 @@ Line 3, characters 4-34:
         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Error: This method has type 'b -> unit which is less general than
          'a. 'a -> unit
-       'a has layout value, which is not a sublayout of immediate.
+       'a has layout value, which is not a sublayout[1] of immediate.
 |}];;
 
 (* CJC XXX add more tests here once you can annotate these types with layouts *)
@@ -377,7 +377,7 @@ Line 3, characters 12-21:
 3 | type t6' = (int * int) t6;;
                 ^^^^^^^^^
 Error: This type int * int should be an instance of type ('a : immediate)
-       int * int has layout value, which is not a sublayout of immediate.
+       int * int has layout value, which is not a sublayout[1] of immediate.
 |}]
 
 (**********************************************************)
@@ -393,7 +393,7 @@ Line 2, characters 40-46:
 2 |   type foo1 = [ `Foo1 of int | `Baz1 of t_void | `Bar1 of string ];;
                                             ^^^^^^
 Error: Polymorpic variant constructor argument types must have layout value.
-        t_void has layout void, which is not a sublayout of value.
+        t_void has layout void, which is not a sublayout[1] of value.
 |}];;
 
 module M7_2 = struct
@@ -417,7 +417,7 @@ Line 8, characters 18-19:
                       ^
 Error: This expression has type ('a : value)
        but an expression was expected of type t_void
-       t_void has layout void, which is not a sublayout of value.
+       t_void has layout void, which is not a sublayout[1] of value.
 |}];;
 
 module M7_3 = struct
@@ -430,7 +430,7 @@ Line 4, characters 13-19:
 4 |   type bad = t_void t
                  ^^^^^^
 Error: This type t_void should be an instance of type ('a : value)
-       t_void has layout void, which is not a sublayout of value.
+       t_void has layout void, which is not a sublayout[1] of value.
 |}];;
 
 module M7_4 = struct
@@ -442,7 +442,7 @@ Line 2, characters 54-78:
                                                           ^^^^^^^^^^^^^^^^^^^^^^^^
 Error: The type constraints are not consistent.
        Type ('a : value) is not compatible with type void_unboxed_record
-       void_unboxed_record has layout void, which is not a sublayout of value.
+       void_unboxed_record has layout void, which is not a sublayout[1] of value.
 |}];;
 
 module type S7_5 = sig
@@ -453,7 +453,7 @@ Line 2, characters 17-23:
 2 |   val x : [`A of t_void]
                      ^^^^^^
 Error: Polymorpic variant constructor argument types must have layout value.
-        t_void has layout void, which is not a sublayout of value.
+        t_void has layout void, which is not a sublayout[1] of value.
 |}]
 
 
@@ -469,7 +469,7 @@ Line 2, characters 20-26:
 2 |   type foo1 = int * t_void * [ `Foo1 of int | `Bar1 of string ];;
                         ^^^^^^
 Error: Tuple element types must have layout value.
-        t_void has layout void, which is not a sublayout of value.
+        t_void has layout void, which is not a sublayout[1] of value.
 |}];;
 
 module M8_2 = struct
@@ -480,7 +480,7 @@ Line 2, characters 31-50:
 2 |   type result = V of (string * void_unboxed_record) | I of int
                                    ^^^^^^^^^^^^^^^^^^^
 Error: Tuple element types must have layout value.
-        void_unboxed_record has layout void, which is not a sublayout of value.
+        void_unboxed_record has layout void, which is not a sublayout[1] of value.
 |}];;
 
 module M8_3 = struct
@@ -497,7 +497,7 @@ Line 7, characters 13-14:
                  ^
 Error: This expression has type void_unboxed_record
        but an expression was expected of type ('a : value)
-       void_unboxed_record has layout void, which is not a sublayout of value.
+       void_unboxed_record has layout void, which is not a sublayout[1] of value.
 |}];;
 
 module M8_4 = struct
@@ -511,7 +511,7 @@ Line 4, characters 8-16:
             ^^^^^^^^
 Error: The record field vur_void belongs to the type void_unboxed_record
        but is mixed here with fields of type ('a : value)
-       void_unboxed_record has layout void, which is not a sublayout of value.
+       void_unboxed_record has layout void, which is not a sublayout[1] of value.
 |}];;
 
 module M8_5 = struct
@@ -524,7 +524,7 @@ Line 4, characters 13-19:
 4 |   type bad = t_void t
                  ^^^^^^
 Error: This type t_void should be an instance of type ('a : value)
-       t_void has layout void, which is not a sublayout of value.
+       t_void has layout void, which is not a sublayout[1] of value.
 |}];;
 
 module M8_6 = struct
@@ -536,7 +536,7 @@ Line 2, characters 34-58:
                                       ^^^^^^^^^^^^^^^^^^^^^^^^
 Error: The type constraints are not consistent.
        Type ('a : value) is not compatible with type void_unboxed_record
-       void_unboxed_record has layout void, which is not a sublayout of value.
+       void_unboxed_record has layout void, which is not a sublayout[1] of value.
 |}];;
 
 module type S8_7 = sig
@@ -547,7 +547,7 @@ Line 2, characters 16-22:
 2 |   val x : int * t_void
                     ^^^^^^
 Error: Tuple element types must have layout value.
-        t_void has layout void, which is not a sublayout of value.
+        t_void has layout void, which is not a sublayout[1] of value.
 |}];;
 
 module M8_9 (X : sig
@@ -563,7 +563,7 @@ Line 5, characters 11-23:
                ^^^^^^^^^^^^
 Error: This expression has type t_void but an expression was expected of type
          ('a : value)
-       t_void has layout void, which is not a sublayout of value.
+       t_void has layout void, which is not a sublayout[1] of value.
 |}];;
 
 (*************************************************)
@@ -596,7 +596,7 @@ Error: Signature mismatch:
          sig val x : string end
        Values do not match: val x : 'a is not included in val x : string
        The type string is not compatible with the type string
-       string has layout value, which is not a sublayout of immediate.
+       string has layout value, which is not a sublayout[1] of immediate.
 |}];;
 
 (* This hits the second linktype in moregen (requires expansion to see it's a
@@ -626,7 +626,7 @@ Error: Signature mismatch:
          sig val x : string end
        Values do not match: val x : 'a t is not included in val x : string
        The type string t = string is not compatible with the type string
-       string has layout value, which is not a sublayout of immediate.
+       string has layout value, which is not a sublayout[1] of immediate.
 |}]
 
 (**************************************************************)
@@ -642,7 +642,7 @@ Line 5, characters 4-7:
 5 |     t.v # baz10
         ^^^
 Error: Methods must have layout value.
-       This expression has layout void, which does not overlap with value.
+       This expression has layout void, which does not overlap[2] with value.
 |}]
 
 module M10_2 = struct
@@ -654,7 +654,7 @@ Line 2, characters 17-30:
                      ^^^^^^^^^^^^^
 Error: This expression has type ('a : value)
        but an expression was expected of type t_void
-       t_void has layout void, which is not a sublayout of value.
+       t_void has layout void, which is not a sublayout[1] of value.
 |}];;
 
 module M10_3 = struct
@@ -668,7 +668,7 @@ Line 4, characters 32-33:
                                     ^
 Error: This expression has type ('a : void)
        but an expression was expected of type ('b : value)
-       'a has layout value, which does not overlap with void.
+       'a has layout value, which does not overlap[1] with void.
 |}];;
 
 module M10_4 = struct
@@ -679,7 +679,7 @@ Line 2, characters 12-22:
 2 |   val x : < l : t_void >
                 ^^^^^^^^^^
 Error: Object field types must have layout value.
-        t_void has layout void, which is not a sublayout of value.
+        t_void has layout void, which is not a sublayout[1] of value.
 |}];;
 
 module M10_5 = struct
@@ -691,7 +691,7 @@ Line 3, characters 2-24:
 3 |   and ('a : void) s = 'a
       ^^^^^^^^^^^^^^^^^^^^^^
 Error:
-       'a s has layout void, which does not overlap with value.
+       'a s has layout void, which does not overlap[1] with value.
 |}];;
 
 module M10_6 = struct
@@ -703,7 +703,7 @@ Line 2, characters 36-47:
                                         ^^^^^^^^^^^
 Error: The type constraints are not consistent.
        Type ('a : value) is not compatible with type t_void
-       t_void has layout void, which is not a sublayout of value.
+       t_void has layout void, which is not a sublayout[1] of value.
 |}];;
 
 (*******************************************************************)
@@ -722,7 +722,7 @@ Line 3, characters 11-12:
 3 |     let VV v = v in
                ^
 Error: Variables bound in a class must have layout value.
-       v has layout void, which is not a sublayout of value.
+       v has layout void, which is not a sublayout[2] of value.
 |}];;
 
 (* Hits the Cfk_concrete case of Pcf_val *)
@@ -737,7 +737,7 @@ Line 4, characters 10-13:
 4 |       val bar = v.vr_void
               ^^^
 Error: Variables bound in a class must have layout value.
-       bar has layout void, which is not a sublayout of value.
+       bar has layout void, which is not a sublayout[2] of value.
 |}];;
 
 (* Hits the Cfk_virtual case of Pcf_val *)
@@ -752,7 +752,7 @@ Line 4, characters 18-21:
 4 |       val virtual bar : t_void
                       ^^^
 Error: Variables bound in a class must have layout value.
-       bar has layout void, which is not a sublayout of value.
+       bar has layout void, which is not a sublayout[2] of value.
 |}];;
 
 module M11_4 = struct
@@ -768,7 +768,7 @@ Line 6, characters 24-26:
 6 |       val virtual baz : 'a t
                             ^^
 Error: This type ('a : void) should be an instance of type ('a0 : value)
-       'a has layout value, which does not overlap with void.
+       'a has layout value, which does not overlap[1] with void.
 |}];;
 
 module M11_5 = struct
@@ -784,7 +784,7 @@ Line 6, characters 29-31:
 6 |       method void_id (A a) : 'a t = a
                                  ^^
 Error: This type ('a : void) should be an instance of type ('a0 : value)
-       'a has layout value, which does not overlap with void.
+       'a has layout value, which does not overlap[1] with void.
 |}];;
 
 module type S11_6 = sig
@@ -801,7 +801,7 @@ Line 5, characters 4-6:
 5 |     'a t ->
         ^^
 Error: This type ('a : void) should be an instance of type ('a0 : value)
-       'a has layout value, which does not overlap with void.
+       'a has layout value, which does not overlap[1] with void.
 |}];;
 
 module type S11_7 = sig
@@ -815,7 +815,7 @@ Line 4, characters 6-22:
 4 |       val baz : t_void
           ^^^^^^^^^^^^^^^^
 Error: Variables bound in a class must have layout value.
-       baz has layout void, which is not a sublayout of value.
+       baz has layout void, which is not a sublayout[2] of value.
 |}];;
 
 
@@ -829,7 +829,7 @@ Line 1, characters 11-17:
 1 | type t12 = t_void Lazy.t;;
                ^^^^^^
 Error: This type t_void should be an instance of type ('a : value)
-       t_void has layout void, which is not a sublayout of value.
+       t_void has layout void, which is not a sublayout[1] of value.
 |}];;
 
 let x12 (VV v) = lazy v;;
@@ -839,7 +839,7 @@ Line 1, characters 22-23:
                           ^
 Error: This expression has type t_void but an expression was expected of type
          ('a : value)
-       t_void has layout void, which is not a sublayout of value.
+       t_void has layout void, which is not a sublayout[1] of value.
 |}];;
 
 let x12 v =
@@ -851,7 +851,7 @@ Line 3, characters 17-18:
                      ^
 Error: This expression has type ('a : value)
        but an expression was expected of type t_void
-       t_void has layout void, which is not a sublayout of value.
+       t_void has layout void, which is not a sublayout[1] of value.
 |}];;
 
 (* option *)
@@ -862,7 +862,7 @@ Line 1, characters 11-17:
 1 | type t12 = t_void option;;
                ^^^^^^
 Error: This type t_void should be an instance of type ('a : value)
-       t_void has layout void, which is not a sublayout of value.
+       t_void has layout void, which is not a sublayout[1] of value.
 |}];;
 
 let x12 (VV v) = Some v;;
@@ -872,7 +872,7 @@ Line 1, characters 22-23:
                           ^
 Error: This expression has type t_void but an expression was expected of type
          ('a : value)
-       t_void has layout void, which is not a sublayout of value.
+       t_void has layout void, which is not a sublayout[1] of value.
 |}];;
 
 let x12 v =
@@ -885,7 +885,7 @@ Line 3, characters 17-18:
                      ^
 Error: This expression has type ('a : value)
        but an expression was expected of type t_void
-       t_void has layout void, which is not a sublayout of value.
+       t_void has layout void, which is not a sublayout[1] of value.
 |}];;
 
 (* list *)
@@ -896,7 +896,7 @@ Line 1, characters 11-17:
 1 | type t12 = t_void list;;
                ^^^^^^
 Error: This type t_void should be an instance of type ('a : value)
-       t_void has layout void, which is not a sublayout of value.
+       t_void has layout void, which is not a sublayout[1] of value.
 |}];;
 
 let x12 (VV v) = [v];;
@@ -906,7 +906,7 @@ Line 1, characters 18-19:
                       ^
 Error: This expression has type t_void but an expression was expected of type
          ('a : value)
-       t_void has layout void, which is not a sublayout of value.
+       t_void has layout void, which is not a sublayout[1] of value.
 |}];;
 
 let x12 v =
@@ -919,7 +919,7 @@ Line 3, characters 14-15:
                   ^
 Error: This expression has type ('a : value)
        but an expression was expected of type t_void
-       t_void has layout void, which is not a sublayout of value.
+       t_void has layout void, which is not a sublayout[1] of value.
 |}];;
 
 (* array *)
@@ -930,7 +930,7 @@ Line 1, characters 11-17:
 1 | type t12 = t_void array;;
                ^^^^^^
 Error: This type t_void should be an instance of type ('a : value)
-       t_void has layout void, which is not a sublayout of value.
+       t_void has layout void, which is not a sublayout[1] of value.
 |}];;
 
 let x12 (VV v) = [| v |];;
@@ -940,7 +940,7 @@ Line 1, characters 20-21:
                         ^
 Error: This expression has type t_void but an expression was expected of type
          ('a : value)
-       t_void has layout void, which is not a sublayout of value.
+       t_void has layout void, which is not a sublayout[1] of value.
 |}];;
 
 let x12 v =
@@ -953,7 +953,7 @@ Line 3, characters 18-19:
                       ^
 Error: This expression has type ('a : value)
        but an expression was expected of type t_void
-       t_void has layout void, which is not a sublayout of value.
+       t_void has layout void, which is not a sublayout[1] of value.
 |}];;
 
 (* Test 13: Examples motivating the trick with the manifest in [enter_type] *)
@@ -971,7 +971,7 @@ Line 2, characters 0-18:
 2 | and foo13 = t_void;;
     ^^^^^^^^^^^^^^^^^^
 Error:
-       foo13 has layout void, which is not a sublayout of value.
+       foo13 has layout void, which is not a sublayout[1] of value.
 |}];;
 
 (* Test 14: Type aliases need not have layout value *)

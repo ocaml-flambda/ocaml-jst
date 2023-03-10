@@ -474,7 +474,9 @@ val type_layout : Env.t -> type_expr -> layout
 
 (* Find a type's sort (constraining it to be an arbitrary sort variable, if
    needed) *)
-val type_sort : Env.t -> type_expr -> (sort, Layout.Violation.t) result
+val type_sort :
+  reason:Layouts.Layout.concrete_layout_reason ->
+  Env.t -> type_expr -> (sort, Layout.Violation.t) result
 
 (* Layout checking. [constrain_type_layout] will update the layout of type
    variables to make the check true, if possible.  [check_decl_layout] and
@@ -484,9 +486,15 @@ val type_sort : Env.t -> type_expr -> (sort, Layout.Violation.t) result
    found for the given type during checking (which may be an upper bound). *)
 (* CJC XXX errors: probably changes these to raise on error, like unify, when we
    work on errors *)
-val check_decl_layout : Env.t -> type_declaration -> layout
+val check_decl_layout :
+  reason:Layouts.Layout.reason
+  -> Env.t -> type_declaration -> layout
   -> (layout, Layout.Violation.t) result
-val check_type_layout : Env.t -> type_expr -> layout
+val check_type_layout :
+  reason:Layouts.Layout.reason
+  -> Env.t -> type_expr -> layout
   -> (layout, Layout.Violation.t) result
-val constrain_type_layout : Env.t -> type_expr -> layout
+val constrain_type_layout :
+  reason:Layouts.Layout.reason
+  -> Env.t -> type_expr -> layout
   -> (layout, Layout.Violation.t) result

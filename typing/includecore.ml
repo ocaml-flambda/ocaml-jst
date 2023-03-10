@@ -993,9 +993,12 @@ let type_declarations ?(equality = false) ~loc env ~mark name
   if err <> None then err else
   let err = match (decl1.type_kind, decl2.type_kind) with
       (_, Type_abstract { layout }) ->
-       (match Ctype.check_decl_layout env decl1 layout with
-        | Ok _ -> None
-        | Error v -> Some (Layout v))
+        (match
+           Ctype.check_decl_layout ~reason:Dummy_reason_result_ignored
+             env decl1 layout
+         with
+         | Ok _ -> None
+         | Error v -> Some (Layout v))
     | (Type_variant (cstrs1, rep1), Type_variant (cstrs2, rep2)) ->
         if mark then begin
           let mark usage cstrs =

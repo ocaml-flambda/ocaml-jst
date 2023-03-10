@@ -1947,15 +1947,18 @@ let rec estimate_type_layout env ty =
    it's a valid argument to [t].  (We believe there are still loops like this
    that can occur, though, and may need a more principled solution later).
 *)
-let rec constrain_type_layout ~fixed env ty1 layout2 fuel =
+let rec constrain_type_layout ~reason ~fixed env ty1 layout2 fuel =
+  (* XXX ASZ: Are all the [~reason]s in this function the same? *)
   let constrain_unboxed ty1 =
     match estimate_type_layout env ty1 with
-    | Layout layout1 -> Layout.sub layout1 layout2
+    | Layout layout1 -> Layout.sub ~reason layout1 layout2
     | TyVar (layout1, ty) ->
-      if fixed then Layout.sub layout1 layout2
+      if fixed then
+        Layout.sub ~reason layout1 layout2
       else
-        Result.map (fun layout1 -> set_var_layout ty layout1; layout1)
-          (Layout.intersection layout1 layout2)
+        let layout_inter = Layout.intersection ~reason layout1 layout2 in
+        Result.iter (set_var_layout ty) layout_inter;
+        layout_inter
   in
   (* This is an optimization to avoid unboxing if we can tell the constraint is
      satisfied from the type_kind *)
@@ -1967,41 +1970,44 @@ let rec constrain_type_layout ~fixed env ty1 layout2 fuel =
         | exception Not_found -> Layout.any
         end
       in
-      match Layout.sub layout_bound layout2 with
+      match Layout.sub ~reason layout_bound layout2 with
       | Ok _ as ok -> ok
       | Error _ as err when fuel < 0 -> err
       | Error _ as err ->
         begin match unbox_once env ty1 with
         | Not_unboxed ty1 -> constrain_unboxed ty1
-        | Unboxed ty1 -> constrain_type_layout ~fixed env ty1 layout2 (fuel - 1)
+        | Unboxed ty1 ->
+            constrain_type_layout ~reason ~fixed env ty1 layout2 (fuel - 1)
         | Missing -> err
         end
     end
-  | Tpoly (ty, _) -> constrain_type_layout ~fixed env ty layout2 fuel
+  | Tpoly (ty, _) -> constrain_type_layout ~reason ~fixed env ty layout2 fuel
   | _ -> constrain_unboxed ty1
 
-let check_type_layout env ty layout =
-  constrain_type_layout ~fixed:true env ty layout 100
+let check_type_layout ~reason env ty layout =
+  constrain_type_layout ~reason ~fixed:true env ty layout 100
 
-let constrain_type_layout env ty layout =
-  constrain_type_layout ~fixed:false env ty layout 100
+let constrain_type_layout ~reason env ty layout =
+  constrain_type_layout ~reason ~fixed:false env ty layout 100
 
-let check_decl_layout env decl layout =
+let check_decl_layout ~reason env decl layout =
   match decl_is_unboxed decl with
-  | Some arg -> check_type_layout env arg layout
+  | Some arg -> check_type_layout ~reason env arg layout
   | None ->
-      match Layout.sub
-              (layout_bound_of_kind decl.type_kind) layout with
+      match
+        Layout.sub ~reason
+          (layout_bound_of_kind decl.type_kind) layout
+      with
       | Ok _ as ok -> ok
       | Error _ as err ->
           match decl.type_manifest with
           | None -> err
-          | Some ty -> check_type_layout env ty layout
+          | Some ty -> check_type_layout ~reason env ty layout
 
 (* CJC XXX errors: locations and better error reporting.  Maybe this should take
    in a trace_exn? *)
-let constrain_type_layout_exn env texn ty layout =
-  match constrain_type_layout env ty layout with
+let constrain_type_layout_exn ~reason env texn ty layout =
+  match constrain_type_layout ~reason env ty layout with
   | Ok _ -> ()
   | Error err -> raise_for texn (Bad_layout (ty,err))
 
@@ -2011,11 +2017,12 @@ let estimate_type_layout env typ =
 let type_layout env ty =
   estimate_type_layout env (get_unboxed_type_representation env ty)
 
-(* CR ccasinghino perhaps this should take in some information about why
-   we think a sort is required, to put in the error. *)
-let type_sort env ty =
+let type_sort ~reason env ty =
   let sort = Sort.new_var () in
-  match constrain_type_layout env ty (Layout.of_sort sort) with
+  match
+    constrain_type_layout ~reason:(Concrete_layout reason)
+      env ty (Layout.of_sort sort)
+  with
   | Ok _ -> Ok sort
   | Error _ as e -> e
 
@@ -2030,21 +2037,18 @@ let type_sort env ty =
    "false" GADT pattern), but not to say the intersection is empty if it isn't.
 *)
 let rec intersect_type_layout env ty1 layout2 =
-  let intersect_unboxed ty1 =
-    Layout.intersection (estimate_type_layout env ty1) layout2
-  in
   match get_desc ty1 with
   | Tpoly (ty, _) -> intersect_type_layout env ty layout2
   | _ ->
     (* [intersect_type_layout] is called rarely, so we don't bother with trying
        to avoid this call as in [constrain_type_layout] *)
     let ty1 = get_unboxed_type_representation env ty1 in
-    intersect_unboxed ty1
+    Layout.intersection (estimate_type_layout env ty1) layout2
 
 (* See comment on [layout_unification_mode] *)
-let unification_layout_check env ty layout =
+let unification_layout_check ~reason env ty layout =
   match !lmode with
-  | Perform_checks -> constrain_type_layout_exn env Unify ty layout
+  | Perform_checks -> constrain_type_layout_exn ~reason env Unify ty layout
   | Delay_checks r -> r := (ty,layout) :: !r
   | Skip_checks -> ()
 
@@ -2851,7 +2855,7 @@ let layout_of_abstract_type_declaration env p =
   with
     Not_found -> assert false
 
-let add_layout_equation env destination layout1 =
+let add_layout_equation ~reason env destination layout1 =
   (* Here we check whether the source and destination layouts intersect.  If
      they don't, we can give a type error.  If they do, and destination is
      abstract, we can improve type checking by assigning destination that
@@ -2880,7 +2884,7 @@ let add_layout_equation env destination layout1 =
 
      This would break some existing programs, but probably only bad ones?
   *)
-  match intersect_type_layout !env destination layout1 with
+  match intersect_type_layout ~reason !env destination layout1 with
   | Error err -> raise_for Unify (Bad_layout (destination,err))
   (* CJC XXX errors rethink for new error system *)
   | Ok layout -> begin
@@ -2891,7 +2895,9 @@ let add_layout_equation env destination layout1 =
             let decl = Env.find_type p !env in
             match decl.type_kind with
             | Type_abstract {layout=layout'} when
-                not (Layout.equate layout layout') ->
+                not (Layout.equal layout layout') ->
+              (* If [equate] returns true, then [layout] has already been
+                 mutably updated if necessary *)
               let decl = {decl with type_kind = Type_abstract {layout}} in
               env := Env.add_local_type p decl !env
             | (Type_record _ | Type_variant _ | Type_open | Type_abstract _) -> ()
@@ -2915,7 +2921,7 @@ let add_gadt_equation env source destination =
        efficiency.  When we check the layout later, we may not be able to see
        the local equation because of its level. *)
     let layout = layout_of_abstract_type_declaration !env source in
-    add_layout_equation env destination layout;
+    add_layout_equation ~reason:(Gadt_equation source) env destination layout;
     let decl =
       new_local_type ~manifest_and_scope:(destination, expansion_scope) layout
     in
@@ -3024,8 +3030,8 @@ let unify_eq t1 t2 =
       && TypePairs.mem unify_eq_set (order_type_pair t1 t2))
 
 let unify1_var env t1 t2 =
-  let layout = match get_desc t1 with
-    | Tvar { layout } -> layout
+  let name, layout = match get_desc t1 with
+    | Tvar { name; layout } -> name, layout
     | _ -> assert false
   in
   occur_for Unify env t1 t2;
@@ -3038,18 +3044,18 @@ let unify1_var env t1 t2 =
         with Escape e ->
           raise_for Unify (Escape e)
       end;
-      unification_layout_check env t2 layout;
+      unification_layout_check ~reason:(Unified_with_tvar name) env t2 layout;
       link_type t1 t2;
       true
   | exception Unify_trace _ when in_pattern_mode () ->
       false
 
 (* Called from unify3 *)
-let unify3_var env layout1 t1' t2 t2' =
+let unify3_var ~var_name env layout1 t1' t2 t2' =
   occur_for Unify !env t1' t2;
   match occur_univar_for Unify !env t2 with
   | () -> begin
-      unification_layout_check !env t2' layout1;
+      unification_layout_check ~reason:(Unified_with_tvar var_name) !env t2' layout1;
       link_type t1' t2
     end
   | exception Unify_trace _ when in_pattern_mode () ->
@@ -3108,7 +3114,7 @@ let rec unify (env:Env.t ref) t1 t2 =
         update_scope_for Unify (get_scope t1) t2;
         (* CJC XXX: make test cases that hit this.  Easier once we have
            annotations on univars, I think. *)
-        if not (Layout.equate l1 l2) then
+        if not (Layout.equal l1 l2) then
           raise_for Unify (Unequal_univar_layouts (t1, l1, t2, l2));
         link_type t1 t2
     | (Tconstr (p1, [], a1), Tconstr (p2, [], a2))
@@ -3189,13 +3195,13 @@ and unify3 env t1 t1' t2 t2' =
 
         let f (x : < foo : ('a : void) . 'a foo bar >) : < foo : 'a . 'a foo bar > = x
       *)
-      if not (Layout.equate l1 l2) then
+      if not (Layout.equal l1 l2) then
         raise_for Unify (Unequal_univar_layouts (t1, l1, t2, l2));
       link_type t1' t2'
-  | (Tvar { layout }, _) ->
-      unify3_var env layout t1' t2 t2'
-  | (_, Tvar { layout }) ->
-      unify3_var env layout t2' t1 t1'
+  | (Tvar { name; layout }, _) ->
+      unify3_var ~var_name:name env layout t1' t2 t2'
+  | (_, Tvar { name; layout }) ->
+      unify3_var ~var_name:name env layout t2' t1 t1'
   | (Tfield _, Tfield _) -> (* special case for GADTs *)
       unify_fields env t1' t2'
   | _ ->
@@ -3653,13 +3659,16 @@ let unify_var ~from_subst env t1 t2 =
   match get_desc t1, get_desc t2 with
     Tvar _, Tconstr _ when deep_occur t1 t2 ->
       unify (ref env) t1 t2
-  | Tvar { layout }, _ ->
+    | Tvar { name; layout }, _ ->
       let reset_tracing = check_trace_gadt_instances env in
       begin try
         occur_for Unify env t1 t2;
         update_level_for Unify env (get_level t1) t2;
         update_scope_for Unify (get_scope t1) t2;
-        if not from_subst then unification_layout_check env t2 layout;
+        if not from_subst then begin
+          unification_layout_check ~reason:(Unified_with_tvar name)
+            env t2 layout
+        end;
         link_type t1 t2;
         reset_trace_gadt_instances reset_tracing;
       with Unify_trace trace ->
@@ -3754,10 +3763,11 @@ let filter_arrow env t l ~force_tpoly =
                      (Diff { got = t'; expected = t } :: trace))))
   in
   match get_desc t with
-    Tvar { layout } ->
+    Tvar { name; layout } ->
       let t', marg, t1, mret, t2 = function_type (get_level t) in
       link_type t t';
-      constrain_type_layout_exn env Unify t' layout;
+      constrain_type_layout_exn ~reason:(Unified_with_tvar name)
+        env Unify t' layout;
       (marg, t1, mret, t2)
   | Tarrow((l', marg, mret), t1, t2, _) ->
       if l = l' || !Clflags.classic && l = Nolabel && not (is_optional l')
@@ -3853,7 +3863,10 @@ let filter_method env name ty =
       let level = get_level ty in
       let scope = get_scope ty in
       let ty', ty_meth = object_type ~level ~scope in
-      begin match constrain_type_layout env ty Layout.value with
+      begin match
+        constrain_type_layout ~reason:(Fixed_layout Object)
+          env ty Layout.value
+      with
       | Ok _ -> ()
       | Error err -> raise (Filter_method_failed (Not_a_value err))
       end;
@@ -4241,12 +4254,13 @@ let rec moregen inst_nongen variance type_pairs env t1 t2 =
 
   try
     match (get_desc t1, get_desc t2) with
-      (Tvar { layout }, _) when may_instantiate inst_nongen t1 ->
+      (Tvar { name; layout }, _) when may_instantiate inst_nongen t1 ->
         moregen_occur env (get_level t1) t2;
         update_scope_for Moregen (get_scope t1) t2;
         occur_for Moregen env t1 t2;
         link_type t1 t2;
-        constrain_type_layout_exn env Moregen t2 layout
+        constrain_type_layout_exn ~reason:(Unified_with_tvar name)
+          env Moregen t2 layout
     | (Tconstr (p1, [], _), Tconstr (p2, [], _)) when Path.same p1 p2 ->
         ()
     | _ ->
@@ -4258,11 +4272,12 @@ let rec moregen inst_nongen variance type_pairs env t1 t2 =
         if not (TypePairs.mem pairs (t1', t2')) then begin
           TypePairs.add pairs (t1', t2');
           match (get_desc t1', get_desc t2') with
-            (Tvar { layout }, _) when may_instantiate inst_nongen t1' ->
+            (Tvar { name; layout }, _) when may_instantiate inst_nongen t1' ->
               moregen_occur env (get_level t1') t2;
               update_scope_for Moregen (get_scope t1') t2;
               link_type t1' t2;
-              constrain_type_layout_exn env Moregen t2 layout
+              constrain_type_layout_exn ~reason:(Unified_with_tvar name)
+                env Moregen t2 layout
           | (Tarrow ((l1,a1,r1), t1, u1, _),
              Tarrow ((l2,a2,r2), t2, u2, _)) when
                (l1 = l2
@@ -4610,7 +4625,7 @@ let eqtype_subst type_pairs subst t1 l1 t2 l2 =
   then ()
   else begin
     (* CJC XXX Errors *)
-    if not (Layout.equate l1 l2) then raise_unexplained_for Equality;
+    if not (Layout.equal l1 l2) then raise_unexplained_for Equality;
     subst := (t1, t2) :: !subst;
     TypePairs.add type_pairs (t1, t2)
   end
@@ -6090,4 +6105,5 @@ let is_immediate env ty =
     if !Clflags.native_code && Sys.word_size = 64 then Layout.immediate64
     else Layout.immediate
   in
-  Result.is_ok (check_type_layout env ty layout)
+  Result.is_ok
+    (check_type_layout ~reason:Dummy_reason_result_ignored env ty layout)
