@@ -6310,8 +6310,8 @@ and type_statement ?explanation env sexp =
     exp
   end
 
-(* Type the body within an environment extended with the unpacked modules are added,
-   returning both the typechecked body and the extended environment. *)
+(* Type the body within an environment extended with the unpacked modules are
+   added, returning both the typechecked body and the extended environment. *)
 and type_unpacks
     ?(in_function : (Location.t * type_expr * bool) option)
     env (expected_mode : expected_mode) (unpacks : to_unpack list) sbody expected_ty =
@@ -6330,8 +6330,11 @@ and type_unpacks
                    (mkloc (Longident.Lident unpack.tu_name.txt)
                       unpack.tu_name.loc)))
         in
-        (* TODO nroberts: figure out *)
-        (* Mtype.lower_nongen (get_level ty) modl.mod_type; *)
+        (* This call to [lower_nongen] mirrors the corresponding call in typing
+           [Ppx_letmodule]. It's not necessary here, as a first class module type
+           is prohibited from containing variables, but guards against analogous
+           issues to #7414. *)
+        Mtype.lower_nongen 0 modl.mod_type;
         let pres =
           match modl.mod_type with
           | Mty_alias _ -> Mp_absent
