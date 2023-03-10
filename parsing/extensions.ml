@@ -307,8 +307,8 @@ module Strengthen = struct
   let extension_string = Language_extension.to_string Module_strengthening
 
   (* Encoding: [S with M] becomes [functor (_ : S) -> (module M)], where
-     the [(module M)] is a [Pmty_alias].
-  *)
+     the [(module M)] is a [Pmty_alias].  This isn't syntax we can write, but
+     [(module M)] can be the inferred type for [M], so this should be fine. *)
 
   let mty_of ~loc { mty; mod_id } =
     (* See Note [Wrapping with make_extension] *)
