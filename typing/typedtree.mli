@@ -73,8 +73,6 @@ and pat_extra =
                            ; pat_extra = (Tpat_unpack, _, _) :: ... }
          *)
 
-
-
 and 'k pattern_desc =
   (* value patterns *)
   | Tpat_any : value pattern_desc
