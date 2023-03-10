@@ -255,8 +255,11 @@ type recarg =
   | Required
   | Rejected
 
-(* Whether or not patterns of the form (module M) are accepted.
-   (If they are, the idents will be created at the provided scope.)
+(* Whether or not patterns of the form (module M) are accepted. (If they are,
+   the idents will be created at the provided scope.) When module patterns are
+   allowed, the caller should take care to check that the introduced module
+   bindings' types don't escape their scope; see the callsites in `type_let`
+   and `type_cases` for examples.
 *)
 
 type module_patterns_restriction =
@@ -3768,6 +3771,19 @@ let unify_exp env exp expected_ty =
   with Error(loc, env, Expr_type_clash(err, tfc, None)) ->
     raise (Error(loc, env, Expr_type_clash(err, tfc, Some exp.exp_desc)))
 
+(* Ensure that all bound idents don't leak a rigid type variable from a higher
+   scope than the current level.
+*)
+
+let check_scope_escape_let_bound_idents env value_bindings =
+  List.iter
+    (fun (_, ident_loc, bound_ident_type) ->
+       try unify env bound_ident_type (newvar ())
+       with Unify trace ->
+         let loc = ident_loc.loc in
+         raise (Error(loc, env, Pattern_type_clash(trace, None))))
+    (let_bound_idents_full value_bindings)
+
 (* If [is_inferred e] is true, [e] will be typechecked without using
    the "expected type" provided by the context. *)
 
@@ -3979,12 +3995,20 @@ and type_expect_
         if rec_flag = Recursive then
           check_recursive_bindings env pat_exp_list
       in
+      (* If the patterns contain module unpacks, there is a possibility that the type of
+         the let body or variables bound by the let mention types introduced by those
+         unpacks. Here, we check for scope escape via both of these pathways (body,
+         variables).
+
+         Checking unification within an environment extended with the module bindings
+         allows us to correctly accept more programs. This environment allows unification
+         to identify more cases where a type introduced by the module is equal to a type
+         introduced at an outer scope.
+      *)
       if may_contain_modules then begin
         end_def ();
         unify_exp extended_env body (newvar ());
-        List.iter
-          (fun pat -> unify_pat (ref extended_env) pat.vb_pat (newvar ()))
-          pat_exp_list;
+        check_scope_escape_let_bound_idents extended_env pat_exp_list
       end;
       re {
         exp_desc = Texp_let(rec_flag, pat_exp_list, body);
@@ -6548,6 +6572,7 @@ and type_cases
     unused_check false;
   if may_contain_modules then begin
     end_def ();
+    (* Ensure that unpacked modules' types do not escape *)
     unify_exp_types loc env (instance ty_res) (newvar ());
   end;
   if may_contain_gadts then begin
