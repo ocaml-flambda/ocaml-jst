@@ -1041,8 +1041,8 @@ and transl_exp0 ~in_new_scope ~scopes void_k e =
            with the middle-end support).  *)
         let {val_type; _} = Env.find_value (Pident id) e.exp_env in
         match
-          Ctype.check_type_layout e.exp_env (Ctype.correct_levels val_type)
-            Layout.value
+          Ctype.check_type_layout ~reason:(Fixed_layout Probe)
+            e.exp_env (Ctype.correct_levels val_type) Layout.value
         with
         | Ok _ -> ()
         | Error _ -> raise (Error (e.exp_loc, Bad_probe_layout id))

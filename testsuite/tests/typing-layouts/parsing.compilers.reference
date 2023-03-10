@@ -3,7 +3,7 @@ Line 2, characters 22-24:
 2 | type ('a : void) t0 = 'a list;;
                           ^^
 Error: This type ('a : value) should be an instance of type ('a0 : void)
-       'a has layout void, which does not overlap with value.
+       'a has layout void, which does not overlap[1] with value.
 Line 2, characters 11-15:
 2 | type ('a : valu) t0 = 'a list;;
                ^^^^

@@ -3334,8 +3334,11 @@ let check_univars env kind exp ty_expected vars =
              2) [polyfy] actually calls [expand_head] twice!  why?!
           *)
           match get_desc (expand_head env var) with
-          | Tvar { layout = layout2; _ } -> begin
-              match check_type_layout env uvar layout2 with
+          | Tvar { name; layout = layout2; } -> begin
+              match
+                check_type_layout ~reason:(Unified_with_tvar name)
+                  env uvar layout2
+              with
               | Ok _ -> ()
               | Error err ->
                 error exp_ty ty_expected
@@ -3991,7 +3994,7 @@ and type_expect_
       let arg = type_exp env arg_expected_mode sarg in
       end_def ();
       let sort =
-        match type_sort env arg.exp_type with
+        match type_sort ~reason:Match env arg.exp_type with
         | Ok s -> s
         | Error err ->
           (* CJC XXX errors: gross *)

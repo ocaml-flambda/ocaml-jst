@@ -819,10 +819,13 @@ let check_coherence env loc dpath decl =
       end
   | { type_kind = Type_abstract {layout};
       type_manifest = Some ty } ->
-     begin match Ctype.check_type_layout env ty layout with
-     | Ok layout -> { decl with type_kind = Type_abstract {layout} }
-     | Error v -> raise(Error(loc, Layout v))
-     end
+      begin match
+        Ctype.check_type_layout ~reason:(Type_declaration_annotation dpath)
+          env ty layout
+      with
+      | Ok layout -> { decl with type_kind = Type_abstract {layout} }
+      | Error v -> raise(Error(loc, Layout v))
+      end
   | { type_manifest = None } -> decl
 
 let check_abbrev env sdecl (id, decl) =
@@ -890,8 +893,8 @@ let default_decls_layout decls =
    ensure a type is representable, and then call [Ctype.type_layout] to get the
    most precise layout.  These could be combined into some new function
    [Ctype.type_layout_representable] that avoids duplicated work *)
-let check_representable env loc lloc typ =
-  match Ctype.type_sort env typ with
+let check_representable ~reason env loc lloc typ =
+  match Ctype.type_sort ~reason env typ with
   | Ok s -> Layout.default_to_value (Layout.of_sort s)
   | Error err -> raise (Error (loc,Layout_sort {lloc; typ; err}))
 
@@ -905,14 +908,15 @@ let update_label_layouts env loc lbls named =
   (* CR ccasinghino it wouldn't be too hard to support records that are all
      void.  just needs a bit of refactoring in translcore *)
   let _, lbls =
-    List.fold_left (fun (idx,lbls) ({Types.ld_type;ld_loc} as lbl) ->
-      check_representable env ld_loc Record ld_type;
+    List.fold_left (fun (idx,lbls) (Types.{ld_type; ld_id; ld_loc} as lbl) ->
+      check_representable ~reason:(Label_declaration ld_id)
+        env ld_loc Record ld_type;
       let ld_layout = Ctype.type_layout env ld_type in
       Option.iter (fun layouts -> layouts.(idx) <- ld_layout) named;
       (idx+1, {lbl with ld_layout} :: lbls)
     ) (0,[]) lbls
   in
-  if List.for_all (fun l -> Layout.(equate void l.ld_layout)) lbls then
+  if List.for_all (fun l -> Layout.(equal void l.ld_layout)) lbls then
     raise (Error (loc, Layout_empty_record))
   else List.rev lbls
 
@@ -920,7 +924,8 @@ let update_constructor_arguments_layouts env loc cd_args layouts =
   match cd_args with
   | Types.Cstr_tuple tys ->
     List.iteri (fun idx (ty,_) ->
-      check_representable env loc Cstr_tuple ty;
+      check_representable ~reason:(Constructor_declaration idx)
+        env loc Cstr_tuple ty;
       layouts.(idx) <- Ctype.type_layout env ty) tys;
     cd_args
   | Types.Cstr_record lbls ->
@@ -933,8 +938,9 @@ let update_constructor_arguments_layouts env loc cd_args layouts =
 let update_decl_layout env decl =
   let update_record_kind loc lbls rep =
     match lbls, rep with
-    | [{Types.ld_type;ld_loc} as lbl], Record_unboxed _ ->
-      check_representable env ld_loc Record ld_type;
+    | [Types.{ld_type; ld_id; ld_loc} as lbl], Record_unboxed _ ->
+      check_representable ~reason:(Label_declaration ld_id)
+        env ld_loc Record ld_type;
       let ld_layout = Ctype.type_layout env ld_type in
       [{lbl with ld_layout}], Record_unboxed ld_layout
     | _, Record_boxed layouts ->
@@ -957,12 +963,14 @@ let update_decl_layout env decl =
     | [{Types.cd_args;cd_loc} as cstr], Variant_unboxed _ -> begin
         match cd_args with
         | Cstr_tuple [ty,_] -> begin
-            check_representable env cd_loc Cstr_tuple ty;
+            check_representable ~reason:(Constructor_declaration 0)
+              env cd_loc Cstr_tuple ty;
             let layout = Ctype.type_layout env ty in
             cstrs, Variant_unboxed layout
           end
-        | Cstr_record [{ld_type;ld_loc} as lbl] -> begin
-            check_representable env ld_loc Record ld_type;
+        | Cstr_record [{ld_type; ld_id; ld_loc} as lbl] -> begin
+            check_representable ~reason:(Label_declaration ld_id)
+              env ld_loc Record ld_type;
             let ld_layout = Ctype.type_layout env ld_type in
             [{ cstr with Types.cd_args =
                            Cstr_record [{ lbl with ld_layout }] }],
@@ -1316,7 +1324,11 @@ let transl_type_decl env rec_flag sdecl_list =
      layout checks *)
   List.iter (fun (checks,loc) ->
     List.iter (fun (ty,layout) ->
-      match Ctype.constrain_type_layout new_env ty layout with
+      match
+        (* XXX ASZ: This [Dummy_reason_result_ignored] worries me *)
+        Ctype.constrain_type_layout ~reason:Dummy_reason_result_ignored
+          new_env ty layout
+      with
       | Ok _ -> ()
       | Error err ->
         let err = Errortrace.unification_error ~trace:[Bad_layout (ty,err)] in
@@ -1370,7 +1382,9 @@ let transl_type_decl env rec_flag sdecl_list =
       Layout.of_const_option ~default:Layout.any
         tdecl.typ_layout_annotation
     in
-    match Ctype.check_decl_layout final_env tdecl.typ_type layout with
+    match
+      Ctype.check_decl_layout ~reason:Dummy_reason_result_ignored
+        final_env tdecl.typ_type layout with
     | Ok _ -> ()
     | Error v -> raise(Error(tdecl.typ_loc, Layout v)))
     final_decls;
@@ -1398,7 +1412,7 @@ let transl_extension_constructor ~scope env type_path type_params
         let args =
           update_constructor_arguments_layouts env sext.pext_loc args layouts
         in
-        let constant = Array.for_all Layout.(equate void) layouts in
+        let constant = Array.for_all Layout.(equal void) layouts in
           args, layouts, constant, ret_type, Text_decl(svars, targs, tret_type)
     | Pext_rebind lid ->
         let usage : Env.constructor_usage =

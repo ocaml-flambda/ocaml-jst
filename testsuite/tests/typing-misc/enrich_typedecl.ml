@@ -238,29 +238,15 @@ end = struct
   let coerce : 'a 'b. ('a, 'b) t -> ('a, 'b) F.t = fun x -> x
 end;;
 [%%expect{|
-Lines 3-9, characters 6-3:
-3 | ......struct
-4 |   type ('a, 'b) t = Foo of 'b
-5 |
-6 |   (* this function typechecks properly, which means that we've added the
-7 |      manisfest. *)
+Line 8, characters 60-61:
 8 |   let coerce : 'a 'b. ('a, 'b) t -> ('a, 'b) F.t = fun x -> x
-9 | end..
-Error: Signature mismatch:
-       Modules do not match:
-         sig
-           type ('a, 'b) t = ('a, 'b) F.t = Foo of 'b
-           val coerce : ('a, 'b) t -> ('a, 'b) F.t
-         end
-       is not included in
-         sig type ('a, 'b) t = Foo of 'a end
-       Type declarations do not match:
-         type ('a, 'b) t = ('a, 'b) F.t = Foo of 'b
-       is not included in
-         type ('a, 'b) t = Foo of 'a
-       Constructors do not match:
-         Foo of 'b
-       is not the same as:
-         Foo of 'a
-       The type 'b is not equal to the type 'a
+                                                                ^
+Error: This expression has type ('a, 'b) t
+       but an expression was expected of type ('a, 'b) F.t
+|}, Principal{|
+Line 8, characters 60-61:
+8 |   let coerce : 'a 'b. ('a, 'b) t -> ('a, 'b) F.t = fun x -> x
+                                                                ^
+Error: This expression has type ('a, 'b) t
+       but an expression was expected of type ('c, 'd) F.t
 |}];;

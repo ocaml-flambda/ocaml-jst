@@ -314,8 +314,10 @@ and transl_type_aux env policy mode styp =
           (* Layouts: For now, we require function arguments and returns to have
              layout value.  See comment in [Ctype.filter_arrow].  *)
           begin match
-            constrain_type_layout env arg_ty Layout.value,
-            constrain_type_layout env ret_cty.ctyp_type Layout.value
+            constrain_type_layout ~reason:(Fixed_layout Function_argument)
+              env arg_ty Layout.value,
+            constrain_type_layout ~reason:(Fixed_layout Function_result)
+              env ret_cty.ctyp_type Layout.value
           with
           | Ok _, Ok _ -> ()
           | Error e, _ ->
@@ -337,7 +339,10 @@ and transl_type_aux env policy mode styp =
     assert (List.length stl >= 2);
     let ctys = List.map (transl_type env policy Alloc_mode.Global) stl in
     List.iter (fun {ctyp_type; ctyp_loc} ->
-      match constrain_type_layout env ctyp_type Layout.value with
+      match
+        constrain_type_layout ~reason:(Fixed_layout Tuple_element)
+          env ctyp_type Layout.value
+      with
       | Ok _ -> ()
       | Error e ->
         raise (Error(ctyp_loc, env,
@@ -524,7 +529,10 @@ and transl_type_aux env policy mode styp =
                    List.map (transl_type env policy Alloc_mode.Global) stl)
             in
             List.iter (fun {ctyp_type; ctyp_loc} ->
-              match constrain_type_layout env ctyp_type Layout.value with
+              match
+                constrain_type_layout ~reason:Dummy_reason_result_ignored
+                  env ctyp_type Layout.value
+              with
               | Ok _ -> ()
               | Error e ->
                 raise (Error(ctyp_loc, env,
@@ -649,7 +657,10 @@ and transl_type_aux env policy mode styp =
                              s, transl_type env policy Alloc_mode.Global pty
                           ) l in
       List.iter (fun (s,{ctyp_type=ty}) ->
-        match Ctype.constrain_type_layout env ty Layout.value with
+        match
+          Ctype.constrain_type_layout ~reason:(Fixed_layout Package_hack)
+            env ty Layout.value
+        with
         | Ok _ -> ()
         | Error e ->
           raise (Error(s.loc,env,
@@ -689,7 +700,10 @@ and transl_fields env policy o fields =
             (fun () -> transl_type env policy Alloc_mode.Global (Ast_helper.Typ.force_poly ty1))
         in
         begin
-          match constrain_type_layout env ty1.ctyp_type Layout.value with
+          match
+            constrain_type_layout ~reason:(Fixed_layout Object_field)
+              env ty1.ctyp_type Layout.value
+          with
           | Ok _ -> ()
           | Error e ->
             raise (Error(of_loc, env,

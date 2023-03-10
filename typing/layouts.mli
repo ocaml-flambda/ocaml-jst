@@ -101,6 +101,52 @@ module Layout : sig
   val immediate : t
 
   (******************************)
+  (* errors *)
+
+  (* XXX ASZ: Rename to "xxx_layout_context"? *)
+  type fixed_layout_reason =
+    | Let_binding
+    | Function_argument
+    | Function_result
+    | Tuple_element
+    | Probe
+    | Package_hack
+    | Object
+    | Instance_variable
+    | Object_field (* XXX ASZ: Is this different than [Instance_variable]? *)
+    | Class_field
+
+  type concrete_layout_reason =
+    | Match
+    | Constructor_declaration of int
+    | Label_declaration of Ident.t
+
+  type reason =
+    | Fixed_layout of fixed_layout_reason
+    | Concrete_layout of concrete_layout_reason
+    | Type_declaration_annotation of Path.t
+    | Gadt_equation of Path.t
+    | Unified_with_tvar of string option
+        (* XXX ASZ: RAE thinks this will want to take a type, not a tvar name
+           (string option) in case that type gets further unified.  He's
+           probably right but we'll see how errors look. *)
+    | Dummy_reason_result_ignored
+        (* XXX ASZ: Is this the best approach?  Where could we insert a "last
+           resort" check to indicate that we shouldn't be seeing this? *)
+
+  module Violation : sig
+    type nonrec t =
+      | Not_a_sublayout of t * t
+      | No_intersection of t * t
+
+    val report_with_offender :
+      offender:(Format.formatter -> unit) -> Format.formatter -> t -> unit
+    val report_with_offender_sort :
+      offender:(Format.formatter -> unit) -> Format.formatter -> t -> unit
+    val report_with_name : name:string -> Format.formatter -> t -> unit
+  end
+
+  (******************************)
   (* construction *)
 
   (** Create a fresh sort variable, packed into a layout. *)
@@ -140,20 +186,6 @@ module Layout : sig
   val format : Format.formatter -> t -> unit
 
   (******************************)
-  (* errors *)
-  module Violation : sig
-    type nonrec t =
-      | Not_a_sublayout of t * t
-      | No_intersection of t * t
-
-    val report_with_offender :
-      offender:(Format.formatter -> unit) -> Format.formatter -> t -> unit
-    val report_with_offender_sort :
-      offender:(Format.formatter -> unit) -> Format.formatter -> t -> unit
-    val report_with_name : name:string -> Format.formatter -> t -> unit
-  end
-
-  (******************************)
   (* relations *)
 
   (** This checks for equality, and sets any variables to make two layouts
@@ -161,9 +193,14 @@ module Layout : sig
       variable to be [value] *)
   val equate : t -> t -> bool
 
+  (** This checks for equality, but has the invariant that it can only be called
+      when there is no need for unification; e.g. [equal] on a var and [value]
+      will crash. *)
+  val equal : t -> t -> bool
+
   (** Finds the intersection of two layouts, or returns a [Violation.t]
-      if an intersection does not exist. *)
-  val intersection : t -> t -> (t, Violation.t) Result.t
+      if an intersection does not exist.  Can update the layouts. *)
+  val intersection : reason:reason -> t -> t -> (t, Violation.t) Result.t
 
   (** [sub t1 t2] returns [Ok t1] iff [t1] is a sublayout of
     of [t2].  The current hierarchy is:
@@ -174,7 +211,7 @@ module Layout : sig
     Return [Error _] if the coercion is not possible. We return a layout in the
     success case because it sometimes saves time / is convenient to have the
     same return type as intersection. *)
-  val sub : t -> t -> (t, Violation.t) result
+  val sub : reason:reason -> t -> t -> (t, Violation.t) result
 
   (*********************************)
   (* defaulting *)

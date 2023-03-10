@@ -472,8 +472,11 @@ let worst_msig decl = List.map (fun _ -> Deepsep) decl.type_params
     Note: this differs from {!Types.Separability.default_signature},
     which does not have access to the declaration and its immediacy. *)
 let msig_of_external_type env decl =
-  if Result.is_error (Ctype.check_decl_layout env decl Layout.value)
-     || Result.is_ok (Ctype.check_decl_layout env decl Layout.immediate64)
+  let check_layout =
+    Ctype.check_decl_layout ~reason:Dummy_reason_result_ignored env decl
+  in
+  if Result.is_error (check_layout Layout.value)
+     || Result.is_ok (check_layout Layout.immediate64)
   then best_msig decl
   else worst_msig decl
 
