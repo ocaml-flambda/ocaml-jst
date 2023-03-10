@@ -611,7 +611,6 @@ let unify_exp_types loc env ty expected_ty =
 
 (* level at which to create the local type declarations *)
 let gadt_equations_level = ref None
-
 let get_gadt_equations_level () =
   match !gadt_equations_level with
     Some y -> y
@@ -713,7 +712,6 @@ let pattern_variables = ref ([] : pattern_variable list)
 let pattern_force = ref ([] : (unit -> unit) list)
 let allow_modules = ref Modules_rejected
 let module_variables = ref ([] : module_variable list)
-
 let reset_pattern allow =
   pattern_variables := [];
   pattern_force := [];
@@ -2591,9 +2589,9 @@ let type_pattern category ~lev ~alloc_mode env spat expected_ty allow_modules =
   (pat, !new_env, get_ref pattern_force, pvs, unpacks)
 
 let type_pattern_list
-    category no_existentials env spatl expected_tys allow
+    category no_existentials env spatl expected_tys allow_modules
   =
-  reset_pattern allow;
+  reset_pattern allow_modules;
   let new_env = ref env in
   let type_pat (attrs, pat_mode, exp_mode, pat) ty =
     Builtin_attributes.warning_scope ~ppwarning:false attrs
