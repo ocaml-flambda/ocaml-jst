@@ -306,13 +306,14 @@ module Strengthen = struct
 
   let extension_string = Language_extension.to_string Strengthen
 
-  (* Encoding: [S with M] becomes [functor (_ : S) -> M]. But remember
+  (* Encoding: [S with M] becomes [functor (_ : S) -> (module M)], where
+     the [(module M)] is a [Pmty_alias]. But remember
      that this gets wrapped in an [[%extension.strengthen]] node, so
      the what starts as [S with M] really becomes
 
        {[
          functor (_ : [%extension.strengthen]) ->
-           functor (_ : S) -> M
+           functor (_ : S) -> (module M)
        ]}
   *)
 
@@ -320,10 +321,10 @@ module Strengthen = struct
     (* See Note [Wrapping with make_extension] *)
     Module_type.make_extension ~loc [extension_string] @@
       Ast_helper.Mty.functor_ (Named (Location.mknoloc None, mty))
-        (Ast_helper.Mty.ident mod_id)
+        (Ast_helper.Mty.alias mod_id)
 
   let of_mty mty = match mty.pmty_desc with
-    | Pmty_functor(Named(_, mty), {pmty_desc = Pmty_ident mod_id}) ->
+    | Pmty_functor(Named(_, mty), {pmty_desc = Pmty_alias mod_id}) ->
        { mty; mod_id }
     | _ -> failwith "Malformed strengthen module type"
 end
