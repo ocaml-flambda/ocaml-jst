@@ -834,10 +834,10 @@ let map_ext fn exts =
    making them abstract otherwise. *)
 
 let rec approx_modtype env smty =
-  match Extensions.Module_type.get_desc smty with
-  | Extension _ -> .
-  | Regular desc ->
-  match desc with
+  match Extensions.Module_type.of_ast smty with
+  | Some _ -> .
+  | None ->
+  match smty.pmty_desc with
     Pmty_ident lid ->
       let path =
         Env.lookup_modtype_path ~use:false ~loc:smty.pmty_loc lid.txt env
@@ -1372,10 +1372,10 @@ and transl_modtype_functor_arg env sarg =
 
 and transl_modtype_aux env smty =
   let loc = smty.pmty_loc in
-  match Extensions.Module_type.get_desc smty with
-  | Extension _ -> .
-  | Regular desc ->
-  match desc with
+  match Extensions.Module_type.of_ast smty with
+  | Some _ -> .
+  | None ->
+  match smty.pmty_desc with
     Pmty_ident lid ->
       let path = transl_modtype_longident loc env lid.txt in
       mkmty (Tmty_ident (path, lid)) (Mty_ident path) env loc

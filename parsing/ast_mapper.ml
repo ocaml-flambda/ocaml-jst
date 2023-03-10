@@ -276,17 +276,18 @@ let map_functor_param sub = function
 module MT = struct
   (* Type expressions for the module language *)
 
-  let map sub ({pmty_loc = loc; pmty_attributes = attrs} as mty) =
+  let map sub
+        ({pmty_desc = desc; pmty_loc = loc; pmty_attributes = attrs} as mty) =
     let open Mty in
     let loc = sub.location sub loc in
     let attrs = sub.attributes sub attrs in
-    match Extensions.Module_type.get_desc mty with
-    | Extension emty -> begin
+    match Extensions.Module_type.of_ast mty with
+    | Some emty -> begin
         Extensions_parsing.Module_type.wrap_desc ~loc ~attrs @@
         match sub.module_type_extension sub emty with
         | _ -> .
       end
-    | Regular desc ->
+    | None ->
     match desc with
     | Pmty_ident s -> ident ~loc ~attrs (map_loc sub s)
     | Pmty_alias s -> alias ~loc ~attrs (map_loc sub s)

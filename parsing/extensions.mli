@@ -156,8 +156,5 @@ end
 module Module_type : sig
   type t = |
 
-  include Extensions_parsing.Extended_ast
-    with type t := t
-     and type ast := Parsetree.module_type
-     and type ast_desc := Parsetree.module_type_desc
+  include AST with type t := t and type ast := Parsetree.module_type
 end

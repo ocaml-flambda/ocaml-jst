@@ -247,12 +247,13 @@ let iter_functor_param sub = function
 module MT = struct
   (* Type expressions for the module language *)
 
-  let iter sub ({pmty_loc = loc; pmty_attributes = attrs} as mty) =
+  let iter sub
+        ({pmty_desc = desc; pmty_loc = loc; pmty_attributes = attrs} as mty) =
     sub.location sub loc;
     sub.attributes sub attrs;
-    match Extensions.Module_type.get_desc mty with
-    | Extension emty -> sub.module_type_extension sub emty
-    | Regular desc ->
+    match Extensions.Module_type.of_ast mty with
+    | Some emty -> sub.module_type_extension sub emty
+    | None ->
     match desc with
     | Pmty_ident s -> iter_loc sub s
     | Pmty_alias s -> iter_loc sub s

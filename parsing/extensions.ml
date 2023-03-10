@@ -352,10 +352,10 @@ module Module_type = struct
 
     type t = |
 
-    let of_ast (ext : Language_extension.t) _mty = match ext with
+    let of_ast_internal (ext : Language_extension.t) _mty = match ext with
       | _ -> None
   end
 
   include M
-  include Make_get_desc(M)
+  include Make_of_ast(M)
 end
