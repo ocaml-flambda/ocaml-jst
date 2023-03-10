@@ -258,10 +258,9 @@ type recarg =
 (* Whether or not patterns of the form (module M) are accepted. (If they are,
    the idents will be created at the provided scope.) When module patterns are
    allowed, the caller should take care to check that the introduced module
-   bindings' types don't escape their scope; see the callsites in `type_let`
-   and `type_cases` for examples.
+   bindings' types don't escape their scope; see the callsites in [type_let]
+   and [type_cases] for examples.
 *)
-
 type module_patterns_restriction =
   | Modules_allowed of { scope : int }
   | Modules_rejected
