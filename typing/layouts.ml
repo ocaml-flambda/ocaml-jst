@@ -262,49 +262,128 @@ module Layout = struct
     | Const c -> string_of_const c
     | Var _ -> "<sort variable>"
 
-  let format ppf t = Format.fprintf ppf "%s" (to_string t)
+  module Formatting : sig
+    open Format
+    val format : formatter -> t -> unit
+    val format_history :
+      pp_name:(formatter -> 'a -> unit) -> name:'a ->
+      formatter -> t -> unit
+  end = struct
+    open Format
+
+    let format ppf t = fprintf ppf "%s" (to_string t)
+
+    let fixed_layout_reason_layout = function
+      | Let_binding
+      | Function_argument
+      | Function_result
+      | Tuple_element
+      | Probe
+      | Package_hack
+      | Object
+      | Instance_variable
+      | Object_field
+      | Class_field
+        -> value
+
+    let format_fixed_layout_reason ppf =
+      function
+      | Let_binding -> fprintf ppf "let-bound"
+      | Function_argument -> fprintf ppf "a function argument"
+      | Function_result -> fprintf ppf "a function result"
+      | Tuple_element -> fprintf ppf "a tuple element"
+      | Probe -> fprintf ppf "a probe"
+      | Package_hack -> fprintf ppf "involved in the package hack"
+      (* CR layouts: figure out what "package hack" means *)
+      | Object -> fprintf ppf "an object"
+      | Instance_variable -> fprintf ppf "an instance variable"
+      | Object_field -> fprintf ppf "an object field"
+      | Class_field -> fprintf ppf "an class field"
+
+    let format_concrete_layout_reason ppf : concrete_layout_reason -> unit =
+      function
+      | Match ->
+        fprintf ppf "matched on"
+      | Constructor_declaration idx ->
+        fprintf ppf "used as constructor field %d" idx
+      | Label_declaration lbl ->
+        fprintf ppf "used in the declaration of the record field \"%a\""
+          Ident.print lbl
+
+    let format_reason ppf : reason -> unit = function
+      | Fixed_layout flr ->
+          fprintf ppf "to@ %a because it was@ %a"
+            format (fixed_layout_reason_layout flr)
+            format_fixed_layout_reason flr
+      | Concrete_layout clr ->
+          fprintf ppf "to have a concrete layout@ because it was %a"
+            format_concrete_layout_reason clr
+      | Type_declaration_annotation p ->
+          fprintf ppf "by the annotation@ on the declaration of %a"
+            Path.print p
+      | Gadt_equation p ->
+          fprintf ppf "by a GADT match@ on the constructor %a"
+            Path.print p
+      | Unified_with_tvar tv -> begin
+          fprintf ppf "during unification@ with ";
+          match tv with
+          | None -> fprintf ppf "a type variable"
+          | Some tv -> fprintf ppf "'%s" tv
+        end
+      | Dummy_reason_result_ignored ->
+          Misc.fatal_errorf
+            "Found [Dummy_reason_result_ignored] in a [layout] when printing!"
+
+    let format_history ~pp_name ~name ppf t =
+      let message ppf = function
+        | 0 -> fprintf ppf "%a was constrained" pp_name name
+        | _ -> fprintf ppf "and"
+      in
+      List.iteri
+        (fun i r ->
+           fprintf ppf "@,@[<hov 2>%a %a@]"
+             message i
+             format_reason r)
+        t.history;
+  end
+
+  include Formatting
 
   (******************************)
   (* errors *)
 
   module Violation = struct
+    open Format
+
     type nonrec t =
       | Not_a_sublayout of t * t
       | No_intersection of t * t
 
-    let report_with_offender ~offender ppf t =
-      let pr fmt = Format.fprintf ppf fmt in
-      match t with
-      | Not_a_sublayout (l1, l2) ->
-          pr "%t has layout %a, which is not a sublayout[1] of %a." offender
-            format l1 format l2
-      | No_intersection (l1, l2) ->
-          pr "%t has layout %a, which does not overlap[1] with %a." offender
-            format l1 format l2
-
-    let report_with_offender_sort ~offender ppf t =
-      let sort_expected =
-        "A representable layout was expected, but"
+    let report_general preamble pp_former former ppf t =
+      let l1, problem, l2 = match t with
+        | Not_a_sublayout(l1, l2) -> l1, "is not a sublayout of", l2
+        | No_intersection(l1, l2) -> l1, "does not overlap with", l2
       in
-      let pr fmt = Format.fprintf ppf fmt in
-      match t with
-      | Not_a_sublayout (l1, l2) ->
-        pr "%s@ %t has layout %a, which is not a sublayout of %a."
-          sort_expected offender format l1 format l2
-      | No_intersection (l1, l2) ->
-        pr "%s@ %t has layout %a, which does not overlap with %a."
-          sort_expected offender format l1 format l2
+      fprintf ppf "@[<v>@[<hov 2>%s%a has layout %a,@ which %s %a.@]%a%a@]"
+        preamble
+        pp_former former
+        format l1
+        problem
+        format l2
+        (format_history ~pp_name:pp_former ~name:former) l1
+        (format_history ~pp_name:pp_print_string ~name:"The latter") l2
 
-    let report_with_name ~name ppf t =
-      let pr fmt = Format.fprintf ppf fmt in
-      match t with
-      | Not_a_sublayout (l1,l2) ->
-          pr "%s has layout %a, which is not a sublayout[2] of %a." name
-            format l1 format l2
-      | No_intersection (l1, l2) ->
-          pr "%s has layout %a, which does not overlap[2] with %a." name
-            format l1 format l2
-  end
+    let pp_t ppf x = fprintf ppf "%t" x
+
+    let report_with_offender ~offender =
+      report_general "" pp_t offender
+
+    let report_with_offender_sort ~offender =
+      report_general "A representable layout was expected, but " pp_t offender
+
+    let report_with_name ~name =
+      report_general "" pp_print_string name
+end
 
   (******************************)
   (* relations *)

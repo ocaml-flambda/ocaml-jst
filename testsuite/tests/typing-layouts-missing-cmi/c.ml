@@ -41,7 +41,10 @@ Line 1, characters 12-19:
                 ^^^^^^^
 Error: This type B.b_value = A.a_value should be an instance of type
          ('a : immediate)
-       B.b_value has layout value, which is not a sublayout[1] of immediate.
+       B.b_value has layout value, which is not a sublayout of immediate.
+       B.b_value was constrained by the annotation
+         on the declaration of b_value/271[2]
+       and by the annotation on the declaration of a_value/269[2]
 |}];;
 
 type err2 = b_void value_arg;;
@@ -51,7 +54,9 @@ Line 1, characters 12-18:
                 ^^^^^^
 Error: This type B.b_void = A.a_void should be an instance of type
          ('a : value)
-       B.b_void has layout void, which is not a sublayout[1] of value.
+       B.b_void has layout void, which is not a sublayout of value.
+       B.b_void was constrained by the annotation
+         on the declaration of b_void/272[3]
 |}];;
 
 type err3 = b_void imm_arg;;
@@ -61,7 +66,9 @@ Line 1, characters 12-18:
                 ^^^^^^
 Error: This type B.b_void = A.a_void should be an instance of type
          ('a : immediate)
-       B.b_void has layout void, which is not a sublayout[1] of immediate.
+       B.b_void has layout void, which is not a sublayout of immediate.
+       B.b_void was constrained by the annotation
+         on the declaration of b_void/272[3]
 |}];;
 
 type err4 = b_value void_arg;;
@@ -71,7 +78,10 @@ Line 1, characters 12-19:
                 ^^^^^^^
 Error: This type B.b_value = A.a_value should be an instance of type
          ('a : void)
-       B.b_value has layout value, which is not a sublayout[1] of void.
+       B.b_value has layout value, which is not a sublayout of void.
+       B.b_value was constrained by the annotation
+         on the declaration of b_value/271[2]
+       and by the annotation on the declaration of a_value/269[2]
 |}];;
 
 type err5 = b_imm void_arg;;
@@ -80,7 +90,9 @@ Line 1, characters 12-17:
 1 | type err5 = b_imm void_arg;;
                 ^^^^^
 Error: This type B.b_imm = A.a_imm should be an instance of type ('a : void)
-       B.b_imm has layout immediate, which is not a sublayout[1] of void.
+       B.b_imm has layout immediate, which is not a sublayout of void.
+       B.b_imm was constrained by the annotation
+         on the declaration of b_imm/267[1]
 |}];;
 
 
