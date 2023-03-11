@@ -3,5 +3,8 @@ File "main.ml", line 1, characters 8-11:
             ^^^
 Error: This expression has type M.a but an expression was expected of type
          ('a : value)
-       M.a has layout any, which is not a sublayout[1] of value.
+       M.a has layout any, which is not a sublayout of value.
+       The latter was constrained during unification with a type variable
+       and during unification with a type variable
+       and during unification with 'a
        M.a is abstract because no corresponding cmi file was found in path.

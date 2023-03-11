@@ -184,6 +184,9 @@ module Layout : sig
 
   val to_string : t -> string
   val format : Format.formatter -> t -> unit
+  val format_history :
+    pp_name:(Format.formatter -> 'a -> unit) -> name:'a ->
+    Format.formatter -> t -> unit
 
   (******************************)
   (* relations *)
