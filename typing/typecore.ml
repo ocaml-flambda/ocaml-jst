@@ -2135,10 +2135,10 @@ and type_pat_aux
             pat_env = !env }
       | Some s ->
           let v = { name with txt = s } in
-          (* NB: Our ability to call ~is_module:true here without an error relies
-             on an interaction with `may_contain_modules`. Callers use the return
-             value of `may_contain_modules` to decide whether to set up the proper
-             scope handling code to permit module patterns.
+          (* NB: Our ability to call ~is_module:true here without an error
+             relies on an interaction with `may_contain_modules`. Callers use
+             the return value of `may_contain_modules` to decide whether to set
+             up the proper scope handling code to permit module patterns.
           *)
           let id = enter_variable loc v alloc_mode.mode
                      t ~is_module:true sp.ppat_attributes in
@@ -3967,7 +3967,7 @@ and type_expect_
         else if List.compare_length_with spat_sexp_list 1 > 0 then In_group
         else With_attributes in
       let may_contain_modules =
-        List.exists (fun { pvb_pat } -> may_contain_modules pvb_pat) spat_sexp_list
+        List.exists (fun pvb -> may_contain_modules pvb.pvb_pat) spat_sexp_list
       in
       let allow_modules =
         if may_contain_modules
@@ -3992,15 +3992,15 @@ and type_expect_
         if rec_flag = Recursive then
           check_recursive_bindings env pat_exp_list
       in
-      (* If the patterns contain module unpacks, there is a possibility that the type of
-         the let body or variables bound by the let mention types introduced by those
-         unpacks. Here, we check for scope escape via both of these pathways (body,
-         variables).
+      (* If the patterns contain module unpacks, there is a possibility that the
+         type of the let body or variables bound by the let mention types
+         introduced by those unpacks. Here, we check for scope escape via both
+         of these pathways (body, variables).
 
-         Checking unification within an environment extended with the module bindings
-         allows us to correctly accept more programs. This environment allows unification
-         to identify more cases where a type introduced by the module is equal to a type
-         introduced at an outer scope.
+         Checking unification within an environment extended with the module
+         bindings allows us to correctly accept more programs. This environment
+         allows unification to identify more cases where a type introduced by
+         the module is equal to a type introduced at an outer scope.
       *)
       if may_contain_modules then begin
         end_def ();
@@ -6330,9 +6330,9 @@ and type_unpacks
                       unpack.tu_name.loc)))
         in
         (* This call to [lower_nongen] mirrors the corresponding call in typing
-           [Ppx_letmodule]. It's not necessary here, as a first class module type
-           is prohibited from containing variables, but guards against analogous
-           issues to #7414. *)
+           [Ppx_letmodule]. It's not necessary here, as a first class module
+           type is prohibited from containing variables, but guards against
+           analogous issues to #7414. *)
         Mtype.lower_nongen 0 modl.mod_type;
         let pres =
           match modl.mod_type with
