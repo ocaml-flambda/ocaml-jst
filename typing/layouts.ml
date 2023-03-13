@@ -316,7 +316,7 @@ module Layout = struct
             format (fixed_layout_reason_layout flr)
             format_fixed_layout_reason flr
       | Concrete_layout clr ->
-          fprintf ppf "to have a concrete layout@ because it was %a"
+          fprintf ppf "to be concrete@ because it was %a"
             format_concrete_layout_reason clr
       | Type_declaration_annotation p ->
           fprintf ppf "by the annotation@ on the declaration of %a"
