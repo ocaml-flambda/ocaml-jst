@@ -6389,6 +6389,7 @@ and type_cases
   let erase_either = contains_polyvars && contains_variant_either ty_arg in
   let may_contain_gadts = List.exists may_contain_gadts patterns in
   let may_contain_modules = List.exists may_contain_modules patterns in
+  let create_inner_level = may_contain_gadts || may_contain_modules in
   let ty_arg =
     if (may_contain_gadts || erase_either) && not !Clflags.principal
     then correct_levels ty_arg else ty_arg
@@ -6405,13 +6406,10 @@ and type_cases
     | _ -> true
   in
   let outer_level = get_current_level () in
-  let lev =
-    if may_contain_gadts then begin_def ();
-    get_current_level ()
-  in
+  if create_inner_level then begin_def ();
+  let lev = get_current_level () in
   let allow_modules =
     if may_contain_modules then begin
-      begin_def ();
       let scope = create_scope () in
       Modules_allowed { scope }
     end else Modules_rejected
@@ -6584,15 +6582,10 @@ and type_cases
   else
     (* Check for unused cases, do not delay because of gadts *)
     unused_check false;
-  if may_contain_modules then begin
-    end_def ();
-    (* Ensure that unpacked modules' types do not escape *)
-    unify_exp_types loc env (instance ty_res) (newvar ());
-  end;
-  if may_contain_gadts then begin
+  if create_inner_level then begin
     end_def ();
     (* Ensure that existential types do not escape *)
-    unify_exp_types loc env (instance ty_res) (newvar ()) ;
+    unify_exp_types loc env (instance ty_res) (newvar ());
   end;
   cases, partial
 
