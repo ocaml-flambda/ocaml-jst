@@ -4005,7 +4005,8 @@ and type_expect_
       in
       (* If the patterns contain module unpacks, there is a possibility that the
          type of the let body or variables bound by the let mention types
-         introduced by those unpacks. Here, we check for scope escape via both
+         introduced by those unpacks. (The latter can only happen with recursive
+         definitions.) Here, we check for scope escape via both
          of these pathways (body, variables).
 
          Checking unification within an environment extended with the module
@@ -4016,7 +4017,8 @@ and type_expect_
       if may_contain_modules then begin
         end_def ();
         unify_exp extended_env body (newvar ());
-        check_scope_escape_let_bound_idents extended_env pat_exp_list
+        if rec_flag = Recursive then
+          check_scope_escape_let_bound_idents extended_env pat_exp_list
       end;
       re {
         exp_desc = Texp_let(rec_flag, pat_exp_list, body);
