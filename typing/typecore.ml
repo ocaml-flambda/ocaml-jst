@@ -751,7 +751,10 @@ let enter_variable ?(is_module=false) ?(is_as_variable=false) loc name mode ty
   then raise(Error(loc, Env.empty, Multiply_bound_variable name.txt));
   let id =
     if is_module then begin
-      (* Note: unpack patterns enter a variable of the same name *)
+      (* Unpack patterns result in both a module declaration and a value
+         variable of the same name being entered into the environment. (The
+         module is via [module_variables], and the variable is via
+         [pattern_variables].) *)
       match !allow_modules with
       | Modules_rejected ->
           raise (Error (loc, Env.empty, Modules_not_allowed));
@@ -2135,11 +2138,9 @@ and type_pat_aux
             pat_env = !env }
       | Some s ->
           let v = { name with txt = s } in
-          (* NB: Our ability to call ~is_module:true here without an error
-             relies on an interaction with `may_contain_modules`. Callers use
-             the return value of `may_contain_modules` to decide whether to set
-             up the proper scope handling code to permit module patterns.
-          *)
+          (* We're able to pass ~is_module:true here without an error because
+             [Ppat_unpack] is a case identified by [may_contain_modules]. See
+             the comment on [may_contain_modules]. *)
           let id = enter_variable loc v alloc_mode.mode
                      t ~is_module:true sp.ppat_attributes in
           rvp k {
@@ -3698,6 +3699,16 @@ let may_contain_gadts p =
    | _ -> false)
   p
 
+(* There are various things that we need to do in presence of module patterns
+   that aren't required if there are none. Most notably, we need to ensure the
+   modules are entered at the appropriate scope. The caller should use
+   [may_contain_modules] as an indication to set up the proper scope handling
+   code (via [allow_modules]) to permit module patterns.
+
+   The class of patterns identified here should stay in sync with the patterns
+   whose typing involves [enter_variable ~is_module:true], as these calls
+   will error if the scope handling isn't set up.
+*)
 let may_contain_modules p =
   exists_ppat
   (function
@@ -6330,7 +6341,7 @@ and type_unpacks
                       unpack.tu_name.loc)))
         in
         (* This call to [lower_nongen] mirrors the corresponding call in typing
-           [Ppx_letmodule]. It's not necessary here, as a first class module
+           [Pexp_letmodule]. It's not necessary here, as a first class module
            type is prohibited from containing variables, but guards against
            analogous issues to #7414. *)
         Mtype.lower_nongen 0 modl.mod_type;

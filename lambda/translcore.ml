@@ -161,14 +161,10 @@ let maybe_region_exp exp lam =
 
 (* Push the default values under the functional abstractions *)
 
-type binding = Bind_value of value_binding list
-
 let wrap_bindings bindings exp =
   List.fold_left
     (fun exp binds ->
-      {exp with exp_desc =
-       match binds with
-       | Bind_value binds -> Texp_let(Nonrecursive, binds, exp)})
+      {exp with exp_desc = Texp_let(Nonrecursive, binds, exp)})
     exp bindings
 
 let rec trivial_pat pat =
@@ -198,7 +194,7 @@ let rec push_defaults loc bindings use_lhs arg_mode cases partial warnings =
              exp_desc = Texp_let
                (Nonrecursive, binds,
                 ({exp_desc = Texp_function _} as e2))}}] ->
-      push_defaults loc (Bind_value binds :: bindings) true
+      push_defaults loc (binds :: bindings) true
                    arg_mode [{c_lhs=pat;c_guard=None;c_rhs=e2}]
                    partial warnings
   | [{c_lhs=pat; c_guard=None; c_rhs=exp} as case]
