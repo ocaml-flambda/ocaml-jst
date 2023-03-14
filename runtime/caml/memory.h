@@ -30,6 +30,7 @@
 #include "misc.h"
 #include "mlvalues.h"
 #include "domain.h"
+#include "domain_state.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -73,7 +74,7 @@ struct modify_log_entry {
   value old_value;
 };
 Caml_inline int caml_modify_log_is_empty (void) {
-  return Caml_state->modify_log_index / sizeof (struct modify_log_entry)
+  return Caml_state_field(modify_log_index) / sizeof (struct modify_log_entry)
     == CAML_MODIFY_LOG_SIZE;
 }
 #endif /* CAML_INTERNALS */
