@@ -3779,7 +3779,7 @@ let unify_exp env exp expected_ty =
   with Error(loc, env, Expr_type_clash(err, tfc, None)) ->
     raise (Error(loc, env, Expr_type_clash(err, tfc, Some exp.exp_desc)))
 
-(* Ensure that all bound idents don't leak a rigid type variable from a higher
+(* Ensure that no bound ident's type mentions a type variable from an inner
    scope than the current level.
 *)
 
