@@ -6334,6 +6334,12 @@ and type_unpacks
   let extended_env =
     List.fold_left (fun env unpack ->
       Typetexp.TyVarEnv.with_local_scope begin fun () ->
+        (* This code is parallel to the typing of Pexp_letmodule. However we
+           omit the call to [Mtype.lower_nongen] as it's not necessary here.
+           Here, we're typing an unpack which is required to have a known
+           module type; this cannot introduce new type variables which must
+           be lowered or generalized as in the case of Pexp_letmodule.
+        *)
         let modl, md_shape =
           !type_module env
             Ast_helper.(
@@ -6342,11 +6348,6 @@ and type_unpacks
                    (mkloc (Longident.Lident unpack.tu_name.txt)
                       unpack.tu_name.loc)))
         in
-        (* This call to [lower_nongen] mirrors the corresponding call in typing
-           [Pexp_letmodule]. It's not necessary here, as a first class module
-           type is prohibited from containing variables, but guards against
-           analogous issues to #7414. *)
-        Mtype.lower_nongen 0 modl.mod_type;
         let pres =
           match modl.mod_type with
           | Mty_alias _ -> Mp_absent
