@@ -76,6 +76,8 @@ Error:
        'a t1_constraint' has layout any,
          which is not a sublayout of <sort variable>.
        The latter was constrained during unification with 'a
+       and by the annotation
+         on the declaration of the type t1_constraint'/300[15]
 |}]
 
 (* Test 3: void allowed in records, but not by itself *)
@@ -277,6 +279,6 @@ Line 8, characters 32-36:
 Error: This expression has type float but an expression was expected of type
          ('a : immediate)
        float has layout value, which is not a sublayout of immediate.
-       The latter was constrained to have a concrete layout
+       The latter was constrained to be concrete
          because it was used as constructor field 0
 |}];;

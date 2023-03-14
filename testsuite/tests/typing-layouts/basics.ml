@@ -84,6 +84,7 @@ Line 5, characters 2-11:
 Error:
        r has layout void, which is not a sublayout of value.
        The latter was constrained to value because it was a function argument
+       and by the annotation on the declaration of the type r/288[14]
 |}]
 
 module type S = sig
@@ -100,6 +101,7 @@ Error: The type constraints are not consistent.
        t has layout void, which is not a sublayout of value.
        The latter was constrained during unification with 'a
        and during unification with 'a
+       and by the annotation on ''a in the declaration of the type s/290[16]
 |}]
 
 (* CJC XXX errors: the F1 and F1' errors should ideally mention that the layout
@@ -170,6 +172,17 @@ Line 1, characters 19-25:
 Error: This type string should be an instance of type ('a : immediate)
        string has layout value, which is not a sublayout of immediate.
        The latter was constrained during unification with 'a
+       and by the annotation on ''a
+         in the declaration of the type imm_id/305[28]
+|}, Principal{|
+Line 1, characters 19-25:
+1 | let string_id (x : string imm_id) = x;;
+                       ^^^^^^
+Error: This type string should be an instance of type ('a : immediate)
+       string has layout value, which is not a sublayout of immediate.
+       The latter was constrained during unification with 'a
+       and by the annotation on ''a
+         in the declaration of the type imm_id/305[29]
 |}];;
 
 let id_for_imms (x : 'a imm_id) = x
@@ -205,6 +218,16 @@ Line 2, characters 9-15:
              ^^^^^^
 Error: This type string should be an instance of type ('a : immediate)
        string has layout value, which is not a sublayout of immediate.
+       The latter was constrained by the annotation on ''a
+         in the declaration of the type t4/321[35]
+|}, Principal{|
+Line 2, characters 9-15:
+2 | and s4 = string t4;;
+             ^^^^^^
+Error: This type string should be an instance of type ('a : immediate)
+       string has layout value, which is not a sublayout of immediate.
+       The latter was constrained by the annotation on ''a
+         in the declaration of the type t4/321[38]
 |}];;
 
 type s4 = string t4
@@ -216,6 +239,16 @@ Line 1, characters 10-16:
               ^^^^^^
 Error: This type string should be an instance of type ('a : immediate)
        string has layout value, which is not a sublayout of immediate.
+       The latter was constrained by the annotation on ''a
+         in the declaration of the type t4/324[38]
+|}, Principal{|
+Line 1, characters 10-16:
+1 | type s4 = string t4
+              ^^^^^^
+Error: This type string should be an instance of type ('a : immediate)
+       string has layout value, which is not a sublayout of immediate.
+       The latter was constrained by the annotation on ''a
+         in the declaration of the type t4/324[41]
 |}]
 
 type s4 = int t4
@@ -247,6 +280,15 @@ Line 3, characters 0-15:
 Error:
        s5 has layout value, which is not a sublayout of immediate.
        The latter was constrained during unification with a type variable
+       and by the annotation on the declaration of the type s5/332[43]
+|}, Principal{|
+Line 3, characters 0-15:
+3 | and s5 = string;;
+    ^^^^^^^^^^^^^^^
+Error:
+       s5 has layout value, which is not a sublayout of immediate.
+       The latter was constrained during unification with a type variable
+       and by the annotation on the declaration of the type s5/332[46]
 |}]
 (* CJC XXX errors: improve error *)
 
@@ -302,9 +344,22 @@ Line 1, characters 12-15:
                 ^^^
 Error: This type int should be an instance of type ('a : void)
        int has layout immediate, which is not a sublayout of void.
-       The latter was constrained to have a concrete layout
+       The latter was constrained to be concrete
          because it was used as constructor field 0
        and during unification with 'a
+       and by the annotation on ''a
+         in the declaration of the type void4/337[46]
+|}, Principal{|
+Line 1, characters 12-15:
+1 | let h4 (x : int void4) = f4 x
+                ^^^
+Error: This type int should be an instance of type ('a : void)
+       int has layout immediate, which is not a sublayout of void.
+       The latter was constrained to be concrete
+         because it was used as constructor field 0
+       and during unification with 'a
+       and by the annotation on ''a
+         in the declaration of the type void4/337[49]
 |}];;
 
 let h4' (x : int any4) = Void4 x
@@ -315,9 +370,23 @@ Line 1, characters 31-32:
 Error: This expression has type int any4
        but an expression was expected of type ('a : void)
        int any4 has layout value, which is not a sublayout of void.
-       The latter was constrained to have a concrete layout
+       The latter was constrained to be concrete
          because it was used as constructor field 0
        and during unification with 'a
+       and by the annotation on ''a
+         in the declaration of the type void4/337[46]
+|}, Principal{|
+Line 1, characters 31-32:
+1 | let h4' (x : int any4) = Void4 x
+                                   ^
+Error: This expression has type int any4
+       but an expression was expected of type ('a : void)
+       int any4 has layout value, which is not a sublayout of void.
+       The latter was constrained to be concrete
+         because it was used as constructor field 0
+       and during unification with 'a
+       and by the annotation on ''a
+         in the declaration of the type void4/337[49]
 |}];;
 
 (* disallowed - tries to return void *)
@@ -403,7 +472,7 @@ Line 3, characters 12-21:
                 ^^^^^^^^^
 Error: This type int * int should be an instance of type ('a : immediate)
        int * int has layout value, which is not a sublayout of immediate.
-       The latter was constrained to have a concrete layout
+       The latter was constrained to be concrete
          because it was used as constructor field 0
 |}]
 
@@ -460,6 +529,15 @@ Line 4, characters 13-19:
 Error: This type t_void should be an instance of type ('a : value)
        t_void has layout void, which is not a sublayout of value.
        The latter was constrained during unification with 'a
+       and by the annotation on ''a in the declaration of the type t/386[73]
+|}, Principal{|
+Line 4, characters 13-19:
+4 |   type bad = t_void t
+                 ^^^^^^
+Error: This type t_void should be an instance of type ('a : value)
+       t_void has layout void, which is not a sublayout of value.
+       The latter was constrained during unification with 'a
+       and by the annotation on ''a in the declaration of the type t/386[77]
 |}];;
 
 module M7_4 = struct
@@ -475,6 +553,18 @@ Error: The type constraints are not consistent.
          which is not a sublayout of value.
        The latter was constrained during unification with 'a
        and during unification with 'a
+       and by the annotation on ''a in the declaration of the type t/388[78]
+|}, Principal{|
+Line 2, characters 54-78:
+2 |   type 'a t = [ `Foo of 'a | `Baz of int ] constraint 'a = void_unboxed_record
+                                                          ^^^^^^^^^^^^^^^^^^^^^^^^
+Error: The type constraints are not consistent.
+       Type ('a : value) is not compatible with type void_unboxed_record
+       void_unboxed_record has layout void,
+         which is not a sublayout of value.
+       The latter was constrained during unification with 'a
+       and during unification with 'a
+       and by the annotation on ''a in the declaration of the type t/388[82]
 |}];;
 
 module type S7_5 = sig
@@ -561,6 +651,15 @@ Line 4, characters 13-19:
 Error: This type t_void should be an instance of type ('a : value)
        t_void has layout void, which is not a sublayout of value.
        The latter was constrained during unification with 'a
+       and by the annotation on ''a in the declaration of the type t/402[99]
+|}, Principal{|
+Line 4, characters 13-19:
+4 |   type bad = t_void t
+                 ^^^^^^
+Error: This type t_void should be an instance of type ('a : value)
+       t_void has layout void, which is not a sublayout of value.
+       The latter was constrained during unification with 'a
+       and by the annotation on ''a in the declaration of the type t/402[104]
 |}];;
 
 module M8_6 = struct
@@ -576,6 +675,18 @@ Error: The type constraints are not consistent.
          which is not a sublayout of value.
        The latter was constrained during unification with 'a
        and during unification with 'a
+       and by the annotation on ''a in the declaration of the type t/404[104]
+|}, Principal{|
+Line 2, characters 34-58:
+2 |   type 'a t = int * 'a constraint 'a = void_unboxed_record
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^
+Error: The type constraints are not consistent.
+       Type ('a : value) is not compatible with type void_unboxed_record
+       void_unboxed_record has layout void,
+         which is not a sublayout of value.
+       The latter was constrained during unification with 'a
+       and during unification with 'a
+       and by the annotation on ''a in the declaration of the type t/404[109]
 |}];;
 
 module type S8_7 = sig
@@ -716,9 +827,20 @@ Error: This expression has type ('a : void)
        but an expression was expected of type ('b : value)
        'a has layout value, which does not overlap with void.
        The latter was constrained during unification with a type variable
-       and to have a concrete layout
-         because it was used as constructor field 0
+       and to be concrete because it was used as constructor field 0
        and during unification with 'a
+       and by the annotation on ''a in the declaration of the type t/430[122]
+|}, Principal{|
+Line 4, characters 32-33:
+4 |   let foo o (A x) = o # usevoid x
+                                    ^
+Error: This expression has type ('a : void)
+       but an expression was expected of type ('b : value)
+       'a has layout value, which does not overlap with void.
+       The latter was constrained during unification with a type variable
+       and to be concrete because it was used as constructor field 0
+       and during unification with 'a
+       and by the annotation on ''a in the declaration of the type t/430[128]
 |}];;
 
 module M10_4 = struct
@@ -742,7 +864,20 @@ Line 3, characters 2-24:
       ^^^^^^^^^^^^^^^^^^^^^^
 Error:
        'a s has layout void, which does not overlap with value.
+       'a s was constrained by the annotation on ''a
+         in the declaration of the type s/437[128]
        The latter was constrained to value because it was an object field
+       and by the annotation on the declaration of the type s/437[128]
+|}, Principal{|
+Line 3, characters 2-24:
+3 |   and ('a : void) s = 'a
+      ^^^^^^^^^^^^^^^^^^^^^^
+Error:
+       'a s has layout void, which does not overlap with value.
+       'a s was constrained by the annotation on ''a
+         in the declaration of the type s/437[135]
+       The latter was constrained to value because it was an object field
+       and by the annotation on the declaration of the type s/437[135]
 |}];;
 
 module M10_6 = struct
@@ -757,6 +892,17 @@ Error: The type constraints are not consistent.
        t_void has layout void, which is not a sublayout of value.
        The latter was constrained during unification with 'a
        and during unification with 'a
+       and by the annotation on ''a in the declaration of the type t/438[130]
+|}, Principal{|
+Line 2, characters 36-47:
+2 |   type 'a t = < l : 'a > constraint 'a = t_void
+                                        ^^^^^^^^^^^
+Error: The type constraints are not consistent.
+       Type ('a : value) is not compatible with type t_void
+       t_void has layout void, which is not a sublayout of value.
+       The latter was constrained during unification with 'a
+       and during unification with 'a
+       and by the annotation on ''a in the declaration of the type t/438[137]
 |}];;
 
 (*******************************************************************)
@@ -890,6 +1036,7 @@ Line 1, characters 11-17:
 Error: This type t_void should be an instance of type ('a : value)
        t_void has layout void, which is not a sublayout of value.
        The latter was constrained during unification with 'a
+       and by the annotation on ''a in the declaration of the type t/267[1]
 |}];;
 
 let x12 (VV v) = lazy v;;
@@ -1039,6 +1186,15 @@ Line 2, characters 0-18:
 Error:
        foo13 has layout void, which is not a sublayout of value.
        The latter was constrained during unification with a type variable
+       and by the annotation on the declaration of the type foo13/540[191]
+|}, Principal{|
+Line 2, characters 0-18:
+2 | and foo13 = t_void;;
+    ^^^^^^^^^^^^^^^^^^
+Error:
+       foo13 has layout void, which is not a sublayout of value.
+       The latter was constrained during unification with a type variable
+       and by the annotation on the declaration of the type foo13/540[199]
 |}];;
 
 (* Test 14: Type aliases need not have layout value *)

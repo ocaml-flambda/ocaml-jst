@@ -37,7 +37,10 @@ Line 1, characters 32-34:
 Error: The type constraints are not consistent.
        Type ('a : value) is not compatible with type ('b : void)
        'a has layout void, which does not overlap with value.
+       'a was constrained by the annotation on ''a
+         in the declaration of the type t/279[6]
        The latter was constrained during unification with 'a
+       and by the annotation on ''a in the declaration of the type t/279[6]
 |}];;
 
 module type S1'' = S1 with type s = t_void;;
@@ -163,6 +166,8 @@ Line 2, characters 15-21:
                    ^^^^^^
 Error: Function argument types must have layout value.
         Bar3.t has layout void, which is not a sublayout of value.
+        Bar3.t was constrained by the annotation
+          on the declaration of the type t/360[45]
 |}];;
 
 module rec Foo3 : sig
@@ -181,6 +186,8 @@ Line 2, characters 2-31:
 2 |   type t = Bar3.t [@@immediate]
       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Error: This type has layout value, which is not a sublayout of immediate.
+       This type was constrained by the annotation
+         on the declaration of the type t/366[49]
 |}];;
 
 module rec Foo3 : sig
@@ -245,6 +252,10 @@ Line 12, characters 11-17:
                 ^^^^^^
 Error: This type Foo3.t should be an instance of type ('a : void)
        Foo3.t has layout value, which is not a sublayout of void.
+       Foo3.t was constrained by the annotation
+         on the declaration of the type t/403[71]
+       The latter was constrained by the annotation on ''a
+         in the declaration of the type t/407[75]
 |}];;
 
 (* Previous example works with annotation *)
@@ -294,6 +305,8 @@ Line 1, characters 11-15:
                ^^^^
 Error: This type M4.s should be an instance of type ('a : void)
        M4.s has layout value, which is not a sublayout of void.
+       The latter was constrained by the annotation on ''a
+         in the declaration of the type t4_void/451[103]
 |}]
 
 module F4'(X : sig type t [@@immediate] end) = struct
@@ -321,6 +334,8 @@ Line 1, characters 10-15:
               ^^^^^
 Error: This type M4'.s should be an instance of type ('a : void)
        M4'.s has layout immediate, which is not a sublayout of void.
+       The latter was constrained by the annotation on ''a
+         in the declaration of the type t4_void/451[103]
 |}];;
 
 (* Test 5: Destructive substitution *)
