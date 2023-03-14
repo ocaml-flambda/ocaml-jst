@@ -3780,7 +3780,7 @@ let unify_exp env exp expected_ty =
     raise (Error(loc, env, Expr_type_clash(err, tfc, Some exp.exp_desc)))
 
 (* Ensure that no bound ident's type mentions a type variable from an inner
-   scope than the current level.
+   scope.
 *)
 
 let check_scope_escape_let_bound_idents env value_bindings =
