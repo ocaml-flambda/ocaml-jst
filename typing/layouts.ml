@@ -141,10 +141,14 @@ module Layout = struct
     | Constructor_declaration of int
     | Label_declaration of Ident.t
 
+  type annotation_location =
+    | Type_declaration of Path.t
+    | Type_parameter of Path.t * string
+
   type reason =
     | Fixed_layout of fixed_layout_reason
     | Concrete_layout of concrete_layout_reason
-    | Type_declaration_annotation of Path.t
+    | Annotated of annotation_location
     | Gadt_equation of Path.t
     | Unified_with_tvar of string option
     | Dummy_reason_result_ignored
@@ -218,7 +222,8 @@ module Layout = struct
     | None -> default
     | Some annot -> of_const annot
 
-  let of_attributes ~default attrs =
+  let of_attributes ~reason ~default attrs =
+    add_reason (Annotated reason) @@
     of_const_option ~default (Builtin_attributes.layout attrs)
 
   (******************************)
@@ -310,6 +315,15 @@ module Layout = struct
         fprintf ppf "used in the declaration of the record field \"%a\""
           Ident.print lbl
 
+    let format_annotation_location ppf : annotation_location -> unit = function
+      | Type_declaration p ->
+          fprintf ppf "the declaration of the type %a"
+            Path.print p
+      | Type_parameter (p, var) ->
+          fprintf ppf "'%s@ in the declaration of the type %a"
+            var
+            Path.print p
+
     let format_reason ppf : reason -> unit = function
       | Fixed_layout flr ->
           fprintf ppf "to@ %a because it was@ %a"
@@ -318,9 +332,9 @@ module Layout = struct
       | Concrete_layout clr ->
           fprintf ppf "to be concrete@ because it was %a"
             format_concrete_layout_reason clr
-      | Type_declaration_annotation p ->
-          fprintf ppf "by the annotation@ on the declaration of %a"
-            Path.print p
+      | Annotated aloc ->
+          fprintf ppf "by the annotation@ on %a"
+            format_annotation_location aloc
       | Gadt_equation p ->
           fprintf ppf "by a GADT match@ on the constructor %a"
             Path.print p
@@ -487,13 +501,19 @@ end
       | Label_declaration lbl ->
           fprintf ppf "Label_declaration %a" Ident.print lbl
 
+    let annotation_location ppf : annotation_location -> unit = function
+      | Type_declaration p ->
+          fprintf ppf "Type_declaration %a" Path.print p
+      | Type_parameter (p, var) ->
+          fprintf ppf "(Type_parameter (%a, %S))" Path.print p var
+
     let reason ppf : reason -> unit = function
       | Fixed_layout flr ->
           fprintf ppf "Fixed_layout %a" fixed_layout_reason flr
       | Concrete_layout clr ->
           fprintf ppf "Concrete_layout %a" concrete_layout_reason clr
-      | Type_declaration_annotation p ->
-          fprintf ppf "Type_declaration_annotation %a" Path.print p
+      | Annotated aloc ->
+          fprintf ppf "Annotated %a" annotation_location aloc
       | Gadt_equation p ->
           fprintf ppf "Gadt_equation %a" Path.print p
       | Unified_with_tvar tv ->

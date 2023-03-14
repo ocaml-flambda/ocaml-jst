@@ -88,6 +88,14 @@ let get_unboxed_from_attributes sdecl =
   | false, true -> Some true
   | false, false -> None
 
+(* Used for layout error reporting *)
+(* CR aspectorzabusky: This feels like it must exist somewhere *)
+let parameter_name sty = match sty.ptyp_desc with
+  | Ptyp_any -> "_"
+  | Ptyp_var name -> "'" ^ name
+  | _ -> Misc.fatal_error
+           "Type parameter was neither [Ptyp_any] nor [Ptyp_var _]"
+
 (* Enter all declared types in the environment as abstract types *)
 
 let add_type ~check id decl env =
@@ -163,7 +171,10 @@ let enter_type rec_flag env sdecl (id, uid) =
      checked and then unified with the real manifest and checked against the
      kind. *)
   let layout =
-    Layout.of_attributes ~default:Layout.any sdecl.ptype_attributes
+    Layout.of_attributes
+      ~reason:(Type_declaration (Pident id))
+      ~default:Layout.any
+      sdecl.ptype_attributes
   in
   if not needed then env else
   let decl =
@@ -171,12 +182,16 @@ let enter_type rec_flag env sdecl (id, uid) =
         (* CR ccasinghino: At the moment, we're defaulting type parameters in
            recursive type declarations to layout value.  We could probably allow
            (Sort 'l) and default to value if it's not determined by use. *)
-        List.map (fun ({ptyp_attributes;_},_) ->
-          let layout =
-            Layout.of_attributes ~default:Layout.value
-              ptyp_attributes
-          in
-          Btype.newgenvar layout) sdecl.ptype_params;
+        List.map
+          (fun (param, _) ->
+             let layout =
+               Layout.of_attributes
+                 ~reason:(Type_parameter (Pident id, parameter_name param))
+                 ~default:Layout.value
+                 param.ptyp_attributes
+             in
+             Btype.newgenvar layout)
+          sdecl.ptype_params;
       type_arity = arity;
       type_kind = Types.kind_abstract ~layout;
       type_private = sdecl.ptype_private;
@@ -271,7 +286,7 @@ let set_private_row env loc p decl =
 (* [make_params] creates sort variables - these can be defaulted away (as in
    transl_type_decl) or unified with existing sort-variable-free types (as in
    transl_with_constraint). *)
-let make_params env params =
+let make_params env id params =
   (* Our choice for now is that if you want a parameter of layout any, you have
      to ask for it with an annotation.  Some restriction here seems necessary
      for backwards compatibility (e.g., we wouldn't want [type 'a id = 'a] to
@@ -279,7 +294,9 @@ let make_params env params =
   let make_param (sty, v) =
     try
       let layout =
-        Layout.of_attributes ~default:(Layout.of_new_sort_var ())
+        Layout.of_attributes
+          ~reason:(Type_parameter (id, parameter_name sty))
+          ~default:(Layout.of_new_sort_var ())
           sty.ptyp_attributes
       in
       (transl_type_param env sty layout, v)
@@ -432,7 +449,7 @@ let transl_declaration env sdecl (id, uid) =
   (* Bind type parameters *)
   reset_type_variables();
   Ctype.begin_def ();
-  let tparams = make_params env sdecl.ptype_params in
+  let tparams = make_params env (Pident id) sdecl.ptype_params in
   let params = List.map (fun (cty, _) -> cty.ctyp_type) tparams in
   let cstrs = List.map
     (fun (sty, sty', loc) ->
@@ -820,7 +837,7 @@ let check_coherence env loc dpath decl =
   | { type_kind = Type_abstract {layout};
       type_manifest = Some ty } ->
       begin match
-        Ctype.check_type_layout ~reason:(Type_declaration_annotation dpath)
+        Ctype.check_type_layout ~reason:(Annotated (Type_declaration dpath))
           env ty layout
       with
       | Ok layout -> { decl with type_kind = Type_abstract {layout} }
@@ -1581,7 +1598,7 @@ let transl_type_extension extend env loc styext =
   | None -> ()
   | Some err -> raise (Error(loc, Extension_mismatch (type_path, env, err)))
   end;
-  let ttype_params = make_params env styext.ptyext_params in
+  let ttype_params = make_params env type_path styext.ptyext_params in
   let type_params = List.map (fun (cty, _) -> cty.ctyp_type) ttype_params in
   List.iter2 (Ctype.unify_var env)
     (Ctype.instance_list type_decl.type_params)
@@ -1883,7 +1900,8 @@ let transl_with_constraint id ?fixed_row_path ~sig_env ~sig_decl ~outer_env
      declaration [sdecl] in the outer environment [outer_env]. *)
   let env = outer_env in
   let loc = sdecl.ptype_loc in
-  let tparams = make_params env sdecl.ptype_params in
+  (* CR aspectorzabusky: Log that it's from a constraint? *)
+  let tparams = make_params env (Pident id) sdecl.ptype_params in
   let params = List.map (fun (cty, _) -> cty.ctyp_type) tparams in
   let arity = List.length params in
   let constraints =
@@ -2042,19 +2060,23 @@ let approx_type_decl sdecl_list =
   let scope = Ctype.create_scope () in
   List.map
     (fun sdecl ->
+       let id = Ident.create_scoped ~scope sdecl.ptype_name.txt in
        let injective = sdecl.ptype_kind <> Ptype_abstract in
        let layout =
-         Layout.of_attributes ~default:Layout.value
+         Layout.of_attributes
+           ~reason:(Type_declaration (Pident id))
+           ~default:Layout.value
            sdecl.ptype_attributes
        in
        let params =
          List.map (fun (styp,_) ->
-           Layout.of_attributes ~default:Layout.value
+           Layout.of_attributes
+             ~reason:(Type_parameter (Pident id, parameter_name styp))
+             ~default:Layout.value
              styp.ptyp_attributes)
            sdecl.ptype_params
        in
-      (Ident.create_scoped ~scope sdecl.ptype_name.txt,
-       abstract_type_decl ~injective layout params))
+       (id, abstract_type_decl ~injective layout params))
     sdecl_list
 
 (* Variant of check_abbrev_recursion to check the well-formedness

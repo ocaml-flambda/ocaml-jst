@@ -121,10 +121,14 @@ module Layout : sig
     | Constructor_declaration of int
     | Label_declaration of Ident.t
 
+  type annotation_location =
+    | Type_declaration of Path.t
+    | Type_parameter of Path.t * string
+
   type reason =
     | Fixed_layout of fixed_layout_reason
     | Concrete_layout of concrete_layout_reason
-    | Type_declaration_annotation of Path.t
+    | Annotated of annotation_location
     | Gadt_equation of Path.t
     | Unified_with_tvar of string option
         (* XXX ASZ: RAE thinks this will want to take a type, not a tvar name
@@ -159,7 +163,8 @@ module Layout : sig
   val of_const_option : const option -> default:t -> t
 
   (** Find a layout in attributes, defaulting to ~default *)
-  val of_attributes : default:t -> Parsetree.attributes -> t
+  val of_attributes :
+    reason:annotation_location -> default:t -> Parsetree.attributes -> t
 
   (******************************)
   (* elimination *)
