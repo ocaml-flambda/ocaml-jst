@@ -17,6 +17,7 @@
 
 open Asttypes
 open Path
+open Layouts
 open Types
 open Typedtree
 

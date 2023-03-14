@@ -277,6 +277,12 @@ let join_modes rm1 am2 =
   | _, Oam_unknown -> Oam_unknown
   | Oam_global, Oam_global -> Oam_global
 
+let print_out_layout ppf = function
+  | Olay_const lay -> fprintf ppf "%s" (Layouts.Layout.string_of_const lay)
+  | Olay_var       -> fprintf ppf "'_concrete_layout__should_never_be_printed"
+      (* CR layouts: We need to either give these names somehow or not print
+         them at all *)
+
 let rec print_out_type_0 mode ppf =
   function
   | Otyp_alias (ty, s) ->
@@ -393,6 +399,10 @@ and print_out_type_3 mode ppf =
   | Otyp_attribute (t, attr) ->
       fprintf ppf "@[<1>(%a [@@%s])@]"
         (print_out_type_0 mode) t attr.oattr_name
+  | Otyp_layout_annot (t, lay) ->
+    fprintf ppf "@[<1>(%a@ :@ %a)@]"
+      (print_out_type_0 mode) t
+      print_out_layout lay
 and print_out_type ppf typ =
   print_out_type_0 Oam_global ppf typ
 and print_simple_out_type ppf typ =
@@ -740,11 +750,7 @@ and print_out_type_decl kwd ppf td =
   let print_layout ppf =
     match td.otype_layout with
     | None -> ()
-    | Some Olay_any -> fprintf ppf " [%@%@any]"
-    | Some Olay_value -> fprintf ppf " [%@%@value]"
-    | Some Olay_void -> fprintf ppf " [%@%@void]"
-    | Some Olay_immediate64 -> fprintf ppf " [%@%@immediate64]"
-    | Some Olay_immediate -> fprintf ppf " [%@%@immediate]"
+    | Some lay -> fprintf ppf " [%@%@%s]" (Layouts.Layout.string_of_const lay)
   in
   let print_unboxed ppf =
     if td.otype_unboxed then fprintf ppf " [%@%@unboxed]" else ()

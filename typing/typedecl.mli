@@ -15,6 +15,7 @@
 
 (* Typing of type definitions and primitive definitions *)
 
+open Layouts
 open Types
 open Format
 

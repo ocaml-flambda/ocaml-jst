@@ -95,6 +95,11 @@ let rec split_last = function
       let (lst, last) = split_last tl in
       (hd :: lst, last)
 
+let rec last = function
+  | [] -> None
+  | [x] -> Some x
+  | _ :: tl -> last tl
+
 module Stdlib = struct
   module List = struct
     include List

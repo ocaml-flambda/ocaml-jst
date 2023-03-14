@@ -16,6 +16,7 @@
 (* Type inference for the core language *)
 
 open Asttypes
+open Layouts
 open Types
 
 (* This variant is used to print improved error messages, and does not affect

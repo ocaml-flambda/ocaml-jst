@@ -16,6 +16,7 @@
 (* Operations on core types *)
 
 open Asttypes
+open Layouts
 open Types
 
 exception Unify    of Errortrace.unification_error

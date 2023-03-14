@@ -16,6 +16,7 @@
 open Parsetree
 open Asttypes
 open Path
+open Layouts
 open Types
 open Typecore
 open Typetexp

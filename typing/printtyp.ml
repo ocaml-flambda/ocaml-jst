@@ -21,6 +21,7 @@ open Format
 open Longident
 open Path
 open Asttypes
+open Layouts
 open Types
 open Btype
 open Outcometree
@@ -1464,17 +1465,7 @@ let rec tree_of_type_decl id decl =
   in
   let (name, args) = type_defined decl in
   let constraints = tree_of_constraints params in
-  let olayout_of_layout = Layout.(function
-    | Any -> Olay_any
-    | Value -> Olay_value
-    | Void -> Olay_void
-    | Immediate64 -> Olay_immediate64
-    | Immediate -> Olay_immediate)
-  in
-  let lay =
-    Option.map olayout_of_layout
-      (Builtin_attributes.layout decl.type_attributes)
-  in
+  let lay = Builtin_attributes.layout decl.type_attributes in
   let ty, priv, unboxed =
     match decl.type_kind with
     | Type_abstract _ ->
@@ -2092,21 +2083,40 @@ let same_path t t' =
 
 type 'a diff = Same of 'a | Diff of 'a * 'a
 
-let trees_of_type_expansion mode Errortrace.{ty = t; expanded = t'} =
+let trees_of_type_expansion'
+      ~var_layouts mode Errortrace.{ty = t; expanded = t'} =
+  let tree_of_typexp' ty =
+    let out = tree_of_typexp mode ty in
+    if var_layouts then
+      match get_desc ty with
+      | Tvar { layout; _ } | Tunivar { layout; _ } ->
+          let olay = match Layouts.Layout.get layout with
+            | Const clay -> Olay_const clay
+            | Var   _    -> Olay_var
+          in
+          Otyp_layout_annot (out, olay)
+      | _ ->
+          out
+    else
+      out
+  in
   reset_loop_marks ();
   mark_loops t;
   if same_path t t'
-  then begin add_delayed (proxy t); Same (tree_of_typexp mode t) end
+  then begin add_delayed (proxy t); Same (tree_of_typexp' t) end
   else begin
     mark_loops t';
     let t' = if proxy t == proxy t' then unalias t' else t' in
     (* beware order matter due to side effect,
        e.g. when printing object types *)
-    let first = tree_of_typexp mode t in
-    let second = tree_of_typexp mode t' in
+    let first = tree_of_typexp' t in
+    let second = tree_of_typexp' t' in
     if first = second then Same first
     else Diff(first,second)
   end
+
+let trees_of_type_expansion =
+  trees_of_type_expansion' ~var_layouts:false
 
 let type_expansion ppf = function
   | Same t -> !Oprint.out_type ppf t
@@ -2445,10 +2455,12 @@ let prepare_expansion_head empty_tr = function
       Some (Errortrace.map_diff (may_prepare_expansion empty_tr) d)
   | _ -> None
 
-let head_error_printer mode txt_got txt_but = function
+let head_error_printer ~var_layouts mode txt_got txt_but = function
   | None -> ignore
   | Some d ->
-      let d = Errortrace.map_diff (trees_of_type_expansion mode) d in
+      let d =
+        Errortrace.map_diff (trees_of_type_expansion' ~var_layouts mode) d
+      in
       dprintf "%t@;<1 2>%a@ %t@;<1 2>%a"
         txt_got type_expansion d.Errortrace.got
         txt_but type_expansion d.Errortrace.expected
@@ -2471,6 +2483,12 @@ let error trace_format mode subst env tr txt1 ppf txt2 ty_expect_explanation =
          Errortrace.{ty_exp with expanded = hide_variant_name ty_exp.expanded})
       tr
   in
+  let layout_error = match Misc.last tr with
+    | Some (Bad_layout _ | Bad_layout_sort _ | Unequal_univar_layouts _) ->
+        true
+    | Some _ | None ->
+        false
+  in
   let mis = mismatch txt1 env tr in
   match tr with
   | [] -> assert false
@@ -2480,7 +2498,9 @@ let error trace_format mode subst env tr txt1 ppf txt2 ty_expect_explanation =
       let tr = filter_trace trace_format (mis = None) tr in
       let head = prepare_expansion_head (tr=[]) elt in
       let tr = List.map (Errortrace.map_diff prepare_expansion) tr in
-      let head_error = head_error_printer mode txt1 txt2 head in
+      let head_error =
+        head_error_printer ~var_layouts:layout_error mode txt1 txt2 head
+      in
       let tr = trees_of_trace mode tr in
       fprintf ppf
         "@[<v>\

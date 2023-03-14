@@ -17,6 +17,7 @@
    determining their representation. *)
 
 open Asttypes
+open Layouts
 open Types
 open Btype
 

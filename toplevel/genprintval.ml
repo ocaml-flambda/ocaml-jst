@@ -19,6 +19,7 @@ open Misc
 open Format
 open Longident
 open Path
+open Layouts
 open Types
 open Outcometree
 module Out_name = Printtyp.Out_name

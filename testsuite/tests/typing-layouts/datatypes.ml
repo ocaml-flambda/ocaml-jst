@@ -273,6 +273,6 @@ Line 8, characters 32-36:
 8 |   let { fld6 = fld6 } = x in S6 fld6;;
                                     ^^^^
 Error: This expression has type float but an expression was expected of type
-         'a
+         ('a : immediate)
        float has layout value, which is not a sublayout of immediate.
 |}];;

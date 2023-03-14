@@ -18,6 +18,7 @@
 open Format
 open Misc
 open Longident
+open Layouts
 open Types
 open Toploop
 

@@ -16,6 +16,7 @@
 (* Inclusion checks for the core language *)
 
 open Typedtree
+open Layouts
 open Types
 
 type position = Errortrace.position = First | Second

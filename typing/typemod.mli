@@ -20,6 +20,7 @@
 
 *)
 
+open Layouts
 open Types
 
 module Signature_names : sig

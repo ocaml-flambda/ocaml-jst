@@ -35,7 +35,7 @@ Line 1, characters 32-34:
 1 | module type S1'' = S1 with type 'a t = 'a list;;
                                     ^^
 Error: The type constraints are not consistent.
-       Type 'a is not compatible with type 'b
+       Type ('a : value) is not compatible with type ('b : void)
        'a has layout void, which does not overlap with value.
 |}];;
 
@@ -123,7 +123,7 @@ Line 5, characters 25-30:
 5 |   let f () : 'a X.t = `B "bad"
                              ^^^^^
 Error: This expression has type string but an expression was expected of type
-         'a
+         ('a : immediate)
        string has layout value, which is not a sublayout of immediate.
 |}]
 
@@ -212,10 +212,9 @@ end;;
 Line 2, characters 26-28:
 2 |   type 'a t = 'a Bar3.t * 'a list
                               ^^
-Error: This type 'a should be an instance of type 'b
+Error: This type ('a : void) should be an instance of type ('b : value)
        'a has layout void, which does not overlap with value.
 |}];;
-(* CJC XXX errors: bad error message *)
 
 (* One downside of the current approach - this could be allowed, but isn't.  You
    need to annotate types declared in recursive modules if they need to have
@@ -241,7 +240,7 @@ type t3 [@@void]
 Line 12, characters 11-17:
 12 |   type s = Foo3.t t
                 ^^^^^^
-Error: This type Foo3.t should be an instance of type 'a
+Error: This type Foo3.t should be an instance of type ('a : void)
        Foo3.t has layout value, which is not a sublayout of void.
 |}];;
 
@@ -290,7 +289,7 @@ type t4' = M4.s t4_void;;
 Line 1, characters 11-15:
 1 | type t4' = M4.s t4_void;;
                ^^^^
-Error: This type M4.s should be an instance of type 'a
+Error: This type M4.s should be an instance of type ('a : void)
        M4.s has layout value, which is not a sublayout of void.
 |}]
 
@@ -317,7 +316,7 @@ type t4 = M4'.s t4_void;;
 Line 1, characters 10-15:
 1 | type t4 = M4'.s t4_void;;
               ^^^^^
-Error: This type M4'.s should be an instance of type 'a
+Error: This type M4'.s should be an instance of type ('a : void)
        M4'.s has layout immediate, which is not a sublayout of void.
 |}];;
 
@@ -345,7 +344,7 @@ Line 14, characters 17-23:
 14 | let x3' = M3_1.f "test";;
                       ^^^^^^
 Error: This expression has type string but an expression was expected of type
-         'a
+         ('a : immediate)
        string has layout value, which is not a sublayout of immediate.
 |}]
 

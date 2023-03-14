@@ -17,6 +17,7 @@
 
 open Misc
 open Asttypes
+open Layouts
 open Types
 open Typedtree
 
