@@ -6336,9 +6336,10 @@ and type_unpacks
       Typetexp.TyVarEnv.with_local_scope begin fun () ->
         (* This code is parallel to the typing of Pexp_letmodule. However we
            omit the call to [Mtype.lower_nongen] as it's not necessary here.
-           Here, we're typing an unpack which is required to have a known
-           module type; this cannot introduce new type variables which must
-           be lowered or generalized as in the case of Pexp_letmodule.
+           For Pexp_letmodule, the call to [type_module] is done in a raised
+           level and so needs to be modified to have the correct, outer level.
+           Here, on the other hand, we're calling [type_module] outside the
+           raised level, so there's no extra step to take.
         *)
         let modl, md_shape =
           !type_module env
