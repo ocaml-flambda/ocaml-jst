@@ -166,6 +166,10 @@ module Stdlib : sig
         and the element itself as second argument. *)
 
     val all_somes : 'a option array -> 'a array option
+
+    val equal : ('a -> 'a -> bool) -> 'a array -> 'a array -> bool
+    (** Compare two arrays for equality, using the supplied predicate for
+        element equality *)
   end
 
   module String : sig
