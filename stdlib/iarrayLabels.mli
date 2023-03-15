@@ -38,10 +38,11 @@ open! Stdlib
 type +'a t = 'a iarray
 (** An alias for the type of immutable arrays. *)
 
-external length : 'a iarray -> int = "%array_length"
+external length : local_ 'a iarray -> int = "%array_length"
 (** Return the length (number of elements) of the given immutable array. *)
 
-external get : 'a iarray -> int -> 'a = "%array_safe_get"
+external get : ('a iarray[@local_opt]) -> int -> ('a[@local_opt]) =
+  "%array_safe_get"
 (** [get a n] returns the element number [n] of immutable array [a].
    The first element has number 0.
    The last element has number [length a - 1].
@@ -50,7 +51,8 @@ external get : 'a iarray -> int -> 'a = "%array_safe_get"
    @raise Invalid_argument
    if [n] is outside the range 0 to [(length a - 1)]. *)
 
-external ( .:() ) : 'a iarray -> int -> 'a = "%array_safe_get"
+external ( .:() ) : ('a iarray[@local_opt]) -> int -> ('a[@local_opt])
+  = "%array_safe_get"
 (** A synonym for [get]. *)
 
 val init : int -> f:(int -> 'a) -> 'a iarray
@@ -267,4 +269,5 @@ val of_seq : 'a Seq.t -> 'a iarray
 
 (* The following is for system use only. Do not call directly. *)
 
-external unsafe_get : 'a iarray -> int -> 'a = "%array_unsafe_get"
+external unsafe_get : ('a iarray[@local_opt]) -> int -> ('a[@local_opt]) =
+  "%array_unsafe_get"

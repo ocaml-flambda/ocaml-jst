@@ -32,10 +32,13 @@ type +'a t = 'a iarray
 
 (* Array operations *)
 
-external length : 'a iarray -> int = "%array_length"
-external get : 'a iarray -> int -> 'a = "%array_safe_get"
-external ( .:() ) : 'a iarray -> int -> 'a = "%array_safe_get"
-external unsafe_get : 'a iarray -> int -> 'a = "%array_unsafe_get"
+external length : local_ 'a iarray -> int = "%array_length"
+external get : ('a iarray[@local_opt]) -> int -> ('a[@local_opt]) =
+  "%array_safe_get"
+external ( .:() ) : ('a iarray[@local_opt]) -> int -> ('a[@local_opt]) =
+  "%array_safe_get"
+external unsafe_get : ('a iarray[@local_opt]) -> int -> ('a[@local_opt]) =
+  "%array_unsafe_get"
 external concat : 'a iarray list -> 'a iarray = "caml_array_concat"
 
 external append_prim : 'a iarray -> 'a iarray -> 'a iarray = "caml_array_append"
