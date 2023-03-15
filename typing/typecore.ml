@@ -2633,8 +2633,7 @@ let type_pattern_list
   let patl = List.map2 type_pat spatl expected_tys in
   let pvs = get_ref pattern_variables in
   let mvs = get_ref module_variables in
-  let new_env = add_pattern_variables !new_env pvs in
-  (patl, new_env, get_ref pattern_force, pvs, mvs)
+  (patl, !new_env, get_ref pattern_force, pvs, mvs)
 
 let type_class_arg_pattern cl_num val_env met_env l spat =
   if !Clflags.principal then Ctype.begin_def ();
@@ -6648,6 +6647,18 @@ and type_let
   let (pat_list, new_env, force, pvs, mvs) =
     type_pattern_list Value existential_context env spatl nvs allow_modules
   in
+  (* Note [add_module_variables after checking expressions]
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+     Don't call [add_module_variables] here, because its use of [type_module]
+     will fail until after we have type-checked the expression of the let.
+     Example: [let m : (module S) = ... in let (module M) = m in ...]
+     We learn the signature [S] from the type of [m] in the RHS of the second
+     let, and we need that knowledge for [type_module] to succeed. If we
+     type-checked expressions before patterns, then we could call
+     [add_module_variables] here.
+  *)
+  let new_env = add_pattern_variables new_env pvs in
   if is_recursive then begin
     end_def ();
     iter_pattern_variables_type generalize pvs
@@ -6691,6 +6702,12 @@ and type_let
   (* Only bind pattern variables after generalizing *)
   List.iter (fun f -> f()) force;
   let exp_env =
+    (* See Note [add_module_variables after checking expressions]
+
+       We can't defer type-checking module variables with recursive definitions,
+       so things like [let rec (module M) = m in ...] always fail, even if the
+       type of [m] is known.
+    *)
     if is_recursive then add_module_variables new_env mvs
     else if entirely_functions
     then begin
@@ -6868,11 +6885,7 @@ and type_let
                                       | _ -> false) pat_extra) then
             check_partial_application ~statement:false vb_expr
       | _ -> ()) l;
-  (* Note that we take care to avoid calling [add_module_variables]
-     until needed. That's because this function checks that any
-     module variable is known to have a packed module type; this
-     may only be knowable after checking the RHS of the let bindings.
-  *)
+  (* See Note [add_module_variables after checking expressions] *)
   let new_env = add_module_variables new_env mvs in
   (l, new_env)
 
