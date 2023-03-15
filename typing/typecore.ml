@@ -700,17 +700,10 @@ type pattern_variable =
     pv_attributes: attributes;
   }
 
-type module_variable =
-  {
-    mv_id: Ident.t;
-    mv_name: string loc;
-    mv_loc: Location.t;
-  }
-
 let pattern_variables = ref ([] : pattern_variable list)
 let pattern_force = ref ([] : (unit -> unit) list)
 let allow_modules = ref Modules_rejected
-let module_variables = ref ([] : module_variable list)
+let module_variables = ref ([] : to_unpack list)
 let reset_pattern allow =
   pattern_variables := [];
   pattern_force := [];
@@ -762,7 +755,11 @@ let enter_variable ?(is_module=false) ?(is_as_variable=false) loc name mode ty
           escape ~loc ~env:Env.empty ~reason:Other mode;
           let id = Ident.create_scoped name.txt ~scope in
           module_variables :=
-            { mv_id = id; mv_name = name; mv_loc = loc } :: !module_variables;
+            { tu_ident = id;
+              tu_name = name;
+              tu_loc = loc;
+              tu_uid = Uid.mk ~current_unit:(Env.get_unit_name ());
+            } :: !module_variables;
           id
     end else
       Ident.create_local name.txt
@@ -1725,7 +1722,7 @@ type 'case_pattern half_typed_case =
     untyped_case: Parsetree.case;
     branch_env: Env.t;
     pat_vars: pattern_variable list;
-    unpacks: module_variable list;
+    unpacks: to_unpack list;
     contains_gadt: bool; }
 
 let rec has_literal_pattern p =
@@ -2602,12 +2599,7 @@ let type_pattern_list
   in
   let patl = List.map2 type_pat spatl expected_tys in
   let pvs = get_ref pattern_variables in
-  let unpacks =
-    List.map (fun { mv_id; mv_name; mv_loc } ->
-      {tu_ident = mv_id; tu_loc = mv_loc; tu_name = mv_name;
-       tu_uid = Uid.mk ~current_unit:(Env.get_unit_name ())}
-    ) (get_ref module_variables)
-  in
+  let unpacks = get_ref module_variables in
   let new_env = add_pattern_variables !new_env pvs in
   (patl, new_env, get_ref pattern_force, pvs, unpacks)
 
@@ -6506,12 +6498,6 @@ and type_cases
           add_pattern_variables ext_env pvs
             ~check:(fun s -> Warnings.Unused_var_strict s)
             ~check_as:(fun s -> Warnings.Unused_var s)
-        in
-        let unpacks =
-          List.map (fun { mv_id; mv_name; mv_loc } ->
-            {tu_ident = mv_id; tu_name = mv_name; tu_loc = mv_loc;
-             tu_uid = Uid.mk ~current_unit:(Env.get_unit_name ())}
-          ) unpacks
         in
         let ty_res' =
           if !Clflags.principal then begin
