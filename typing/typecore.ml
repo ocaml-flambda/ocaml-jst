@@ -743,7 +743,7 @@ let add_pattern_variables ?check ?check_as env pv =
     )
     pv env
 
-let add_module_variables env unpacks ~outer_level =
+let add_module_variables env unpacks =
   List.fold_left (fun env unpack ->
     Typetexp.TyVarEnv.with_local_scope begin fun () ->
       (* This code is parallel to the typing of Pexp_letmodule. However we
@@ -761,7 +761,6 @@ let add_module_variables env unpacks ~outer_level =
                   (mkloc (Longident.Lident unpack.tu_name.txt)
                     unpack.tu_name.loc)))
       in
-      Mtype.lower_nongen outer_level modl.mod_type;
       let pres =
         match modl.mod_type with
         | Mty_alias _ -> Mp_absent
@@ -6487,10 +6486,7 @@ and type_cases
             ~check:(fun s -> Warnings.Unused_var_strict s)
             ~check_as:(fun s -> Warnings.Unused_var s)
         in
-<<<<<<< HEAD
-=======
-        let ext_env = add_module_variables ext_env unpacks ~outer_level in
->>>>>>> 09a5e51e0 (Remove type_unpacks)
+        let ext_env = add_module_variables ext_env unpacks in
         let ty_res' =
           if !Clflags.principal then begin
             begin_def ();
@@ -6577,7 +6573,6 @@ and type_let
     existential_context
     env rec_flag spat_sexp_list allow_modules =
   let open Ast_helper in
-  let outer_level = get_current_level () in
   begin_def();
   if !Clflags.principal then begin_def ();
 
@@ -6702,7 +6697,7 @@ and type_let
   (* Only bind pattern variables after generalizing *)
   List.iter (fun f -> f()) force;
   let exp_env =
-    if is_recursive then add_module_variables new_env unpacks ~outer_level
+    if is_recursive then add_module_variables new_env unpacks
     else if entirely_functions
     then begin
       (* Add ghost bindings to help detecting missing "rec" keywords.
@@ -6884,7 +6879,7 @@ and type_let
      module variable is known to have a packed module type; this
      may only be knowable after checking the RHS of the let bindings.
   *)
-  let new_env = add_module_variables new_env unpacks ~outer_level in
+  let new_env = add_module_variables new_env unpacks in
   (l, new_env)
 
 and type_andops env sarg sands expected_ty =
