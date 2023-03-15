@@ -621,3 +621,13 @@ CAMLprim value caml_array_fill(value array,
   }
   return Val_unit;
 }
+
+CAMLprim value caml_iarray_of_array(value bv)
+{
+  return bv;
+}
+
+CAMLprim value caml_array_of_iarray(value bv)
+{
+  return bv;
+}
