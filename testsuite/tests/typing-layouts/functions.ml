@@ -109,3 +109,52 @@ let y = compose Uint64.succ Uint64.pred #4L
 [%%expect {|
 success
 |}]
+
+let f (x : #int64) =
+  let () = Sys.opaque_identity () in
+  let g (y : #int64) =
+    let x' = Uint64.to_int64 x in
+    let y' = Uint64.to_int64 y in
+    let r = Int64.add x' y' in
+    Uint64.of_int64 r
+  in
+  let () = Sys.opaque_identity () in
+  g
+
+[%%expect {|
+success
+|}]
+
+let f (x : #int64) (y : #int64) : #int64 =
+  let i : #int64 = Uint64.of_int64
+                     (Int64.add (Uint64.to_int64 x) (Uint64.to_int64 y)) in
+  Uint64.of_int64 (Int64.mul (Uint64.to_int64 i) (Uint64.to_int64 i))
+
+let[@inline never] g i : #int64 -> #int64 =
+  f i
+
+let () =
+  let g = g #1234L in
+  let n : #int64 = g #5678L in
+  Uint64.to_int64 n
+
+[%%expect {|
+success
+|}]
+
+let f (x : #float) (y : #float) : #float =
+  let i : #float = Ufloat.of_float
+                     (Float.add (Ufloat.to_float x) (Ufloat.to_float y)) in
+  Ufloat.of_float (Float.mul (Ufloat.to_float i) (Ufloat.to_float i))
+
+let[@inline never] g i : #float -> #float =
+  f i
+
+let () =
+  let g = g #1234. in
+  let n : #float = g #5678. in
+  Ufloat.to_float n
+
+[%%expect {|
+success
+|}]
