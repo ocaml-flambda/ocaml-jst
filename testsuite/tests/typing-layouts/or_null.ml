@@ -38,25 +38,28 @@ end
 
 module Or_null : Or_null = Or_null
 
+(* CR layouts (v3): check output to see how bad the pretty-printing is.
+   In particular, it would be nice to suppress layout annotations that
+   are implied by the rest of the signature, but this may be hard. *)
 [%%expect {|
 success
 |}]
 
 (* ensure that immediacy "looks through" or_null *)
-type t = (int or_null : immediate)
-type t = (bool or_null : immediate)
+type t1 : immediate = int or_null
+type t2 : immediate = bool or_null
 
 [%%expect {|
 success
 |}]
 
-type t = (string or_null : immediate)
+type t : immediate = string or_null
 
 [%%expect {|
 error
 |}]
 
-type t = (string or_null : value)
+type t : value = string or_null
 
 [%%expect {|
 success
@@ -79,16 +82,16 @@ success (inferring an immediate layout for [t] and non_null_immediate for ['a])
 |}]
 
 (* more layout checking *)
-type t = (string or_null : non_null_value)
+type t : non_null_value = string or_null
 
 [%%expect {|
 error
 |}]
 
-type t = (string : non_null_value)
-type t = (int : non_null_value)
-type t = (int : non_null_immediate)
-type t = (int or_null : value)
+type t1 : non_null_value = string
+type t2 : non_null_value = int
+type t3 : non_null_immediate = int
+type t4 : value = int or_null
 
 [%%expect {|
 success
@@ -96,8 +99,8 @@ success
 
 (* magic looking-through of [or_null] can't be abstracted over *)
 type 'a t = 'a or_null
-type q = (string t : value)
-type q = (int t : immediate)  (* but t isn't abstract, so this is OK *)
+type q1 : value = string t
+type q2 : immediate = int t  (* but t isn't abstract, so this is OK *)
 
 [%%expect {|
 success
@@ -115,8 +118,8 @@ type q = int t t
 error
 |}]
 
-type 'a q = 'a t
-type ('a : immediate) q = 'a t
+type 'a q1 = 'a t
+type ('a : immediate) q2 : immediate = 'a t
 
 [%%expect {|
 success
@@ -153,6 +156,9 @@ end = struct
   type 'a t = 'a or_null
 end
 
+(* CR layouts (v3): This error message had better be excellent, because the
+   solution -- to add a [: value] annotation -- will be unusual. Normally,
+   people think of [value] as the default! *)
 [%%expect {|
 error
 |}]
