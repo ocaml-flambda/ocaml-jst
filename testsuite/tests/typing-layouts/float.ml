@@ -43,7 +43,7 @@ module type Ufloat = sig
   val of_float : float -> #float
   val to_float : #float -> float
   val of_string : string -> #float
-  val of_string_opt : string -> #float option  (* CR layouts (v5): add this line *)
+  (* val of_string_opt : string -> #float option  (* CR layouts (v5): add this line *) *)
   val to_string : #float -> string
 
   type fpclass = Float.fpclass =
