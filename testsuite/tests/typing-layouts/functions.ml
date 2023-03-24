@@ -59,6 +59,7 @@ error
 
 let twice f (x : ('a : bits32)) = f (f x)
 let y = twice (fun x -> Uint32.add x #3l) #4l
+let y = twice (Uint32.add #2l) #4l
 
 [%%expect {|
 success
