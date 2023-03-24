@@ -89,6 +89,7 @@ val toplevel_substitution_named : t
 val unbox_free_vars_of_closures : t
 val unit : t
 val zero : t
+val empty_iarray : t
 
 val of_primitive : Lambda.primitive -> t
 

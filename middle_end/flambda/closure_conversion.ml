@@ -424,6 +424,15 @@ let rec close t env (lam : Lambda.lambda) : Flambda.t =
             Pobj_magic _),
            [arg], _) ->
     close t env arg
+  | Lprim (Pempty_iarray, [arg], loc) ->
+    let var = Variable.create Names.unit in
+    let dbg = Debuginfo.from_location loc in
+    let defining_expr =
+      close_let_bound_expression t var env arg
+    in
+    Flambda.create_let var defining_expr
+      (name_expr (Prim(Pmakeblock(0, Immutable, None, Lambda.alloc_heap), [], dbg))
+         ~name:Names.empty_iarray)
   | Lprim (Pignore, [arg], _) ->
     let var = Variable.create Names.ignore in
     let defining_expr =
