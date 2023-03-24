@@ -6,10 +6,10 @@
 (* CR layouts (v2): Enable this test *)
 
 module type Ufloat = sig
-  val (+) : #float -> #float -> #float
-  val (-) : #float -> #float -> #float
+  val ( + ) : #float -> #float -> #float
+  val ( - ) : #float -> #float -> #float
   val ( * ) : #float -> #float -> #float
-  val (/) : #float -> #float -> #float
+  val ( / ) : #float -> #float -> #float
   val ( ** ) : #float -> #float -> #float
 
   val ( ~- ) : #float -> #float
