@@ -50,8 +50,7 @@ external ( .:() ) : ('a iarray[@local_opt]) -> int -> ('a[@local_opt]) =
   "%array_safe_get"
 (** A synonym for [get]. *)
 
-(* CR-someday aspectorzabusky: The function could be [local_] if we changed [Array] *)
-val init : int -> (int -> 'a) -> 'a iarray
+val init : int -> local_ (int -> 'a) -> 'a iarray
 (** [init n f] returns a fresh immutable array of length [n],
    with element number [i] initialized to the result of [f i].
    In other terms, [init n f] tabulates the results of [f]

@@ -79,6 +79,9 @@ external unsafe_sub_local : local_ 'a iarray -> int -> int -> local_ 'a iarray =
 external unsafe_of_array : 'a array -> 'a iarray = "%array_to_iarray"
 external unsafe_to_array : 'a iarray -> 'a array = "%array_of_iarray"
 
+(* Used only to reimplement [init] *)
+external unsafe_set_mutable : 'a array -> int -> 'a -> unit = "%array_unsafe_set"
+
 (* VERY UNSAFE: Can be used to violate the "no forward pointers" restriction. *)
 external make_mutable_local : int -> local_ 'a -> local_ 'a array =
   "caml_make_local_vect"
@@ -112,7 +115,18 @@ let[@inline always] unsafe_init_local l (local_ f) = local_
     end in
     unsafe_sub_of_array_local (go 0) 0 l
 
-let init l f = unsafe_of_array (Array.init l f)
+(* The implementation is copied from [Array] so that [f] can be [local_] *)
+let init l f =
+  if l = 0 then empty_iarray () else
+  if l < 0 then invalid_arg "Iarray.init"
+  (* See #6575. We could also check for maximum array size, but this depends
+     on whether we create a float array or a regular one... *)
+  else
+   let res = Array.make l (f 0) in
+   for i = 1 to pred l do
+     unsafe_set_mutable res i (f i)
+   done;
+   unsafe_of_array res
 
 let init_local l f = local_
   if l < 0 then invalid_arg "Iarray.init_local"
