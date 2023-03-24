@@ -6,7 +6,7 @@
 (* CR layouts (v2): enable this test *)
 
 module type S = sig
-  type t :any
+  type t : any
   val f : unit -> t -> t
 end
 
