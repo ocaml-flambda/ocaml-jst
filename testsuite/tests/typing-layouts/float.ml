@@ -97,10 +97,10 @@ module type Ufloat = sig
   val equal : t -> t -> bool
   val min : #float -> #float -> #float
   val max : #float -> #float -> #float
-  val min_max : #float -> #float -> (# #float * #float #) (* CR layouts (v7): add this line *)
+  (* val min_max : #float -> #float -> (# #float * #float #) (* CR layouts (v7): add this line *) *)
   val min_num : t -> t -> t
   val max_num : t -> t -> t
-  val min_max_num : #float -> #float -> #float * #float (* CR layouts (v7): add this line *)
+  (* val min_max_num : #float -> #float -> #float * #float (* CR layouts (v7): add this line *) *)
   (* NB: [min_max_num] returns a boxed tuple to match the general interface *)
 
   val hash : t -> int
