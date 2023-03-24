@@ -95,7 +95,7 @@ module type Ufloat = sig
 
   val compare : t -> t -> int
   val equal : t -> t -> bool
-  val min : t -> t -> t
+  val min : #float -> #float -> #float
   val max : #float -> #float -> #float
   val min_max : #float -> #float -> (# #float * #float #) (* CR layouts (v7): add this line *)
   val min_num : t -> t -> t
