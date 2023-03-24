@@ -12,7 +12,7 @@ let () = Random.init 1234
 [%%expect {|
 |}]
 
-type check_result = { passed : bool; actual : int64; expected : int64 }
+type check_result = { actual : int64; expected : int64 }
 type property = int64 -> check_result
 
 let int64s = [0L; 1L; -1L; 2L; -2L; Int64.max_int; Int64.min_int] @
@@ -20,15 +20,17 @@ let int64s = [0L; 1L; -1L; 2L; -2L; Int64.max_int; Int64.min_int] @
 
 let int64ss = [ x, y for x in int64s and y in int64s ]
 
+let passed { actual; expected } = Int64.equal actual expected
+
 let test_nullary name prop =
-  if not prop.passed
+  if not (passed prop)
   then Printf.printf "Test failed: %s. Expected = %Li; actual = %Li\n"
        name prop.expected prop.actual
 
 let test_unary name prop =
   let test1 x =
     let result = prop x in
-    if not result.passed
+    if not (passed result)
     then Printf.printf "Test failed: %s. Input = %Li; expected = %Li; actual = %Li\n"
            name x result.expected result.actual
   in
@@ -37,7 +39,7 @@ let test_unary name prop =
 let test_binary name prop =
   let test1 (x, y) =
     let result = prop x y in
-    if not result.passed
+    if not (passed result)
     then Printf.printf "Test failed: %s. Input = %Li,%Li; expected = %Li; actual = %Li\n"
            name x y result.expected result.actual
   in
@@ -45,17 +47,17 @@ let test_binary name prop =
 
 let mk0 expected u_actual =
   let actual = Uint64.to_int64 u_actual in
-  { passed = Int64.equal expected actual; expected; actual }
+  { expected; actual }
 
 let mk1 expected_f actual_f arg =
   let expected = expected_f arg in
   let actual = Uint64.to_int64 (actual_f (Uint64.of_int64 arg)) in
-  { passed = Int64.equal expected actual; expected; actual }
+  { expected; actual }
 
 let mk2 expected_f actual_f arg1 arg2 =
   let expected = expected_f arg1 arg2 in
   let actual = Uint64.to_int64 (actual_f (Uint64.of_int64 arg1) (Uint64.of_int64 arg2)) in
-  { passed = Int64.equal expected actual; expected; actual }
+  { expected; actual }
 
 [%%expect {|
 success

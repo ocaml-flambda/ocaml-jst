@@ -20,14 +20,16 @@ success
 |}]
 
 let alloc =
-  measure_alloc (fun () -> let f = Ufloat.cos #0.0 in ())
+  measure_alloc (fun () -> let f = Ufloat.cos #0.0 in
+                                     ignore (Sys.opaque_identity f))
 
 [%%expect {|
 0
 |}]
 
 let alloc =
-  measure_alloc (fun () -> let f = Ufloat.(#2.1 + #3.4) in ())
+  measure_alloc (fun () -> let f = Ufloat.(#2.1 + #3.4) in
+                                           ignore (Sys.opaque_identity f))
 
 [%%expect {|
 0

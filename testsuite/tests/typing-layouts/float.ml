@@ -220,6 +220,15 @@ let x = #1.
 success
 |}]
 
+let x = -#3.14
+let x = Ufloat.(-#3.14 + -#2.78)
+let x = -#0.14
+let x = -#1.
+
+[%%expect {|
+success
+|}]
+
 let bad = #3.14 + #2.15
 
 [%%expect {|
