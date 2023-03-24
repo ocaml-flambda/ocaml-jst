@@ -124,7 +124,10 @@ module type Ufloat = sig
     val copy : t -> t
     val fill : t -> int -> int -> #float -> #unit
     val blit : t -> int -> t -> int -> int -> #unit
-    (* no [to_list] or [of_list]; we don't have lists of unboxed things *)
+    (* no [to_list] or [of_list]; we don't have lists of unboxed things, but we
+       have the following as a consolation prize: *)
+    val to_float_list : t -> float list
+    val of_float_list : float list -> t
     val iter : (#float -> #unit) -> t -> #unit
     val iteri : (int -> #float -> #unit) -> t -> #unit
     val map : (#float -> #float) -> t -> t
@@ -142,7 +145,11 @@ module type Ufloat = sig
     val stable_sort : (#float -> #float -> int) -> t -> #unit
     val fast_sort : (#float -> #float -> int) -> t -> #unit
 
-    (* no [to_seq], [to_seqi], or [of_seq]; we don't have [Seq]s of unboxed things *)
+    (* no [to_seq], [to_seqi], or [of_seq]; we don't have [Seq]s of unboxed things,
+       but instead we can box: *)
+    val to_float_seq : t -> float Seq.t
+    val to_float_seqi : t -> (int * float) Seq.t
+    val of_float_seq : float Seq.t -> t
 
     val map_to_array : (#float -> 'a) -> t -> 'a array
     val map_from_array : ('a -> #float) -> 'a array -> t
