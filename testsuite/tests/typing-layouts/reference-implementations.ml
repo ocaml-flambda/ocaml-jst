@@ -6,6 +6,7 @@
 *)
 (* CR layouts (v2): Enable this test *)
 
+(* Constant seed for repeatable random-testing properties *)
 let () = Random.init 1234
 
 [%%expect {|
