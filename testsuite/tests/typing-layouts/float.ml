@@ -87,9 +87,9 @@ module type Ufloat = sig
   val next_after : #float -> #float -> #float
   val copy_sign : #float -> #float -> #float
   val sign_bit : #float -> bool
-  val frexp : #float -> (# #float * int #)   (* CR layouts (v7): add this line *)
+  (* val frexp : #float -> (# #float * int #)   (* CR layouts (v7): add this line *) *)
   val ldexp : #float -> int -> #float
-  val modf : #float -> (# #float * #float #) (* CR layouts (v7): add this line *)
+  (* val modf : #float -> (# #float * #float #) (* CR layouts (v7): add this line *) *)
 
   type t = #float
 
