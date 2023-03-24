@@ -227,7 +227,8 @@ let x = Unativeint.(#3n + #4n)
 success
 |}]
 
-let bad = #3L + #4L  (* wrong + *)
+(* wrong + *)
+let bad = #3L + #4L
 let bad = #3l + #4l
 let bad = #3n + #4n
 
