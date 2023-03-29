@@ -164,7 +164,8 @@ module Layout = struct
 
   type t =
     { layout : internal
-    ; history : reason list }
+    ; history : reason list (* events listed in reverse chronological order *)
+    }
     (* XXX ASZ: Add this? *)
     (* ; creation : creation_reason *)
 
@@ -320,7 +321,7 @@ module Layout = struct
           fprintf ppf "the declaration of the type %a"
             Path.print p
       | Type_parameter (p, var) ->
-          fprintf ppf "'%s@ in the declaration of the type %a"
+          fprintf ppf "%s@ in the declaration of the type %a"
             var
             Path.print p
 
@@ -350,7 +351,7 @@ module Layout = struct
 
     let format_history ~pp_name ~name ppf t =
       let message ppf = function
-        | 0 -> fprintf ppf "%a was constrained" pp_name name
+        | 0 -> fprintf ppf "%a's layout was constrained" pp_name name
         | _ -> fprintf ppf "and"
       in
       List.iteri
@@ -470,11 +471,6 @@ end
   module Debug_printers = struct
     open Format
 
-    let option pp_v =
-      pp_print_option
-        ~none:(fun ppf () -> fprintf ppf "None")
-        (fun ppf v -> fprintf ppf "Some %a" pp_v v)
-
     let internal ppf : internal -> unit = function
       | Any         -> fprintf ppf "Any"
       | Sort s      -> fprintf ppf "Sort %a" Sort.Debug_printers.t s
@@ -517,7 +513,8 @@ end
       | Gadt_equation p ->
           fprintf ppf "Gadt_equation %a" Path.print p
       | Unified_with_tvar tv ->
-          fprintf ppf "Unified_with_tvar %a" (option pp_print_string) tv
+          fprintf ppf "Unified_with_tvar %a"
+            (Misc.Stdlib.Option.print pp_print_string) tv
       | Dummy_reason_result_ignored ->
           fprintf ppf "Dummy_reason_result_ignored"
 

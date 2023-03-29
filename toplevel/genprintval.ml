@@ -608,7 +608,7 @@ module Make(O : OBJ)(EVP : EVALPATH with type valu = O.t) = struct
           | _ -> assert false
         in
         let args = instantiate_types env type_params ty_list cstr.cstr_args in
-        let args =         List.mapi (fun i arg ->
+        let args = List.mapi (fun i arg ->
             (arg, Layout.(equal void cstr.cstr_arg_layouts.(i))))
             args
         in

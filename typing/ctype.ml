@@ -2036,14 +2036,14 @@ let type_sort ~reason env ty =
    in some cases where its not (this will happen when pattern matching on a
    "false" GADT pattern), but not to say the intersection is empty if it isn't.
 *)
-let rec intersect_type_layout env ty1 layout2 =
+let rec intersect_type_layout ~reason env ty1 layout2 =
   match get_desc ty1 with
-  | Tpoly (ty, _) -> intersect_type_layout env ty layout2
+  | Tpoly (ty, _) -> intersect_type_layout ~reason env ty layout2
   | _ ->
     (* [intersect_type_layout] is called rarely, so we don't bother with trying
        to avoid this call as in [constrain_type_layout] *)
     let ty1 = get_unboxed_type_representation env ty1 in
-    Layout.intersection (estimate_type_layout env ty1) layout2
+    Layout.intersection ~reason (estimate_type_layout env ty1) layout2
 
 (* See comment on [layout_unification_mode] *)
 let unification_layout_check ~reason env ty layout =
@@ -2898,8 +2898,6 @@ let add_layout_equation ~reason env destination layout1 =
             match decl.type_kind with
             | Type_abstract {layout=layout'} when
                 not (Layout.equal layout layout') ->
-              (* If [equate] returns true, then [layout] has already been
-                 mutably updated if necessary *)
               let decl = {decl with type_kind = Type_abstract {layout}} in
               env := Env.add_local_type p decl !env
             | (Type_record _ | Type_variant _ | Type_open | Type_abstract _) -> ()

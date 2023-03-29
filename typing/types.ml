@@ -418,7 +418,7 @@ let equal_tag t1 t2 =
   | Extension (path1,_), Extension (path2,_) -> Path.same path1 path2
   | (Ordinary _ | Extension _), _ -> false
 
-let equal_variant_representation r1 r2 = match r1, r2 with
+let equal_variant_representation r1 r2 = r1 == r2 || match r1, r2 with
   | Variant_unboxed lay1, Variant_unboxed lay2 ->
       Layout.equal lay1 lay2
   | Variant_boxed lays1, Variant_boxed lays2 ->

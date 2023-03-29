@@ -206,8 +206,12 @@ module Layout : sig
       will crash. *)
   val equal : t -> t -> bool
 
-  (** Finds the intersection of two layouts, or returns a [Violation.t]
-      if an intersection does not exist.  Can update the layouts. *)
+  (** Finds the intersection of two layouts, or returns a [Violation.t] if an
+     intersection does not exist.  Can update the layouts.  The returned
+     layout's history consists of the provided reason followed by the history of
+     the first layout argument.  That is, due to histories, this function is
+     asymmetric; it should be thought of as modifying the first layout to be the
+     intersection of the two, not something that modifies the second layout. *)
   val intersection : reason:reason -> t -> t -> (t, Violation.t) Result.t
 
   (** [sub t1 t2] returns [Ok t1] iff [t1] is a sublayout of

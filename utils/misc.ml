@@ -228,9 +228,12 @@ module Stdlib = struct
       let n = Array.length l1 in
       Int.equal n (Array.length l2) &&
       let rec loop i =
-        Int.equal i n ||
-        (eq_elt (Array.unsafe_get l1 i) (Array.unsafe_get l2 i) &&
-         loop (succ i))
+        if Int.equal i n then
+          true
+        else if eq_elt (Array.unsafe_get l1 i) (Array.unsafe_get l2 i) then
+          loop (succ i)
+        else
+          false
       in
       loop 0
   end
