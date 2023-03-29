@@ -140,8 +140,6 @@ Line 2, characters 2-41:
       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Error:
        t has layout value, which is not a sublayout of immediate.
-       The latter was constrained by the annotation
-         on the declaration of the type t/405[35]
 |}];;
 
 (* Cannot directly declare a non-immediate type as immediate (record) *)
@@ -154,8 +152,6 @@ Line 2, characters 2-38:
       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Error:
        t has layout value, which is not a sublayout of immediate.
-       The latter was constrained by the annotation
-         on the declaration of the type t/408[37]
 |}];;
 
 (* Not guaranteed that t is immediate, so this is an invalid declaration *)

@@ -2426,7 +2426,7 @@ let explanation (type variety) intro prev env
       let fmt_history t = Layout.format_history ~pp_name:type_expr ~name:t in
       Some (dprintf "@,@[<hov>Universal variables %a and %a should be equal, \
                      but@ the former has layout %s,@ and the latter has \
-                     layout %s@[<v>%a%a]@]"
+                     layout %s@[<v>%a%a@]@]"
               type_expr t1 type_expr t2
               (Layout.to_string l1) (Layout.to_string l2)
               (fmt_history t1) l1 (fmt_history t2) l2)

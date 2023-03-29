@@ -203,7 +203,9 @@ module Layout : sig
 
   (** This checks for equality, but has the invariant that it can only be called
       when there is no need for unification; e.g. [equal] on a var and [value]
-      will crash. *)
+      will crash.
+
+      XXX ASZ: At the moment, this is actually the same as [equal]! *)
   val equal : t -> t -> bool
 
   (** Finds the intersection of two layouts, or returns a [Violation.t] if an
