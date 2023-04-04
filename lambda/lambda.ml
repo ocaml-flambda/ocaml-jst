@@ -1522,4 +1522,5 @@ let rec compute_expr_layout kinds lam =
   | Lwhile _ | Lfor _ | Lassign _ -> layout_unit
   | Lifused _ ->
       assert false
+  | Lexclave e -> compute_expr_layout kinds e
 
