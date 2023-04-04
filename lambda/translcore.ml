@@ -1035,13 +1035,19 @@ and transl_exp0 ~in_new_scope ~scopes void_k e =
            rather than requiring them all to be value, but that would be even
            more hacky, and in any event can't doesn't make sense until we merge
            with the middle-end support).  *)
-        let {val_type; _} = Env.find_value (Pident id) e.exp_env in
-        match
-          Ctype.check_type_layout e.exp_env (Ctype.correct_levels val_type)
-            Layout.value
-        with
-        | Ok _ -> ()
-        | Error _ -> raise (Error (e.exp_loc, Bad_probe_layout id))
+        let path = Path.Pident id in
+        match Env.find_value path e.exp_env with
+        | {val_type; _} -> begin
+            match
+              Ctype.check_type_layout e.exp_env (Ctype.correct_levels val_type)
+                Layout.value
+            with
+            | Ok _ -> ()
+            | Error _ -> raise (Error (e.exp_loc, Bad_probe_layout id))
+          end
+        | exception Not_found ->
+          (* Might be a module, which are all values.  Otherwise raise. *)
+          ignore (Env.find_module_lazy path e.exp_env)
       ) arg_idents;
       let body = Lambda.rename map lam in
       let attr =
