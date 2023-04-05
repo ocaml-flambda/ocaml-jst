@@ -3785,7 +3785,7 @@ let for_let ~scopes loc param_void_k param param_sort pat body_kind body =
       | Tpat_var (id, _, _) ->
         (* fast path, and keep track of simple bindings to unboxable numbers *)
         let k = Typeopt.layout pat.pat_env pat.pat_type in
-        bind_with_layout Strict (id,k) param body
+        Llet (Strict, k, id, param, body)
       | _ ->
         let opt = ref false in
         let nraise = next_raise_count () in
