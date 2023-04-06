@@ -776,20 +776,6 @@ and transl_type_aux env policy mode styp =
       unify_var env (newvar Layout.any) ty';
       ctyp (Ttyp_poly (vars, cty)) ty'
   | Ptyp_package (p, l) ->
-      (* CJC XXX
-
-         In the short term, we'd like to make
-         module type S1 = sig
-           type t : void
-         end
-
-         module type S2 = sig
-           val m : (module S1 with type t : void = int)
-         end
-
-         work.  (Note we need : void not an attr on the package, because
-         the parser doesn't handle attributes in the right spot).
-      *)
     (* CJC XXX right now we're doing a real gross hack where we demand
        everything in a package type with constraint be value.
 
