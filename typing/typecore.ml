@@ -6138,6 +6138,8 @@ and type_argument ?explanation ?recarg env (mode : expected_mode) sarg
           (Warnings.Non_principal_labels "eliminated optional argument");
       (* let-expand to have side effects *)
       let let_pat, let_var = var_pair ~mode:exp_mode "arg" texp.exp_type in
+      (* CR layouts v2: `vb_sort=Sort.value` below to change when we allow
+         non-value function arguments. *)
       re { texp with exp_type = ty_fun;
              exp_desc =
                Texp_let (Nonrecursive,
