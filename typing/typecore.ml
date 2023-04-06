@@ -3393,7 +3393,11 @@ let rec approx_type env sty =
         let tyl = List.map (approx_type env) ctl in
         newconstr path tyl
       end
-  | _ -> newvar Layout.value
+  (* CR layouts v2: This any is fine because we don't allow you to make types
+     that could be matched on and have anys in them.  But once we do, this
+     should probably be sort variable.  See Test21 in typing-layouts/basics.ml
+     (which mentions approx_type) for why it can't be value.  *)
+  | _ -> newvar Layout.any
 
 let type_pattern_approx_extension : Extensions.Pattern.t -> _ = function
   | Epat_immutable_array _ -> ()

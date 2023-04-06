@@ -1053,6 +1053,19 @@ module type M20 = sig end
 val f20 : unit -> unit = <fun>
 |}];;
 
+(* Test 21: approx_type catch-all can't be restricted to value *)
+type t_void [@@void]
+
+type ('a [@void]) r = { x : int; y : 'a }
+
+let f () =
+  let rec g { x = x ; y = y } : _ r = g { x; y } in
+  g (failwith "foo");;
+[%%expect{|
+type t_void [@@void]
+type 'a r = { x : int; y : 'a; }
+val f : unit -> 'a r = <fun>
+|}];;
 
 (* CR ccasinghino: Once we allow non-value top-level module definitions, add
    tests showing that things get defaulted to value.
