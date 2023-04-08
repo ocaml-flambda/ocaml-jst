@@ -200,7 +200,7 @@ let rec value_kind env ~visited ~depth ~num_nodes_visited ty
     || depth >= 2
     || num_nodes_visited >= 30
   in
-  (* CJC XXX remove this check once all of jane builds *)
+  (* XXX layouts: remove this check once all of jane builds *)
   begin match Ctype.(check_type_layout env (correct_levels ty) Layout.void) with
   | Ok _ -> assert false
   | _ -> ()
@@ -268,8 +268,8 @@ let rec value_kind env ~visited ~depth ~num_nodes_visited ty
       Pvariant { consts = []; non_consts = [0, List.rev fields] }
     end
   | Tvariant _ ->
-    (* CJC XXX this was missing - only caught in 4.14 merge.  Am I missing other
-       cases. *)
+    (* XXX layouts: this was missing - only caught in 4.14 merge.  Am I missing
+       other cases. *)
     num_nodes_visited,
     if Result.is_ok (Ctype.check_type_layout env scty Layout.immediate)
     then Pintval else Pgenval

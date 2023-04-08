@@ -97,7 +97,7 @@ Error: The type constraints are not consistent.
        t has layout void, which is not a sublayout of value.
 |}]
 
-(* CJC XXX errors: the F1 and F1' errors should ideally mention that the layout
+(* XXX layouts errors: the F1 and F1' errors should ideally mention that the layout
    restriction is coming from the function type *)
 module F1 (X : sig val x : t_void end) = struct
   let f () = X.x
@@ -234,7 +234,7 @@ Line 3, characters 0-15:
 Error:
        s5 has layout value, which is not a sublayout of immediate.
 |}]
-(* CJC XXX errors: improve error *)
+(* XXX layouts: improve error *)
 
 type 'a [@any] t4 = 'a
 and s4 = string t4;;
@@ -319,7 +319,7 @@ Error: This expression has type ('a : void)
        but an expression was expected of type ('b : value)
        'a has layout value, which does not overlap with void.
 |}]
-(* CJC XXX errors: understand what's going on with Principal mode here (and improve
+(* XXX layouts: understand what's going on with Principal mode here (and improve
    error messages generally *)
 
 (****************************************)
@@ -361,7 +361,11 @@ Error: This method has type 'b -> unit which is less general than
        'a has layout value, which is not a sublayout of immediate.
 |}];;
 
-(* CJC XXX add more tests here once you can annotate these types with layouts *)
+(* XXX layouts: add more tests here once you can annotate these types with layouts.
+
+   Is the fact that we can write [let f2 = fun [@immediate] (type a) (x : a) -> x]
+   enough to do this now, or can we wait until V1.5?
+*)
 
 (*****************************************)
 (* Test 6: the layout check in unify_var *)
@@ -1067,9 +1071,11 @@ type 'a r = { x : int; y : 'a; }
 val f : unit -> 'a r = <fun>
 |}];;
 
-(* CR ccasinghino: Once we allow non-value top-level module definitions, add
+(* CR layouts: Once we allow non-value top-level module definitions, add
    tests showing that things get defaulted to value.
 
-   (CJC XXX actually, once we can annotate universally quantified variables,
-   that's probably enough)
+   XXX layouts: actually, once we can annotate universally quantified variables,
+   that's probably enough.  Is the:
+     let f2 = fun [@immediate] (type a) (x : a) -> x
+   trick enough to do get variables that need defaulting??
 *)

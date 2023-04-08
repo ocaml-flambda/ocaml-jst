@@ -191,7 +191,7 @@ and fun_curry_state =
     the layout of the expression containing it.  For example, to the left of a
     semicolon, or in value_bindings.
 
-    CR ccasinghino: Some of these are mainly needed for void (e.g., left of a
+    XXX layouts: Some of these are mainly needed for void (e.g., left of a
     semicolon).  If we redo how void is compiled, perhaps we can drop those.  On
     the other hand, there are some places we're not annotating now (e.g.,
     function arguments) that will need annotations in the future because we'll

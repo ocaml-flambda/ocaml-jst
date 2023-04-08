@@ -485,8 +485,8 @@ val type_sort : Env.t -> type_expr -> (sort, Layout.Violation.t) result
 
    For convenience, on success these functions return the most precise layout we
    found for the given type during checking (which may be an upper bound). *)
-(* CJC XXX errors: probably changes these to raise on error, like unify, when we
-   work on errors *)
+(* CR layouts: When we improve errors, it may be convenient to change these to
+   raise on error, like unify. *)
 val check_decl_layout : Env.t -> type_declaration -> layout
   -> (layout, Layout.Violation.t) result
 val check_type_layout : Env.t -> type_expr -> layout

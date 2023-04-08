@@ -193,8 +193,8 @@ module Layout : sig
   (* defaulting *)
   val constrain_default_void : t -> const
   val can_make_void : t -> bool
-  (* CJC XXX at the moment we default to void whenever we can.  But perhaps it
-     would be better to default to value before we actually ship. *)
+  (* XXX layouts: make sure uses of these functions have been changed to default
+     to value before releasing. *)
 
   val default_to_value : t -> unit
 

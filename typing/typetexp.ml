@@ -759,8 +759,8 @@ and transl_type_aux env policy mode styp =
       let ty = newty (Tvariant (make_row more)) in
       ctyp (Ttyp_variant (tfields, closed, present)) ty
   | Ptyp_poly(vars, st) ->
-     (* CJC XXX probably some work to do here when we add layout annotations on
-        type parameters *)
+     (* CR layouts v1.5: probably some work to do here when we add layout
+        annotations on type parameters *)
       let vars = List.map (fun v -> v.txt) vars in
       begin_def();
       let new_univars = TyVarEnv.make_poly_univars vars in
@@ -776,7 +776,7 @@ and transl_type_aux env policy mode styp =
       unify_var env (newvar Layout.any) ty';
       ctyp (Ttyp_poly (vars, cty)) ty'
   | Ptyp_package (p, l) ->
-    (* CJC XXX right now we're doing a real gross hack where we demand
+    (* XXX layouts: right now we're doing a real gross hack where we demand
        everything in a package type with constraint be value.
 
        An alternative is to walk into the constrained module, using the
@@ -784,7 +784,7 @@ and transl_type_aux env policy mode styp =
        See [Typemod.package_constraints_sig] for code that does a
        similar traversal from a longident.
     *)
-    (* CR ccasinghino: and in the long term, rewrite all of this to eliminate
+    (* CR layouts: and in the long term, rewrite all of this to eliminate
        the [create_package_mty] hack that constructs fake source code. *)
       let l, mty = create_package_mty true styp.ptyp_loc env (p, l) in
       let mty = TyVarEnv.with_local_scope (fun () -> !transl_modtype env mty) in

@@ -1315,7 +1315,7 @@ let instance_constructor ?in_pattern cstr =
     | None -> ()
     | Some (env, fresh_constr_scope) ->
         let process existential =
-          (* CJC XXX - add test case that hits this once we have syntax
+          (* CR layouts v1.5: Add test case that hits this once we have syntax
              for it *)
           let layout =
             match get_desc existential with
@@ -1606,17 +1606,32 @@ let subst env level priv abbrev oty params args body =
     undo_abbrev ();
     raise Cannot_subst
 
+(* CR layouts: Can we actually just always ignore layouts in apply/subst?
+
+   It seems like almost, but there may be cases where it would forget
+   information.  We thought the below would be one such case, but it actually
+   works even if we skip the check.  Work out why.
+
+   (* Trying to hit a bad subst case *)
+   type 'a t = string * 'a
+   type 'b s = 'b * int constraint 'b = 'a t
+
+   type ('a : immediate) u = Imm of 'a
+
+   (* Trying to get unification to drop layout information and get this thing to
+      accept values *)
+   let foo (x : 'a) =
+     ignore (Imm x);
+     ignore (fun (y : (string * 'a) s) : (_ * int) -> y);
+     ()
+
+   let _ = foo "hi"
+*)
 (*
    Only the shape of the type matters, not whether it is generic or
    not. [generic_level] might be somewhat slower, but it ensures
    invariants on types are enforced (decreasing levels), and we don't
    care about efficiency here.
-*)
-(* CR ccasinghino: Can we actually just always ignore layouts in apply/subst?
-
-   It seems like almost, but there may be cases where it would forget
-   information.  See bug20 for an attempt (though we couldn't quite get it to
-   work.
 *)
 let apply env params body args =
   try
@@ -1921,7 +1936,8 @@ let rec estimate_type_layout env ty =
   | Tvariant row ->
       (* if all labels are devoid of arguments, not a pointer *)
       if
-      (* CJC XXX we're returning value here for variants with all void args? *)
+        (* CR layouts v5: Here we say polymorphic variants with all void args
+           are value.  Can they be immediate? *)
         not (row_closed row)
         || List.exists
           (fun (_,field) -> match row_field_repr field with
@@ -2011,8 +2027,8 @@ let check_decl_layout env decl layout =
       | None -> err
       | Some ty -> check_type_layout env ty layout
 
-(* CJC XXX errors: locations and better error reporting.  Maybe this should take
-   in a trace_exn? *)
+(* XXX layouts: locations and better error reporting.  Maybe this should take in
+   a trace_exn? *)
 let constrain_type_layout_exn env texn ty layout =
   match constrain_type_layout env ty layout with
   | Ok _ -> ()
@@ -2024,8 +2040,6 @@ let estimate_type_layout env typ =
 let type_layout env ty =
   estimate_type_layout env (get_unboxed_type_approximation env ty)
 
-(* CR ccasinghino perhaps this should take in some information about why
-   we think a sort is required, to put in the error. *)
 let type_sort env ty =
   let sort = Sort.new_var () in
   match constrain_type_layout env ty (Layout.of_sort sort) with
@@ -2637,7 +2651,7 @@ let rec mcomp type_pairs env t1 t2 =
   | (Tvar _, _)
   | (_, Tvar _)  ->
       ()
-    (* CR ccasinghino: This could be made more precise based on layouts *)
+    (* CR layouts: This could be made more precise based on layouts *)
   | (Tconstr (p1, [], _), Tconstr (p2, [], _)) when Path.same p1 p2 ->
       ()
   | _ ->
@@ -2880,7 +2894,9 @@ let add_layout_equation env destination layout1 =
      layout, so we're slightly incomplete.  *)
   match intersect_type_layout !env destination layout1 with
   | Error err -> raise_for Unify (Bad_layout (destination,err))
-  (* CJC XXX errors rethink for new error system *)
+  (* XXX layouts: is this the right error to issue here?  It should be reachable
+     by matching on a gadt equation that equates a void thing and a value thing,
+     I think - add a test case. *)
   | Ok layout -> begin
       match get_desc destination with
       | Tconstr (p, _, _) when is_instantiable ~for_layout_eqn:true !env p ->
@@ -3051,9 +3067,10 @@ let unify3_var env layout1 t1' t2 t2' =
       link_type t1' t2
     end
   | exception Unify_trace _ when in_pattern_mode () ->
-      (* CJC XXX what is going on down here?  We're recovering from an occurs
-         check failure by adding a gadt equation or ignoring the failure?  Is
-         this code new in 4.14?  Do I need layouts stuff?  Look at the PR.  *)
+      (* XXX layouts: what is going on down here?  We're recovering from an
+         occurs check failure by adding a gadt equation or ignoring the failure?
+         Is this code new in 4.14?  Do I need layouts stuff?  Look at the PR.
+         *)
       reify env t1';
       reify env t2';
       if can_generate_equations () then begin
@@ -3104,7 +3121,7 @@ let rec unify (env:Env.t ref) t1 t2 =
         unify_univar_for Unify t1 t2 !univar_pairs;
         update_level_for Unify !env (get_level t1) t2;
         update_scope_for Unify (get_scope t1) t2;
-        (* CJC XXX: make test cases that hit this.  Easier once we have
+        (* CR layouts v1.5: make test cases that hit this.  Easier once we have
            annotations on univars, I think.
 
            Richard suggests:
@@ -3188,12 +3205,14 @@ and unify3 env t1 t1' t2 t2' =
   begin match (d1, d2) with (* handle vars and univars specially *)
     (Tunivar { layout = l1 }, Tunivar { layout = l2 }) ->
       unify_univar_for Unify t1' t2' !univar_pairs;
-      (* CJC XXX make a test case for this once we have annotations on univars
+      (* CR layouts v1.5: make a test case for this once we have annotations on
+         univars
 
         type ('a : any) foo = 'a
         type ('a : any) bar
 
-        let f (x : < foo : ('a : void) . 'a foo bar >) : < foo : 'a . 'a foo bar > = x
+        let f (x : < foo : ('a : void) . 'a foo bar >)
+          : < foo : 'a . 'a foo bar > = x
       *)
       if not (Layout.equate l1 l2) then
         raise_for Unify (Unequal_univar_layouts (t1, l1, t2, l2));
@@ -3677,8 +3696,8 @@ let unify_var ~from_subst env t1 t2 =
   | _ ->
       unify (ref env) t1 t2
 
-(* CJC XXX comment here explaining why it's safe to skip layout checks in this
-   case when called from subst. *)
+(* XXX layouts: comment here explaining why it's safe to skip layout checks in
+   this case when called from subst. *)
 let _ = unify_var' := unify_var ~from_subst:true
 let unify_var = unify_var ~from_subst:false
 
@@ -4616,7 +4635,7 @@ let eqtype_subst type_pairs subst t1 l1 t2 l2 =
       !subst
   then ()
   else begin
-    (* CJC XXX Errors *)
+    (* XXX layouts: Is this the right error to issue? *)
     if not (Layout.equate l1 l2) then raise_unexplained_for Equality;
     subst := (t1, t2) :: !subst;
     TypePairs.add type_pairs (t1, t2)

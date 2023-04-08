@@ -897,7 +897,7 @@ let iter_pattern_full ~both_sides_of_or f sort pat =
       (* Cases where the inner things must be value: *)
       | Tpat_variant (_, pat, _) -> Option.iter (loop f Sort.value) pat
       | Tpat_tuple patl -> List.iter (loop f Sort.value) patl
-        (* CR ccasinghino: tuple case to change when we allow non-values in
+        (* CR layouts v5: tuple case to change when we allow non-values in
            tuples *)
       | Tpat_array (_, patl) -> List.iter (loop f Sort.value) patl
       | Tpat_lazy p | Tpat_exception p -> loop f Sort.value p

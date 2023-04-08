@@ -766,7 +766,7 @@ let check_constraints env sdecl (_, decl) =
         in
         List.fold_left foldf String.Map.empty pl
       in
-      (* CR ccasinghino: when we add the "mixed block restriction", we'll
+      (* CR layouts v5: when we add the "mixed block restriction", we'll
          probably want to check it here. *)
       List.iter
         (fun {Types.cd_id=name; cd_args; cd_res} ->
@@ -891,7 +891,7 @@ let check_abbrev env sdecl (id, decl) =
    have effects!
 *)
 let default_decl_layout decl =
-  (* CR ccasinghino: At the moment, I believe this defaulting is sufficient
+  (* CR layouts v2: At the moment, I believe this defaulting is sufficient
      because of the limited number of places where sort variables are created.
      But in the future it may be necessary to also do defaulting in the manifest
      and recursively in the types in the kind, with [iter_type_expr]. *)
@@ -947,7 +947,7 @@ let check_representable env loc lloc typ =
 let update_label_layouts env loc lbls named =
   (* "named" distinguishes between top-level records (for which we need to
      update the kind with the layouts) and inlined records *)
-  (* CR ccasinghino it wouldn't be too hard to support records that are all
+  (* CR layouts v5: it wouldn't be too hard to support records that are all
      void.  just needs a bit of refactoring in translcore *)
   let update =
     match named with
@@ -1000,7 +1000,7 @@ let update_decl_layout env decl =
       let lbls = update_label_layouts env loc lbls (Some layouts) in
       lbls, rep
     | _, Record_float ->
-      (* CR ccasinghino: When we have an unboxed float layout, does it make
+      (* CR layouts v2: When we have an unboxed float layout, does it make
          sense to use that here?  The use of value feels inaccurate, but I think
          the code that would look at first looks at the rep. *)
       let lbls =
@@ -1011,7 +1011,7 @@ let update_decl_layout env decl =
   in
 
   let update_variant_kind cstrs rep =
-    (* CR ccasinghino factor out duplication *)
+    (* CR layouts: factor out duplication *)
     match cstrs, rep with
     | [{Types.cd_args;cd_loc} as cstr], Variant_unboxed _ -> begin
         match cd_args with
@@ -1988,8 +1988,8 @@ let transl_with_constraint id ?fixed_row_path ~sig_env ~sig_decl ~outer_env
     if arity_ok && man <> None then
       sig_decl.type_kind, sig_decl.type_unboxed_default
     else
-      (* CJC XXX: this is a gross hack.  See the comments in the [Ptyp_package]
-         case of [Typetexp.transl_type_aux]. *)
+      (* XXX layouts: this is a gross hack.  See the comments in the
+         [Ptyp_package] case of [Typetexp.transl_type_aux]. *)
       let layout = Layout.value in
         (* Layout.(of_attributes ~default:value sdecl.ptype_attributes) *)
       Types.kind_abstract ~layout, false

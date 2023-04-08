@@ -86,7 +86,7 @@ Error: Signature mismatch:
          type 'a t = 'a list
        The type 'a is not equal to the type 'a0
 |}]
-(* CJC XXX errors: error message *)
+(* XXX layouts: error message *)
 
 (* Test 2: with type constraints for fixed types (the complicated case of
    Type_mod.merge_constraint) *)

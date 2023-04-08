@@ -1011,10 +1011,9 @@ let solve_constructor_annotation env name_list sty ty_args ty_ex =
   let ids =
     List.map
       (fun name ->
-         (* CJC XXX I expect this needs to change when we allow layout
+         (* CR layouts v1.5: I expect this needs to change when we allow layout
             annotations on explicitly quantified vars in gadt constructors.
-            See: https://github.com/ocaml/ocaml/pull/9584/
-         *)
+            See: https://github.com/ocaml/ocaml/pull/9584/ *)
         let decl = new_local_type ~loc:name.loc Layout.value in
         let (id, new_env) =
           Env.enter_type ~scope:expansion_scope name.txt decl !env in
@@ -1144,7 +1143,7 @@ let solve_Ppat_array ~refine loc env mutability expected_ty =
     | Immutable -> Predef.type_iarray
     | Mutable -> Predef.type_array
   in
-  (* CR ccasinghino: in the future we'll have arrays of other layouts *)
+  (* CR layouts v4: in the future we'll have arrays of other layouts *)
   let ty_elt = newgenvar Layout.value in
   let expected_ty = generic_instance expected_ty in
   unify_pat_types ~refine
@@ -3541,18 +3540,16 @@ let check_univars env kind exp ty_expected vars =
         List.iter2 (fun uvar var ->
           (* This checks that the term doesn't require more specific layouts
              than allowed by the univars. *)
-          (* This checks that the term doesn't require more specific layouts
-             than allowed by the univars. *)
-          (* CJC XXX expand_head here is needed for examples like:
+          (* XXX layouts: expand_head here is needed for examples like:
 
              type 'a t = 'a
              let id (x : 'a t) = x
              let foo : 'a . 'a -> 'a = fun x -> id x
 
-             Here, while checking foo, ['a] gets unified with ['a t], this isn't
-             illegal because ['a t] is actually just ['a], but it does mean we
-             need to expand the var to find the variable with the layout we want
-             to check.
+             Here, while checking foo, ['a] gets unified with ['a t].  This is
+             fine because ['a t] is actually just ['a], but it does mean we need
+             to expand the var to find the variable with the layout we want to
+             check.
 
              However, I should come back and think about his more carefully:
              1) [polyfy], which is called below, also does this expansion.
@@ -3599,7 +3596,7 @@ let check_statement exp =
   let ty = get_desc (expand_head exp.exp_env exp.exp_type) in
   match ty with
   | Tconstr (p, _, _)  when Path.same p Predef.path_unit -> ()
-  (* CR ccasinghino: when we have unboxed unit, add a case here for it *)
+  (* CR layouts v5: when we have unboxed unit, add a case here for it *)
   | Tvar _ -> ()
   | _ ->
       let rec loop {exp_loc; exp_desc; exp_extra; _} =
@@ -6382,9 +6379,10 @@ and type_construct env (expected_mode : expected_mode) loc lid sarg
     match constr.cstr_repr with
     | Variant_unboxed _ -> expected_mode, None
     | Variant_boxed _ | Variant_extensible ->
-      (* CJC XXX have I broken some mode crossing thing by getting rid of the constant
-         case here.  revisit, can easily add it back (check cstr_is_constant) - just need
-         to think about what this means for void stuff *)
+      (* XXX layouts: have I broken some mode crossing thing by getting rid of
+         the constant case here.  revisit, can easily add it back (check
+         cstr_is_constant) - just need to think about what this means for void
+         stuff *)
        mode_subcomponent expected_mode,
        Some (register_allocation expected_mode)
   in
@@ -6426,7 +6424,7 @@ and type_statement ?explanation env sexp =
       (final_subexpression exp).exp_loc
       Warnings.Nonreturning_statement;
   if !Clflags.strict_sequence then
-    (* CR ccasinghino: when we have unboxed unit, allow it for -strict-sequence *)
+    (* CR layouts v5: when we have unboxed unit, allow it for -strict-sequence *)
     let expected_ty = instance Predef.type_unit in
     with_explanation explanation (fun () ->
       unify_exp env exp expected_ty);
