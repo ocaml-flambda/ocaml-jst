@@ -1,4 +1,5 @@
 (* TEST
+   flags = "-extension layouts_beta"
    * expect
 *)
 
@@ -32,7 +33,7 @@ Error: Layout void is used here, but the appropriate layouts extension is not en
 (***************************************************)
 (* Test 1: constructor arguments may have any sort *)
 
-(* CR layouts: Needs non-value layout - moved to [datatypes_alpha.ml] *)
+(* CR layouts v2: Needs non-value layout - moved to [datatypes_alpha.ml] *)
 
 (************************************)
 (* Test 2: but not the "any" layout *)
@@ -43,8 +44,8 @@ Error: Layout void is used here, but the appropriate layouts extension is not en
 (******************************************************)
 (* Test 3: void allowed in records, but not by itself *)
 
-(* CR layouts: Needs void - moved to [datatypes_alpha.ml].  Will change by the
-   time we add back void anyway. *)
+(* CR layouts v5: Needs void - moved to [datatypes_alpha.ml].  Will change by
+   the time we add back void anyway. *)
 
 (**************************)
 (* Test 4: but any is not *)
@@ -61,16 +62,22 @@ Error: Layout void is used here, but the appropriate layouts extension is not en
 (**************************************************************************)
 (* Test 6: fields in all-float records get layout value.  may change in the
    future, but record fields must at least be representable. *)
-
-(* CR layouts: Needs layout annotations on type parameters.  Moved to
-   [datatypes_beta.ml].  Bring back when that isn't behind an extension flag. *)
-
 type t6 = { fld6 : float }
 type ('a : immediate) s6 = S6 of 'a
-[%%expect{|
+
+let f6 x =
+  let { fld6 = fld6 } = x in fld6
+
+let f6' x =
+  let { fld6 = fld6 } = x in S6 fld6;;
+[%%expect {|
 type t6 = { fld6 : float; }
-Line 2, characters 11-20:
-2 | type ('a : immediate) s6 = S6 of 'a
-               ^^^^^^^^^
-Error: Layout immediate is used here, but the appropriate layouts extension is not enabled
-|}]
+type 'a s6 = S6 of 'a
+val f6 : t6 -> float = <fun>
+Line 8, characters 32-36:
+8 |   let { fld6 = fld6 } = x in S6 fld6;;
+                                    ^^^^
+Error: This expression has type float but an expression was expected of type
+         ('a : immediate)
+       float has layout value, which is not a sublayout of immediate.
+|}];;

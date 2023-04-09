@@ -1936,8 +1936,8 @@ let rec estimate_type_layout env ty =
   | Tvariant row ->
       (* if all labels are devoid of arguments, not a pointer *)
       if
-        (* CR layouts v5: Here we say polymorphic variants with all void args
-           are value.  Can they be immediate? *)
+        (* CR layouts v5: Polymorphic variants with all void args can probably
+           be immediate, but we don't allow them to have void args right now. *)
         not (row_closed row)
         || List.exists
           (fun (_,field) -> match row_field_repr field with

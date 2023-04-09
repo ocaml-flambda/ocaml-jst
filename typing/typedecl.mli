@@ -113,6 +113,7 @@ type error =
   | Invalid_private_row_declaration of type_expr
   | Local_not_enabled
   | Global_and_nonlocal
+  | Layout_not_enabled of Layout.const
 
 exception Error of Location.t * error
 

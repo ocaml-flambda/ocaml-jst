@@ -159,13 +159,17 @@ module Layout = struct
     | Value -> value
     | Void -> void
 
-  let of_const_option annot ~default =
-    match annot with
-    | None -> default
-    | Some annot -> of_const annot
+  let of_attributes ~legacy_immediate attrs =
+    match Builtin_attributes.layout ~legacy_immediate attrs with
+    | Ok None as a -> a
+    | Ok (Some l) -> Ok (Some (of_const l))
+    | Error _ as e -> e
 
-  let of_attributes ~default attrs =
-    of_const_option ~default (Builtin_attributes.layout attrs)
+  let of_attributes_default ~legacy_immediate ~default attrs =
+    match of_attributes ~legacy_immediate attrs with
+    | Ok None -> Ok default
+    | Ok (Some l) -> Ok l
+    | Error _ as e -> e
 
   (******************************)
   (* elimination *)

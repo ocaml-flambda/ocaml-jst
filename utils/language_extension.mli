@@ -8,6 +8,20 @@ type t =
   | Polymorphic_parameters
   | Immutable_arrays
   | Module_strengthening
+  | Layouts_alpha
+  | Layouts_beta
+  | Layouts
+(* XXX layouts: When we release, we'll have only [Layouts_beta] (we may leave in
+   [Layouts], but turning it on won't give you anything yet.  The intent is that
+   these flags work now as they will on release. (Though there are some open
+   questions about exactly what layout annotations to allow with and without
+   this flag).
+
+   [Layouts_alpha] is here just for testing - it's useful to make void
+   accessible in the type system for tests right up until the last minute,
+   particularly as we check that it is properly caught by safety checks for void
+   in the middle-end.  But we will delete [Layouts_alpha] before release, and
+   comment out or turn off the tests that need it.  *)
 
 (** Equality on language extensions *)
 val equal : t -> t -> bool

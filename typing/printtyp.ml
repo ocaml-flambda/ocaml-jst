@@ -1253,7 +1253,7 @@ and tree_of_typ_gf (ty, gf) =
     | Unrestricted -> Ogf_unrestricted
   in
   (tree_of_typexp Type ty, gf)
-  
+
 and tree_of_typobject mode fi nm =
   begin match nm with
   | None ->
@@ -1465,7 +1465,14 @@ let rec tree_of_type_decl id decl =
   in
   let (name, args) = type_defined decl in
   let constraints = tree_of_constraints params in
-  let lay = Builtin_attributes.layout decl.type_attributes in
+  let lay =
+    (* Here we're just printing, so we ignore whether the layout annotation was
+       allowed or not. *)
+    match Builtin_attributes.layout ~legacy_immediate:true decl.type_attributes
+    with
+    | Ok l -> l
+    | Error (_, l) -> Some l
+  in
   let ty, priv, unboxed =
     match decl.type_kind with
     | Type_abstract _ ->

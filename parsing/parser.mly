@@ -752,7 +752,8 @@ let check_layout loc id =
     | ("any" | "value" | "void" | "immediate64" | "immediate") -> ()
     | _ -> expecting loc "layout"
   end;
-  Attr.mk ~loc:Location.none (mknoloc id) (PStr [])
+  let loc = make_loc loc in
+  Attr.mk ~loc (mkloc id loc) (PStr [])
 
 %}
 

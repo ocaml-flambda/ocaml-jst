@@ -1,9 +1,10 @@
 (* TEST
+   flags = "-extension layouts_beta"
    * expect
 *)
 
-(* CR layouts: all tests from this file moved to [void_alpha.ml].  Move back
-   here when the stuff from v5 no longer needs extension flags. *)
+(* CR layouts v5: all tests from this file moved to [void_alpha.ml].  Move back
+   here. *)
 type t_void [@@void];;
 [%%expect {|
 Line 1, characters 12-20:

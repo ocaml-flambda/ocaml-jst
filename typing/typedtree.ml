@@ -584,7 +584,7 @@ and type_declaration =
     typ_manifest: core_type option;
     typ_loc: Location.t;
     typ_attributes: attribute list;
-    typ_layout_annotation: const_layout option;
+    typ_layout_annotation: layout option;
    }
 
 and type_kind =

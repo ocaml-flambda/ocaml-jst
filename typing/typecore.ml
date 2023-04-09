@@ -188,6 +188,7 @@ type error =
   | Function_returns_local
   | Bad_tail_annotation of [`Conflict|`Not_a_tailcall]
   | Optional_poly_param
+  | Layout_not_enabled of Layout.const
 
 exception Error of Location.t * Env.t * error
 exception Error_forward of Location.error
@@ -5170,8 +5171,12 @@ and type_expect_
              (Texp_poly cty, loc, sexp.pexp_attributes) :: exp.exp_extra }
   | Pexp_newtype({txt=name}, sbody) ->
       let layout =
-        Layout.of_const_option ~default:Layout.value
-          (Builtin_attributes.layout sexp.pexp_attributes)
+        match Layout.of_attributes_default ~legacy_immediate:false
+                ~default:Layout.value sexp.pexp_attributes
+        with
+        | Ok l -> l
+        | Error (loc, layout) ->
+          raise (Error (loc, env, Layout_not_enabled layout))
       in
       let ty =
         if Typetexp.valid_tyvar_name name then
@@ -8038,6 +8043,11 @@ let report_error ~loc env = function
   | Function_returns_local ->
       Location.errorf ~loc
         "This function is local returning, but was expected otherwise"
+  | Layout_not_enabled c ->
+      Location.errorf ~loc
+        "@[Layout %s is used here, but the appropriate layouts extension is \
+         not enabled@]"
+        (Layout.string_of_const c)
 
 let report_error ~loc env err =
   Printtyp.wrap_printing_env ~error:true env

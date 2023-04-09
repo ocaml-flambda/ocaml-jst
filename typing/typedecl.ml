@@ -74,10 +74,21 @@ type error =
   | Invalid_private_row_declaration of type_expr
   | Local_not_enabled
   | Global_and_nonlocal
+  | Layout_not_enabled of Layout.const
 
 open Typedtree
 
 exception Error of Location.t * error
+
+let layout_of_attributes ~legacy_immediate attrs =
+  match Layout.of_attributes ~legacy_immediate attrs with
+  | Ok l -> l
+  | Error (loc, c) -> raise (Error (loc, Layout_not_enabled c))
+
+let layout_of_attributes_default ~legacy_immediate ~default attrs =
+  match Layout.of_attributes_default ~legacy_immediate ~default attrs with
+  | Ok l -> l
+  | Error (loc, c) -> raise (Error (loc, Layout_not_enabled c))
 
 let get_unboxed_from_attributes sdecl =
   let unboxed = Builtin_attributes.has_unboxed sdecl.ptype_attributes in
@@ -164,7 +175,14 @@ let enter_type rec_flag env sdecl (id, uid) =
      checked and then unified with the real manifest and checked against the
      kind. *)
   let layout =
-    Layout.of_attributes ~default:Layout.any sdecl.ptype_attributes
+    (* We set ~legacy_immediate to true because we're looking at a declaration
+       that was already allowed to be [@@immediate] *)
+    (* XXX layouts: But actually here the compiler didn't used to check the
+       attribute at all.  Should I just set it to value without looking at the
+       attribute if no layout extensions are on? We'll still check the
+       attributes for disallowed layouts in [transl_declaration. *)
+    layout_of_attributes_default  ~legacy_immediate:true ~default:Layout.any
+      sdecl.ptype_attributes
   in
   let decl =
     { type_params =
@@ -191,7 +209,8 @@ let enter_type rec_flag env sdecl (id, uid) =
         *)
         List.map (fun ({ptyp_attributes;_},_) ->
           let layout =
-            Layout.of_attributes ~default:Layout.value ptyp_attributes
+            layout_of_attributes_default ~legacy_immediate:false
+              ~default:Layout.value ptyp_attributes
           in
           Btype.newgenvar layout) sdecl.ptype_params;
       type_arity = arity;
@@ -309,8 +328,8 @@ let make_params env params =
   let make_param (sty, v) =
     try
       let layout =
-        Layout.of_attributes ~default:(Layout.of_new_sort_var ())
-          sty.ptyp_attributes
+        layout_of_attributes_default ~legacy_immediate:false
+          ~default:(Layout.of_new_sort_var ()) sty.ptyp_attributes
       in
       (transl_type_param env sty layout, v)
     with Already_bound ->
@@ -514,7 +533,11 @@ let transl_declaration env sdecl (id, uid) =
     | _ -> false, false (* Not unboxable, mark as boxed *)
   in
   verify_unboxed_attr unboxed_attr sdecl;
-  let layout_annotation = Builtin_attributes.layout sdecl.ptype_attributes in
+  let layout_annotation =
+    (* We set legacy_immediate to true because you were already allowed to write
+       [@@immediate] on declarations.  *)
+    layout_of_attributes ~legacy_immediate:true sdecl.ptype_attributes
+  in
   let (tman, man) = match sdecl.ptype_manifest with
       None -> None, None
     | Some sty ->
@@ -542,7 +565,7 @@ let transl_declaration env sdecl (id, uid) =
                which can't see those.
           *)
           match layout_annotation, man with
-          | Some annot, _ -> Layout.of_const annot
+          | Some annot, _ -> annot
           | None, Some typ -> Ctype.estimate_type_layout env typ
           | None, None -> Layout.value
         in
@@ -609,10 +632,7 @@ let transl_declaration env sdecl (id, uid) =
                   annotations, which will in this case be a check that the
                   accurate layout from step 2 is a sublayout of the annotation.
             *)
-            let layout =
-              Layout.of_const_option ~default:Layout.any
-                layout_annotation
-            in
+            let layout = Option.value layout_annotation ~default:Layout.any in
             Variant_unboxed layout
           else
             (* We mark all arg layouts "any" here.  They are updated later,
@@ -634,9 +654,7 @@ let transl_declaration env sdecl (id, uid) =
             if unbox then
               (* This is improved in [update_decl_layout] - see the comment
                  on the Variant_unboxed case above.*)
-              let layout =
-                Layout.of_const_option ~default:Layout.any layout_annotation
-              in
+              let layout = Option.value layout_annotation ~default:Layout.any in
               Record_unboxed layout
             else if List.for_all (fun l -> is_float env l.Types.ld_type) lbls'
             then Record_float
@@ -1429,9 +1447,7 @@ let transl_type_decl env rec_flag sdecl_list =
   (* Check layout annotations *)
   (* CR layouts: can we skip this sometimes?  abbreviations? *)
   List.iter (fun tdecl ->
-    let layout =
-      Layout.of_const_option ~default:Layout.any tdecl.typ_layout_annotation
-    in
+    let layout = Option.value tdecl.typ_layout_annotation ~default:Layout.any in
     match Ctype.check_decl_layout final_env tdecl.typ_type layout with
     | Ok _ -> ()
     | Error v -> raise(Error(tdecl.typ_loc, Layout v)))
@@ -2047,6 +2063,9 @@ let transl_with_constraint id ?fixed_row_path ~sig_env ~sig_decl ~outer_env
       type_variance = new_type_variance;
       type_separability = new_type_separability;
     } in
+  let layout_annotation =
+    layout_of_attributes ~legacy_immediate:false sdecl.ptype_attributes
+  in
   Ctype.end_def();
   generalize_decl new_sig_decl;
   {
@@ -2060,7 +2079,7 @@ let transl_with_constraint id ?fixed_row_path ~sig_env ~sig_decl ~outer_env
     typ_kind = Ttype_abstract;
     typ_private = sdecl.ptype_private;
     typ_attributes = sdecl.ptype_attributes;
-    typ_layout_annotation = Builtin_attributes.layout sdecl.ptype_attributes;
+    typ_layout_annotation = layout_annotation;
   }
 
 (* Approximate a type declaration: just make all types abstract *)
@@ -2094,13 +2113,18 @@ let approx_type_decl sdecl_list =
     (fun sdecl ->
        let injective = sdecl.ptype_kind <> Ptype_abstract in
        let layout =
-         Layout.of_attributes ~default:Layout.value
-           sdecl.ptype_attributes
+         (* XXX layouts: If we really want to match the old behavior when no
+            layouts extensions are on, we should ignore the attributes here
+            (immediate was not checked for). *)
+         (* We set legacy_immediate to true because you were already allowed
+            to write [@@immediate] on declarations. *)
+         layout_of_attributes_default ~legacy_immediate:true
+           ~default:Layout.value sdecl.ptype_attributes
        in
        let params =
          List.map (fun (styp,_) ->
-           Layout.of_attributes ~default:Layout.value
-             styp.ptyp_attributes)
+           layout_of_attributes_default ~legacy_immediate:false
+             ~default:Layout.value styp.ptyp_attributes)
            sdecl.ptype_params
        in
       (Ident.create_scoped ~scope sdecl.ptype_name.txt,
@@ -2410,6 +2434,11 @@ let report_error ppf = function
                    To enable it, pass the '-extension local' flag@]"
   | Global_and_nonlocal ->
       fprintf ppf "@[A type cannot be both global and nonlocal@]"
+  | Layout_not_enabled c ->
+      fprintf ppf
+        "@[Layout %s is used here, but the appropriate layouts extension is \
+         not enabled@]"
+        (Layout.string_of_const c)
 
 let () =
   Location.register_error_of_exn

@@ -148,8 +148,6 @@ val filter_attributes :
 val warn_on_literal_pattern: Parsetree.attributes -> bool
 val explicit_arity: Parsetree.attributes -> bool
 
-val layout: Parsetree.attributes -> Asttypes.const_layout option
-
 val has_unboxed: Parsetree.attributes -> bool
 val has_boxed: Parsetree.attributes -> bool
 
@@ -168,3 +166,42 @@ val tailcall : Parsetree.attributes ->
     ([`Tail|`Nontail|`Tail_if_possible] option, [`Conflict]) result
 val has_include_functor : Parsetree.attributes -> (bool,unit) result
 
+(* [layout] gets the layout in the attributes if one is present.  It is the
+   central point at which the layout extension flags are checked.  We always
+   allow the [value] annotation, even if the layouts extensions are disabled.
+   If [~legacy_immediate] is true, we allow [immediate] and [immediate64]
+   attributes even if the layouts extensions are disabled - this is used to
+   support the original immediacy attributes, which are now implemented in terms
+   of layouts.
+
+   The return value is [Error <layout>] if a layout attribute is present but
+   not allowed by the current set of extensions.  Otherwise it is [Ok None] if
+   there is no layout annotation and [Ok (Some layout)] if there is one.
+
+   - If no layout extensions are on and [~legacy_immediate] is false, this will
+     always return [Ok None], [Ok (Some Value)], or [Error ...].
+   - If no layout extensions are on and [~legacy_immediate] is true, this will
+     error on [void] or [any], but allow [immediate], [immediate64], and [value].
+   - If the [Layouts_beta] extension is on, this behaves like the previous case
+     regardless of the value of [~legacy_immediate].
+   - If the [Layouts_alpha] extension is on, this can return any layout and
+     never errors.
+
+   Currently, the [Layouts] extension is ignored - it's no different than
+   turning on no layout extensions.
+*)
+(* XXX layouts: we're allowing [@@value] even if no extensions are enabled.  I
+   think this is a good idea for two reasons:
+   1) It's needed for some wonky recursive types.  (But we could do without
+      this.)
+   2) It's potentially useful to have for quick recovery if bugs are
+      discovered and layouts are being misinferred.
+
+   But I can see the argument either way - discuss with team. *)
+(* XXX layouts: remove [Layout_alpha] support.  Or should we leave it here and
+   just remove the ability to pass it at the command line, to simplify testing?
+   *)
+(* CR layouts: we should eventually be able to delete ~legacy_immediate (after we
+   turn on layouts by default). *)
+val layout : legacy_immediate:bool -> Parsetree.attributes ->
+  (Asttypes.const_layout option, Location.t * Asttypes.const_layout) result

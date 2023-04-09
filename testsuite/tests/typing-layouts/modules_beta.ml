@@ -1,4 +1,5 @@
 (* TEST
+   flags = "-extension layouts_beta"
    * expect
 *)
 
@@ -30,9 +31,8 @@ Error: Layout void is used here, but the appropriate layouts extension is not en
 (*********************************************************)
 (* Test 1: Simple with type constraints respect layouts. *)
 
-(* CR layouts: parts of this test moved to [modules_alpha.ml] because they
-   need a non-value layout.  Bring back here when we have one enabled by
-   default. *)
+(* CR layouts v2: parts of this test moved to [modules_alpha.ml] because they
+   need a non-value layout.  Bring back here when we have one. *)
 module type S1 = sig
   type 'a [@void] t
   type s
@@ -44,35 +44,85 @@ Line 2, characters 10-17:
 Error: Layout void is used here, but the appropriate layouts extension is not enabled
 |}];;
 
-(* CR layouts: parts of this test moved to [modules_beta.ml] because they need
-   immediate annotations on type parameters.  Bring back here when we turn that
-   on by default. *)
 module type S1_2 = sig
   type ('a : immediate) t
+end
+
+module type S1_2' = S1_2 with type 'a t = 'a list
+
+module M1_2' : S1_2' = struct
+  type ('a : immediate) t = 'a list
 end;;
-[%%expect {|
-Line 2, characters 13-22:
-2 |   type ('a : immediate) t
-                 ^^^^^^^^^
-Error: Layout immediate is used here, but the appropriate layouts extension is not enabled
-|}];;
+[%%expect{|
+module type S1_2 = sig type 'a t end
+module type S1_2' = sig type 'a t = 'a list end
+module M1_2' : S1_2'
+|}]
+
+(* CR ccasinghino - annoyingly, the immediate annotation on 'a is required.  We
+   can probably relax this so you don't have to label the parameter explcitly
+   and the layout is determined from the signature.  But we anticipate it'll
+   require non-trivial refactoring of eqtype, so we've put it off for now. *)
+module M1_2'': S1_2' = struct
+  type 'a t = 'a list
+end;;
+[%%expect{|
+Lines 1-3, characters 23-3:
+1 | .......................struct
+2 |   type 'a t = 'a list
+3 | end..
+Error: Signature mismatch:
+       Modules do not match:
+         sig type 'a t = 'a list end
+       is not included in
+         S1_2'
+       Type declarations do not match:
+         type 'a t = 'a list
+       is not included in
+         type 'a t = 'a list
+       The type 'a is not equal to the type 'a0
+|}]
+(* XXX layouts: error message *)
 
 (************************************************************************)
 (* Test 2: with type constraints for fixed types (the complicated case of
    Type_mod.merge_constraint) *)
-
-(* CR layouts: this test moved to [modules_beta.ml] because it needs immediate
-   annotations on type parameters.  Bring back here when we turn that on by
-   default. *)
 module type S2 = sig
   type 'a [@immediate] t
+end
+
+type 'a [@immediate] r2 = R
+type 'a [@immediate] s2 = private [> `A of 'a r2]
+
+module type T2 = S2 with type 'a t = 'a s2
+
+module F2 (X : T2) = struct
+  let f () : 'a X.t = `A R
 end;;
 [%%expect{|
-Line 2, characters 10-22:
-2 |   type 'a [@immediate] t
-              ^^^^^^^^^^^^
-Error: Layout immediate is used here, but the appropriate layouts extension is not enabled
-|}];;
+module type S2 = sig type 'a t end
+type 'a r2 = R
+type !'a s2 = private [> `A of 'a r2 ]
+module type T2 = sig type 'a t = 'a s2 end
+module F2 : functor (X : T2) -> sig val f : unit -> 'a X.t end
+|}]
+
+type 'a [@immediate] s2' = private [> `B of 'a]
+module type T2' = S2 with type 'a t = 'a s2'
+
+module F2' (X : T2') = struct
+  let f () : 'a X.t = `B "bad"
+end
+[%%expect{|
+type !'a s2' = private [> `B of 'a ]
+module type T2' = sig type 'a t = 'a s2' end
+Line 5, characters 25-30:
+5 |   let f () : 'a X.t = `B "bad"
+                             ^^^^^
+Error: This expression has type string but an expression was expected of type
+         ('a : immediate)
+       string has layout value, which is not a sublayout of immediate.
+|}]
 
 (******************************************************************)
 (* Test 3: Recursive modules, with and without layout annotations *)
@@ -92,9 +142,8 @@ module rec Foo3 : sig val create : Bar3.t -> unit end
 and Bar3 : sig type t end
 |}];;
 
-(* CR layouts: parts of this test moved to [modules_alpha.ml] because they
-   need a non-value layout.  Bring back here when we have one enabled by
-   default. *)
+(* CR layouts v2: parts of this test moved to [modules_alpha.ml] because they
+   need a non-value layout.  Bring back here when we have one. *)
 module rec Foo3 : sig
   val create : Bar3.t -> unit
 end = struct
@@ -147,22 +196,99 @@ module rec Foo3 : sig type t = Bar3.t [@@immediate] end
 and Bar3 : sig type t [@@immediate] end
 |}];;
 
-(* CR layouts: more bits moved to [modules_alpha.ml] from down here. *)
+(* CR layouts v2: more bits moved to [modules_alpha.ml] from down here. *)
 
 (*************************************************************************)
 (* Test 4: Nondep typedecl layout approximation in the Nondep_cannot_erase
    case. *)
 
-(* CR layouts: This test moved to [modules_beta.ml] and [modules_alpha.ml].
-   Parts of it can come back when we have the ability to annotate type parameter
-   layouts without extension flags, and other parts need a non-value layout. *)
+(* CR layouts v2: The interesting parts of this test need a non-value layout and
+   have been moved to modules_alpha.ml.  Bring back those parts once we have a
+   non-value layout.  I've just commented them out below. *)
+module F4(X : sig type t end) = struct
+  type s = Foo of X.t
+end
+
+module M4 = F4(struct type t = T end)
+
+type 'a [@value] t4_val
+(* type 'a [@void] t4_void *)
+
+type t4 = M4.s t4_val;;
+[%%expect {|
+module F4 : functor (X : sig type t end) -> sig type s = Foo of X.t end
+module M4 : sig type s end
+type 'a t4_val
+type t4 = M4.s t4_val
+|}]
+
+(*
+type t4' = M4.s t4_void;;
+[%%expect {|
+Line 1, characters 11-15:
+1 | type t4' = M4.s t4_void;;
+               ^^^^
+Error: This type M4.s should be an instance of type ('a : void)
+       M4.s has layout value, which is not a sublayout of void.
+|}]
+*)
+module F4'(X : sig type t [@@immediate] end) = struct
+  type s = Foo of X.t [@@unboxed] [@@immediate]
+end
+
+module M4' = F4'(struct type t = T end)
+
+type 'a [@immediate] t4_imm
+
+type t4 = M4'.s t4_imm;;
+[%%expect{|
+module F4' :
+  functor (X : sig type t [@@immediate] end) ->
+    sig type s = Foo of X.t [@@immediate] [@@unboxed] end
+module M4' : sig type s [@@immediate] end
+type 'a t4_imm
+type t4 = M4'.s t4_imm
+|}];;
+
+(*
+type t4 = M4'.s t4_void;;
+[%%expect{|
+Line 1, characters 10-15:
+1 | type t4 = M4'.s t4_void;;
+              ^^^^^
+Error: This type M4'.s should be an instance of type ('a : void)
+       M4'.s has layout immediate, which is not a sublayout of void.
+|}];;
+*)
 
 (************************************)
 (* Test 5: Destructive substitution *)
+module type S3_1 = sig
+  type ('a : immediate) t
+  val f : 'a -> 'a t
+end
 
-(* CR layouts: The first part of this test has been moved to [modules_beta.ml].
-   It can come back when we have the ability to annotate layout parameters
-   without extensions. *)
+module type S3_1' = S3_1 with type 'a t := 'a list
+
+module M3_1 : S3_1' = struct
+  let f x = [x]
+end
+
+let x3 = M3_1.f 42
+
+let x3' = M3_1.f "test";;
+[%%expect{|
+module type S3_1 = sig type 'a t val f : 'a -> 'a t end
+module type S3_1' = sig val f : 'a -> 'a list end
+module M3_1 : S3_1'
+val x3 : int list = [42]
+Line 14, characters 17-23:
+14 | let x3' = M3_1.f "test";;
+                      ^^^^^^
+Error: This expression has type string but an expression was expected of type
+         ('a : immediate)
+       string has layout value, which is not a sublayout of immediate.
+|}]
 
 module type S3_2 = sig
   type t [@@immediate]
@@ -180,9 +306,9 @@ Error: This type has layout value, which is not a sublayout of immediate.
 (*****************************************)
 (* Test 6: With constraints on packages. *)
 
-(* CR layouts: The first part of this test needs a non-value layout and has
+(* CR layouts v2: The first part of this test needs a non-value layout and has
    been moved to modules_alpha.ml.  Bring it back once we have a non-value
-   layout enabled by default. *)
+   layout. *)
 module type S6_1 = sig
   type t [@@void]
 end
@@ -192,7 +318,6 @@ Line 2, characters 9-17:
              ^^^^^^^^
 Error: Layout void is used here, but the appropriate layouts extension is not enabled
 |}]
-
 
 module type S6_5 = sig
   type t [@@immediate]
@@ -232,9 +357,7 @@ Error: In this `with' constraint, the new definition of t
        the first has layout value, which is not a sublayout of immediate.
 |}];;
 
-(* XXX layouts: this is broken because of the package with-type hack.  Make a
-   final determination about whether we want to ship it, and leave a CR if
-   so. *)
+(* CR layouts: S6_6'' should be fixed *)
 module type S6_6'' = sig
   type s = int
   val m : (module S6_5 with type t = int)

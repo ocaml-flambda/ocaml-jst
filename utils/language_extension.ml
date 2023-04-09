@@ -5,6 +5,12 @@ type t =
   | Polymorphic_parameters
   | Immutable_arrays
   | Module_strengthening
+  | Layouts_alpha
+  | Layouts_beta
+  | Layouts
+(* XXX layouts: should we add some sanity checking that the user hasn't for
+   example, explicitly disabled Layouts but enabled Layouts_beta?  Where would
+   that go? *)
 
 let equal (a : t) (b : t) = (a = b)
 
@@ -15,6 +21,9 @@ let all =
   ; Polymorphic_parameters
   ; Immutable_arrays
   ; Module_strengthening
+  ; Layouts_alpha
+  ; Layouts_beta
+  ; Layouts
   ]
 
 let default_extensions =
@@ -30,6 +39,9 @@ let to_string = function
   | Polymorphic_parameters -> "polymorphic_parameters"
   | Immutable_arrays -> "immutable_arrays"
   | Module_strengthening -> "module_strengthening"
+  | Layouts_alpha -> "layouts_alpha"
+  | Layouts_beta -> "layouts_beta"
+  | Layouts -> "layouts"
 
 let of_string extn = match String.lowercase_ascii extn with
   | "comprehensions" -> Some Comprehensions
@@ -38,6 +50,9 @@ let of_string extn = match String.lowercase_ascii extn with
   | "polymorphic_parameters" -> Some Polymorphic_parameters
   | "immutable_arrays" -> Some Immutable_arrays
   | "strengthening" -> Some Module_strengthening
+  | "layouts_alpha" -> Some Layouts_alpha
+  | "layouts_beta" -> Some Layouts_beta
+  | "layouts" -> Some Layouts
   | _ -> None
 
 let of_string_exn extn =
@@ -53,7 +68,10 @@ let is_erasable = function
   | Include_functor
   | Polymorphic_parameters
   | Immutable_arrays
-  | Module_strengthening ->
+  | Module_strengthening
+  | Layouts_alpha
+  | Layouts_beta
+  | Layouts ->
       false
 
 module Universe = struct

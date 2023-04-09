@@ -266,6 +266,7 @@ type error =
   | Function_returns_local
   | Bad_tail_annotation of [`Conflict|`Not_a_tailcall]
   | Optional_poly_param
+  | Layout_not_enabled of Layout.const
 
 
 exception Error of Location.t * Env.t * error

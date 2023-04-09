@@ -109,11 +109,19 @@ module Layout : sig
   val of_sort : sort -> t
   val of_const : const -> t
 
-  (** Translate a user layout annotation to a layout *)
-  val of_const_option : const option -> default:t -> t
+  (** Find a layout in attributes.  Returns error if a disallowed layout is
+      present, but always allows immediate attributes if ~legacy_immediate is
+      true.  See comment on [Builtin_attributes.layout].  *)
+  val of_attributes :
+    legacy_immediate:bool -> Parsetree.attributes ->
+    (t option, Location.t * const) result
 
-  (** Find a layout in attributes, defaulting to ~default *)
-  val of_attributes : default:t -> Parsetree.attributes -> t
+  (** Find a layout in attributes, defaulting to ~default.  Returns error if a
+      disallowed layout is present, but always allows immediate if
+      ~legacy_immediate is true.  See comment on [Builtin_attributes.layout]. *)
+  val of_attributes_default :
+    legacy_immediate:bool -> default:t -> Parsetree.attributes ->
+    (t, Location.t * const) result
 
   (******************************)
   (* elimination *)
