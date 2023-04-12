@@ -276,6 +276,9 @@
       .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Docstrings.cmo
       .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Syntaxerr.cmo
       .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Ast_helper.cmo
+      .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Extensions_parsing.cmo
+      .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Extensions.cmo
+      .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Ast_iterator.cmo      
       .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Builtin_attributes.cmo
       .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Layouts.cmo
       .dynlink_compilerlibs.objs/byte/dynlink_compilerlibs__Types.cmo
@@ -344,6 +347,9 @@
       .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Docstrings.cmx
       .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Syntaxerr.cmx
       .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Ast_helper.cmx
+      .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Extensions_parsing.cmx
+      .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Extensions.cmx
+      .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Ast_iterator.cmx
       .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Builtin_attributes.cmx
       .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Layouts.cmx
       .dynlink_compilerlibs.objs/native/dynlink_compilerlibs__Types.cmx
