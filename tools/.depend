@@ -34,12 +34,14 @@ debug_printers.cmo : \
     ../typing/printtyp.cmi \
     ../typing/path.cmi \
     ../typing/layouts.cmi \
-    ../typing/ident.cmi
+    ../typing/ident.cmi \
+    ../typing/ctype.cmi
 debug_printers.cmx : \
     ../typing/printtyp.cmx \
     ../typing/path.cmx \
     ../typing/layouts.cmx \
-    ../typing/ident.cmx
+    ../typing/ident.cmx \
+    ../typing/ctype.cmx
 dumpobj.cmo : \
     ../bytecomp/symtable.cmi \
     opnames.cmo \
@@ -82,7 +84,8 @@ lintapidiff.cmo : \
     ../parsing/parse.cmi \
     ../utils/misc.cmi \
     ../parsing/location.cmi \
-    ../typing/ident.cmi
+    ../typing/ident.cmi \
+    ../parsing/extensions.cmi
 lintapidiff.cmx : \
     ../typing/printtyp.cmx \
     ../driver/pparse.cmx \
@@ -91,7 +94,8 @@ lintapidiff.cmx : \
     ../parsing/parse.cmx \
     ../utils/misc.cmx \
     ../parsing/location.cmx \
-    ../typing/ident.cmx
+    ../typing/ident.cmx \
+    ../parsing/extensions.cmx
 make_opcodes.cmo :
 make_opcodes.cmx :
 objinfo.cmo : \
@@ -136,6 +140,7 @@ ocamlcmt.cmo : \
     ../parsing/pprintast.cmi \
     ../parsing/location.cmi \
     ../utils/load_path.cmi \
+    ../utils/import_info.cmi \
     ../typing/envaux.cmi \
     ../driver/compmisc.cmi \
     ../utils/compilation_unit.cmi \
@@ -149,6 +154,7 @@ ocamlcmt.cmx : \
     ../parsing/pprintast.cmx \
     ../parsing/location.cmx \
     ../utils/load_path.cmx \
+    ../utils/import_info.cmx \
     ../typing/envaux.cmx \
     ../driver/compmisc.cmx \
     ../utils/compilation_unit.cmx \
@@ -188,12 +194,14 @@ ocamlprof.cmo : \
     ../utils/warnings.cmi \
     ../parsing/parsetree.cmi \
     ../parsing/parse.cmi \
-    ../parsing/location.cmi
+    ../parsing/location.cmi \
+    ../parsing/extensions.cmi
 ocamlprof.cmx : \
     ../utils/warnings.cmx \
     ../parsing/parsetree.cmi \
     ../parsing/parse.cmx \
-    ../parsing/location.cmx
+    ../parsing/location.cmx \
+    ../parsing/extensions.cmx
 opnames.cmo :
 opnames.cmx :
 primreq.cmo : \

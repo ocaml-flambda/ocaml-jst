@@ -995,6 +995,7 @@ typing/includemod_errorprinter.cmi : \
 typing/layouts.cmo : \
     typing/path.cmi \
     utils/misc.cmi \
+    parsing/location.cmi \
     typing/ident.cmi \
     parsing/builtin_attributes.cmi \
     parsing/asttypes.cmi \
@@ -1002,6 +1003,7 @@ typing/layouts.cmo : \
 typing/layouts.cmx : \
     typing/path.cmx \
     utils/misc.cmx \
+    parsing/location.cmx \
     typing/ident.cmx \
     parsing/builtin_attributes.cmx \
     parsing/asttypes.cmi \
@@ -1009,6 +1011,7 @@ typing/layouts.cmx : \
 typing/layouts.cmi : \
     typing/path.cmi \
     parsing/parsetree.cmi \
+    parsing/location.cmi \
     typing/ident.cmi \
     parsing/asttypes.cmi
 typing/mtype.cmo : \
