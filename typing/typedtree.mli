@@ -304,12 +304,16 @@ and expression_desc =
   | Texp_array_comprehension of mutable_flag * comprehension
   | Texp_ifthenelse of expression * expression * expression option
   | Texp_sequence of expression * Layouts.layout * expression
+    (* CR layouts v5: The layout above is only used for the void sanity check now.
+       Remove it at an appropriate time. *)
   | Texp_while of {
       wh_cond : expression;
       wh_cond_region : bool; (* False means allocates in outer region *)
       wh_body : expression;
       wh_body_region : bool;  (* False means allocates in outer region *)
       wh_body_layout : Layouts.layout
+      (* CR layouts v5: The layout above is only used for the void sanity check
+         now.  Remove it at an appropriate time. *)
     }
   | Texp_for of {
       for_id  : Ident.t;
@@ -319,6 +323,8 @@ and expression_desc =
       for_dir  : direction_flag;
       for_body : expression;
       for_body_layout : Layouts.layout;
+      (* CR layouts v5: The layout above is only used for the void sanity check
+         now.  Remove it at an appropriate time. *)
       for_region : bool;
       (* for_region = true means we create a region for the body.  false means
          it may allocated in the containing region *)
@@ -541,6 +547,8 @@ and structure_item =
 
 and structure_item_desc =
     Tstr_eval of expression * Layouts.layout * attributes
+    (* CR layouts v5: The above layout is now only used to implement the void
+       sanity check.  Consider removing when void is handled properly. *)
   | Tstr_value of rec_flag * value_binding list
   | Tstr_primitive of value_description
   | Tstr_type of rec_flag * type_declaration list

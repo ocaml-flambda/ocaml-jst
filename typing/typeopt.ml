@@ -22,6 +22,14 @@ open Asttypes
 open Typedtree
 open Lambda
 
+(* CR layout v2: Error infrastructure was added to this module just to support
+   the void sanity check.  When we're ready to take that out, remove the errors
+   stuff. *)
+type error =
+    Non_value_layout of type_expr * Layout.Violation.t
+
+exception Error of Location.t * error
+
 (* Expand a type, looking through ordinary synonyms, private synonyms,
    links, and [@@unboxed] types. The returned type will be therefore be none
    of these cases. *)
@@ -76,7 +84,7 @@ let is_always_gc_ignorable env ty =
     else Layout.immediate
   in
   Result.is_ok
-    (Ctype.check_type_layout ~reason:Dummy_reason_result_ignored env ty layout)
+    (Ctype.check_type_layout ~reason:V1_safety_check env ty layout)
 
 let maybe_pointer_type env ty =
   let ty = scrape_ty env ty in
@@ -194,20 +202,70 @@ let value_kind_of_value_layout layout =
 (* CR layout v5 (and maybe other versions): As we relax the requirement that
    various things have to be values, many recursive calls in [value_kind]
    need to be updated to check layouts. *)
-let rec value_kind env ~visited ~depth ~num_nodes_visited ty
+let rec value_kind env ~loc ~visited ~depth ~num_nodes_visited ty
   : int * value_kind =
   let[@inline] cannot_proceed () =
     Numbers.Int.Set.mem (get_id ty) visited
     || depth >= 2
     || num_nodes_visited >= 30
   in
-  (* XXX layouts: remove this check once all of jane builds *)
-  begin match
-    Ctype.(check_type_layout ~reason:Dummy_reason_result_ignored
-             env (correct_levels ty) Layout.void)
-  with
-  | Ok _ -> assert false
-  | _ -> ()
+  (* XXX layouts: Here we could check that the thing is value, or that the thing
+     is not void.  The difference is whether to allow any.  We're doing the
+     former, which is right in the long term, but maybe we should do the latter
+     to avoid some missing cmi problems. *)
+  (* XXX layouts: The error message here is very very bad!  Try running
+
+     ocamlc -I typing -I parsing
+
+     from root of ocaml-jst on this program:
+
+     let res =
+       let s = {| match None with Some (Some _) -> () | _ -> () |} in
+       let pe = Parse.expression (Lexing.from_string s) in
+       let te = Typecore.type_expression (Env.initial_safe_string) pe in
+       let ute = Untypeast.untype_expression te in
+       Format.asprintf "%a" Pprintast.expression ute
+
+     (taken from test suite. -I utils is missing.)
+
+     Check that the error is at least marginally more helpful after
+     Antal/Richard's improvements. *)
+  (* XXX layouts: I think the main thing that makes this slow is that we're
+     correcting levels twice; once here and once in scrape_ty.  I tried to fix
+     this in various ways involving correcting once and using that type twice,
+     but all my attempts ended up triggering some silly infinite loop in the
+     type checker, not particularly related to layouts (indeed whichever you do
+     second, the layout check or scrape_ty, that thing will loop).  This is
+     the test case that triggers it:
+
+     (* Check for a potential infinite loop in the typing algorithm. *)
+     type 'a t12 = M of 'a t12 [@@ocaml.unboxed] [@@value];;
+
+     investigate more tomorrow. *)
+  (* XXX layouts: At the moment, this "sanity check" is also doing some sort
+     variable defaulting for us.  The defaulting scheme we have set up in typing
+     only really deals with types that appear in a cmi.  So, for example, in
+     this program:
+
+     let () =
+        match
+          assert false
+        with
+        | _ -> assert false
+
+     There is a sort variable for the scrutinee of the match in typedtree that
+     (reasonbly) is still a sort variable after checking this.  Maybe we want to
+     add a walk of the typed tree to default all sort variables after
+     typechecking.  Why isn't that needed for mode variables, which I think also
+     appear in the typed tree?
+  *)
+  begin
+    match
+      Ctype.(check_type_layout ~reason:V1_safety_check env
+               (correct_levels ty) Layout.value)
+    with
+    | Ok _ -> ()
+    | Error e -> raise (Error (loc, Non_value_layout (ty, e)))
   end;
   let scty = scrape_ty env ty in
   match get_desc scty with
@@ -237,10 +295,10 @@ let rec value_kind env ~visited ~depth ~num_nodes_visited ty
         let visited = Numbers.Int.Set.add (get_id ty) visited in
         match kind with
         | Type_variant (cstrs, rep) ->
-          value_kind_variant env ~visited ~depth ~num_nodes_visited cstrs rep
+          value_kind_variant env ~loc ~visited ~depth ~num_nodes_visited cstrs rep
         | Type_record (labels, rep) ->
           let depth = depth + 1 in
-          value_kind_record env ~visited ~depth ~num_nodes_visited labels rep
+          value_kind_record env ~loc ~visited ~depth ~num_nodes_visited labels rep
         | Type_abstract {layout} ->
           num_nodes_visited,
           value_kind_of_value_layout layout
@@ -264,7 +322,7 @@ let rec value_kind env ~visited ~depth ~num_nodes_visited ty
                 layouts to Ttuple, as in variant_representation and
                 record_representation *)
              let num_nodes_visited, kind =
-               value_kind env ~visited ~depth ~num_nodes_visited field
+               value_kind env ~loc ~visited ~depth ~num_nodes_visited field
              in (num_nodes_visited, kind :: kinds))
           (num_nodes_visited, []) fields
       in
@@ -275,13 +333,13 @@ let rec value_kind env ~visited ~depth ~num_nodes_visited ty
     (* XXX layouts: this was missing - only caught in 4.14 merge.  Am I missing
        other cases. *)
     num_nodes_visited,
-    if Result.is_ok (Ctype.check_type_layout ~reason:Dummy_reason_result_ignored
+    if Result.is_ok (Ctype.check_type_layout ~reason:V1_safety_check
                        env scty Layout.immediate)
     then Pintval else Pgenval
   | _ ->
     num_nodes_visited, Pgenval
 
-and value_kind_variant env ~visited ~depth ~num_nodes_visited
+and value_kind_variant env ~loc ~visited ~depth ~num_nodes_visited
       (cstrs : Types.constructor_declaration list) rep =
   match rep with
   | Variant_extensible -> assert false
@@ -289,13 +347,13 @@ and value_kind_variant env ~visited ~depth ~num_nodes_visited
       match cstrs with
       | [{cd_args=Cstr_tuple [ty,_]}]
       | [{cd_args=Cstr_record [{ld_type=ty}]}] ->
-        value_kind env ~visited ~depth ~num_nodes_visited ty
+        value_kind env ~loc ~visited ~depth ~num_nodes_visited ty
       | _ -> assert false
     end
-  | Variant_boxed layouts ->
+  | Variant_boxed _layouts ->
     let depth = depth + 1 in
     let for_one_constructor (constructor : Types.constructor_declaration)
-          layouts ~depth ~num_nodes_visited =
+          ~depth ~num_nodes_visited =
       let num_nodes_visited = num_nodes_visited + 1 in
       match constructor.cd_args with
       | Cstr_tuple fields ->
@@ -303,13 +361,15 @@ and value_kind_variant env ~visited ~depth ~num_nodes_visited
           List.fold_left
             (fun (num_nodes_visited, idx, kinds) (ty,_) ->
                let num_nodes_visited = num_nodes_visited + 1 in
-               if Layout.equal layouts.(idx) Layout.void then
-                 (num_nodes_visited, idx+1, kinds)
-               else
-                 let num_nodes_visited, kind =
-                   value_kind env ~visited ~depth ~num_nodes_visited ty
-                 in
-                 (num_nodes_visited, idx+1, kind :: kinds))
+               (* CR layouts v2: when we add other layouts, we'll need to check
+                  here that we aren't about to call value_kind on a different
+                  sort (we can get this info from the variant representation).
+                  For now we rely on the sanity check at the top of value_kind
+                  to rule out void. *)
+               let num_nodes_visited, kind =
+                 value_kind env ~loc ~visited ~depth ~num_nodes_visited ty
+               in
+               (num_nodes_visited, idx+1, kind :: kinds))
             (num_nodes_visited, 0, []) fields
         in
         (false, num_nodes_visited), List.rev kinds
@@ -320,14 +380,12 @@ and value_kind_variant env ~visited ~depth ~num_nodes_visited
               (label:Types.label_declaration) ->
               let num_nodes_visited = num_nodes_visited + 1 in
               let num_nodes_visited, kinds, field_mutable =
-                if Layout.(equal void label.ld_layout)
-                then (num_nodes_visited, kinds, Asttypes.Immutable)
-                else
-                  let (num_nodes_visited, kind) =
-                    value_kind env ~visited ~depth ~num_nodes_visited
-                      label.ld_type
-                  in
-                  (num_nodes_visited, kind :: kinds, label.ld_mutable)
+                (* CR layouts v2: same comment as in cstr_tuple case. *)
+                let (num_nodes_visited, kind) =
+                  value_kind env ~loc ~visited ~depth ~num_nodes_visited
+                    label.ld_type
+                in
+                (num_nodes_visited, kind :: kinds, label.ld_mutable)
               in
               let is_mutable =
                 match field_mutable with
@@ -347,7 +405,6 @@ and value_kind_variant env ~visited ~depth ~num_nodes_visited
                 next_const, consts, next_tag, non_consts) ->
           let (is_mutable, num_nodes_visited), fields =
             for_one_constructor constructor ~depth ~num_nodes_visited
-              layouts.(idx)
           in
           if is_mutable then idx+1, None
           else if List.compare_length_with fields 0 = 0 then
@@ -372,14 +429,14 @@ and value_kind_variant env ~visited ~depth ~num_nodes_visited
         (num_nodes_visited, Pvariant { consts; non_consts })
     end
 
-and value_kind_record env ~visited ~depth ~num_nodes_visited
+and value_kind_record env ~loc ~visited ~depth ~num_nodes_visited
       (labels : Types.label_declaration list) rep =
   match rep with
   | (Record_unboxed _ | (Record_inlined (_,Variant_unboxed _))) -> begin
       (* Can't be void due to invariant on value_kind *)
       match labels with
       | [{ld_type}] ->
-        value_kind env ~visited ~depth ~num_nodes_visited ld_type
+        value_kind env ~loc ~visited ~depth ~num_nodes_visited ld_type
       | [] | _ :: _ :: _ -> assert false
     end
   | _ -> begin
@@ -389,13 +446,16 @@ and value_kind_record env ~visited ~depth ~num_nodes_visited
             (label:Types.label_declaration) ->
             let num_nodes_visited = num_nodes_visited + 1 in
             let num_nodes_visited, kinds, field_mutable =
-              if Layout.(equal void label.ld_layout) then
-                (num_nodes_visited, kinds, Asttypes.Immutable)
-              else
-                let (num_nodes_visited, kind) =
-                  value_kind env ~visited ~depth ~num_nodes_visited label.ld_type
-                in
-                (num_nodes_visited, kind :: kinds, label.ld_mutable)
+              (* CR layouts v2: when we add other layouts, we'll need to check
+                 here that we aren't about to call value_kind on a different
+                 sort (we can get this info from the label.ld_layout).  For now
+                 we rely on the sanity check at the top of value_kind to rule
+                 out void. *)
+              let (num_nodes_visited, kind) =
+                value_kind env ~loc ~visited ~depth ~num_nodes_visited
+                  label.ld_type
+              in
+              (num_nodes_visited, kind :: kinds, label.ld_mutable)
             in
             let is_mutable =
               match field_mutable with
@@ -427,23 +487,25 @@ and value_kind_record env ~visited ~depth ~num_nodes_visited
         end
     end
 
-let value_kind env ty =
+let value_kind env loc ty =
   let (_num_nodes_visited, value_kind) =
-    value_kind env ~visited:Numbers.Int.Set.empty ~depth:0
+    value_kind env ~loc ~visited:Numbers.Int.Set.empty ~depth:0
       ~num_nodes_visited:0 ty
   in
   value_kind
 
-let layout env ty = Lambda.Pvalue (value_kind env ty)
+(* CR layouts v2: We'll have other layouts. Think about what to do with the
+   sanity check in value_kind. *)
+let layout env loc ty = Lambda.Pvalue (value_kind env loc ty)
 
-let function_return_layout env ty =
+let function_return_layout env loc ty =
   match is_function_type env ty with
-  | Some (_lhs, rhs) -> layout env rhs
+  | Some (_lhs, rhs) -> layout env loc rhs
   | None -> Misc.fatal_errorf "function_return_layout called on non-function type"
 
-let function2_return_layout env ty =
+let function2_return_layout env loc ty =
   match is_function_type env ty with
-  | Some (_lhs, rhs) -> function_return_layout env rhs
+  | Some (_lhs, rhs) -> function_return_layout env loc rhs
   | None -> Misc.fatal_errorf "function_return_layout called on non-function type"
 
 
@@ -496,3 +558,23 @@ let layout_union l1 l2 =
       if equal_boxed_integer bi1 bi2 then l1 else Ptop
   | (Ptop | Pvalue _ | Punboxed_float | Punboxed_int _), _ ->
       Ptop
+
+(* Error report *)
+open Format
+
+let report_error ppf = function
+  | Non_value_layout (ty, err) ->
+      fprintf ppf
+        "Non-value detected in [value_kind].@ Please report this error to \
+         the Jane Street compilers team.@ %a"
+        (Layout.Violation.report_with_offender
+           ~offender:(fun ppf -> Printtyp.type_expr ppf ty)) err
+
+let () =
+  Location.register_error_of_exn
+    (function
+      | Error (loc, err) ->
+          Some (Location.error_of_printer ~loc report_error err)
+      | _ ->
+        None
+    )

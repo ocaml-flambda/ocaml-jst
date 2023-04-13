@@ -515,6 +515,8 @@ and ('lbl, 'cstr) type_kind =
    for motivating examples where subsitution or instantiation may refine the
    immediacy of a type.  *)
 
+(* XXX layouts after removing the void translation from lambda, I think we can
+   get rid of the src_index/runtime_tag distinction, here and elsewhere. *)
 and tag = Ordinary of {src_index: int;  (* Unique name (per type) *)
                        runtime_tag: int}    (* The runtime tag *)
         | Extension of Path.t * layout array

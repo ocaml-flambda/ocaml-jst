@@ -99,7 +99,19 @@ open Printpat
 
 module Scoped_location = Debuginfo.Scoped_location
 
+type error =
+    Non_value_layout of Layout.Violation.t
+
+exception Error of Location.t * error
+
 let dbg = false
+
+(* CR layouts v2: When we're ready to allow non-values, these can be deleted or
+   changed to check for void. *)
+let layout_must_be_value loc layout =
+  match Layout.(sub ~reason:V1_safety_check layout value) with
+  | Ok _ -> ()
+  | Error e -> raise (Error (loc, Non_value_layout e))
 
 (*
    Compatibility predicate that considers potential rebindings of constructors
@@ -152,7 +164,7 @@ let expand_record_head h =
   | _ -> h
 
 let bind_alias p id ~arg ~action =
-  let k = Typeopt.layout p.pat_env p.pat_type in
+  let k = Typeopt.layout p.pat_env p.pat_loc p.pat_type in
   bind_with_layout Alias (id, k) arg action
 
 let head_loc ~scopes head =
@@ -1577,10 +1589,7 @@ and precompile_or ~arg (cls : Simple.clause list) ors args def k =
               Typedtree.pat_bound_idents_with_types orp
               |> List.filter (fun (id, _) -> Ident.Set.mem id pm_fv)
               |> List.map (fun (id, ty) ->
-                     (id, Typeopt.layout orp.pat_env ty))
-              (* Void variables don't reach value_kind because they are compiled
-                 out of the action, and are therefore filtered out by the pm_fv
-                 filter *)
+                     (id, Typeopt.layout orp.pat_env orp.pat_loc ty))
             in
             let or_num = next_raise_count () in
             let new_patl = Patterns.omega_list patl in
@@ -1756,11 +1765,12 @@ let get_key_constr = function
 let get_pat_args_constr p rem =
   match p with
   | { pat_desc = Tpat_construct (_, {cstr_arg_layouts}, args, _) } ->
-    (* CR layouts: This treatment of void can go when void is handled later in
-       the compiler. *)
-    (List.filteri (fun i _ ->
-       not (Layout.can_make_void cstr_arg_layouts.(i)))
-       args) @ rem
+    List.iteri
+      (fun i arg -> layout_must_be_value arg.pat_loc cstr_arg_layouts.(i))
+      args;
+      (* CR layouts v2: This sanity check will have to go (or be replaced with a
+         void-specific check) when we have other non-value sorts *)
+    args @ rem
   | _ -> assert false
 
 let get_expr_args_constr ~scopes head (arg, _mut, layout) rem =
@@ -1770,30 +1780,29 @@ let get_expr_args_constr ~scopes head (arg, _mut, layout) rem =
     | _ -> fatal_error "Matching.get_expr_args_constr"
   in
   let loc = head_loc ~scopes head in
+  (* CR layouts v2: This sanity check should be removed or changed to
+     specifically check for void when we add other non-value sorts. *)
+  Array.iter (fun layout -> layout_must_be_value head.pat_loc layout)
+    cstr.cstr_arg_layouts;
   let make_field_accesses binding_kind first_pos last_pos argl =
-    let rec make_args src_pos runtime_pos =
-      if src_pos > last_pos then
+    let rec make_args pos =
+      if pos > last_pos then
         argl
-      else if
-        Layout.can_make_void cstr.cstr_arg_layouts.(src_pos)
-      then
-        make_args (src_pos + 1) runtime_pos
       else
-        (Lprim (Pfield (runtime_pos, Reads_agree), [ arg ], loc), binding_kind,
+        (Lprim (Pfield (pos, Reads_agree), [ arg ], loc), binding_kind,
          layout_field)
-          :: make_args (src_pos + 1) (runtime_pos + 1)
+        :: make_args (pos + 1)
     in
-    make_args 0 first_pos
+    make_args first_pos
   in
   if cstr.cstr_inlined <> None then
     (arg, Alias, layout) :: rem
   else
     match cstr.cstr_repr with
-    | Variant_unboxed _ -> (arg, Alias, layout) :: rem
-    | Variant_extensible ->
-        make_field_accesses Alias 1 (cstr.cstr_arity - 1) rem
     | Variant_boxed _ ->
         make_field_accesses Alias 0 (cstr.cstr_arity - 1) rem
+    | Variant_unboxed _ -> (arg, Alias, layout) :: rem
+    | Variant_extensible -> make_field_accesses Alias 1 cstr.cstr_arity rem
 
 let divide_constructor ~scopes ctx pm =
   divide
@@ -2062,7 +2071,11 @@ let divide_tuple ~scopes head ctx pm =
 let record_matching_line num_fields lbl_pat_list =
   let patv = Array.make num_fields Patterns.omega in
   List.iter (fun (_, lbl, pat) ->
-    if lbl.lbl_pos <> lbl_pos_void then patv.(lbl.lbl_pos) <- pat) lbl_pat_list;
+    (* CR layouts v5: This void sanity check can be removed when we add proper
+       void support (or whenever we remove `lbl_pos_void`) *)
+    layout_must_be_value lbl.lbl_loc lbl.lbl_layout;
+    patv.(lbl.lbl_pos) <- pat)
+    lbl_pat_list;
   Array.to_list patv
 
 let get_pat_args_record num_fields p rem =
@@ -2082,47 +2095,45 @@ let get_expr_args_record ~scopes head (arg, _mut, layout) rem =
     | _ ->
         assert false
   in
-
-  let rec make_args src_pos =
-    if src_pos >= Array.length all_labels then
+  let rec make_args pos =
+    if pos >= Array.length all_labels then
       rem
     else
-      let lbl = all_labels.(src_pos) in
-      if lbl.lbl_pos = lbl_pos_void then make_args (src_pos + 1)
-      else
-        let sem =
-          match lbl.lbl_mut with
-          | Immutable -> Reads_agree
-          | Mutable -> Reads_vary
-        in
-        let access, layout =
-          (* CR layouts v1.5: Here we should really get the layout information
-             from the record_representation and translate it to Lambda.layout.
-             It's fine not to do that for now - we've already checked above that
-             we aren't in the void case.  When we do make that change, we
-             probably don't want to actually call `value_kind` in the value
-             case - I think only the sort information matters here. *)
-          match lbl.lbl_repres with
-          | Record_boxed _ | Record_inlined (_, Variant_boxed _) ->
-              Lprim (Pfield (lbl.lbl_pos, sem), [ arg ], loc), layout_field
-          | Record_unboxed _
-          | Record_inlined (_, Variant_unboxed _) -> arg, layout
-          | Record_inlined (_, Variant_extensible) ->
-              Lprim (Pfield (lbl.lbl_pos + 1, sem), [ arg ], loc), layout_field
-          | Record_float ->
-             (* TODO: could optimise to Alloc_local sometimes *)
-              Lprim (Pfloatfield (lbl.lbl_pos, sem, alloc_heap), [ arg ], loc),
-              (* CR layouts v2: We can't currently express the correct layout
-                 for this.  See also the comment on the Record_float case of
-                 update_decl_layout in typedecl. *)
-              layout_float
-        in
-        let str =
-          match lbl.lbl_mut with
-          | Immutable -> Alias
-          | Mutable -> StrictOpt
-        in
-        (access, str, layout) :: make_args (src_pos + 1)
+      let lbl = all_labels.(pos) in
+      layout_must_be_value lbl.lbl_loc lbl.lbl_layout;
+      let sem =
+        match lbl.lbl_mut with
+        | Immutable -> Reads_agree
+        | Mutable -> Reads_vary
+      in
+      let access, layout =
+        (* CR layouts v2: Here we'll need to get the layout from the
+           record_representation and translate it to `Lambda.layout`, rather
+           than just using layout_field everywhere.  (Though layout_field is
+           safe for now, particularly after checking for void above.)  I think
+           only the sort information matters here, so when we make that change
+           we'll probably want a cheaper version of the `Typeopt.layout`
+           function that avoids calling `value_kind` in the value case. *)
+        match lbl.lbl_repres with
+        | Record_boxed _
+        | Record_inlined (_, Variant_boxed _) ->
+            Lprim (Pfield (lbl.lbl_pos, sem), [ arg ], loc), layout_field
+        | Record_unboxed _
+        | Record_inlined (_, Variant_unboxed _) -> arg, layout
+        | Record_float ->
+           (* TODO: could optimise to Alloc_local sometimes *)
+           Lprim (Pfloatfield (lbl.lbl_pos, sem, alloc_heap), [ arg ], loc),
+           (* CR layouts v2: is this really unboxed float? *)
+           layout_float
+        | Record_inlined (_, Variant_extensible) ->
+            Lprim (Pfield (lbl.lbl_pos + 1, sem), [ arg ], loc), layout_field
+      in
+      let str =
+        match lbl.lbl_mut with
+        | Immutable -> Alias
+        | Mutable -> StrictOpt
+      in
+      (access, str, layout) :: make_args (pos + 1)
   in
   make_args 0
 
@@ -2133,13 +2144,9 @@ let divide_record all_labels ~scopes head ctx pm =
      and non-expanded heads, to be able to reason confidently on
      when expansions must happen. *)
   let head = expand_record_head head in
-  let non_void_label_count =
-    Array.fold_left (fun i l -> if l.lbl_pos = lbl_pos_void then i else i + 1)
-      0 all_labels
-  in
   divide_line (Context.specialize head)
     (get_expr_args_record ~scopes)
-    (get_pat_args_record non_void_label_count)
+    (get_pat_args_record (Array.length all_labels))
     head ctx pm
 
 (* Matching against an array pattern *)
@@ -2855,12 +2862,9 @@ let split_variant_cases (tag_lambda_list : ((int * bool) * lambda) list) =
 let split_extension_cases tag_lambda_list =
   let rec split_rec = function
     | [] -> ([], [])
-    | ({cstr_arg_layouts; cstr_tag}, act) :: rem -> (
+    | ({cstr_constant; cstr_tag}, act) :: rem -> (
         let consts, nonconsts = split_rec rem in
-        let all_void =
-          Array.for_all Layout.can_make_void cstr_arg_layouts
-        in
-        match all_void, cstr_tag with
+        match cstr_constant, cstr_tag with
         | true, Extension (path,_) -> ((path,act) :: consts, nonconsts)
         | false, Extension (path,_)-> (consts, (path, act) :: nonconsts)
         | _, Ordinary _ -> assert false
@@ -3634,7 +3638,8 @@ let for_trywith ~scopes value_kind loc param pat_act_list =
 
 let simple_for_let ~scopes value_kind loc param pat body =
   compile_matching ~scopes value_kind loc ~failer:Raise_match_failure
-    None (param, Typeopt.layout pat.pat_env pat.pat_type) [ (pat, body) ] Partial
+    None (param, Typeopt.layout pat.pat_env pat.pat_loc pat.pat_type)
+    [ (pat, body) ] Partial
 
 (* Optimize binding of immediate tuples
 
@@ -3769,43 +3774,32 @@ let assign_pat ~scopes value_kind opt nraise catch_ids loc pat lam =
     simple_for_let ~scopes value_kind loc lam pat code in
   List.fold_left push_sublet exit rev_sublets
 
-let for_let ~scopes loc param_void_k param param_sort pat body_kind body =
-  match param_void_k with
-  | Void_cont k ->
-      (* the param is void.  Any variables bound by the pattern must also be
-         void, so we can just skip the whole pattern matching compiler and
-         evaluate the param. *)
-      Lstaticcatch(param, (k,[]), body, body_kind)
-  | Not_void -> begin
-      match pat.pat_desc with
-      | Tpat_any ->
-        (* This eliminates a useless variable (and stack slot in bytecode)
-           for "let _ = ...". See #6865. *)
-        Lsequence (param, body)
-      | Tpat_var (id, _, _) ->
-        (* fast path, and keep track of simple bindings to unboxable numbers *)
-        let k = Typeopt.layout pat.pat_env pat.pat_type in
-        Llet (Strict, k, id, param, body)
-      | _ ->
-        let opt = ref false in
-        let nraise = next_raise_count () in
-        let catch_ids = pat_bound_idents_full param_sort pat in
-        let ids_with_kinds =
-          List.filter_map
-            (fun (id, _, typ, sort) ->
-               if Layout.can_make_void (Layout.of_sort sort)
-               then None
-               else Some (id, Typeopt.layout pat.pat_env typ))
-            catch_ids
-        in
-        let ids = List.map (fun (id, _, _, _) -> id) catch_ids in
-        let bind =
-          map_return (assign_pat ~scopes body_kind opt nraise ids loc pat) param in
-        if !opt then
-          Lstaticcatch (bind, (nraise, ids_with_kinds), body, body_kind)
-        else
-          simple_for_let ~scopes body_kind loc param pat body
-    end
+let for_let ~scopes loc param pat body_kind body =
+  match pat.pat_desc with
+  | Tpat_any ->
+      (* This eliminates a useless variable (and stack slot in bytecode)
+         for "let _ = ...". See #6865. *)
+      Lsequence (param, body)
+  | Tpat_var (id, _, _) ->
+      (* fast path, and keep track of simple bindings to unboxable numbers *)
+      let k = Typeopt.layout pat.pat_env pat.pat_loc pat.pat_type in
+      Llet (Strict, k, id, param, body)
+  | _ ->
+      let opt = ref false in
+      let nraise = next_raise_count () in
+      let catch_ids = pat_bound_idents_with_types pat in
+      let ids_with_kinds =
+        List.map
+          (fun (id, typ) -> (id, Typeopt.layout pat.pat_env pat.pat_loc typ))
+          catch_ids
+      in
+      let ids = List.map (fun (id, _) -> id) catch_ids in
+      let bind =
+        map_return (assign_pat ~scopes body_kind opt nraise ids loc pat) param in
+      if !opt then
+        Lstaticcatch (bind, (nraise, ids_with_kinds), body, body_kind)
+      else
+        simple_for_let ~scopes body_kind loc param pat body
 
 (* Handling of tupled functions and matchings *)
 
@@ -3952,3 +3946,25 @@ let for_multiple_match ~scopes value_kind loc paraml mode pat_act_list partial =
   let paraml = List.map (fun (v, layout, _) -> (Lvar v, layout)) v_paraml in
   List.fold_right bind_opt v_paraml
     (do_for_multiple_match ~scopes value_kind loc paraml mode pat_act_list partial)
+
+(* Error report *)
+(* CR layouts v2: This file didn't use to have the report_error infrastructure -
+   I added it only for the void sanity checking in this module, which I'm not
+   sure is even needed.  Reevaluate. *)
+open Format
+
+let report_error ppf = function
+  | Non_value_layout err ->
+      fprintf ppf
+        "Non-value detected in translation:@ Please report this error to \
+         the Jane Street compilers team.@ %a"
+        (Layout.Violation.report_with_name ~name:"This expression") err
+
+let () =
+  Location.register_error_of_exn
+    (function
+      | Error (loc, err) ->
+          Some (Location.error_of_printer ~loc report_error err)
+      | _ ->
+        None
+    )

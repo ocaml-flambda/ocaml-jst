@@ -1924,10 +1924,12 @@ typing/typemod.cmi : \
 typing/typeopt.cmo : \
     typing/types.cmi \
     typing/typedtree.cmi \
+    typing/printtyp.cmi \
     typing/predef.cmi \
     typing/path.cmi \
     utils/numbers.cmi \
     utils/misc.cmi \
+    parsing/location.cmi \
     typing/layouts.cmi \
     lambda/lambda.cmi \
     typing/ident.cmi \
@@ -1940,10 +1942,12 @@ typing/typeopt.cmo : \
 typing/typeopt.cmx : \
     typing/types.cmx \
     typing/typedtree.cmx \
+    typing/printtyp.cmx \
     typing/predef.cmx \
     typing/path.cmx \
     utils/numbers.cmx \
     utils/misc.cmx \
+    parsing/location.cmx \
     typing/layouts.cmx \
     lambda/lambda.cmx \
     typing/ident.cmx \
@@ -1957,6 +1961,7 @@ typing/typeopt.cmi : \
     typing/types.cmi \
     typing/typedtree.cmi \
     typing/path.cmi \
+    parsing/location.cmi \
     lambda/lambda.cmi \
     typing/env.cmi
 typing/types.cmo : \
@@ -3851,7 +3856,6 @@ lambda/transl_array_comprehension.cmo : \
     typing/predef.cmi \
     utils/misc.cmi \
     lambda/matching.cmi \
-    typing/layouts.cmi \
     lambda/lambda.cmi \
     typing/ident.cmi \
     typing/env.cmi \
@@ -3865,7 +3869,6 @@ lambda/transl_array_comprehension.cmx : \
     typing/predef.cmx \
     utils/misc.cmx \
     lambda/matching.cmx \
-    typing/layouts.cmx \
     lambda/lambda.cmx \
     typing/ident.cmx \
     typing/env.cmx \
@@ -3895,7 +3898,6 @@ lambda/transl_list_comprehension.cmo : \
     typing/typedtree.cmi \
     lambda/transl_comprehension_utils.cmi \
     lambda/matching.cmi \
-    typing/layouts.cmi \
     lambda/lambda.cmi \
     typing/ident.cmi \
     parsing/asttypes.cmi \
@@ -3905,7 +3907,6 @@ lambda/transl_list_comprehension.cmx : \
     typing/typedtree.cmx \
     lambda/transl_comprehension_utils.cmx \
     lambda/matching.cmx \
-    typing/layouts.cmx \
     lambda/lambda.cmx \
     typing/ident.cmx \
     parsing/asttypes.cmi \
@@ -3982,24 +3983,6 @@ lambda/translclass.cmi : \
     typing/ident.cmi \
     lambda/debuginfo.cmi \
     parsing/asttypes.cmi
-lambda/translcomprehension.cmo : \
-    typing/typeopt.cmi \
-    typing/typedtree.cmi \
-    typing/primitive.cmi \
-    lambda/matching.cmi \
-    typing/layouts.cmi \
-    lambda/lambda.cmi \
-    typing/ident.cmi \
-    parsing/asttypes.cmi
-lambda/translcomprehension.cmx : \
-    typing/typeopt.cmx \
-    typing/typedtree.cmx \
-    typing/primitive.cmx \
-    lambda/matching.cmx \
-    typing/layouts.cmx \
-    lambda/lambda.cmx \
-    typing/ident.cmx \
-    parsing/asttypes.cmi
 lambda/translcore.cmo : \
     utils/warnings.cmi \
     typing/types.cmi \
@@ -4072,6 +4055,7 @@ lambda/translcore.cmi : \
     typing/typedtree.cmi \
     parsing/longident.cmi \
     parsing/location.cmi \
+    typing/layouts.cmi \
     lambda/lambda.cmi \
     typing/ident.cmi \
     typing/env.cmi \
@@ -4085,6 +4069,7 @@ lambda/translmod.cmo : \
     lambda/translcore.cmi \
     lambda/translclass.cmi \
     lambda/translattribute.cmi \
+    typing/printtyp.cmi \
     typing/primitive.cmi \
     typing/predef.cmi \
     typing/path.cmi \
@@ -4110,6 +4095,7 @@ lambda/translmod.cmx : \
     lambda/translcore.cmx \
     lambda/translclass.cmx \
     lambda/translattribute.cmx \
+    typing/printtyp.cmx \
     typing/primitive.cmx \
     typing/predef.cmx \
     typing/path.cmx \
@@ -4128,9 +4114,11 @@ lambda/translmod.cmx : \
     parsing/asttypes.cmi \
     lambda/translmod.cmi
 lambda/translmod.cmi : \
+    typing/types.cmi \
     typing/typedtree.cmi \
     typing/primitive.cmi \
     parsing/location.cmi \
+    typing/layouts.cmi \
     lambda/lambda.cmi \
     typing/ident.cmi \
     utils/compilation_unit.cmi

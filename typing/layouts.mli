@@ -136,6 +136,7 @@ module Layout : sig
         (* XXX ASZ: RAE thinks this will want to take a type, not a tvar name
            (string option) in case that type gets further unified.  He's
            probably right but we'll see how errors look. *)
+    | V1_safety_check
     | Dummy_reason_result_ignored
         (* XXX ASZ: Is this the best approach?  Where could we insert a "last
            resort" check to indicate that we shouldn't be seeing this? *)

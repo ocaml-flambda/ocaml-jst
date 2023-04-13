@@ -153,6 +153,7 @@ module Layout = struct
     | Annotated of annotation_location
     | Gadt_equation of Path.t
     | Unified_with_tvar of string option
+    | V1_safety_check
     | Dummy_reason_result_ignored
 
   type internal =
@@ -357,6 +358,8 @@ module Layout = struct
           | None -> fprintf ppf "a type variable"
           | Some tv -> fprintf ppf "'%s" tv
         end
+      | V1_safety_check ->
+          fprintf ppf "to be value for the V1 safety check"
       | Dummy_reason_result_ignored ->
           Misc.fatal_errorf
             "Found [Dummy_reason_result_ignored] in a [layout] when printing!"
@@ -535,6 +538,8 @@ end
       | Unified_with_tvar tv ->
           fprintf ppf "Unified_with_tvar %a"
             (Misc.Stdlib.Option.print pp_print_string) tv
+      | V1_safety_check ->
+          fprintf ppf "V1_safety_check"
       | Dummy_reason_result_ignored ->
           fprintf ppf "Dummy_reason_result_ignored"
 

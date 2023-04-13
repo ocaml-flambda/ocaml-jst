@@ -19,6 +19,11 @@ open Typedtree
 open Lambda
 open Debuginfo.Scoped_location
 
+type error =
+    Non_value_layout of Layouts.Layout.Violation.t
+
+exception Error of Location.t * error
+
 (* Entry points to match compiler *)
 val for_function:
         scopes:scopes -> layout -> Location.t ->
@@ -30,8 +35,7 @@ val for_trywith:
         lambda
 val for_let:
         scopes:scopes -> Location.t ->
-        void_continuation -> lambda -> Layouts.sort -> pattern ->
-        layout -> lambda ->
+        lambda -> pattern -> layout -> lambda ->
         lambda
 val for_multiple_match:
         scopes:scopes -> layout -> Location.t ->

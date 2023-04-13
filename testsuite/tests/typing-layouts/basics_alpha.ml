@@ -287,9 +287,13 @@ let id5 : 'a void5 -> 'a void5 = function
 [%%expect{|
 type 'a void5 = Void5 of 'a
 type 'a any5 = Any5 of 'a
-val id5 : 'a void5 -> 'a void5 = <fun>
+Lines 4-5, characters 33-22:
+4 | .................................function
+5 |   | Void5 x -> Void5 x
+Error: Non-value detected in [value_kind].
+       Please report this error to the Jane Street compilers team.
+       'a has layout void, which is not a sublayout of value.
 |}];;
-(* XXX layouts: This should pass typechecking but hit the transl void check. *)
 
 (* disallowed attempts to use f5 and Void5 on non-voids *)
 let h5 (x : int void5) = f5 x
@@ -330,8 +334,6 @@ Error: This expression has type ('a : void)
        but an expression was expected of type ('b : value)
        'a has layout value, which does not overlap with void.
 |}]
-(* XXX layouts: understand what's going on with Principal mode here (and improve
-   error messages generally *)
 
 (****************************************)
 (* Test 6: explicitly polymorphic types *)
@@ -1048,9 +1050,13 @@ let f19 () =
   let _y = (x :> t_void) in
   ();;
 [%%expect{|
-val f19 : unit -> unit = <fun>
+Line 3, characters 12-13:
+3 |   let _y = (x :> t_void) in
+                ^
+Error: Non-value detected in translation:
+       Please report this error to the Jane Street compilers team.
+       This expression has layout void, which is not a sublayout of value.
 |}];;
-(* XXX layouts: this should pass typechecking and hit the transl void check. *)
 
 (********************************************)
 (* Test 20: Non-value bodies for let module *)
@@ -1062,9 +1068,13 @@ let f20 () =
   in
   ();;
 [%%expect{|
-val f20 : unit -> unit = <fun>
+Lines 4-5, characters 4-5:
+4 | ....let module M = struct end in
+5 |     x
+Error: Non-value detected in translation:
+       Please report this error to the Jane Street compilers team.
+       This expression has layout void, which is not a sublayout of value.
 |}];;
-(* XXX layouts: this should pass typechecking and hit the transl void check. *)
 
 (**********************************)
 (* Test 21: Non-value unpack body *)
@@ -1079,9 +1089,13 @@ let f21 () =
   ();;
 [%%expect{|
 module type M21 = sig end
-val f21 : unit -> unit = <fun>
+Lines 6-7, characters 4-5:
+6 | ....let (module M) = (module struct end : M21) in
+7 |     x
+Error: Non-value detected in translation:
+       Please report this error to the Jane Street compilers team.
+       This expression has layout void, which is not a sublayout of value.
 |}];;
-(* XXX layouts: this should pass typechecking and hit the transl void check. *)
 
 (***************************************************************)
 (* Test 22: approx_type catch-all can't be restricted to value *)
@@ -1095,6 +1109,11 @@ let f () =
 [%%expect{|
 type t_void [@@void]
 type 'a r = { x : int; y : 'a; }
-val f : unit -> 'a r = <fun>
+Lines 5-7, characters 6-20:
+5 | ......() =
+6 |   let rec g { x = x ; y = y } : _ r = g { x; y } in
+7 |   g (failwith "foo")..
+Error: Non-value detected in [value_kind].
+       Please report this error to the Jane Street compilers team.
+       'a has layout void, which is not a sublayout of value.
 |}];;
-(* XXX layouts: this should pass typechecking and his the transl void check. *)
