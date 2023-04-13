@@ -80,8 +80,8 @@ let rec eliminate_ref id = function
   | Lsequence(e1, e2) ->
       Lsequence(eliminate_ref id e1, eliminate_ref id e2)
   | Lwhile lw ->
-      Lwhile {lw with wh_cond = eliminate_ref id lw.wh_cond;
-                      wh_body = eliminate_ref id lw.wh_body}
+      Lwhile { wh_cond = eliminate_ref id lw.wh_cond;
+               wh_body = eliminate_ref id lw.wh_body}
   | Lfor lf ->
       Lfor {lf with for_from = eliminate_ref id lf.for_from;
                     for_to = eliminate_ref id lf.for_to;
@@ -187,7 +187,7 @@ let simplify_exits lam =
   | Levent(l, _) -> count ~try_depth l
   | Lifused(_v, l) -> count ~try_depth l
   | Lregion (l, _) -> count ~try_depth:(try_depth+1) l
-  | Lexclave l -> count ~try_depth l
+  | Lexclave l -> count ~try_depth:(try_depth-1) l
 
   and count_default ~try_depth sw = match sw.sw_failaction with
   | None -> ()
@@ -341,8 +341,8 @@ let simplify_exits lam =
         simplif ~layout:None ~try_depth l1,
         simplif ~layout ~try_depth l2)
   | Lwhile lw -> Lwhile {
-      lw with wh_cond = simplif ~layout:None ~try_depth lw.wh_cond;
-              wh_body = simplif ~layout:None ~try_depth lw.wh_body}
+      wh_cond = simplif ~layout:None ~try_depth lw.wh_cond;
+      wh_body = simplif ~layout:None ~try_depth lw.wh_body}
   | Lfor lf ->
       Lfor {lf with for_from = simplif ~layout:None ~try_depth lf.for_from;
                     for_to = simplif ~layout:None ~try_depth lf.for_to;
@@ -356,7 +356,7 @@ let simplify_exits lam =
   | Lregion (l, ly) -> Lregion (
       simplif ~layout ~try_depth:(try_depth + 1) l,
       result_layout ly) (* lwhite suggest to double check this case *)
-  | Lexclave l -> Lexclave (simplif ~layout ~try_depth l)
+  | Lexclave l -> Lexclave (simplif ~layout ~try_depth:(try_depth - 1) l)
   in
   simplif ~layout:None ~try_depth:0 lam
 
@@ -631,8 +631,8 @@ let simplify_lets lam =
       then Lsequence(simplif l1, simplif l2)
       else simplif l2
   | Lsequence(l1, l2) -> Lsequence(simplif l1, simplif l2)
-  | Lwhile lw -> Lwhile {lw with wh_cond = simplif lw.wh_cond;
-                                 wh_body = simplif lw.wh_body}
+  | Lwhile lw -> Lwhile { wh_cond = simplif lw.wh_cond;
+                          wh_body = simplif lw.wh_body}
   | Lfor lf -> Lfor {lf with for_from = simplif lf.for_from;
                              for_to = simplif lf.for_to;
                              for_body = simplif lf.for_body}
@@ -870,7 +870,7 @@ let simplify_local_functions lam =
      by the outermost lambda for which the the current lambda
      is in tail position. *)
   let current_scope = ref lam in
-  let current_region_scope = ref (Some lam) in
+  let current_region_scope = ref None in
   let current_function_scope = ref lam in
   let check_static lf =
     if lf.attr.local = Always_local then
@@ -963,8 +963,12 @@ let simplify_local_functions lam =
     current_scope := Option.get !current_region_scope;
     current_region_scope := old_tail_scope
   and exclave lam =
+    let old_current_scope = !current_scope in
     current_scope := Option.get !current_region_scope;
-    tail lam
+    current_region_scope := None;
+    tail lam;
+    current_region_scope := Some !current_scope;
+    current_scope := old_current_scope
   and function_definition lf =
     let old_function_scope = !current_function_scope in
     current_function_scope := lf.body;
@@ -974,7 +978,7 @@ let simplify_local_functions lam =
     let old_scope = !current_scope in
     let old_tail_scope = !current_region_scope in
     current_scope := scope;
-    current_region_scope := Some scope;
+    current_region_scope := None;
     tail lam;
     current_scope := old_scope;
     current_region_scope := old_tail_scope

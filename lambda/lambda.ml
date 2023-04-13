@@ -522,9 +522,7 @@ and lfunction =
 
 and lambda_while =
   { wh_cond : lambda;
-    wh_cond_region : bool;
     wh_body : lambda;
-    wh_body_region : bool
   }
 
 and lambda_for =
@@ -533,7 +531,6 @@ and lambda_for =
     for_to : lambda;
     for_dir : direction_flag;
     for_body : lambda;
-    for_region : bool;
   }
 
 and lambda_apply =
@@ -1068,8 +1065,8 @@ let subst update_env ?(freshen_bound_variables = false) s input_lam =
     | Lifthenelse(e1, e2, e3,kind) ->
         Lifthenelse(subst s l e1, subst s l e2, subst s l e3,kind)
     | Lsequence(e1, e2) -> Lsequence(subst s l e1, subst s l e2)
-    | Lwhile lw -> Lwhile {lw with wh_cond = subst s l lw.wh_cond;
-                                   wh_body = subst s l lw.wh_body}
+    | Lwhile lw -> Lwhile { wh_cond = subst s l lw.wh_cond;
+                            wh_body = subst s l lw.wh_body}
     | Lfor lf ->
         let for_id, l' = bind lf.for_id l in
         Lfor {lf with for_id;
@@ -1199,8 +1196,8 @@ let shallow_map ~tail ~non_tail:f = function
   | Lsequence (e1, e2) ->
       Lsequence (f e1, tail e2)
   | Lwhile lw ->
-      Lwhile { lw with wh_cond = f lw.wh_cond;
-                       wh_body = f lw.wh_body }
+      Lwhile { wh_cond = f lw.wh_cond;
+               wh_body = f lw.wh_body }
   | Lfor lf ->
       Lfor { lf with for_from = f lf.for_from;
                      for_to = f lf.for_to;

@@ -291,7 +291,7 @@ and lam ppf = function
   | Uregion e ->
       fprintf ppf "@[<2>(region@ %a)@]" lam e
   | Uexclave e ->
-      fprintf ppf "@[<2>(tail@ %a)@]" lam e
+      fprintf ppf "@[<2>(exclave@ %a)@]" lam e
 
 and sequence ppf ulam = match ulam with
   | Usequence(l1, l2) ->

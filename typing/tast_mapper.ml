@@ -370,8 +370,8 @@ let expr sub x =
           sub.expr sub exp2
         )
     | Texp_while wh ->
-        Texp_while { wh with wh_cond = sub.expr sub wh.wh_cond;
-                             wh_body = sub.expr sub wh.wh_body
+        Texp_while { wh_cond = sub.expr sub wh.wh_cond;
+                     wh_body = sub.expr sub wh.wh_body
                    }
     | Texp_for tf ->
         Texp_for {tf with for_from = sub.expr sub tf.for_from;

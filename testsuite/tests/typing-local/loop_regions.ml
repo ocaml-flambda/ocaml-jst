@@ -101,6 +101,35 @@ let nonloc_while_cond () =
   let offset2 = local_stack_offset () in
   [offset1; !offset_loop; offset2]
 
+
+let loc_func () =
+  let offset_func = ref (-1) in
+  let fun_exclave r =
+    [%exclave] (
+        let z = local_ (Some (Sys.opaque_identity 42)) in
+        let _ = (opaque_local z) in
+        r := local_stack_offset ()
+    ) in
+  let offset1 = local_stack_offset () in
+
+  fun_exclave offset_func;
+  let offset2 = local_stack_offset () in
+  [offset1; !offset_func; offset2]
+
+
+let nonloc_func () =
+  let offset_func = ref (-1) in
+  let fun_nonexclave r =
+    let z = local_ (Some (Sys.opaque_identity 42)) in
+    let _ = (opaque_local z) in
+    r := local_stack_offset ()
+  in
+  let offset1 = local_stack_offset () in
+
+  fun_nonexclave offset_func;
+  let offset2 = local_stack_offset () in
+  [offset1; !offset_func; offset2]
+
 let () =
   List.iter print_offsets [
     "local for",           loc_for ();
@@ -108,5 +137,7 @@ let () =
     "local while body",    loc_while_body ();
     "nonlocal while body", nonloc_while_body ();
     "local while cond",    loc_while_cond ();
-    "nonlocal while cond", nonloc_while_cond ()
+    "nonlocal while cond", nonloc_while_cond ();
+    "local func",          loc_func ();
+    "nonlocal func",       nonloc_func ();
   ]

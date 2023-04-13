@@ -274,7 +274,7 @@ let mk_expected ?explanation ty = { ty; explanation; }
 let case lhs rhs =
   {c_lhs = lhs; c_guard = None; c_rhs = rhs}
 
-type function_position =  Tail | Nontail
+type function_position = Tail | Nontail
 
 
 type region_position =
@@ -407,11 +407,7 @@ let mode_argument ~funct ~index ~position ~partial_app alloc_mode =
                 Id_prim _), 1, Tail ->
      (* The second argument to (&&) and (||) is in
         tail position if the call is *)
-      (* CR zqian: this is suspicious,
-         because vmode is not the mode of the region;
-         ideally the `position` should contain the mode
-         of the region so we can pass it to mode_return;
-         but this might be fine because of mode-crossing? *)
+      (* vmode is wrong; fine because of mode crossing on boolean *)
      mode_return vmode
   | Texp_ident (_, _, _, Id_prim _), _, _ ->
      (* Other primitives cannot be tail-called *)
@@ -4188,24 +4184,22 @@ and type_expect_
         | RNontail ->
           raise (Error (loc, env, Exclave_in_nontail_position))
         | RTail (mode, _) ->
-          (* mode' is non-tail-of-region, because currently our language cannot construct
-           region in the tail of another region.
-            With the introduction of explicit region we will need something more clever *)
+          (* mode' is RNontail, because currently our language cannot construct
+             region in the tail of another region.*)
           let mode' = mode_default mode in
-          (* enforce to be local; part of the compiler depends on this bit to know
-          if it allocate in parent region. *)
+          (* The middle-end relies on all functions which allocate into their
+             parent's region having a return mode of local. *)
           submode ~loc ~env ~reason:Other Value_mode.local mode';
-          let env' = Env.add_exclave_lock env in
+          let new_env = Env.add_exclave_lock env in
           let exp =
-            type_expect ?in_function ~recarg env' mode' sbody ty_expected_explained
+            type_expect ?in_function ~recarg new_env mode' sbody ty_expected_explained
           in
-          (* this whole thing returns regional value *)
           submode ~loc ~env ~reason:Other Value_mode.regional expected_mode;
           { exp_desc = Texp_exclave exp;
             exp_loc = loc;
             exp_extra = [];
             exp_type = exp.exp_type;
-            exp_env = env;  (* use the old env *)
+            exp_env = env;
             exp_attributes = sexp.pexp_attributes;
           }
       end
@@ -4679,17 +4673,15 @@ and type_expect_
         exp_attributes = sexp.pexp_attributes;
         exp_env = env }
   | Pexp_while(scond, sbody) ->
-      let cond_env,wh_cond_region,mode=
-      (* not checking is_local_returning_expr because you should just use exclave *)
-        Env.add_region_lock env, true, mode_region (Value_mode.local)
+      let cond_env,mode=
+        Env.add_region_lock env, mode_region Value_mode.local
       in
       let wh_cond =
         type_expect cond_env mode scond
           (mk_expected ~explanation:While_loop_conditional Predef.type_bool)
       in
-      (* local because unit cross modes  *)
-      let body_env,wh_body_region,position =
-        Env.add_region_lock env, true, RTail (Value_mode.local, Nontail)
+      let body_env,position =
+        Env.add_region_lock env, RTail (Value_mode.local, Nontail)
       in
       let wh_body =
         type_statement ~explanation:While_loop_body
@@ -4697,7 +4689,7 @@ and type_expect_
       in
       rue {
         exp_desc =
-          Texp_while {wh_cond; wh_cond_region; wh_body; wh_body_region};
+          Texp_while {wh_cond; wh_body};
         exp_loc = loc; exp_extra = [];
         exp_type = instance Predef.type_unit;
         exp_attributes = sexp.pexp_attributes;
@@ -4714,16 +4706,15 @@ and type_expect_
       let for_id, new_env =
         type_for_loop_index ~loc ~env ~param
       in
-      let new_env, for_region, position =
-      (* local because unit cross modes  *)
-        Env.add_region_lock new_env, true, RTail (Value_mode.local, Nontail)
+      let new_env, position =
+        Env.add_region_lock new_env, RTail (Value_mode.local, Nontail)
       in
       let for_body =
         type_statement ~explanation:For_loop_body ~position new_env sbody
       in
       rue {
         exp_desc = Texp_for {for_id; for_pat = param; for_from; for_to;
-                             for_dir = dir; for_body; for_region};
+                             for_dir = dir; for_body};
         exp_loc = loc; exp_extra = [];
         exp_type = instance Predef.type_unit;
         exp_attributes = sexp.pexp_attributes;

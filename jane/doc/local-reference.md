@@ -442,39 +442,52 @@ be the caller's (or that of the caller's caller, etc., if the caller is also
 local-returning).
 
 ## Exclave
+In the previous section, we discussed that a function can return local values without having its own region. Consequently, it operates within the caller's region. This approach, however, has certain disadvantages. Consider the following example:
 
-In the previous section, a function can return local values by not having its own
-region; as a result, it works in the caller's region. This has downsides;
-consider the following example:
 ```
 let f (local_ x) = local_
   let local_ y = (complex computation on x) in
   if y then local_ None
   else local_ (Some x)
 ```
-function `f` will allocate in caller's region to store
-intermediate/temporary data for the complex computation, and the allocation
-will stay in the region even after `f` returns. They would be released
-only when the program exits the caller's region. We hope that the temporary
-allocation are released upon `f` returning and rewrite the example as
+
+The function `f` allocates memory within the caller's region to store intermediate and temporary data for the complex computation. This allocation remains in the region even after `f` returns and is released only when the program exits the caller's region. To allow temporary allocations to be released upon the function's return, we can rewrite the example as follows:
+
 ```
 let f (local_ x) =
   let local_ y = (complex computation on x) in
   if y then [%exclave] (local_ None)
   else [%exclave] (local_ (Some x))
 ```
-The new primitive `[%exclave]` early-terminates the current region, and runs
-whatever follows in the outer region. In this example, the function `f` still
-has its own region, where the allocation of the complex computation will happen.
-This region will be early-terminated by `[%exclave]`, releasing all the
-temporary allocations. Next, both `local_ None` and `local_ (Some x)` are "local"
-relative to the outer region and thus allowed to escape. In summary, we have
-temporary allocations on stack and released promptly, and have the result
-allocations on stack and escaped.
 
-`[%exclave]` terminates the current region, and all values therein are
-deleted. For example, the following is error because `x` is deleted after
-[%exclave] and cannot be refered to.
+The new primitive `[%exclave]` terminates the current region early and executes the subsequent code in the outer region. In this example, the function `f` retains its own region where the allocation for the complex computation occurs. This region is terminated by `[%exclave]`, releasing all temporary allocations. Both `local_ None` and `local_ (Some x)` are considered "local" relative to the outer region and are allowed to escape. In summary, we have temporary allocations on the stack that are promptly released and result allocations on the stack that can escape.
+
+Here is another example in which the stack usage can be improved asymptotically by applying `[%exclave]`:
+
+```
+let rec maybe_length p l = local_
+  match l with
+  | [] -> Ok { res = 0 }
+  | x :: xs ->
+      match p x with
+      | false -> None
+      | true ->
+          match count_result f xs with
+          | None as r -> r
+          | Some { res = count } ->
+              Some { res = count + 1 }
+```
+
+The function is intended to have the type:
+
+```
+val maybe_length : ('a -> bool) -> 'a list -> local_ int option
+```
+
+This function computes the length of the list. The predicate can return `false`, in which case the result of the entire function would be `None`. It is designed not to allocate heap memory, instead using the stack for all `Some` allocations. However, it will currently use O(N) stack space because all allocations occur in the original caller's stack frame. To improve its space usage, we remove the `local_` annotation (so the function has its own region), and wrap `Some {res = count + 1}` inside `[%exclave]` to release the region before the allocation. After the revision, the function should use O(1) stack space.
+
+`[%exclave]` terminates the current region, so values within it cannot be used inside `[%exclave]`. For example, the following code produces an error because `x` would escape its region:
+
 ```
   let local_ x = "hello" in
   [%exclave] (
@@ -483,9 +496,8 @@ deleted. For example, the following is error because `x` is deleted after
   )
 ```
 
-For a similar reason, `[%exclave]` can only appear at the tail position of a
-region - one cannot re-enter a region that has been
-terminated. For example, the following is error.
+Similarly, `[%exclave]` can only appear at the tail position of a region since one cannot re-enter a terminated region. The following code is an error for this reason:
+
 ```
   let local_ x = "hello" in
   [%exclave] (
@@ -494,11 +506,6 @@ terminated. For example, the following is error.
   );
   local_ (x ^ "world")
 ```
-
-From a low-level perspective, in both examples the memory of `x` might have
-been overwritten by `y` and unsafe to read - this gives an intuition of we mean
-by "region terminated and values deleted".
-
 ## Records and mutability
 
 For any given variable, the typechecker checks only whether that variable is
@@ -543,13 +550,13 @@ then a variable `local_ x` of type `string glob list` is a local list
 of global strings, and while the list itself cannot be returned out of
 a region, the `contents` field of any of its elements can.
 
-The same overriding can be used on constructor arguments. To imitate the example 
+The same overriding can be used on constructor arguments. To imitate the example
 for record fields:
 
     type ('a, 'b) t = Foo of global_ 'a * 'b
 
-    let f () = 
-      let local_ packed = Foo (x, y) in 
+    let f () =
+      let local_ packed = Foo (x, y) in
       match packed with
       | Foo (foo, bar) -> foo
 

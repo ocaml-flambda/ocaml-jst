@@ -974,7 +974,7 @@ method emit_expr_aux (env:environment) exp :
      end
   | Cexclave e ->
      begin match env.regions with
-     | [] -> Misc.fatal_error "Selectgen.emit_expr: Ctail but not in tail of a region"
+     | [] -> Misc.fatal_error "Selectgen.emit_expr: Cexclave but not in tail of a region"
      | cl :: rest ->
        self#insert_endregions env [cl];
        self#emit_expr_aux { env with regions = rest } e
@@ -1318,7 +1318,7 @@ method emit_tail (env:environment) exp =
       self#emit_tail {env with regions = reg::env.regions} e
   | Cexclave e ->
       begin match env.regions with
-      | [] -> Misc.fatal_error "Selectgen.emit_tail: Ctail not inside Cregion"
+      | [] -> Misc.fatal_error "Selectgen.emit_tail: Cexclave not inside Cregion"
       | reg :: regions ->
          self#insert_endregions env [reg];
          self#emit_tail { env with regions } e

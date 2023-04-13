@@ -273,7 +273,7 @@ let rec expr ppf = function
   | Cregion e ->
       fprintf ppf "@[<2>(region@ %a)@]" sequence e
   | Cexclave e ->
-      fprintf ppf "@[<2>(tail@ %a)@]" sequence e
+      fprintf ppf "@[<2>(exclave@ %a)@]" sequence e
 
 and sequence ppf = function
   | Csequence(e1, e2) -> fprintf ppf "%a@ %a" sequence e1 sequence e2

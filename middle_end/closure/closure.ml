@@ -98,7 +98,7 @@ let region ulam =
   if is_trivial then ulam
   else Uregion ulam
 
-let tail ulam =
+let exclave ulam =
   let is_trivial =
     match ulam with
     | Uvar _ | Uconst _ -> true
@@ -771,7 +771,7 @@ let rec substitute loc ((backend, fpc) as st) sb rn ulam =
   | Uregion e ->
       region (substitute loc st sb rn e)
   | Uexclave e ->
-      tail (substitute loc st sb rn e)
+      exclave (substitute loc st sb rn e)
 
 type env = {
   backend : (module Backend_intf.S);
@@ -923,7 +923,7 @@ let direct_apply env fundesc ufunct uargs pos result_layout mode ~probe ~loc ~at
      let body =
        match pos with
        | Rc_normal | Rc_nontail -> body
-       | Rc_close_at_apply -> tail body
+       | Rc_close_at_apply -> exclave body
      in
      bind_params env loc fundesc params uargs ufunct body
 
@@ -1180,7 +1180,7 @@ let rec close ({ backend; fenv; cenv ; mutable_vars; kinds; catch_env } as env) 
           let body =
             match pos with
             | Rc_normal | Rc_nontail -> body
-            | Rc_close_at_apply -> tail body
+            | Rc_close_at_apply -> exclave body
           in
           let result =
             List.fold_left2 (fun body (id, defining_expr) kind ->
@@ -1445,7 +1445,7 @@ let rec close ({ backend; fenv; cenv ; mutable_vars; kinds; catch_env } as env) 
       region ulam, approx
   | Lexclave lam ->
       let ulam, approx = close env lam in
-      tail ulam, approx
+      exclave ulam, approx
 
 and close_list env = function
     [] -> []

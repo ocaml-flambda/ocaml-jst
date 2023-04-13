@@ -1,89 +1,21 @@
 (* TEST
-   * stack-allocation
-   ** native
-*)
+   * native *)
 
 external local_stack_offset : unit -> int = "caml_local_stack_offset"
 external opaque_identity : ('a[@local_opt]) -> ('a[@local_opt]) = "%opaque"
 let[@inline never] ignore_local (local_ x) = let _ = opaque_identity x in ()
 let last_offset = ref 0
 
-let check_empty ?(verbose=true) name =
+let check_empty name =
   let offs = local_stack_offset () in
   if offs <> !last_offset then begin
-    if verbose then
-      Printf.printf "%25s: %d bytes leaked\n%!" name (offs - !last_offset)
-    else
-      Printf.printf "%25s: leaked\n%!" name
+    Printf.printf "%25s: %d bytes leaked\n%!" name (offs - !last_offset)
   end else begin
     Printf.printf "%25s: OK\n%!" name
   end;
   last_offset := offs
 
 let () = check_empty "startup"
-
-let check_region name f = [%exclave] (
-  let offs0 = local_stack_offset () in
-  last_offset := offs0;
-  Printf.printf "%25s: start\n%!" name;
-  f ();
-  let offs1 = local_stack_offset () in
-  last_offset := offs1;
-  if offs0 = offs1 then
-    Printf.printf "%25s: stop - no leak\n%!" name
-  else
-    Printf.printf "%25s: stop - leak\n%!" name
-)
-
-(* Below, we will observe that the allocations in the loop body keep growing the stack,
-   instead of reusing the stack; this is because the allocations happen outside
-   of the loop body region.
-*)
-let loop_exclave () =
-  let local_ x = ref 0 in
-  let _ = opaque_identity x in
-  check_empty ~verbose:false "pre loop";
-  for i = 1 to 4 do  (* 4 is enough *)
-    [%exclave] (
-      let _ = check_empty ~verbose:false "pre alloc" in
-      let local_ y = ref !x in
-      let _ = opaque_identity y in
-      x := !x + 1;
-      check_empty ~verbose:false "post alloc"
-      )
-  done
-
-let () =
-  check_region "loop_exclave" loop_exclave
-
-(* Below, we will observe that the allocations in the function body keep growing
-   the stack, instead of the default behaviour of tail call of constant space.
-   This is because the function doesn't have a region, which blurs the stack boundary
-   between recursive calls *)
-let rec fun_exclave n =
-  [%exclave] (
-    if n = 0 then
-      ()
-    else begin
-      check_empty ~verbose:false "pre alloc";
-      let local_ r = ref n in
-      check_empty ~verbose:false "post alloc";
-      let _ = opaque_identity r in
-      fun_exclave (n - 1)
-    end
-  )
-
-  (* we went a long way to ensure that this function has its own stack frame;
-  so we can observe that the space freed afterwards
-     *)
-let fun_exclave' () =
-  let local_ r = ref 42 in
-  let _ = opaque_identity r in
-  fun_exclave 4;
-  ()
-
-let () = check_region "fun_exclave" fun_exclave'
-
 
 let[@inline never] uses_local x =
   let local_ r = ref x in
@@ -92,6 +24,16 @@ let[@inline never] uses_local x =
 let () =
   uses_local 42;
   check_empty "function call"
+
+let[@inline never] uses_exclave x =
+  let local_ r = ref x in
+  let _ = opaque_identity r in
+  [%exclave] (
+    ()
+  )
+let () =
+  uses_local 42;
+  check_empty "cleanup upon exclave"
 
 let[@inline never] uses_local_try x =
   try

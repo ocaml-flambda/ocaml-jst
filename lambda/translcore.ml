@@ -104,9 +104,6 @@ let transl_apply_position position =
 
 let may_allocate_in_region lam =
   (* loop_region raises, if the lambda might allocate in parent region *)
-  (* this only happens if at tail position there is a exclave,
-     and its body allocates in its current region *)
-  (* I guess there can't be exclave in non-tail positions?(because of type checker) *)
   let rec loop_region lam =
     shallow_iter ~tail:(function
       | Lexclave body -> loop body
@@ -128,18 +125,15 @@ let may_allocate_in_region lam =
           List.iter loop args
        end
     | Lregion (body, _layout) ->
-       (* [body] might do allocations in parent region because of exclave, and thus
-          [Lregion body] might do allocations in current region *)
+       (* [body] might allocate in the parent region because of exclave, and thus
+          [Lregion body] might allocate in the current region *)
       loop_region body
     | Lexclave _body ->
-      (* [_body] might do local allocations, but not in the current region either *)
-      (* rather, it's in the parent region *)
+      (* [_body] might do local allocations, but not in the current region;
+        rather, it's in the parent region *)
       ()
-    | Lwhile {wh_cond_region=false} -> raise Exit
-    | Lwhile {wh_body_region=false} -> raise Exit
-    | Lwhile _ -> ()
-    | Lfor {for_region=false} -> raise Exit
-    | Lfor {for_from; for_to} -> loop for_from; loop for_to
+    | Lwhile {wh_cond; wh_body} -> loop_region wh_cond; loop_region wh_body
+    | Lfor {for_from; for_to; for_body} -> loop for_from; loop for_to; loop_region for_body
     | ( Lapply _ | Llet _ | Lmutlet _ | Lletrec _ | Lswitch _ | Lstringswitch _
       | Lstaticraise _ | Lstaticcatch _ | Ltrywith _
       | Lifthenelse _ | Lsequence _ | Lassign _ | Lsend _
@@ -607,22 +601,15 @@ and transl_exp0 ~in_new_scope ~scopes e =
   | Texp_sequence(expr1, expr2) ->
       Lsequence(transl_exp ~scopes expr1,
                 event_before ~scopes expr2 (transl_exp ~scopes expr2))
-  | Texp_while {wh_body; wh_body_region; wh_cond; wh_cond_region} ->
+  | Texp_while {wh_body; wh_cond } ->
       let cond = transl_exp ~scopes wh_cond in
       let body = transl_exp ~scopes wh_body in
       Lwhile {
-        wh_cond =
-          if wh_cond_region then
-            maybe_region_layout layout_int cond
-          else cond;
-        wh_cond_region;
+        wh_cond = maybe_region_layout layout_int cond;
         wh_body = event_before ~scopes wh_body
-                    (if wh_body_region then
-                       maybe_region_layout layout_unit body
-                     else body);
-        wh_body_region;
+                    (maybe_region_layout layout_unit body);
       }
-  | Texp_for {for_id; for_from; for_to; for_dir; for_body; for_region} ->
+  | Texp_for {for_id; for_from; for_to; for_dir; for_body} ->
       let body = transl_exp ~scopes for_body in
       Lfor {
         for_id;
@@ -630,10 +617,7 @@ and transl_exp0 ~in_new_scope ~scopes e =
         for_to = transl_exp ~scopes for_to;
         for_dir;
         for_body = event_before ~scopes for_body
-                     (if for_region then
-                        maybe_region_layout layout_unit body
-                      else body);
-        for_region;
+                     (maybe_region_layout layout_unit body);
       }
   | Texp_send(expr, met, pos, alloc_mode) ->
       let lam =
