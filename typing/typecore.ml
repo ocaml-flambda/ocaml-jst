@@ -4673,16 +4673,14 @@ and type_expect_
         exp_attributes = sexp.pexp_attributes;
         exp_env = env }
   | Pexp_while(scond, sbody) ->
-      let cond_env,mode=
-        Env.add_region_lock env, mode_region Value_mode.local
-      in
+      let cond_env = Env.add_region_lock env in
+      let mode = mode_region Value_mode.local in
       let wh_cond =
         type_expect cond_env mode scond
           (mk_expected ~explanation:While_loop_conditional Predef.type_bool)
       in
-      let body_env,position =
-        Env.add_region_lock env, RTail (Value_mode.local, Nontail)
-      in
+      let body_env = Env.add_region_lock env in
+      let position = RTail (Value_mode.local, Nontail) in
       let wh_body =
         type_statement ~explanation:While_loop_body
           ~position body_env sbody
@@ -4706,9 +4704,8 @@ and type_expect_
       let for_id, new_env =
         type_for_loop_index ~loc ~env ~param
       in
-      let new_env, position =
-        Env.add_region_lock new_env, RTail (Value_mode.local, Nontail)
-      in
+      let new_env = Env.add_region_lock new_env in
+      let position = RTail (Value_mode.local, Nontail) in
       let for_body =
         type_statement ~explanation:For_loop_body ~position new_env sbody
       in

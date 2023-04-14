@@ -512,9 +512,9 @@ count + 1}` inside `[%exclave]` to release the region before the allocation.
 After the revision, the function should use O(1) stack space.
 
 
-`[%exclave]` terminates the current region, so values within it cannot be used
-inside `[%exclave]`. For example, the following code produces an error because
-`x` would escape its region:
+`[%exclave]` terminates the current region, so local values from that region
+cannot be used inside `[%exclave]`. For example, the following code produces an
+error because `x` would escape its region:
 
 
 ```

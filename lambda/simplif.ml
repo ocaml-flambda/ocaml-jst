@@ -355,7 +355,7 @@ let simplify_exits lam =
   | Lifused(v, l) -> Lifused (v,simplif ~layout ~try_depth l)
   | Lregion (l, ly) -> Lregion (
       simplif ~layout ~try_depth:(try_depth + 1) l,
-      result_layout ly) (* lwhite suggest to double check this case *)
+      result_layout ly)
   | Lexclave l -> Lexclave (simplif ~layout ~try_depth:(try_depth - 1) l)
   in
   simplif ~layout:None ~try_depth:0 lam
@@ -957,17 +957,19 @@ let simplify_local_functions lam =
     with_scope ~scope:lam lam
   and region lam =
     let old_tail_scope = !current_region_scope in
+    let old_scope = !current_scope in
     current_region_scope := Some !current_scope;
     current_scope := lam;
     tail lam;
-    current_scope := Option.get !current_region_scope;
+    current_scope := old_scope;
     current_region_scope := old_tail_scope
   and exclave lam =
     let old_current_scope = !current_scope in
+    let old_tail_scope = !current_region_scope in
     current_scope := Option.get !current_region_scope;
     current_region_scope := None;
     tail lam;
-    current_region_scope := Some !current_scope;
+    current_region_scope := old_tail_scope;
     current_scope := old_current_scope
   and function_definition lf =
     let old_function_scope = !current_function_scope in

@@ -111,7 +111,6 @@ let loc_func () =
         r := local_stack_offset ()
     ) in
   let offset1 = local_stack_offset () in
-
   fun_exclave offset_func;
   let offset2 = local_stack_offset () in
   [offset1; !offset_func; offset2]
@@ -125,7 +124,6 @@ let nonloc_func () =
     r := local_stack_offset ()
   in
   let offset1 = local_stack_offset () in
-
   fun_nonexclave offset_func;
   let offset2 = local_stack_offset () in
   [offset1; !offset_func; offset2]
