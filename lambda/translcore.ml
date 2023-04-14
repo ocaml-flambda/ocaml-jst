@@ -132,8 +132,8 @@ let may_allocate_in_region lam =
       (* [_body] might do local allocations, but not in the current region;
         rather, it's in the parent region *)
       ()
-    | Lwhile {wh_cond; wh_body} -> loop_region wh_cond; loop_region wh_body
-    | Lfor {for_from; for_to; for_body} -> loop for_from; loop for_to; loop_region for_body
+    | Lwhile {wh_cond; wh_body} -> loop wh_cond; loop wh_body
+    | Lfor {for_from; for_to; for_body} -> loop for_from; loop for_to; loop for_body
     | ( Lapply _ | Llet _ | Lmutlet _ | Lletrec _ | Lswitch _ | Lstringswitch _
       | Lstaticraise _ | Lstaticcatch _ | Ltrywith _
       | Lifthenelse _ | Lsequence _ | Lassign _ | Lsend _
