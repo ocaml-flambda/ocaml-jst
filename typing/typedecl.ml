@@ -639,7 +639,7 @@ let transl_declaration env sdecl (id, uid) =
             (* For @@unboxed types with layout annotations, we do the following:
                1) Here we trust and record the layout annotation.  It may be
                   needed for mutually defined types.
-               2) In [check_decl_layout] we compute an accurate layout from the
+               2) In [update_decl_layout] we compute an accurate layout from the
                   rest of the kind (the inner part of the unboxed type).  This
                   is done without reference to the annotation and it may be
                   unrelated.  We replace the layout here with that accurate
@@ -853,6 +853,17 @@ let check_constraints env sdecl (_, decl) =
    improved estimate for the layout, so we return an updated decl.  It's
    perfectly sound to keep the old one, it just may result in more work in
    future layout checks.
+
+   CR layouts: Maybe it would be better to compute the best possible layout for
+   this type.  A couple things to consider: 1) The performance tradeoff of one
+   expensive check now vs an unknown number of checks in the future.  2) If it's
+   a gadt, this may involve using gadt equations, which may change the type's
+   scope.  Is that an issue?  Maybe we can pull a similar checkpointing trick as
+   we do in [is_always_global], but that's even more expensive.
+
+   CR layouts: Can the layout bits of this just be folded in with the layout
+   annotations check at the end of transl_type_decl, or are there other ways
+   to get non-trivial layouts in Type_abstract?
 *)
 let check_coherence env loc dpath decl =
   match decl with
@@ -894,7 +905,13 @@ let check_coherence env loc dpath decl =
         Ctype.check_type_layout ~reason:(Annotated (Type_declaration dpath))
           env ty layout
       with
-      | Ok layout -> { decl with type_kind = Type_abstract {layout} }
+      | Ok layout' ->
+        let layout =
+          if Result.is_ok
+               (Layout.sub ~reason:Dummy_reason_result_ignored layout' layout)
+          then layout' else layout
+        in
+        { decl with type_kind = Type_abstract {layout} }
       | Error v -> raise(Error(loc, Layout v))
       end
   | { type_manifest = None } -> decl
@@ -1472,14 +1489,18 @@ let transl_type_decl env rec_flag sdecl_list =
         { tdecl with typ_type = decl }
       ) tdecls decls
   in
-  (* Check layout annotations *)
-  (* CR layouts: can we skip this sometimes?  abbreviations? *)
+  (* Check layout annotations.  We can skip abstract types: If they have no
+     manifest there is nothing to check, and abbreviations are checked as part
+     of check_abbrev/check_coherence. *)
   List.iter (fun tdecl ->
-    let layout = Option.value tdecl.typ_layout_annotation ~default:Layout.any in
-    match Ctype.check_decl_layout ~reason:Dummy_reason_result_ignored
-            final_env tdecl.typ_type layout with
-    | Ok _ -> ()
-    | Error v -> raise(Error(tdecl.typ_loc, Layout v)))
+    match tdecl.typ_layout_annotation, tdecl.typ_type.type_kind with
+    | None, _ -> ()
+    | Some _, Type_abstract _ -> ()
+    | Some layout, (Type_record _ | Type_variant _ | Type_open) ->
+      match Ctype.check_decl_layout ~reason:Dummy_reason_result_ignored
+              final_env tdecl.typ_type layout with
+      | Ok _ -> ()
+      | Error v -> raise(Error(tdecl.typ_loc, Layout v)))
     final_decls;
   (* Done *)
   (final_decls, final_env)

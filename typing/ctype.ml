@@ -1978,8 +1978,9 @@ let rec estimate_type_layout env ty =
    it's a valid argument to [t].  (We believe there are still loops like this
    that can occur, though, and may need a more principled solution later).
 *)
-(* CR layouts: if layout is any, we can just be done, except that we try to
-   return an accurate layout.  Most callers don't use that layout though. *)
+(* CR layouts: We only use the result layout of this in one place
+   (check_coherence).  Maybe that should be implemented differently and this
+   shouldn't return a layout on success. *)
 let rec constrain_type_layout ~reason ~fixed env ty layout fuel =
   (* XXX ASZ: Are all the [~reason]s in this function the same? *)
   let constrain_unboxed ty =
@@ -2015,6 +2016,12 @@ let rec constrain_type_layout ~reason ~fixed env ty layout fuel =
     end
   | Tpoly (ty, _) -> constrain_type_layout ~reason ~fixed env ty layout fuel
   | _ -> constrain_unboxed ty
+
+let constrain_type_layout ~reason ~fixed env ty layout fuel =
+  (* An optimization to avoid doing any work if we're checking against
+     any. *)
+  if Layout.(equal layout any) then Ok Layout.any
+  else constrain_type_layout ~reason ~fixed env ty layout fuel
 
 let check_type_layout ~reason env ty layout =
   constrain_type_layout ~reason ~fixed:true env ty layout 100
