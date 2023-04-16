@@ -209,10 +209,6 @@ let rec value_kind env ~loc ~visited ~depth ~num_nodes_visited ty
     || depth >= 2
     || num_nodes_visited >= 30
   in
-  (* XXX layouts: Here we could check that the thing is value, or that the thing
-     is not void.  The difference is whether to allow any.  We're doing the
-     former, which is right in the long term, but maybe we should do the latter
-     to avoid some missing cmi problems. *)
   (* XXX layouts: The error message here is very very bad!  Try running
 
      ocamlc -I typing -I parsing
@@ -230,18 +226,6 @@ let rec value_kind env ~loc ~visited ~depth ~num_nodes_visited ty
 
      Check that the error is at least marginally more helpful after
      Antal/Richard's improvements. *)
-  (* XXX layouts: I think the main thing that makes this slow is that we're
-     correcting levels twice; once here and once in scrape_ty.  I tried to fix
-     this in various ways involving correcting once and using that type twice,
-     but all my attempts ended up triggering some silly infinite loop in the
-     type checker, not particularly related to layouts (indeed whichever you do
-     second, the layout check or scrape_ty, that thing will loop).  This is
-     the test case that triggers it:
-
-     (* Check for a potential infinite loop in the typing algorithm. *)
-     type 'a t12 = M of 'a t12 [@@ocaml.unboxed] [@@value];;
-
-     investigate more tomorrow. *)
   (* XXX layouts: At the moment, this "sanity check" is also doing some sort
      variable defaulting for us.  The defaulting scheme we have set up in typing
      only really deals with types that appear in a cmi.  So, for example, in
@@ -259,15 +243,37 @@ let rec value_kind env ~loc ~visited ~depth ~num_nodes_visited ty
      typechecking.  Why isn't that needed for mode variables, which I think also
      appear in the typed tree?
   *)
+  let scty = scrape_ty env ty in
   begin
-    match
-      Ctype.(check_type_layout ~reason:V1_safety_check env
-               (correct_levels ty) Layout.value)
+    (* XXX layouts: We want to avoid correcting levels twice, and scrape_ty will
+       correct levels for us.  But it may be the case that we could do the
+       sanity check on the original type but not the scraped type, because of
+       missing cmis.  So we try the scraped type, and fall back to correcting
+       levels a second time if that doesn't work.
+
+       It would be nice to correct levels once at the beginning and pass that
+       type to both scrape_ty and the safety check, but I found this causes an
+       infinite loop in the typechecker.  Whichever you do second, the layout
+       check or scrape_ty, that thing will loop.  This is the test case that
+       triggers it:
+
+       (* Check for a potential infinite loop in the typing algorithm. *)
+       type 'a t12 = M of 'a t12 [@@ocaml.unboxed] [@@value];;
+
+       This should be understood, but for now I'm doing the simple fall back
+       thing so I can test the performance difference.
+    *)
+    match Ctype.check_type_layout ~reason:V1_safety_check env scty Layout.value
     with
     | Ok _ -> ()
-    | Error e -> raise (Error (loc, Non_value_layout (ty, e)))
+    | Error _ ->
+      match
+        Ctype.(check_type_layout ~reason:V1_safety_check env
+                 (correct_levels ty) Layout.value)
+      with
+      | Ok _ -> ()
+      | Error e -> raise (Error (loc, Non_value_layout (ty, e)))
   end;
-  let scty = scrape_ty env ty in
   match get_desc scty with
   | Tconstr(p, _, _) when Path.same p Predef.path_int ->
     (num_nodes_visited, Pintval)
