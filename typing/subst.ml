@@ -150,14 +150,17 @@ let newpersty desc =
   create_expr
     desc ~level:generic_level ~scope:Btype.lowest_level ~id:!new_id
 
-(* ensure that all occurrences of 'Tvar None' are physically shared *)
-let tvar_none_any = Tvar { name = None; layout = Layout.any }
+(* ensure that all occurrences of 'Tvar None' are physically shared when saving
+   artifacts *)
+let tvar_none_any =
+  Tvar { name = None; layout = Layout.any ~missing_cmi_for:None }
 let tvar_none_imm = Tvar { name = None; layout = Layout.immediate }
 let tvar_none_imm64 = Tvar { name = None; layout = Layout.immediate64 }
 let tvar_none_val = Tvar { name = None; layout = Layout.value }
 let tvar_none_void = Tvar { name = None; layout = Layout.void }
 
-let tunivar_none_any = Tunivar { name = None; layout = Layout.any }
+let tunivar_none_any =
+  Tunivar { name = None; layout = Layout.any ~missing_cmi_for:None }
 let tunivar_none_imm = Tunivar { name = None; layout = Layout.immediate }
 let tunivar_none_imm64 =
   Tunivar { name = None; layout = Layout.immediate64 }
@@ -215,7 +218,7 @@ let rec typexp copy_scope s ty =
     let has_fixed_row =
       not (is_Tconstr ty) && is_constr_row ~allow_ident:false tm in
     (* Make a stub *)
-    let layout = Layout.any in
+    let layout = Layout.any ~missing_cmi_for:None in
     let ty' =
       if s.for_saving then newpersty (Tvar {name = None; layout})
       else newgenstub ~scope:(get_scope ty) layout

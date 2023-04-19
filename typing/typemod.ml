@@ -584,7 +584,8 @@ let merge_constraint initial_env loc sg lid constr =
           { type_params =
               (* layout any is fine on the params because they get thrown away
                  below *)
-              List.map (fun _ -> Btype.newgenvar Layout.any)
+              List.map
+                (fun _ -> Btype.newgenvar (Layout.any ~missing_cmi_for:None))
                 sdecl.ptype_params;
             type_arity = arity;
             type_kind = Types.kind_abstract ~layout:Layout.value;

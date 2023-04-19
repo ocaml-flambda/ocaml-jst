@@ -187,7 +187,7 @@ let enter_type rec_flag env sdecl (id, uid) =
        that was already allowed to be [@@immediate] *)
     layout_of_attributes_default
       ~legacy_immediate:true ~reason:(Type_declaration (Pident id))
-      ~default:Layout.any
+      ~default:(Layout.any ~missing_cmi_for:None)
       sdecl.ptype_attributes
   in
   let decl =
@@ -397,7 +397,8 @@ let transl_labels env univars closed lbls =
          {Types.ld_id = ld.ld_id;
           ld_mutable = ld.ld_mutable;
           ld_global = ld.ld_global;
-          ld_layout = Layout.any; (* Updated by [update_label_layouts] *)
+          ld_layout = Layout.any ~missing_cmi_for:None;
+            (* Updated by [update_label_layouts] *)
           ld_type = ty;
           ld_loc = ld.ld_loc;
           ld_attributes = ld.ld_attributes;
@@ -478,7 +479,12 @@ let make_constructor env loc type_path type_params svars sargs sret_type =
          Btype.iter_type_expr_cstr_args Ctype.generalize args;
          Ctype.generalize ret_type;
          let _vars = TyVarEnv.instance_poly_univars env loc univars in
-         let set_level t = Ctype.unify_var env (Ctype.newvar Layout.any) t in
+         let set_level t =
+           Ctype.unify_var
+             env
+             (Ctype.newvar (Layout.any ~missing_cmi_for:None))
+             t
+         in
          Btype.iter_type_expr_cstr_args set_level args;
          set_level ret_type;
       end;
@@ -649,7 +655,11 @@ let transl_declaration env sdecl (id, uid) =
                   annotations, which will in this case be a check that the
                   accurate layout from step 2 is a sublayout of the annotation.
             *)
-            let layout = Option.value layout_annotation ~default:Layout.any in
+            let layout =
+              Option.value
+                layout_annotation
+                ~default:(Layout.any ~missing_cmi_for:None)
+            in
             Variant_unboxed layout
           else
             (* We mark all arg layouts "any" here.  They are updated later,
@@ -659,8 +669,11 @@ let transl_declaration env sdecl (id, uid) =
                 (fun cstr ->
                    match Types.(cstr.cd_args) with
                    | Cstr_tuple args ->
-                     Array.make (List.length args) Layout.any
-                   | Cstr_record _ -> [| Layout.any |])
+                       Array.make
+                         (List.length args)
+                         (Layout.any ~missing_cmi_for:None)
+                   | Cstr_record _ ->
+                       [| (Layout.any ~missing_cmi_for:None) |])
                 (Array.of_list cstrs)
             )
         in
@@ -671,11 +684,18 @@ let transl_declaration env sdecl (id, uid) =
             if unbox then
               (* This is improved in [update_decl_layout] - see the comment
                  on the Variant_unboxed case above.*)
-              let layout = Option.value layout_annotation ~default:Layout.any in
+              let layout =
+                Option.value
+                  layout_annotation
+                  ~default:(Layout.any ~missing_cmi_for:None)
+              in
               Record_unboxed layout
             else if List.for_all (fun l -> is_float env l.Types.ld_type) lbls'
             then Record_float
-            else Record_boxed (Array.make (List.length lbls) Layout.any)
+            else Record_boxed
+                   (Array.make
+                      (List.length lbls)
+                      (Layout.any ~missing_cmi_for:None))
           in
           Ttype_record lbls, Type_record(lbls', rep)
       | Ptype_open -> Ttype_open, Type_open
@@ -1183,7 +1203,9 @@ let check_well_founded_manifest env loc path decl =
   let args =
     (* The layouts here shouldn't matter for the purposes of
        [check_well_founded] *)
-    List.map (fun _ -> Ctype.newvar Layout.any) decl.type_params
+    List.map
+      (fun _ -> Ctype.newvar (Layout.any ~missing_cmi_for:None))
+      decl.type_params
   in
   check_well_founded env loc path (Path.same path) (Ctype.newconstr path args)
 
@@ -1525,7 +1547,7 @@ let transl_extension_constructor ~scope env type_path type_params
           | Cstr_tuple args -> List.length args
           | Cstr_record _ -> 1
         in
-        let layouts = Array.make num_args Layout.any in
+        let layouts = Array.make num_args (Layout.any ~missing_cmi_for:None) in
         let args =
           update_constructor_arguments_layouts env sext.pext_loc args layouts
         in

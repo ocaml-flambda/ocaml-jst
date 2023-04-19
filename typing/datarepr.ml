@@ -192,9 +192,9 @@ let none =
 let dummy_label =
   { lbl_name = ""; lbl_res = none; lbl_arg = none;
     lbl_mut = Immutable; lbl_global = Unrestricted;
-    lbl_layout = Layout.any;
+    lbl_layout = Layout.any ~missing_cmi_for:None;
     lbl_num = -1; lbl_pos = -1; lbl_all = [||];
-    lbl_repres = Record_unboxed Layout.any;
+    lbl_repres = Record_unboxed (Layout.any ~missing_cmi_for:None);
     lbl_private = Public;
     lbl_loc = Location.none;
     lbl_attributes = [];

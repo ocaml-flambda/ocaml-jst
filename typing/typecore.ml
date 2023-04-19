@@ -832,7 +832,7 @@ let enter_orpat_variables loc env  p1_vs p2_vs =
             pv1 :: vars, alist
           else begin
             begin try
-              unify_var env (newvar Layout.any) t1;
+              unify_var env (newvar (Layout.any ~missing_cmi_for:None)) t1;
               unify env t1 t2
             with
             | Unify err ->
@@ -922,7 +922,7 @@ and build_as_type_aux ~refine ~mode (env : Env.t ref) p =
       (* The layout here is filled in via unification with [ty_res] in
          [unify_pat].  This should be a sort variable and could be now (but make
          sure it gets defaulted at some point.) *)
-      let ty = newvar Layout.any in
+      let ty = newvar (Layout.any ~missing_cmi_for:None) in
       let ppl = List.map (fun (_, l, p) -> l.lbl_num, p) lpl in
       let do_label lbl =
         let _, ty_arg, ty_res = instance_label false lbl in
@@ -3388,7 +3388,8 @@ let rec approx_type env sty =
       newty (Ttuple (List.map (approx_type env) args))
   | Ptyp_constr (lid, ctl) ->
       let path, decl = Env.lookup_type ~use:false ~loc:lid.loc lid.txt env in
-      if List.length ctl <> decl.type_arity then newvar Layout.any
+      if List.length ctl <> decl.type_arity then
+        newvar (Layout.any ~missing_cmi_for:None)
       else begin
         let tyl = List.map (approx_type env) ctl in
         newconstr path tyl
@@ -3397,7 +3398,7 @@ let rec approx_type env sty =
      that could be matched on and have anys in them.  But once we do, this
      should probably be sort variable.  See Test21 in typing-layouts/basics.ml
      (which mentions approx_type) for why it can't be value.  *)
-  | _ -> newvar Layout.any
+  | _ -> newvar (Layout.any ~missing_cmi_for:None)
 
 let type_pattern_approx_extension : Extensions.Pattern.t -> _ = function
   | Epat_immutable_array _ -> ()
@@ -3871,7 +3872,8 @@ let unify_exp env exp expected_ty =
 let check_scope_escape_let_bound_idents env value_bindings =
   List.iter
     (fun (_, ident_loc, bound_ident_type) ->
-       try unify env bound_ident_type (newvar Layout.any)
+       try
+         unify env bound_ident_type (newvar (Layout.any ~missing_cmi_for:None))
        with Unify trace ->
          let loc = ident_loc.loc in
          raise (Error(loc, env, Pattern_type_clash(trace, None))))
@@ -3937,7 +3939,7 @@ let with_explanation explanation f =
 let rec type_exp ?recarg env expected_mode sexp =
   (* We now delegate everything to type_expect *)
   type_expect ?recarg env expected_mode sexp
-    (mk_expected (newvar Layout.any))
+    (mk_expected (newvar (Layout.any ~missing_cmi_for:None)))
 
 (* Typing of an expression with an expected type.
    This provide better error messages, and allows controlled
@@ -4103,7 +4105,7 @@ and type_expect_
       *)
       if may_contain_modules then begin
         end_def ();
-        unify_exp new_env body (newvar Layout.any);
+        unify_exp new_env body (newvar (Layout.any ~missing_cmi_for:None));
         if rec_flag = Recursive then
           check_scope_escape_let_bound_idents new_env pat_exp_list
       end;
@@ -4221,16 +4223,20 @@ and type_expect_
         if TypeSet.mem ty seen then false else
           match get_desc ty with
             Tarrow (_l, ty_arg, ty_fun, _com) ->
-              (try unify_var env (newvar Layout.any) ty_arg
+              (try
+                 unify_var
+                   env
+                   (newvar (Layout.any ~missing_cmi_for:None))
+                   ty_arg
                with Unify _ -> assert false);
               ret_tvar (TypeSet.add ty seen) ty_fun
           | Tvar _ ->
-              let v = newvar Layout.any in
+              let v = newvar (Layout.any ~missing_cmi_for:None) in
               let rt = get_level ty > get_level v in
               unify_var env v ty;
               rt
           | _ ->
-            let v = newvar Layout.any in
+            let v = newvar (Layout.any ~missing_cmi_for:None) in
             unify_var env v ty;
             false
       in
@@ -4772,7 +4778,7 @@ and type_expect_
             begin_def ();
             let arg = type_exp env expected_mode sarg in
             end_def ();
-            let tv = newvar Layout.any in
+            let tv = newvar (Layout.any ~missing_cmi_for:None) in
             let gen = generalizable (get_level tv) arg.exp_type in
             unify_var env tv arg.exp_type;
             begin match arg.exp_desc, !self_coercion, get_desc ty' with
@@ -5032,7 +5038,7 @@ and type_expect_
           assert false
       end
   | Pexp_letmodule(name, smodl, sbody) ->
-      let ty = newvar Layout.any in
+      let ty = newvar (Layout.any ~missing_cmi_for:None) in
       (* remember original level *)
       begin_def ();
       let modl, pres, id, new_env = Typetexp.TyVarEnv.with_local_scope begin fun () ->
@@ -5244,7 +5250,7 @@ and type_expect_
         exp_attributes = sexp.pexp_attributes;
         exp_env = env }
   | Pexp_open (od, e) ->
-      let tv = newvar Layout.any in
+      let tv = newvar (Layout.any ~missing_cmi_for:None) in
       let (od, _, newenv) = !type_open_decl env od in
       let exp = type_expect newenv expected_mode e ty_expected_explained in
       (* Force the return type to be well-formed in the original
@@ -5534,7 +5540,7 @@ and type_function ?in_function loc attrs env (expected_mode : expected_mode)
     let snap = Btype.snapshot () in
     let really_poly =
       try
-        unify env (newmono (newvar Layout.any)) ty_arg;
+        unify env (newmono (newvar (Layout.any ~missing_cmi_for:None))) ty_arg;
         false
       with Unify _ -> true
     in
@@ -6199,7 +6205,10 @@ and type_apply_arg env ~app_loc ~funct ~index ~position ~partial_app (lbl, arg) 
             let snap = Btype.snapshot () in
             let really_poly =
               try
-                unify env (newmono (newvar Layout.any)) ty_arg;
+                unify
+                  env
+                  (newmono (newvar (Layout.any ~missing_cmi_for:None)))
+                  ty_arg;
                 false
               with Unify _ -> true
             in
@@ -6424,7 +6433,8 @@ and type_statement ?explanation env sexp =
   begin_def();
   let exp = type_exp env mode_local sexp in
   end_def();
-  let ty = expand_head env exp.exp_type and tv = newvar Layout.any in
+  let ty = expand_head env exp.exp_type
+  and tv = newvar (Layout.any ~missing_cmi_for:None) in
   if is_Tvar ty && get_level ty > get_level tv then
     Location.prerr_warning
       (final_subexpression exp).exp_loc
@@ -6529,7 +6539,7 @@ and type_cases
     else ty_res, (fun env -> env)
   in
   (* Unify all cases (delayed to keep it order-free) *)
-  let ty_arg' = newvar Layout.any in
+  let ty_arg' = newvar (Layout.any ~missing_cmi_for:None) in
   let unify_pats ty =
     List.iter (fun { typed_pat = pat; pat_type_for_unif = pat_ty; _ } ->
       unify_pat_types pat.pat_loc (ref env) pat_ty ty
@@ -6548,7 +6558,11 @@ and type_cases
   if take_partial_instance <> None then unify_pats (instance ty_arg);
   List.iter (fun { pat_vars; _ } ->
     iter_pattern_variables_type
-      (fun t -> unify_var env (newvar Layout.any) t) pat_vars
+      (fun t -> unify_var
+                  env
+                  (newvar (Layout.any ~missing_cmi_for:None))
+                  t)
+      pat_vars
   ) half_typed_cases;
   end_def ();
   generalize ty_arg';
@@ -6648,7 +6662,11 @@ and type_cases
   if create_inner_level then begin
     end_def ();
     (* Ensure that existential types do not escape *)
-    unify_exp_types loc env (instance ty_res) (newvar Layout.any);
+    unify_exp_types
+      loc
+      env
+      (instance ty_res)
+      (newvar (Layout.any ~missing_cmi_for:None));
   end;
   cases, partial
 
@@ -7293,7 +7311,7 @@ and type_comprehension_iterator
       in
       Texp_comp_range { ident; pattern; start; stop; direction }
   | In seq ->
-      let item_ty = newvar Layout.any in
+      let item_ty = newvar (Layout.any ~missing_cmi_for:None) in
       let seq_ty = container_type item_ty in
       let sequence =
         (* To understand why we can currently only iterate over [mode_global]

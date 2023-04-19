@@ -157,7 +157,7 @@ module Layout = struct
     | Dummy_reason_result_ignored
 
   type internal =
-    | Any
+    | Any of { missing_cmi_for : Path.t option }
     | Sort of sort
     | Immediate64
     (** We know for sure that values of types of this layout are always immediate
@@ -179,7 +179,13 @@ module Layout = struct
   (******************************)
   (* constants *)
 
-  let any = fresh_layout Any
+  (* Allocate only one [Any] unless there's a missing cmi *)
+  let any =
+    let make missing_cmi_for = fresh_layout (Any { missing_cmi_for }) in
+    let none = make None in
+    fun ~missing_cmi_for -> match missing_cmi_for with
+      | None -> none
+      | Some _ -> make missing_cmi_for
   let void = fresh_layout (Sort Sort.void)
   let value = fresh_layout (Sort Sort.value)
   let immediate64 = fresh_layout Immediate64
@@ -215,7 +221,7 @@ module Layout = struct
   let of_sort s = fresh_layout (Sort s)
 
   let of_const : const -> t = function
-    | Any -> any
+    | Any -> any ~missing_cmi_for:None
     | Immediate -> immediate
     | Immediate64 -> immediate64
     | Value -> value
@@ -242,7 +248,7 @@ module Layout = struct
     | Var of Sort.var
 
   let repr ~default (t : t) : desc = match t.layout with
-    | Any -> Const Any
+    | Any _ -> Const Any
     | Immediate -> Const Immediate
     | Immediate64 -> Const Immediate64
     | Sort s -> begin match Sort.repr ~default s with
@@ -423,7 +429,7 @@ end
 
   let equate_or_equal ~allow_mutation (l1 : t) (l2 : t) =
     match l1.layout, l2.layout with
-    | Any, Any -> true
+    | Any _, Any _ -> true
     | Immediate64, Immediate64 -> true
     | Immediate, Immediate -> true
     | Sort s1, Sort s2 -> begin
@@ -435,7 +441,7 @@ end
         | Unequal -> false
         | Equal_no_mutation | Equal_mutated_first | Equal_mutated_second -> true
       end
-    | (Any | Immediate64 | Immediate | Sort _), _ -> false
+    | (Any _ | Immediate64 | Immediate | Sort _), _ -> false
 
   (* XXX ASZ: Switch this back to ~allow_mutation:false *)
   let equal = equate_or_equal ~allow_mutation:true
@@ -491,10 +497,12 @@ end
     open Format
 
     let internal ppf : internal -> unit = function
-      | Any         -> fprintf ppf "Any"
-      | Sort s      -> fprintf ppf "Sort %a" Sort.Debug_printers.t s
+      | Any { missing_cmi_for } ->
+          fprintf ppf "Any { missing_cmi_for = %a }"
+            (Misc.Stdlib.Option.print Path.print) missing_cmi_for
+      | Sort s -> fprintf ppf "Sort %a" Sort.Debug_printers.t s
       | Immediate64 -> fprintf ppf "Immediate64"
-      | Immediate   -> fprintf ppf "Immediate"
+      | Immediate -> fprintf ppf "Immediate"
 
     let fixed_layout_reason ppf : fixed_layout_reason -> unit = function
       | Let_binding -> fprintf ppf "Let_binding"

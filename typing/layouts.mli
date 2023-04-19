@@ -84,8 +84,10 @@ module Layout : sig
 
   (** This layout is the top of the layout lattice. All types have layout [any].
       But we cannot compile run-time manipulations of values of types with layout
-      [any]. *)
-  val any : t
+      [any].
+
+      If [missing_cmi_for] is [None], this value is guaranteed to be shared. *)
+  val any : missing_cmi_for:Path.t option -> t
 
   (** Value of types of this layout are not retained at all at runtime *)
   val void : t
@@ -220,12 +222,16 @@ module Layout : sig
 
   (** This checks for equality, and sets any variables to make two layouts
       equal, if possible. e.g. [equate] on a var and [value] will set the
-      variable to be [value] *)
+      variable to be [value].
+
+      This function ignores the [missing_cmi_for] medatadata for [any]s. *)
   val equate : t -> t -> bool
 
   (** This checks for equality, but has the invariant that it can only be called
       when there is no need for unification; e.g. [equal] on a var and [value]
       will crash.
+
+      This function ignores the [missing_cmi_for] medatadata for [any]s.
 
       XXX ASZ: At the moment, this is actually the same as [equate]! *)
   val equal : t -> t -> bool
