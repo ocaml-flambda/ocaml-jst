@@ -164,6 +164,10 @@ module Layout : sig
     (** Simpler version of [report_with_offender] for when the thing that had an
         unexpected layout is available as a string. *)
     val report_with_name : name:string -> Format.formatter -> t -> unit
+
+    (** Provides the [Printtyp.path] formatter back up the dependency chain to
+        this module. *)
+    val set_printtyp_path : (Format.formatter -> Path.t -> unit) -> unit
   end
 
   (******************************)

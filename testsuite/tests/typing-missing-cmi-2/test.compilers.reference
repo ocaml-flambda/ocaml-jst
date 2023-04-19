@@ -5,4 +5,5 @@ Error: This expression has type 'a Foo.t
        but an expression was expected of type
          ('b : '_concrete_layout__should_never_be_printed)
        'a Foo.t has layout any, which is not a sublayout of <sort variable>.
+       No .cmi file found containing Foo.t.
        Foo.t is abstract because no corresponding cmi file was found in path.

@@ -394,16 +394,26 @@ module Layout = struct
   module Violation = struct
     open Format
 
+    let printtyp_path = ref (fun _ _ -> assert false)
+
+    let set_printtyp_path f = printtyp_path := f
+
     type nonrec t =
       | Not_a_sublayout of t * t
       | No_intersection of t * t
+
+    let report_missing_cmi ppf = function
+      | { layout = Any { missing_cmi_for = Some ctor }; _ } ->
+          fprintf ppf "@,No .cmi file found containing %a."
+            (!printtyp_path) ctor
+      | _ -> ()
 
     let report_general preamble pp_former former ppf t =
       let l1, problem, l2 = match t with
         | Not_a_sublayout(l1, l2) -> l1, "is not a sublayout of", l2
         | No_intersection(l1, l2) -> l1, "does not overlap with", l2
       in
-      fprintf ppf "@[<v>@[<hov 2>%s%a has layout %a,@ which %s %a.@]%a%a@]"
+      fprintf ppf "@[<v>@[<hov 2>%s%a has layout %a,@ which %s %a.@]%a%a%a%a@]"
         preamble
         pp_former former
         format l1
@@ -411,6 +421,8 @@ module Layout = struct
         format l2
         (format_history ~pp_name:pp_former ~name:former) l1
         (format_history ~pp_name:pp_print_string ~name:"The latter") l2
+        report_missing_cmi l1
+        report_missing_cmi l2
 
     let pp_t ppf x = fprintf ppf "%t" x
 
