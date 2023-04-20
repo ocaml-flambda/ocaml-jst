@@ -3052,12 +3052,14 @@ let lookup_type_in_sig sg =
 let type_package env m p fl =
   (* Same as Pexp_letmodule *)
   (* remember original level *)
+  let outer_scope = Ctype.get_current_level () in
   Ctype.begin_def ();
   let modl, scope = Typetexp.TyVarEnv.with_local_scope begin fun () ->
     let modl, _mod_shape = type_module env m in
     let scope = Ctype.create_scope () in
     modl, scope
   end in
+  Mtype.lower_nongen outer_scope modl.mod_type;
   let fl', env =
     match fl with
     | [] -> [], env
