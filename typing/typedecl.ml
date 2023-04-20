@@ -847,23 +847,21 @@ let check_constraints env sdecl (_, decl) =
    need to check that the equation refers to a type of the same kind
    with the same constructors and labels.
 
-   If the kind is Type_abstract {layout}, we need to check that the layout
-   corresponds to the manifest (e.g., in the case where layout is immediate, we
-   should check the manifest is immediate).  This process may result in an
-   improved estimate for the layout, so we return an updated decl.  It's
-   perfectly sound to keep the old one, it just may result in more work in
-   future layout checks.
-
-   CR layouts: Maybe it would be better to compute the best possible layout for
-   this type.  A couple things to consider: 1) The performance tradeoff of one
-   expensive check now vs an unknown number of checks in the future.  2) If it's
-   a gadt, this may involve using gadt equations, which may change the type's
-   scope.  Is that an issue?  Maybe we can pull a similar checkpointing trick as
-   we do in [is_always_global], but that's even more expensive.
+   If the kind is [Type_abstract {layout}], we need to check that [layout]
+   (where we've stored the layout annotation, if any) corresponds to the
+   manifest (e.g., in the case where [layout] is immediate, we should check the
+   manifest is immediate).  It would also be nice to store the best possible
+   layout for this type in the kind, to avoid expansions later.  So, we do the
+   relatively expensive thing of computing the best possible layout for the
+   manifest, checking that it's a sublayout of [layout], and then replacing
+   [layout] with what we computed.
 
    CR layouts: Can the layout bits of this just be folded in with the layout
    annotations check at the end of transl_type_decl, or are there other ways
    to get non-trivial layouts in Type_abstract?
+
+   XXX layouts: if easy, factor out the shared backtracking logic from here
+   and is_always_global.
 *)
 let check_coherence env loc dpath decl =
   match decl with
@@ -901,19 +899,23 @@ let check_coherence env loc dpath decl =
       end
   | { type_kind = Type_abstract {layout};
       type_manifest = Some ty } ->
-      begin match
-        Ctype.check_type_layout ~reason:(Annotated (Type_declaration dpath))
-          env ty layout
-      with
-      | Ok layout' ->
-        let layout =
-          if Result.is_ok
-               (Layout.sub ~reason:Dummy_reason_result_ignored layout' layout)
-          then layout' else layout
-        in
-        { decl with type_kind = Type_abstract {layout} }
-      | Error v -> raise(Error(loc, Layout v))
-      end
+    let layout' =
+      if !Clflags.principal || Env.has_local_constraints env then
+        (* We snapshot to keep this pure; see the mode crossing test that
+           mentions snapshotting for an example. *)
+        let snap = Btype.snapshot () in
+        let layout' = Ctype.type_layout env ty in
+        Btype.backtrack snap;
+        layout'
+      else
+        Ctype.type_layout env ty
+    in
+    begin match
+      Layout.sub ~reason:(Annotated (Type_declaration dpath)) layout' layout
+    with
+    | Ok _ -> { decl with type_kind = Type_abstract {layout = layout'} }
+    | Error v -> raise (Error (loc, Layout v))
+    end
   | { type_manifest = None } -> decl
 
 let check_abbrev env sdecl (id, decl) =
