@@ -402,10 +402,29 @@ module Layout = struct
       | Not_a_sublayout of t * t
       | No_intersection of t * t
 
+    let delete_trailing_double_underscore s =
+      if Misc.Stdlib.String.ends_with ~suffix:"__" s
+      then String.sub s 0 (String.length s - 2)
+      else s
+
+    let missing_cmi_hint ppf : Path.t -> unit = function
+      | Pdot _ as p ->
+          let library =
+            p |>
+            Path.head |>
+            Ident.name |>
+            String.lowercase_ascii |>
+            delete_trailing_double_underscore
+          in
+          fprintf ppf "@,Hint: Try adding \"%s\" to your dependencies." library
+      | Pident _ | Papply _ ->
+          ()
+
     let report_missing_cmi ppf = function
-      | { layout = Any { missing_cmi_for = Some ctor }; _ } ->
-          fprintf ppf "@,No .cmi file found containing %a."
-            (!printtyp_path) ctor
+      | { layout = Any { missing_cmi_for = Some p }; _ } ->
+          fprintf ppf "@,No .cmi file found containing %a.%a"
+            (!printtyp_path) p
+            missing_cmi_hint p
       | _ -> ()
 
     let report_general preamble pp_former former ppf t =
