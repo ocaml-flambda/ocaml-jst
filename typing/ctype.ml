@@ -1146,8 +1146,8 @@ let rec copy ?partial ?keep_names scope ty =
           else generic_level
     in
     if forget <> generic_level then
-      (* XXX layouts: we probably need an accurate layout here?  But it's a
-         pain. *)
+      (* Using layout "any" is ok here: We're forgetting the type because it
+         will be unified with the original later. *)
       newty2 ~level:forget (Tvar { name = None; layout = Layout.any })
     else
     let t = newstub ~scope:(get_scope ty) Layout.any in
@@ -1215,8 +1215,6 @@ let rec copy ?partial ?keep_names scope ty =
                       if not (eq_type more more') then
                         more' (* we've already made a copy *)
                       else
-                        (* XXX layouts: we probably need an accurate layout
-                           here?  But it's a pain. *)
                         newvar Layout.value
                     in
                     let not_reither (_, f) =
