@@ -403,37 +403,47 @@ and value_kind_variant env ~loc ~visited ~depth ~num_nodes_visited
         in
         (is_mutable, num_nodes_visited), List.rev kinds
     in
-    let result =
-      List.fold_left (fun (idx,result) constructor ->
-        match result with
-        | None -> idx+1, None
-        | Some (num_nodes_visited,
-                next_const, consts, next_tag, non_consts) ->
-          let (is_mutable, num_nodes_visited), fields =
-            for_one_constructor constructor ~depth ~num_nodes_visited
-          in
-          if is_mutable then idx+1, None
-          else if List.compare_length_with fields 0 = 0 then
-            let consts = next_const :: consts in
-            idx+1,
-            Some (num_nodes_visited,
-                  next_const + 1, consts, next_tag, non_consts)
-          else
-            let non_consts = (next_tag, fields) :: non_consts in
-            idx+1,
-            Some (num_nodes_visited,
-                  next_const, consts, next_tag + 1, non_consts))
-        (0, Some (num_nodes_visited, 0, [], 0, []))
-        cstrs
+    let is_constant (cstr: Types.constructor_declaration) =
+      (* CR layouts v5: This won't count constructors with void args as
+         constant. *)
+      match cstr.cd_args with
+      | Cstr_tuple [] -> true
+      | (Cstr_tuple (_::_) | Cstr_record _) -> false
     in
-    begin match result with
-    | _, None -> (num_nodes_visited, Pgenval)
-    | _, Some (num_nodes_visited, _, consts, _, non_consts) ->
-      match non_consts with
-      | [] -> (num_nodes_visited, Pintval)
-      | _::_ ->
-        (num_nodes_visited, Pvariant { consts; non_consts })
-    end
+    if List.for_all is_constant cstrs then
+      (num_nodes_visited, Pintval)
+    else
+      let result =
+        List.fold_left (fun (idx,result) constructor ->
+          match result with
+          | None -> idx+1, None
+          | Some (num_nodes_visited,
+                  next_const, consts, next_tag, non_consts) ->
+            let (is_mutable, num_nodes_visited), fields =
+              for_one_constructor constructor ~depth ~num_nodes_visited
+            in
+            if is_mutable then idx+1, None
+            else if List.compare_length_with fields 0 = 0 then
+              let consts = next_const :: consts in
+              idx+1,
+              Some (num_nodes_visited,
+                    next_const + 1, consts, next_tag, non_consts)
+            else
+              let non_consts = (next_tag, fields) :: non_consts in
+              idx+1,
+              Some (num_nodes_visited,
+                    next_const, consts, next_tag + 1, non_consts))
+          (0, Some (num_nodes_visited, 0, [], 0, []))
+          cstrs
+      in
+      begin match result with
+      | _, None -> (num_nodes_visited, Pgenval)
+      | _, Some (num_nodes_visited, _, consts, _, non_consts) ->
+        match non_consts with
+        | [] -> assert false  (* See [List.for_all is_constant], above *)
+        | _::_ ->
+          (num_nodes_visited, Pvariant { consts; non_consts })
+      end
 
 and value_kind_record env ~loc ~visited ~depth ~num_nodes_visited
       (labels : Types.label_declaration list) rep =
