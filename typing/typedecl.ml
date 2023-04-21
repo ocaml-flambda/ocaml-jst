@@ -565,8 +565,9 @@ let transl_declaration env sdecl (id, uid) =
     match sdecl.ptype_kind with
       | Ptype_abstract ->
         let layout =
-          (* - If there's an annotation, we use that. It's checked at the end of
-               [transl_type_decl].
+          (* - If there's an annotation, we use that. It's checked at in
+               [check_coherence] for abstract types and at the end of
+               [transl_type_decl] for others.
              - If there's no annotation but there is a manifest, we estimate the
                layout based on the manifest here. This upper bound saves time
                later by avoiding expanding the manifest in layout checks, but it
@@ -580,6 +581,10 @@ let transl_declaration env sdecl (id, uid) =
                mutually recursive types).  But not here in transl_declaration,
                which can't see those.
           *)
+          (* CR layouts: Is the estimation mentioned in the second bullet above
+             doing anything for us?  Abstract types are updated by
+             check_coherence and record/variant types are updated by
+             update_decl_layouts.  *)
           match layout_annotation, man with
           | Some annot, _ -> annot
           | None, Some typ -> Ctype.estimate_type_layout env typ
