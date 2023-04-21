@@ -1499,6 +1499,8 @@ let transl_type_decl env rec_flag sdecl_list =
   (* Check layout annotations.  We can skip abstract types: If they have no
      manifest there is nothing to check, and abbreviations are checked as part
      of check_abbrev/check_coherence. *)
+  (* CR layouts: can we also skip this if the annotation is value and the type
+     isn't unboxed (or abstract)? *)
   List.iter (fun tdecl ->
     match tdecl.typ_layout_annotation, tdecl.typ_type.type_kind with
     | None, _ -> ()
