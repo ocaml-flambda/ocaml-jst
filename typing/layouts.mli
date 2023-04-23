@@ -245,10 +245,8 @@ module Layout : sig
     Any > Sort Value > Immediate64 > Immediate
     Any > Sort Void
 
-    Return [Error _] if the coercion is not possible. We return a layout in the
-    success case because it sometimes saves time / is convenient to have the
-    same return type as intersection. *)
-  val sub : reason:reason -> t -> t -> (t, Violation.t) result
+    Returns [Error _] if the coercion is not possible. *)
+  val sub : t -> t -> (unit, Violation.t) result
 
   (*********************************)
   (* defaulting *)

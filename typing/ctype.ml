@@ -1983,13 +1983,12 @@ let rec constrain_type_layout ~reason ~fixed env ty layout fuel =
   (* XXX ASZ: Are all the [~reason]s in this function the same? *)
   let constrain_unboxed ty =
     match estimate_type_layout env ty with
-    | Layout ty_layout -> Layout.sub ~reason ty_layout layout
+    | Layout ty_layout -> Layout.sub ty_layout layout
     | TyVar (ty_layout, ty) ->
-      if fixed then Layout.sub ~reason ty_layout layout
+      if fixed then Layout.sub ty_layout layout
       else
         let layout_inter = Layout.intersection ~reason ty_layout layout in
-        Result.iter (set_var_layout ty) layout_inter;
-        layout_inter
+        Result.map (set_var_layout ty) layout_inter
   in
   (* This is an optimization to avoid unboxing if we can tell the constraint is
      satisfied from the type_kind *)
@@ -2001,8 +2000,8 @@ let rec constrain_type_layout ~reason ~fixed env ty layout fuel =
         | exception Not_found -> Layout.any
         end
       in
-      match Layout.sub ~reason layout_bound layout with
-      | Ok _ as ok -> ok
+      match Layout.sub layout_bound layout with
+      | Ok () as ok -> ok
       | Error _ as err when fuel < 0 -> err
       | Error _ as err ->
         begin match unbox_once env ty with
@@ -2018,7 +2017,7 @@ let rec constrain_type_layout ~reason ~fixed env ty layout fuel =
 let constrain_type_layout ~reason ~fixed env ty layout fuel =
   (* An optimization to avoid doing any work if we're checking against
      any. *)
-  if Layout.(equal layout any) then Ok Layout.any
+  if Layout.(equal layout any) then Ok ()
   else constrain_type_layout ~reason ~fixed env ty layout fuel
 
 let check_type_layout ~reason env ty layout =
@@ -2028,8 +2027,8 @@ let constrain_type_layout ~reason env ty layout =
   constrain_type_layout ~reason ~fixed:false env ty layout 100
 
 let check_decl_layout ~reason env decl layout =
-  match Layout.sub ~reason (layout_bound_of_kind decl.type_kind) layout with
-  | Ok _ as ok -> ok
+  match Layout.sub (layout_bound_of_kind decl.type_kind) layout with
+  | Ok () as ok -> ok
   | Error _ as err ->
       match decl.type_manifest with
       | None -> err

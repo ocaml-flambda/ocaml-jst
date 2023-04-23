@@ -45,16 +45,16 @@ let sort_must_be_value loc sort =
     raise (Error (loc, Non_value_layout violation))
 
 let layout_must_be_value loc layout =
-  match Layout.(sub ~reason:V1_safety_check layout value) with
-  | Ok _ -> ()
+  match Layout.(sub layout value) with
+  | Ok () -> ()
   | Error e -> raise (Error (loc, Non_value_layout e))
 
 (* XXX layouts: In the place where this one is used, I wanted to do a sanity
    check but I think [any] is actually allowed (e.g., to the left of a
    semicolon), so we can't check for value.  Double check that. *)
 let layout_must_not_be_void loc layout =
-  match Layout.(sub ~reason:V1_safety_check layout void) with
-  | Ok _ ->
+  match Layout.(sub layout void) with
+  | Ok () ->
     let violation = Layout.(Violation.Not_a_sublayout (layout, value)) in
     raise (Error (loc, Non_value_layout violation))
   | Error _ -> ()

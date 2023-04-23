@@ -915,10 +915,8 @@ let check_coherence env loc dpath decl =
       else
         Ctype.type_layout env ty
     in
-    begin match
-      Layout.sub ~reason:(Annotated (Type_declaration dpath)) layout' layout
-    with
-    | Ok _ -> { decl with type_kind = Type_abstract {layout = layout'} }
+    begin match Layout.sub layout' layout with
+    | Ok () -> { decl with type_kind = Type_abstract {layout = layout'} }
     | Error v -> raise (Error (loc, Layout v))
     end
   | { type_manifest = None } -> decl

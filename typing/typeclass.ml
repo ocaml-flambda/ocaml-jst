@@ -1359,11 +1359,8 @@ and class_expr_aux cl_num val_env met_env virt self_scope scl =
              List.iter
                (fun (loc, mode, sort) ->
                   Typecore.escape ~loc ~env:val_env ~reason:Other mode;
-                  match
-                    Layout.sub ~reason:(Fixed_layout Let_binding)
-                      (Layout.of_sort sort) Layout.value
-                  with
-                  | Ok _ -> ()
+                  match Layout.sub (Layout.of_sort sort) Layout.value with
+                  | Ok () -> ()
                   | Error err ->
                     raise (Error(loc,met_env,
                                  Non_value_binding (Ident.name id,err)))

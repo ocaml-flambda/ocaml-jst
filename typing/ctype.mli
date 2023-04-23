@@ -484,23 +484,21 @@ val type_sort :
 (* Layout checking. [constrain_type_layout] will update the layout of type
    variables to make the check true, if possible.  [check_decl_layout] and
    [check_type_layout] won't, but will still instantiate sort variables.
-
-   For convenience, on success these functions return the most precise layout we
-   found for the given type during checking (which may be an upper bound). *)
+*)
 (* CR layouts: When we improve errors, it may be convenient to change these to
    raise on error, like unify. *)
 val check_decl_layout :
   reason:Layouts.Layout.reason
   -> Env.t -> type_declaration -> layout
-  -> (layout, Layout.Violation.t) result
+  -> (unit, Layout.Violation.t) result
 val check_type_layout :
   reason:Layouts.Layout.reason
   -> Env.t -> type_expr -> layout
-  -> (layout, Layout.Violation.t) result
+  -> (unit, Layout.Violation.t) result
 val constrain_type_layout :
   reason:Layouts.Layout.reason
   -> Env.t -> type_expr -> layout
-  -> (layout, Layout.Violation.t) result
+  -> (unit, Layout.Violation.t) result
 
 (* True if a type is always global (i.e., it mode crosses for local).  This is
    true for all immediate and immediate64 types.  To make it sound for

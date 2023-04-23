@@ -459,11 +459,11 @@ end
           (of_const imm)
     | _, _ -> equality_check (equate l1 l2) l1
 
-  let sub ~reason sub super =
-    let ok = Ok sub in
+  let sub sub super =
+    let ok = Ok () in
     let err = Error (Violation.Not_a_sublayout (sub,super)) in
     let equality_check is_eq = if is_eq then ok else err in
-    Result.map (add_reason reason) @@ match get sub, get super with
+    match get sub, get super with
     | _, Const Any -> ok
     | Const c1, Const c2 when equal_const c1 c2 -> ok
     | Const Immediate, Const Immediate64 -> ok
