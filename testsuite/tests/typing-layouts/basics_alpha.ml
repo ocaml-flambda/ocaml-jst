@@ -374,10 +374,8 @@ Error: This method has type 'b -> unit which is less general than
        'a has layout value, which is not a sublayout of immediate.
 |}];;
 
-(* XXX layouts: add more tests here once you can annotate these types with layouts.
-
-   Is the fact that we can write [let f2 = fun [@immediate] (type a) (x : a) -> x]
-   enough to do this now, or can we wait until V1.5?
+(* CR layouts v1.5: add more tests here once you can annotate these types with
+   layouts.
 *)
 
 (*****************************************)

@@ -49,9 +49,9 @@ let layout_must_be_value loc layout =
   | Ok () -> ()
   | Error e -> raise (Error (loc, Non_value_layout e))
 
-(* XXX layouts: In the place where this one is used, I wanted to do a sanity
-   check but I think [any] is actually allowed (e.g., to the left of a
-   semicolon), so we can't check for value.  Double check that. *)
+(* XXX layouts review: In the places where this is used, we want to allow any
+   (the left of a semicolon and loop bodies).  So we want this instead of the
+   usual sanity check for value. *)
 let layout_must_not_be_void loc layout =
   match Layout.(sub layout void) with
   | Ok () ->
@@ -876,12 +876,12 @@ and transl_exp0 ~in_new_scope ~scopes e =
       in
       let arg_idents, param_idents = Ident.Map.bindings map |> List.split in
       List.iter (fun id ->
-        (* XXX layouts: Temporary hack.  When we merge with middle-end support
-           for layouts, the lambda translation needs to be able to figure out
-           the layouts of all function parameters.  Here we're building a
-           function whose arguments are all the free variables in a probe
-           handler.  To deal with this, we're simply requiring all their types
-           to have layout value.
+        (* XXX layouts review: The probe hack.  When we merge with middle-end
+           support for layouts, the lambda translation needs to be able to
+           figure out the layouts of all function parameters.  Here we're
+           building a function whose arguments are all the free variables in a
+           probe handler.  To deal with this, we're simply requiring all their
+           types to have layout value.
 
            It's really hacky to be doing this kind of layout check this late.
            The middle-end folks have plans to eliminate the need for it by

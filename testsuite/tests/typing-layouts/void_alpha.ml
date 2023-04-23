@@ -8,10 +8,6 @@
 (* CR layouts v5: eliminate various restructions about how void is used from
    this file. *)
 
-(* XXX layouts: Every test in this file should pass typechecking but trigger the
-   transl void check.  Just comment out the old expected behavior to record how
-   we expect void to work in v5. *)
-
 type t_void [@@void]
 
 type void_rec = { v : t_void } [@@unboxed];;

@@ -515,8 +515,17 @@ and ('lbl, 'cstr) type_kind =
    for motivating examples where subsitution or instantiation may refine the
    immediacy of a type.  *)
 
-(* XXX layouts after removing the void translation from lambda, I think we can
-   get rid of the src_index/runtime_tag distinction, here and elsewhere. *)
+(* CR layouts: after removing the void translation from lambda, we could get rid of
+   this src_index / runtime_tag distinction.  But I am leaving it in because it
+   may not be long before we need it again.
+
+   In particular, lambda will need to do something about computing offsets for
+   block projections when not everything is one word wide, whether that's
+   because of void or because of other layouts.  One option is to change these
+   projections to be more abstract and pass the layout information to other
+   stages of the compiler, as is currently done for unboxed projection
+   operations, but at the moment our plan is to do this math in lambda in the
+   case of normal projections from boxes. *)
 and tag = Ordinary of {src_index: int;  (* Unique name (per type) *)
                        runtime_tag: int}    (* The runtime tag *)
         | Extension of Path.t * layout array

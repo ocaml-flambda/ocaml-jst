@@ -232,9 +232,9 @@ Error: In this `with' constraint, the new definition of t
        the first has layout value, which is not a sublayout of immediate.
 |}];;
 
-(* XXX layouts: this is broken because of the package with-type hack.  Make a
-   final determination about whether we want to ship it, and leave a CR if
-   so. *)
+(* XXX layouts review: this is broken because of the package with-type hack.
+   Make a final determination about whether we want to ship it, and leave a CR
+   if so. *)
 module type S6_6'' = sig
   type s = int
   val m : (module S6_5 with type t = int)

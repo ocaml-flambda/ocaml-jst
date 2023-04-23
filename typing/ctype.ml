@@ -3080,10 +3080,8 @@ let unify3_var ~var_name env layout1 t1' t2 t2' =
       link_type t1' t2
     end
   | exception Unify_trace _ when in_pattern_mode () ->
-      (* XXX layouts: what is going on down here?  We're recovering from an
-         occurs check failure by adding a gadt equation or ignoring the failure?
-         Is this code new in 4.14?  Do I need layouts stuff?  Look at the PR.
-         *)
+      (* XXX layouts review: what is going on down here?  Is this code new in 4.14?  Do
+         I need layouts stuff?  Look at the PR.  *)
       reify env t1';
       reify env t2';
       if can_generate_equations () then begin
@@ -3712,7 +3710,7 @@ let unify_var ~from_subst env t1 t2 =
   | _ ->
       unify (ref env) t1 t2
 
-(* XXX layouts: comment here explaining why it's safe to skip layout checks in
+(* CR layouts: comment here explaining why it's safe to skip layout checks in
    this case when called from subst. *)
 let _ = unify_var' := unify_var ~from_subst:true
 let unify_var = unify_var ~from_subst:false

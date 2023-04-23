@@ -226,10 +226,10 @@ let rec value_kind env ~loc ~visited ~depth ~num_nodes_visited ty
 
      Check that the error is at least marginally more helpful after
      Antal/Richard's improvements. *)
-  (* XXX layouts: At the moment, this "sanity check" is also doing some sort
-     variable defaulting for us.  The defaulting scheme we have set up in typing
-     only really deals with types that appear in a cmi.  So, for example, in
-     this program:
+  (* XXX layouts review: At the moment, this "sanity check" is also doing some
+     sort variable defaulting for us.  The defaulting scheme we have set up in
+     typing only really deals with types that appear in a cmi.  So, for example,
+     in this program:
 
      let () =
         match
@@ -245,7 +245,7 @@ let rec value_kind env ~loc ~visited ~depth ~num_nodes_visited ty
   *)
   let scty = scrape_ty env ty in
   begin
-    (* XXX layouts: We want to avoid correcting levels twice, and scrape_ty will
+    (* CR layouts: We want to avoid correcting levels twice, and scrape_ty will
        correct levels for us.  But it may be the case that we could do the
        sanity check on the original type but not the scraped type, because of
        missing cmis.  So we try the scraped type, and fall back to correcting
@@ -336,8 +336,9 @@ let rec value_kind env ~loc ~visited ~depth ~num_nodes_visited ty
       Pvariant { consts = []; non_consts = [0, List.rev fields] }
     end
   | Tvariant _ ->
-    (* XXX layouts: this was missing - only caught in 4.14 merge.  Am I missing
-       other cases. *)
+    (* XXX layouts review: the "check_type_layout" call below is cheap because
+       we have a Tvariant, but we otherwise try to avoid calling that function
+       in value kind - should we do something different?  *)
     num_nodes_visited,
     if Result.is_ok (Ctype.check_type_layout ~reason:V1_safety_check
                        env scty Layout.immediate)

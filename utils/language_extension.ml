@@ -8,9 +8,6 @@ type t =
   | Layouts_alpha
   | Layouts_beta
   | Layouts
-(* XXX layouts: should we add some sanity checking that the user hasn't for
-   example, explicitly disabled Layouts but enabled Layouts_beta?  Where would
-   that go? *)
 
 let equal (a : t) (b : t) = (a = b)
 

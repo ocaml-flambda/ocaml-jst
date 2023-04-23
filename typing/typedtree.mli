@@ -191,11 +191,11 @@ and fun_curry_state =
     the layout of the expression containing it.  For example, to the left of a
     semicolon, or in value_bindings.
 
-    XXX layouts: Some of these are mainly needed for void (e.g., left of a
+    CR layouts v1.5: Some of these were mainly needed for void (e.g., left of a
     semicolon).  If we redo how void is compiled, perhaps we can drop those.  On
     the other hand, there are some places we're not annotating now (e.g.,
     function arguments) that will need annotations in the future because we'll
-    allow other layouts there.
+    allow other layouts there.  Just do a rationalization pass on this.
 *)
 and expression_desc =
     Texp_ident of

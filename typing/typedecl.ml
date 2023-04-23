@@ -185,10 +185,12 @@ let enter_type rec_flag env sdecl (id, uid) =
   let layout =
     (* We set ~legacy_immediate to true because we're looking at a declaration
        that was already allowed to be [@@immediate] *)
-    (* XXX layouts: But actually here the compiler didn't used to check the
-       attribute at all.  Should I just set it to value without looking at the
-       attribute if no layout extensions are on? We'll still check the
-       attributes for disallowed layouts in [transl_declaration. *)
+    (* XXX layouts review: If we really want to match the old behavior when no
+       layouts extensions are on, we should ignore the attributes here
+       (immediate was not checked for). But I don't think there's any way for
+       this to actually cause a change in behavior, because a mutually defined
+       type can't observe the immediacy of its siblings during
+       [transl_declaration] without layouts extensions. *)
     layout_of_attributes_default
       ~legacy_immediate:true ~reason:(Type_declaration (Pident id))
       ~default:Layout.any
@@ -865,7 +867,7 @@ let check_constraints env sdecl (_, decl) =
    annotations check at the end of transl_type_decl, or are there other ways
    to get non-trivial layouts in Type_abstract?
 
-   XXX layouts: if easy, factor out the shared backtracking logic from here
+   CR layouts: if easy, factor out the shared backtracking logic from here
    and is_always_global.
 *)
 let check_coherence env loc dpath decl =
@@ -2062,7 +2064,7 @@ let transl_with_constraint id ?fixed_row_path ~sig_env ~sig_decl ~outer_env
     if arity_ok && man <> None then
       sig_decl.type_kind, sig_decl.type_unboxed_default
     else
-      (* XXX layouts: this is a gross hack.  See the comments in the
+      (* XXX layouts review: this is a gross hack.  See the comments in the
          [Ptyp_package] case of [Typetexp.transl_type_aux]. *)
       let layout = Layout.value in
         (* Layout.(of_attributes ~default:value sdecl.ptype_attributes) *)
@@ -2175,11 +2177,12 @@ let approx_type_decl sdecl_list =
        let id = Ident.create_scoped ~scope sdecl.ptype_name.txt in
        let injective = sdecl.ptype_kind <> Ptype_abstract in
        let layout =
-         (* XXX layouts: If we really want to match the old behavior when no
-            layouts extensions are on, we should ignore the attributes here
-            (immediate was not checked for). *)
          (* We set legacy_immediate to true because you were already allowed
             to write [@@immediate] on declarations. *)
+         (* XXX layouts review: If we really want to match the old behavior when
+            no layouts extensions are on, we should ignore the attributes here
+            (immediate was not checked for). But I don't think there's any way
+            for this to actually cause a change in behavior. *)
          layout_of_attributes_default ~legacy_immediate:true
            ~reason:(Type_declaration (Pident id))
            ~default:Layout.value sdecl.ptype_attributes

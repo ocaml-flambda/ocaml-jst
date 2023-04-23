@@ -3541,7 +3541,7 @@ let check_univars env kind exp ty_expected vars =
         List.iter2 (fun uvar var ->
           (* This checks that the term doesn't require more specific layouts
              than allowed by the univars. *)
-          (* XXX layouts: expand_head here is needed for examples like:
+          (* CR layouts: expand_head here is needed for examples like:
 
              type 'a t = 'a
              let id (x : 'a t) = x
