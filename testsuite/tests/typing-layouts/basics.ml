@@ -245,6 +245,6 @@ Error: Layout void is used here, but the appropriate layouts extension is not en
 |}];;
 
 
-(* CR layouts: Once we allow non-value top-level module definitions, add
+(* CR layouts v2: Once we allow non-value top-level module definitions, add
    tests showing that things get defaulted to value.
 *)

@@ -59,7 +59,7 @@ module type S1_2' = sig type 'a t = 'a list end
 module M1_2' : S1_2'
 |}]
 
-(* CR ccasinghino - annoyingly, the immediate annotation on 'a is required.  We
+(* CR layouts - annoyingly, the immediate annotation on 'a is required.  We
    can probably relax this so you don't have to label the parameter explcitly
    and the layout is determined from the signature.  But we anticipate it'll
    require non-trivial refactoring of eqtype, so we've put it off for now. *)

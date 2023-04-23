@@ -534,7 +534,7 @@ module Make(O : OBJ)(EVP : EVALPATH with type valu = O.t) = struct
         in
         Oval_record (tree_of_fields (pos = 0) pos lbl_list)
 
-      (* CR ccasinghino: When we allow other layouts in tuples, this should be
+      (* CR layouts v4: When we allow other layouts in tuples, this should be
          generalized to take a list or array of layouts, rather than just
          pairing each type with a bool indicating whether it is void *)
       and tree_of_val_list start depth obj ty_list =
