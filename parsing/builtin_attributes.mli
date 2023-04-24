@@ -190,18 +190,6 @@ val has_include_functor : Parsetree.attributes -> (bool,unit) result
    Currently, the [Layouts] extension is ignored - it's no different than
    turning on no layout extensions.
 *)
-(* XXX layouts review: currently, [@@value] is allowed even if no extensions are
-   enabled.  I think this is a good idea for two reasons: 1) It's needed for
-   some wonky recursive types.  (But we could do without this.)  2) It's
-   potentially useful to have for quick recovery if bugs are discovered and
-   layouts are being misinferred.
-
-   But I can see the argument either way - discuss with team.
-
-   Richard suggested moving it to the [Layouts] flag.  I think this is
-   reasonable, but we would mean we need create layout-flag-specific copies of
-   some tests that otherwise have nothing to do with layouts.
-*)
 (* CR layouts: we should eventually be able to delete ~legacy_immediate (after we
    turn on layouts by default). *)
 val layout : legacy_immediate:bool -> Parsetree.attributes ->

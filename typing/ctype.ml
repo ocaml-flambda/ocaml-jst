@@ -286,7 +286,8 @@ let can_generate_equations () =
   | Expression | Subst | Pattern { equations_generation = Forbidden } -> false
   | Pattern { equations_generation = Allowed _ } -> true
 
-(* Can only be called when generate_equations is true *)
+(* Can only be called when generate_equations is true.  Tracks equations only to
+   improve error messages. *)
 let record_equation t1 t2 =
   match !umode with
   | Expression | Subst | Pattern { equations_generation = Forbidden } ->
@@ -3080,12 +3081,6 @@ let unify3_var ~var_name env layout1 t1' t2 t2' =
       link_type t1' t2
     end
   | exception Unify_trace _ when in_pattern_mode () ->
-      (* XXX layouts review: I think this is fine (that is, we don't need a
-         layout check here) becuase if we're about to record an equation with
-         mismatched layouts you're in dead code.  But anyway if we have time it
-         might be a good excuse to get Leo to talk both about this somewhat wild
-         case (escaped univars? which it seems like he reported).  And also
-         maybe a bit about `record_equation` generally. *)
       reify env t1';
       reify env t2';
       if can_generate_equations () then begin

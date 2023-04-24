@@ -11,12 +11,10 @@ type t =
   | Layouts_alpha
   | Layouts_beta
   | Layouts
-(* XXX layouts review: [Layouts_alpha] is here for testing - it's useful to make
-   void accessible in the type system and check that we catch it in the middle
-   end.  I think we've decided it's OK to ship with, too. *)
-(* XXX layouts review: do we want sanity checking that the user hasn't, for
+(* XXX layouts: do we want sanity checking that the user hasn't, for
    example, explicitly disabled Layouts but enabled Layouts_beta?  What rules do
-   we want, and where do we do checks like that? *)
+   we want, and where do we do checks like that? Do this as part of the refactor
+   to just have one extension for layouts, with a parameter. *)
 
 (** Equality on language extensions *)
 val equal : t -> t -> bool

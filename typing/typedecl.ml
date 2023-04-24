@@ -185,12 +185,6 @@ let enter_type rec_flag env sdecl (id, uid) =
   let layout =
     (* We set ~legacy_immediate to true because we're looking at a declaration
        that was already allowed to be [@@immediate] *)
-    (* XXX layouts review: If we really want to match the old behavior when no
-       layouts extensions are on, we should ignore the attributes here
-       (immediate was not checked for). But I don't think there's any way for
-       this to actually cause a change in behavior, because a mutually defined
-       type can't observe the immediacy of its siblings during
-       [transl_declaration] without layouts extensions. *)
     layout_of_attributes_default
       ~legacy_immediate:true ~reason:(Type_declaration (Pident id))
       ~default:Layout.any
@@ -2064,7 +2058,7 @@ let transl_with_constraint id ?fixed_row_path ~sig_env ~sig_decl ~outer_env
     if arity_ok && man <> None then
       sig_decl.type_kind, sig_decl.type_unboxed_default
     else
-      (* XXX layouts review: this is a gross hack.  See the comments in the
+      (* CR layouts: this is a gross hack.  See the comments in the
          [Ptyp_package] case of [Typetexp.transl_type_aux]. *)
       let layout = Layout.value in
         (* Layout.(of_attributes ~default:value sdecl.ptype_attributes) *)
@@ -2179,10 +2173,6 @@ let approx_type_decl sdecl_list =
        let layout =
          (* We set legacy_immediate to true because you were already allowed
             to write [@@immediate] on declarations. *)
-         (* XXX layouts review: If we really want to match the old behavior when
-            no layouts extensions are on, we should ignore the attributes here
-            (immediate was not checked for). But I don't think there's any way
-            for this to actually cause a change in behavior. *)
          layout_of_attributes_default ~legacy_immediate:true
            ~reason:(Type_declaration (Pident id))
            ~default:Layout.value sdecl.ptype_attributes

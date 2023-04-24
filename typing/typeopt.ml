@@ -202,6 +202,33 @@ let value_kind_of_value_layout layout =
 (* CR layout v5 (and maybe other versions): As we relax the requirement that
    various things have to be values, many recursive calls in [value_kind]
    need to be updated to check layouts. *)
+(* CR layouts v2: At the moment, sort variables may be defaulted to value by
+   value_kind.  For example, here:
+
+   let () =
+     match assert false  with
+     | _ -> assert false
+
+   There is a sort variable for the scrutinee of the match in typedtree that is
+   still a sort variable after checking this.  And this is fine - we default
+   sorts that appear in interfaces, but other sorts may still appear in the
+   typedtree.  These represent places where the compiler can pick a sort, and
+   should pick whatever is most efficient (probably eventually void).
+
+   When we eliminate the safety check here, we should think again about where
+   and how sort variables are defaulted.
+*)
+(* XXX layouts: refactor this to return an error from recursive calls of
+   non-value detected.  We need to fall back sometimes.  For example, suppose:
+   - module B uses type A.t
+   - A.t = t1 * t2
+   - When we compile B, we're missing the cmi for wherever t2 is defined.
+
+   In this case, there's no good way for value_kind to record the information
+   that A.t is a pair while compiling B.  It's kind would be a block of two
+   things, the second of which we don't know the layout of, and we can't have a
+   block whose length we don't know.  Instead, we'll fall back and just return
+   Pgenval for A.t in B. *)
 let rec value_kind env ~loc ~visited ~depth ~num_nodes_visited ty
   : int * value_kind =
   let[@inline] cannot_proceed () =
@@ -226,23 +253,6 @@ let rec value_kind env ~loc ~visited ~depth ~num_nodes_visited ty
 
      Check that the error is at least marginally more helpful after
      Antal/Richard's improvements. *)
-  (* XXX layouts review: At the moment, this "sanity check" is also doing some
-     sort variable defaulting for us.  The defaulting scheme we have set up in
-     typing only really deals with types that appear in a cmi.  So, for example,
-     in this program:
-
-     let () =
-        match
-          assert false
-        with
-        | _ -> assert false
-
-     There is a sort variable for the scrutinee of the match in typedtree that
-     (reasonbly) is still a sort variable after checking this.  Maybe we want to
-     add a walk of the typed tree to default all sort variables after
-     typechecking.  Why isn't that needed for mode variables, which I think also
-     appear in the typed tree?
-  *)
   let scty = scrape_ty env ty in
   begin
     (* CR layouts: We want to avoid correcting levels twice, and scrape_ty will
@@ -336,9 +346,13 @@ let rec value_kind env ~loc ~visited ~depth ~num_nodes_visited ty
       Pvariant { consts = []; non_consts = [0, List.rev fields] }
     end
   | Tvariant _ ->
-    (* XXX layouts review: the "check_type_layout" call below is cheap because
-       we have a Tvariant, but we otherwise try to avoid calling that function
-       in value kind - should we do something different?  *)
+    (* XXX layouts: the "check_type_layout" call below is cheap because we have
+       a Tvariant, but we otherwise try to avoid calling that function in value
+       kind - should we do something different?
+
+       Just make a second function called both here and in check_type_layout
+       handling the TVariant case, so make it clearer that this is efficient.
+    *)
     num_nodes_visited,
     if Result.is_ok (Ctype.check_type_layout ~reason:V1_safety_check
                        env scty Layout.immediate)

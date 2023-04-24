@@ -232,9 +232,10 @@ Error: In this `with' constraint, the new definition of t
        the first has layout value, which is not a sublayout of immediate.
 |}];;
 
-(* XXX layouts review: this is broken because of the package with-type hack.
-   Make a final determination about whether we want to ship it, and leave a CR
-   if so. *)
+(* CR layouts: this is broken because of the package with-type hack.  It was
+   already broken before layouts, but it would be nice to fix.  See the comment
+   on See the comments in the [Ptyp_package] case of
+   [Typetexp.transl_type_aux]. *)
 module type S6_6'' = sig
   type s = int
   val m : (module S6_5 with type t = int)

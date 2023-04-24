@@ -784,8 +784,8 @@ and transl_type_aux env policy mode styp =
       unify_var env (newvar Layout.any) ty';
       ctyp (Ttyp_poly (vars, cty)) ty'
   | Ptyp_package (p, l) ->
-    (* XXX layouts review: right now we're doing a real gross hack where we
-       demand everything in a package type with constraint be value.
+    (* CR layouts: right now we're doing a real gross hack where we demand
+       everything in a package type with constraint be value.
 
        An alternative is to walk into the constrained module, using the
        longidents, and find the actual things that need layout checking.
