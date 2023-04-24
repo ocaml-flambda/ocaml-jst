@@ -426,13 +426,13 @@ let layout ~legacy_immediate attrs =
   | Some (a, (Immediate | Immediate64 as l)) ->
     mark_used a.attr_name;
     if   legacy_immediate
-      || Language_extension.(   is_enabled Layouts_beta
-                             || is_enabled Layouts_alpha)
+      || Language_extension.(   is_enabled (Layouts Beta)
+                             || is_enabled (Layouts Alpha))
     then Ok (Some l)
     else Error (a.attr_loc, l)
   | Some (a, (Any | Void as l)) ->
     mark_used a.attr_name;
-    if Language_extension.is_enabled Layouts_alpha
+    if Language_extension.is_enabled (Layouts Alpha)
     then Ok (Some l)
     else Error (a.attr_loc, l)
 

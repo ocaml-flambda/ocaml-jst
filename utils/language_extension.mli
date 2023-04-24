@@ -1,5 +1,7 @@
 (** Language extensions provided by ocaml-jst *)
 
+type maturity = Stable | Beta | Alpha
+
 (** The type of language extensions *)
 type t =
   | Comprehensions
@@ -8,9 +10,7 @@ type t =
   | Polymorphic_parameters
   | Immutable_arrays
   | Module_strengthening
-  | Layouts_alpha
-  | Layouts_beta
-  | Layouts
+  | Layouts of maturity
 (* XXX layouts: do we want sanity checking that the user hasn't, for
    example, explicitly disabled Layouts but enabled Layouts_beta?  What rules do
    we want, and where do we do checks like that? Do this as part of the refactor
@@ -21,6 +21,10 @@ val equal : t -> t -> bool
 
 (** A list of all possible language extensions *)
 val all : t list
+
+(** A maximal list of compatible language extensions (of the layouts extensions,
+    "layouts_alpha" is selected). *)
+val max_compatible : t list
 
 (** Check if a language extension is "erasable", i.e. whether it can be
     harmlessly translated to attributes and compiled with the upstream
