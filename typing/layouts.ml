@@ -413,23 +413,32 @@ module Layout = struct
       | No_intersection (lhs, rhs) ->
           No_intersection (add_missing_cmi_for ~missing_cmi_for lhs, rhs)
 
+    let root_module_name p =
+      p |>
+      Path.head |>
+      Ident.name
+
     let delete_trailing_double_underscore s =
       if Misc.Stdlib.String.ends_with ~suffix:"__" s
       then String.sub s 0 (String.length s - 2)
       else s
 
-    let missing_cmi_hint ppf : Path.t -> unit = function
-      | Pdot _ as p ->
-          let library =
-            p |>
-            Path.head |>
-            Ident.name |>
-            String.lowercase_ascii |>
-            delete_trailing_double_underscore
-          in
-          fprintf ppf "@,Hint: Try adding \"%s\" to your dependencies." library
+    (* A heuristic for guessing at a plausible library name for an identifier
+       with a missing .cmi file *)
+    let guess_library_name : Path.t -> string option = function
+      | Pdot _ as p -> Some begin
+          match root_module_name p with
+          | "Location" | "Longident" -> "ocamlcommon"
+          | mn ->
+              mn |> String.lowercase_ascii |> delete_trailing_double_underscore
+        end
       | Pident _ | Papply _ ->
-          ()
+          None
+
+    let missing_cmi_hint ppf p =
+      Option.iter
+        (fprintf ppf "@,Hint: Try adding \"%s\" to your dependencies.")
+        (guess_library_name p)
 
     let report_missing_cmi ppf = function
       | { layout = Any { missing_cmi_for = Some p }; _ } ->
