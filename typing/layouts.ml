@@ -402,6 +402,17 @@ module Layout = struct
       | Not_a_sublayout of t * t
       | No_intersection of t * t
 
+    let add_missing_cmi_for ~missing_cmi_for = function
+      | { layout = Any { missing_cmi_for = None }; history } ->
+          { layout = Any { missing_cmi_for = Some missing_cmi_for }; history }
+      | t -> t
+
+    let add_missing_cmi_for_lhs ~missing_cmi_for = function
+      | Not_a_sublayout (lhs, rhs) ->
+          Not_a_sublayout (add_missing_cmi_for ~missing_cmi_for lhs, rhs)
+      | No_intersection (lhs, rhs) ->
+          No_intersection (add_missing_cmi_for ~missing_cmi_for lhs, rhs)
+
     let delete_trailing_double_underscore s =
       if Misc.Stdlib.String.ends_with ~suffix:"__" s
       then String.sub s 0 (String.length s - 2)

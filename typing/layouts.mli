@@ -148,6 +148,11 @@ module Layout : sig
       | Not_a_sublayout of t * t
       | No_intersection of t * t
 
+    (** If we later discover that the left-hand layout was from a missing .cmi
+        file, and if that layout is [any ~missing_cmi_for:None], this function
+        will update that layout to report what type caused that. *)
+    val add_missing_cmi_for_lhs : missing_cmi_for:Path.t -> t -> t
+
     (* CR layouts: Having these options for printing a violation was a choice
        made based on the needs of expedient debugging during development, but
        probably should be rethought at some point. *)
