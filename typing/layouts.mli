@@ -37,6 +37,10 @@ module Sort : sig
   val void : t
   val value : t
 
+  (** These names are generated lazily and only when this function is called,
+      and are not guaranteed to be efficient to create *)
+  val var_name : var -> string
+
   (** This checks for equality, and sets any variables to make two sorts
       equal, if possible *)
   val equate : t -> t -> bool

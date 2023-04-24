@@ -284,7 +284,7 @@ let join_modes rm1 am2 =
 
 let print_out_layout ppf = function
   | Olay_const lay -> fprintf ppf "%s" (Layouts.Layout.string_of_const lay)
-  | Olay_var       -> fprintf ppf "'_concrete_layout__should_never_be_printed"
+  | Olay_var   v   -> fprintf ppf "%s" v
       (* CR layouts: We need to either give these names somehow or not print
          them at all *)
 

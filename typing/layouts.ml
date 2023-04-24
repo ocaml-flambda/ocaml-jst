@@ -24,6 +24,19 @@ module Sort = struct
     | Const of const
   and var = t option ref
 
+  let var_name : var -> string =
+    let next_id = ref 1 in
+    let named = ref [] in
+    fun v ->
+      match List.assq_opt v (!named) with
+      | Some name -> name
+      | None ->
+          let id = !next_id in
+          let name = "'_concrete_layout_" ^ Int.to_string id in
+          next_id := id + 1;
+          named := (v, name) :: !named;
+          name
+
   let void = Const Void
   let value = Const Value
 
@@ -279,7 +292,7 @@ module Layout = struct
 
   let to_string lay = match get lay with
     | Const c -> string_of_const c
-    | Var _ -> "<sort variable>"
+    | Var v -> Sort.var_name v
 
   module Formatting : sig
     open Format
@@ -447,17 +460,39 @@ module Layout = struct
             missing_cmi_hint p
       | _ -> ()
 
+    type problem =
+      | Is_not_representable
+      | Is_not_a_sublayout_of
+      | Does_not_overlap_with
+
+    let message = function
+      | Is_not_representable  -> "is not representable"
+      | Is_not_a_sublayout_of -> "is not a sublayout of"
+      | Does_not_overlap_with -> "does not overlap with"
+
+    let report_second = function
+      | Is_not_representable ->
+          fun _ _ -> ()
+      | Is_not_a_sublayout_of | Does_not_overlap_with ->
+          fun ppf -> fprintf ppf " %a" format
+
     let report_general preamble pp_former former ppf t =
       let l1, problem, l2 = match t with
-        | Not_a_sublayout(l1, l2) -> l1, "is not a sublayout of", l2
-        | No_intersection(l1, l2) -> l1, "does not overlap with", l2
+        | Not_a_sublayout(l1, l2) ->
+            l1,
+            (match get l2 with
+             | Var   _ -> Is_not_representable
+             | Const _ -> Is_not_a_sublayout_of),
+            l2
+        | No_intersection(l1, l2) ->
+            l1, Does_not_overlap_with, l2
       in
-      fprintf ppf "@[<v>@[<hov 2>%s%a has layout %a,@ which %s %a.@]%a%a%a%a@]"
+      fprintf ppf "@[<v>@[<hov 2>%s%a has layout %a,@ which %s%a.@]%a%a%a%a@]"
         preamble
         pp_former former
         format l1
-        problem
-        format l2
+        (message problem)
+        (report_second problem) l2
         (format_history ~pp_name:pp_former ~name:former) l1
         (format_history ~pp_name:pp_print_string ~name:"The latter") l2
         report_missing_cmi l1

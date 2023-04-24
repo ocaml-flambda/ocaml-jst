@@ -49,7 +49,7 @@ Line 1, characters 15-31:
 1 | type t2_any1 = T2_any1 of t_any
                    ^^^^^^^^^^^^^^^^
 Error: Constructor argument types must have a representable layout.
-        t_any has layout any, which is not a sublayout of <sort variable>.
+        t_any has layout any, which is not representable.
 |}];;
 
 type t2_any2 = T2_any2 of t_immediate * t_any
@@ -58,7 +58,7 @@ Line 1, characters 15-45:
 1 | type t2_any2 = T2_any2 of t_immediate * t_any
                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Error: Constructor argument types must have a representable layout.
-        t_any has layout any, which is not a sublayout of <sort variable>.
+        t_any has layout any, which is not representable.
 |}];;
 
 type t2_any3 = T2_any3 of t_any * t_value
@@ -67,7 +67,7 @@ Line 1, characters 15-41:
 1 | type t2_any3 = T2_any3 of t_any * t_value
                    ^^^^^^^^^^^^^^^^^^^^^^^^^^
 Error: Constructor argument types must have a representable layout.
-        t_any has layout any, which is not a sublayout of <sort variable>.
+        t_any has layout any, which is not representable.
 |}];;
 
 type 'a t1_constraint = T1_con of 'a constraint 'a = 'b t1_constraint'
@@ -77,8 +77,7 @@ Line 2, characters 0-29:
 2 | and 'b t1_constraint' = t_any
     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Error:
-       'a t1_constraint' has layout any,
-         which is not a sublayout of <sort variable>.
+       'a t1_constraint' has layout any, which is not representable.
 |}]
 
 (******************************************************)
@@ -135,7 +134,7 @@ Line 1, characters 17-26:
 1 | type t4_any1 = { x : t_any }
                      ^^^^^^^^^
 Error: Record element types must have a representable layout.
-        t_any has layout any, which is not a sublayout of <sort variable>.
+        t_any has layout any, which is not representable.
 |}];;
 
 type t4_any2 = { x : t_immediate; y : t_any }
@@ -144,7 +143,7 @@ Line 1, characters 34-43:
 1 | type t4_any2 = { x : t_immediate; y : t_any }
                                       ^^^^^^^^^
 Error: Record element types must have a representable layout.
-        t_any has layout any, which is not a sublayout of <sort variable>.
+        t_any has layout any, which is not representable.
 |}];;
 
 type t4_any3 =  { x : t_any; y : t_value }
@@ -153,7 +152,7 @@ Line 1, characters 18-28:
 1 | type t4_any3 =  { x : t_any; y : t_value }
                       ^^^^^^^^^^
 Error: Record element types must have a representable layout.
-        t_any has layout any, which is not a sublayout of <sort variable>.
+        t_any has layout any, which is not representable.
 |}];;
 
 type t4_cany1 = C of { x : t_any }
@@ -162,7 +161,7 @@ Line 1, characters 23-32:
 1 | type t4_cany1 = C of { x : t_any }
                            ^^^^^^^^^
 Error: Record element types must have a representable layout.
-        t_any has layout any, which is not a sublayout of <sort variable>.
+        t_any has layout any, which is not representable.
 |}];;
 
 type t4_cany2 = C of { x : t_immediate; y : t_any }
@@ -171,7 +170,7 @@ Line 1, characters 40-49:
 1 | type t4_cany2 = C of { x : t_immediate; y : t_any }
                                             ^^^^^^^^^
 Error: Record element types must have a representable layout.
-        t_any has layout any, which is not a sublayout of <sort variable>.
+        t_any has layout any, which is not representable.
 |}];;
 
 type t4_cany3 = C of { x : t_any; y : t_value }
@@ -180,7 +179,7 @@ Line 1, characters 23-33:
 1 | type t4_cany3 = C of { x : t_any; y : t_value }
                            ^^^^^^^^^^
 Error: Record element types must have a representable layout.
-        t_any has layout any, which is not a sublayout of <sort variable>.
+        t_any has layout any, which is not representable.
 |}];;
 
 (*********************************************************)
@@ -211,7 +210,7 @@ Line 1, characters 11-24:
 1 | type t5 += T5_7 of t_any
                ^^^^^^^^^^^^^
 Error: Constructor argument types must have a representable layout.
-        t_any has layout any, which is not a sublayout of <sort variable>.
+        t_any has layout any, which is not representable.
 |}];;
 
 type t5 += T5_8 of t_immediate * t_any
@@ -220,7 +219,7 @@ Line 1, characters 11-38:
 1 | type t5 += T5_8 of t_immediate * t_any
                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Error: Constructor argument types must have a representable layout.
-        t_any has layout any, which is not a sublayout of <sort variable>.
+        t_any has layout any, which is not representable.
 |}];;
 
 type t5 += T5_9 of t_any * t_value
@@ -229,7 +228,7 @@ Line 1, characters 11-34:
 1 | type t5 += T5_9 of t_any * t_value
                ^^^^^^^^^^^^^^^^^^^^^^^
 Error: Constructor argument types must have a representable layout.
-        t_any has layout any, which is not a sublayout of <sort variable>.
+        t_any has layout any, which is not representable.
 |}];;
 
 type t5 += T5_11 of { x : t_value }
@@ -260,7 +259,7 @@ Line 1, characters 39-48:
 1 | type t5 += T5_17 of { x : t_immediate; y : t_any }
                                            ^^^^^^^^^
 Error: Record element types must have a representable layout.
-        t_any has layout any, which is not a sublayout of <sort variable>.
+        t_any has layout any, which is not representable.
 |}];;
 
 (**************************************************************************)

@@ -58,7 +58,7 @@ type out_value =
 
 type out_layout =
   | Olay_const of Asttypes.const_layout
-  | Olay_var (* CR layouts: We likely need to invent names for these *)
+  | Olay_var of string
 
 type out_type_param =
   { oparam_name : string;

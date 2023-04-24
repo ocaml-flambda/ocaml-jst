@@ -1370,7 +1370,7 @@ let param_layout ty =
     begin match Layouts.Layout.get layout with
     | Const Value -> None
     | Const clay -> Some (Olay_const clay)
-    | Var _ -> Some Olay_var
+    | Var v -> Some (Olay_var (Sort.var_name v))
     end
   | _ -> None
 
@@ -2122,7 +2122,7 @@ let trees_of_type_expansion'
       | Tvar { layout; _ } | Tunivar { layout; _ } ->
           let olay = match Layouts.Layout.get layout with
             | Const clay -> Olay_const clay
-            | Var   _    -> Olay_var
+            | Var   v    -> Olay_var   (Sort.var_name v)
           in
           Otyp_layout_annot (out, olay)
       | _ ->
