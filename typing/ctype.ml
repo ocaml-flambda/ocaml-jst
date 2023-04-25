@@ -1956,10 +1956,8 @@ let rec estimate_type_layout env ty =
   | Tpoly (ty, _) -> estimate_type_layout env ty
   | Tpackage _ -> Layout value
 
-(* For convenience, this returns the most precise layout we computed for the
-   type (which may still be an upper bound).
 
-   The ~fixed argument controls what effects this may have on `ty`.  If false,
+(* The ~fixed argument controls what effects this may have on `ty`.  If false,
    then we will update the layout of type variables to make the check true, if
    possible.  If true, we won't (but will still instantiate sort variables).
 
