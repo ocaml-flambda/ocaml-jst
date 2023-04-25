@@ -49,9 +49,9 @@ let layout_must_be_value loc layout =
   | Ok () -> ()
   | Error e -> raise (Error (loc, Non_value_layout e))
 
-(* XXX layouts review: In the places where this is used, we want to allow any
-   (the left of a semicolon and loop bodies).  So we want this instead of the
-   usual sanity check for value. *)
+(* CR layouts v2: In the places where this is used, we want to allow any (the
+   left of a semicolon and loop bodies).  So we want this instead of the usual
+   sanity check for value.  *)
 let layout_must_not_be_void loc layout =
   match Layout.(sub layout void) with
   | Ok () ->
@@ -876,12 +876,12 @@ and transl_exp0 ~in_new_scope ~scopes e =
       in
       let arg_idents, param_idents = Ident.Map.bindings map |> List.split in
       List.iter (fun id ->
-        (* XXX layouts review: The probe hack.  When we merge with middle-end
-           support for layouts, the lambda translation needs to be able to
-           figure out the layouts of all function parameters.  Here we're
-           building a function whose arguments are all the free variables in a
-           probe handler.  To deal with this, we're simply requiring all their
-           types to have layout value.
+        (* CR layouts: The probe hack.
+
+           The lambda translation wants to know the layouts of all function
+           parameters.  Here we're building a function whose arguments are all
+           the free variables in a probe handler.  At the moment, we just check
+           that they are all values.
 
            It's really hacky to be doing this kind of layout check this late.
            The middle-end folks have plans to eliminate the need for it by
@@ -891,8 +891,8 @@ and transl_exp0 ~in_new_scope ~scopes e =
 
            (We could probably calculate the layouts of these variables here
            rather than requiring them all to be value, but that would be even
-           more hacky, and in any event can't doesn't make sense until we merge
-           with the middle-end support).  *)
+           more hacky, and in any event we don't yet want to connect the
+           front-end layout support to the middle-end layout support).  *)
         let path = Path.Pident id in
         match Env.find_value path e.exp_env with
         | {val_type; _} -> begin

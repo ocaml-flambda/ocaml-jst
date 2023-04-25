@@ -213,7 +213,7 @@ let value_kind_of_value_layout layout =
    still a sort variable after checking this.  And this is fine - we default
    sorts that appear in interfaces, but other sorts may still appear in the
    typedtree.  These represent places where the compiler can pick a sort, and
-   should pick whatever is most efficient (probably eventually void).
+   should pick whatever is most efficient (eventually void).
 
    When we eliminate the safety check here, we should think again about where
    and how sort variables are defaulted.

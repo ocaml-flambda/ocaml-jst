@@ -405,7 +405,6 @@ let warn_on_literal_pattern attrs =
 let explicit_arity attrs =
   has_attribute ["ocaml.explicit_arity"; "explicit_arity"] attrs
 
-(* XXX layouts: fix up layouts extension to be one constructor *)
 let layout ~legacy_immediate attrs =
   let layout =
     List.find_map
