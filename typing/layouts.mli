@@ -87,11 +87,13 @@ module Layout : sig
   val equal_const : const -> const -> bool
 
   (** This layout is the top of the layout lattice. All types have layout [any].
-      But we cannot compile run-time manipulations of values of types with layout
-      [any].
+      But we cannot compile run-time manipulations of values of types with
+      layout [any]. *)
+  val any : t
 
-      If [missing_cmi_for] is [None], this value is guaranteed to be shared. *)
-  val any : missing_cmi_for:Path.t option -> t
+  (** This is a variant of the [any] layout used when we have to fill it in
+      because there's a missing .cmi file for the specified type. *)
+  val missing_cmi_any : Path.t -> t
 
   (** Value of types of this layout are not retained at all at runtime *)
   val void : t
@@ -153,8 +155,8 @@ module Layout : sig
       | No_intersection of t * t
 
     (** If we later discover that the left-hand layout was from a missing .cmi
-        file, and if that layout is [any ~missing_cmi_for:None], this function
-        will update that layout to report what type caused that. *)
+        file, and if that layout is [any], this function will update that layout
+        to report what type caused that (a la [missing_cmi_any]). *)
     val add_missing_cmi_for_lhs : missing_cmi_for:Path.t -> t -> t
 
     (* CR layouts: Having these options for printing a violation was a choice

@@ -192,13 +192,9 @@ module Layout = struct
   (******************************)
   (* constants *)
 
-  (* Allocate only one [Any] unless there's a missing cmi *)
-  let any =
-    let make missing_cmi_for = fresh_layout (Any { missing_cmi_for }) in
-    let none = make None in
-    fun ~missing_cmi_for -> match missing_cmi_for with
-      | None -> none
-      | Some _ -> make missing_cmi_for
+  let any' missing_cmi_for = fresh_layout (Any { missing_cmi_for })
+  let any = any' None
+  let missing_cmi_any type_ = any' (Some type_)
   let void = fresh_layout (Sort Sort.void)
   let value = fresh_layout (Sort Sort.value)
   let immediate64 = fresh_layout Immediate64
@@ -234,7 +230,7 @@ module Layout = struct
   let of_sort s = fresh_layout (Sort s)
 
   let of_const : const -> t = function
-    | Any -> any ~missing_cmi_for:None
+    | Any -> any
     | Immediate -> immediate
     | Immediate64 -> immediate64
     | Value -> value
