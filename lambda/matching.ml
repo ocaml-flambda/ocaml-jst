@@ -2846,31 +2846,23 @@ let split_cases tag_lambda_list =
 (* The bool tracks whether the constructor is constant, because we don't have a
    constructor_description available for polymorphic variants *)
 let split_variant_cases (tag_lambda_list : ((int * bool) * lambda) list) =
-  let rec split_rec = function
-    | [] -> ([], [])
-    | (tag, act) :: rem -> (
-        let consts, nonconsts = split_rec rem in
-        match tag with
-        | (n, true) -> ((n, act) :: consts, nonconsts)
-        | (n, false) -> (consts, (n, act) :: nonconsts)
-      )
+  let const, nonconst =
+    List.partition_map
+      (fun (tag, act) -> match tag with
+         | (n, true) -> Left (n, act)
+         | (n, false) -> Right (n, act))
+      tag_lambda_list
   in
-  let const, nonconst = split_rec tag_lambda_list in
   (sort_int_lambda_list const, sort_int_lambda_list nonconst)
 
-
 let split_extension_cases tag_lambda_list =
-  let rec split_rec = function
-    | [] -> ([], [])
-    | ({cstr_constant; cstr_tag}, act) :: rem -> (
-        let consts, nonconsts = split_rec rem in
-        match cstr_constant, cstr_tag with
-        | true, Extension (path,_) -> ((path,act) :: consts, nonconsts)
-        | false, Extension (path,_)-> (consts, (path, act) :: nonconsts)
-        | _, Ordinary _ -> assert false
-      )
-  in
-  split_rec tag_lambda_list
+  List.partition_map
+    (fun ({cstr_constant; cstr_tag}, act) ->
+       match cstr_constant, cstr_tag with
+       | true, Extension (path,_) -> Left (path, act)
+       | false, Extension (path,_)-> Right (path, act)
+       | _, Ordinary _ -> assert false)
+    tag_lambda_list
 
 let combine_constructor value_kind loc arg pat_env cstr partial ctx def
     (descr_lambda_list, total1, pats) =

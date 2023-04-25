@@ -43,12 +43,15 @@ type error =
 
 exception Error of Location.t * error
 
-(* CR layouts v2: When we're ready to allow non-values, this can be deleted or
-   changed to check for void. *)
-let layout_must_be_value loc ty layout =
-  match Layout.(sub layout value) with
-  | Ok () -> ()
-  | Error e -> raise (Error (loc, Non_value_layout (ty, e)))
+(* CR layouts v2: This is used as part of the "void safety check" in the case of
+   `Tstr_eval`, where we want to allow `any` in particular.  Remove when we
+   remove the safety check. *)
+let layout_must_not_be_void loc ty layout =
+  match Layout.(sub layout void) with
+  | Ok () ->
+    let violation = Layout.(Violation.Not_a_sublayout (layout, value)) in
+    raise (Error (loc, Non_value_layout (ty, violation)))
+  | Error _ -> ()
 
 let cons_opt x_opt xs =
   match x_opt with
@@ -668,7 +671,7 @@ and transl_structure ~scopes loc fields cc rootpath final_env = function
           let body, size =
             transl_structure ~scopes loc fields cc rootpath final_env rem
           in
-          layout_must_be_value expr.exp_loc expr.exp_type layout;
+          layout_must_not_be_void expr.exp_loc expr.exp_type layout;
           Lsequence(transl_exp ~scopes expr, body), size
       | Tstr_value(rec_flag, pat_expr_list) ->
           (* Translate bindings first *)
@@ -1102,7 +1105,7 @@ let transl_store_structure ~scopes glob map prims aliases str =
     | item :: rem ->
         match item.str_desc with
         | Tstr_eval (expr, layout, _attrs) ->
-            layout_must_be_value expr.exp_loc expr.exp_type layout;
+            layout_must_not_be_void expr.exp_loc expr.exp_type layout;
             Lsequence(Lambda.subst no_env_update subst
                         (transl_exp ~scopes expr),
                       transl_store ~scopes rootpath subst cont rem)
@@ -1499,7 +1502,7 @@ let transl_store_gen ~scopes module_name ({ str_items = str }, restr) topl =
       match str with
       | [ { str_desc = Tstr_eval (expr, layout, _attrs) } ] when topl ->
         assert (size = 0);
-        layout_must_be_value expr.exp_loc expr.exp_type layout;
+        layout_must_not_be_void expr.exp_loc expr.exp_type layout;
         Lambda.subst (fun _ _ env -> env) !transl_store_subst
           (transl_exp ~scopes expr)
       | str ->
@@ -1601,7 +1604,7 @@ let transl_toplevel_item ~scopes item =
        Otherwise, the normal compilation would result in a Lsequence returning
        unit. *)
     Tstr_eval (expr, layout, _) ->
-      layout_must_be_value expr.exp_loc expr.exp_type layout;
+      layout_must_not_be_void expr.exp_loc expr.exp_type layout;
       transl_exp ~scopes expr
   | Tstr_value(Nonrecursive,
                [{vb_pat = {pat_desc=Tpat_any};vb_expr = expr}]) ->

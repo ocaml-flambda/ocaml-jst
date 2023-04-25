@@ -374,3 +374,12 @@ Error: In this `with' constraint, the new definition of t
          type t [@@immediate]
        the first has layout value, which is not a sublayout of immediate.
 |}];;
+
+(*****************************************)
+(* Test 7: "any" is allowed in Tstr_eval *)
+module F (_ : sig end) = struct
+  assert false
+end;;
+[%%expect {|
+module F : sig end -> sig end
+|}];;

@@ -893,6 +893,9 @@ and transl_exp0 ~in_new_scope ~scopes e =
            rather than requiring them all to be value, but that would be even
            more hacky, and in any event we don't yet want to connect the
            front-end layout support to the middle-end layout support).  *)
+        (* CR layouts v2: if we get close to releasing other layout somebody
+           actually might put in a probe, check with the middle-end team about
+           the status of fixing this. *)
         let path = Path.Pident id in
         match Env.find_value path e.exp_env with
         | {val_type; _} -> begin
