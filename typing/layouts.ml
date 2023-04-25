@@ -32,7 +32,7 @@ module Sort = struct
       | Some name -> name
       | None ->
           let id = !next_id in
-          let name = "'_concrete_layout_" ^ Int.to_string id in
+          let name = "'_representable_layout_" ^ Int.to_string id in
           next_id := id + 1;
           named := (v, name) :: !named;
           name

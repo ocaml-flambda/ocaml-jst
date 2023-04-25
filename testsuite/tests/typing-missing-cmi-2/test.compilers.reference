@@ -2,7 +2,7 @@ File "baz.ml", line 1, characters 8-18:
 1 | let x = Bar.foo ()
             ^^^^^^^^^^
 Error: This expression has type 'a Foo.t
-       but an expression was expected of type ('b : '_concrete_layout_1)
+       but an expression was expected of type ('b : '_representable_layout_1)
        'a Foo.t has layout any, which is not representable.
        No .cmi file found containing Foo.t.
        Hint: Try adding "foo" to your dependencies.
