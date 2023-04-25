@@ -159,6 +159,11 @@ module Layout : sig
         to report what type caused that (a la [missing_cmi_any]). *)
     val add_missing_cmi_for_lhs : missing_cmi_for:Path.t -> t -> t
 
+    (* CR layouts: The [offender] arguments below are always
+       [Printtyp.type_expr], so we should either stash that in a ref (like with
+       [set_printtyp_path] below) or just move all the printing machinery
+       downstream of both [Layouts] and [Printtyp]. *)
+
     (* CR layouts: Having these options for printing a violation was a choice
        made based on the needs of expedient debugging during development, but
        probably should be rethought at some point. *)
