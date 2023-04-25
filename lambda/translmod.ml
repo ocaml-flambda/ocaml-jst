@@ -39,7 +39,7 @@ type unsafe_info =
 type error =
   Circular_dependency of (Ident.t * unsafe_info) list
 | Conflicting_inline_attributes
-| Non_value_layout of type_expr * Layout.Violation.t
+| Non_value_layout of type_expr * Layout.Violation.violation
 
 exception Error of Location.t * error
 
@@ -49,7 +49,7 @@ exception Error of Location.t * error
 let layout_must_not_be_void loc ty layout =
   match Layout.(sub layout void) with
   | Ok () ->
-    let violation = Layout.(Violation.Not_a_sublayout (layout, value)) in
+    let violation = Layout.(Violation.not_a_sublayout layout value) in
     raise (Error (loc, Non_value_layout (ty, violation)))
   | Error _ -> ()
 

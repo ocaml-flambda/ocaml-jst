@@ -54,7 +54,7 @@ type error =
   | Unsupported_extension of Language_extension.t
   | Polymorphic_optional_param
   | Non_value of
-      {vloc : value_loc; typ : type_expr; err : Layout.Violation.t}
+      {vloc : value_loc; typ : type_expr; err : Layout.Violation.violation}
 
 exception Error of Location.t * Env.t * error
 exception Error_forward of Location.error

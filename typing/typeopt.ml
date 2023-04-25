@@ -26,7 +26,7 @@ open Lambda
    the void sanity check.  When we're ready to take that out, remove the errors
    stuff. *)
 type error =
-    Non_value_layout of type_expr * Layout.Violation.t
+    Non_value_layout of type_expr * Layout.Violation.violation
 
 exception Error of Location.t * error
 

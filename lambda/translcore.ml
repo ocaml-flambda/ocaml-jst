@@ -31,7 +31,7 @@ type error =
     Free_super_var
   | Unreachable_reached
   | Bad_probe_layout of Ident.t
-  | Non_value_layout of Layout.Violation.t
+  | Non_value_layout of Layout.Violation.violation
 
 exception Error of Location.t * error
 
@@ -41,7 +41,7 @@ let use_dup_for_constant_mutable_arrays_bigger_than = 4
    changed to check for void. *)
 let sort_must_be_value loc sort =
   if not Sort.(equate sort value) then
-    let violation = Layout.(Violation.Not_a_sublayout (of_sort sort, value)) in
+    let violation = Layout.(Violation.not_a_sublayout (of_sort sort) value) in
     raise (Error (loc, Non_value_layout violation))
 
 let layout_must_be_value loc layout =
@@ -55,7 +55,7 @@ let layout_must_be_value loc layout =
 let layout_must_not_be_void loc layout =
   match Layout.(sub layout void) with
   | Ok () ->
-    let violation = Layout.(Violation.Not_a_sublayout (layout, value)) in
+    let violation = Layout.(Violation.not_a_sublayout layout value) in
     raise (Error (loc, Non_value_layout violation))
   | Error _ -> ()
 

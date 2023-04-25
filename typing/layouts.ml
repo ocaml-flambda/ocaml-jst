@@ -407,20 +407,51 @@ module Layout = struct
 
     let set_printtyp_path f = printtyp_path := f
 
-    type nonrec t =
+    type message =
       | Not_a_sublayout of t * t
       | No_intersection of t * t
+
+    type violation =
+      { message : message
+      ; missing_cmi : bool }
+
+    let derive_missing_cmi l1 l2 =
+      let missing_cmi l =
+        match l.layout with
+        | Any { missing_cmi_for = Some _ } ->
+            true
+        | Any { missing_cmi_for = None } | Sort _ | Immediate64 | Immediate ->
+            false
+      in
+      missing_cmi l1 || missing_cmi l2
+
+    let not_a_sublayout l1 l2 =
+      { message = Not_a_sublayout (l1, l2)
+      ; missing_cmi = derive_missing_cmi l1 l2
+      }
+
+    let no_intersection l1 l2 =
+      { message = No_intersection (l1, l2)
+      ; missing_cmi = derive_missing_cmi l1 l2
+      }
 
     let add_missing_cmi_for ~missing_cmi_for = function
       | { layout = Any { missing_cmi_for = None }; history } ->
           { layout = Any { missing_cmi_for = Some missing_cmi_for }; history }
       | t -> t
 
-    let add_missing_cmi_for_lhs ~missing_cmi_for = function
-      | Not_a_sublayout (lhs, rhs) ->
-          Not_a_sublayout (add_missing_cmi_for ~missing_cmi_for lhs, rhs)
-      | No_intersection (lhs, rhs) ->
-          No_intersection (add_missing_cmi_for ~missing_cmi_for lhs, rhs)
+    let add_missing_cmi_for_lhs ~missing_cmi_for t =
+      { message = begin match t.message with
+          | Not_a_sublayout (lhs, rhs) ->
+              Not_a_sublayout (add_missing_cmi_for ~missing_cmi_for lhs, rhs)
+          | No_intersection (lhs, rhs) ->
+              No_intersection (add_missing_cmi_for ~missing_cmi_for lhs, rhs)
+        end
+      ; missing_cmi = true
+          (* CR layouts: If we decide to keep the [missing_cmi] field, we should
+             think about whether this function ought to check if
+             [add_missing_cmi_for] did anything. *)
+      }
 
     let missing_cmi_hint ppf type_path =
       let root_module_name p = p |> Path.head |> Ident.name in
@@ -471,7 +502,7 @@ module Layout = struct
           fun ppf -> fprintf ppf " %a" format
 
     let report_general preamble pp_former former ppf t =
-      let l1, problem, l2 = match t with
+      let l1, problem, l2 = match t.message with
         | Not_a_sublayout(l1, l2) ->
             l1,
             (match get l2 with
@@ -529,7 +560,7 @@ end
   let equate = equate_or_equal ~allow_mutation:true
 
   let intersection ~reason l1 l2 =
-    let err = Error (Violation.No_intersection (l1, l2)) in
+    let err = Error (Violation.no_intersection l1 l2) in
     let equality_check is_eq l = if is_eq then Ok l else err in
     (* it's OK not to cache the result of [get], because [get] does path
        compression *)
@@ -547,7 +578,7 @@ end
 
   let sub sub super =
     let ok = Ok () in
-    let err = Error (Violation.Not_a_sublayout (sub,super)) in
+    let err = Error (Violation.not_a_sublayout sub super) in
     let equality_check is_eq = if is_eq then ok else err in
     match get sub, get super with
     | _, Const Any -> ok

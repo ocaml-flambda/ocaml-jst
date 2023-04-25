@@ -303,7 +303,7 @@ type filter_method_failure =
   | Unification_error of Errortrace.unification_error
   | Not_a_method
   | Not_an_object of type_expr
-  | Not_a_value of Layout.Violation.t
+  | Not_a_value of Layout.Violation.violation
 
 exception Filter_method_failed of filter_method_failure
 
@@ -479,7 +479,7 @@ val type_layout : Env.t -> type_expr -> layout
    needed) *)
 val type_sort :
   reason:Layouts.Layout.concrete_layout_reason ->
-  Env.t -> type_expr -> (sort, Layout.Violation.t) result
+  Env.t -> type_expr -> (sort, Layout.Violation.violation) result
 
 (* Layout checking. [constrain_type_layout] will update the layout of type
    variables to make the check true, if possible.  [check_decl_layout] and
@@ -490,15 +490,15 @@ val type_sort :
 val check_decl_layout :
   reason:Layouts.Layout.reason
   -> Env.t -> type_declaration -> layout
-  -> (unit, Layout.Violation.t) result
+  -> (unit, Layout.Violation.violation) result
 val check_type_layout :
   reason:Layouts.Layout.reason
   -> Env.t -> type_expr -> layout
-  -> (unit, Layout.Violation.t) result
+  -> (unit, Layout.Violation.violation) result
 val constrain_type_layout :
   reason:Layouts.Layout.reason
   -> Env.t -> type_expr -> layout
-  -> (unit, Layout.Violation.t) result
+  -> (unit, Layout.Violation.violation) result
 
 (* True if a type is always global (i.e., it mode crosses for local).  This is
    true for all immediate and immediate64 types.  To make it sound for

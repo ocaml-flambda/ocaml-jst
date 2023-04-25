@@ -230,7 +230,7 @@ type type_mismatch =
   | Variant_mismatch of variant_change list
   | Unboxed_representation of position * attributes
   | Extensible_representation of position
-  | Layout of Layout.Violation.t
+  | Layout of Layout.Violation.violation
 
 let report_locality_mismatch first second ppf err =
   let {order; nonlocal} = err in
