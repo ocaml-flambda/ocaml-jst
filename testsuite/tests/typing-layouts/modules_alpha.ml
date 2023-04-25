@@ -25,9 +25,9 @@ type t_value [@@value]
 type t_imm [@@immediate]
 type t_imm64 [@@immediate64]
 type t_void [@@void]
-module type S1 = sig type 'a t type s end
-type 'a t1
-module type S1' = sig type 'a t = t_void t1 type s = t_void t1 end
+module type S1 = sig type ('a : void) t type s end
+type ('a : void) t1
+module type S1' = sig type ('a : void) t = t_void t1 type s = t_void t1 end
 |}];;
 
 module type S1'' = S1 with type 'a t = 'a list;;
@@ -59,8 +59,8 @@ module M1_2' : S1_2' = struct
   type ('a : immediate) t = 'a list
 end;;
 [%%expect{|
-module type S1_2 = sig type 'a t end
-module type S1_2' = sig type 'a t = 'a list end
+module type S1_2 = sig type ('a : immediate) t end
+module type S1_2' = sig type ('a : immediate) t = 'a list end
 module M1_2' : S1_2'
 |}]
 
@@ -84,7 +84,7 @@ Error: Signature mismatch:
        Type declarations do not match:
          type 'a t = 'a list
        is not included in
-         type 'a t = 'a list
+         type ('a : immediate) t = 'a list
        The type 'a is not equal to the type 'a0
 |}]
 (* XXX layouts: error message *)
@@ -105,10 +105,10 @@ module F2 (X : T2) = struct
   let f () : 'a X.t = `A R
 end;;
 [%%expect{|
-module type S2 = sig type 'a t end
-type 'a r2 = R
-type !'a s2 = private [> `A of 'a r2 ]
-module type T2 = sig type 'a t = 'a s2 end
+module type S2 = sig type ('a : immediate) t end
+type ('a : immediate) r2 = R
+type (!'a : immediate) s2 = private [> `A of 'a r2 ]
+module type T2 = sig type ('a : immediate) t = 'a s2 end
 module F2 : functor (X : T2) -> sig val f : unit -> 'a X.t end
 |}]
 
@@ -119,8 +119,8 @@ module F2' (X : T2') = struct
   let f () : 'a X.t = `B "bad"
 end
 [%%expect{|
-type !'a s2' = private [> `B of 'a ]
-module type T2' = sig type 'a t = 'a s2' end
+type (!'a : immediate) s2' = private [> `B of 'a ]
+module type T2' = sig type ('a : immediate) t = 'a s2' end
 Line 5, characters 25-30:
 5 |   let f () : 'a X.t = `B "bad"
                              ^^^^^
@@ -264,7 +264,7 @@ end = struct
 end;;
 [%%expect {|
 module rec Foo3 : sig type t = t3 [@@void] end
-and Bar3 : sig type 'a t type s = Foo3.t t end
+and Bar3 : sig type ('a : void) t type s = Foo3.t t end
 |}];;
 
 (*************************************************************************)
@@ -284,7 +284,7 @@ type t4 = M4.s t4_val;;
 module F4 : functor (X : sig type t end) -> sig type s = Foo of X.t end
 module M4 : sig type s end
 type 'a t4_val
-type 'a t4_void
+type ('a : void) t4_void
 type t4 = M4.s t4_val
 |}]
 
@@ -311,7 +311,7 @@ module F4' :
   functor (X : sig type t [@@immediate] end) ->
     sig type s = Foo of X.t [@@immediate] [@@unboxed] end
 module M4' : sig type s [@@immediate] end
-type 'a t4_imm
+type ('a : immediate) t4_imm
 type t4 = M4'.s t4_imm
 |}];;
 
@@ -341,7 +341,7 @@ let x3 = M3_1.f 42
 
 let x3' = M3_1.f "test";;
 [%%expect{|
-module type S3_1 = sig type 'a t val f : 'a -> 'a t end
+module type S3_1 = sig type ('a : immediate) t val f : 'a -> 'a t end
 module type S3_1' = sig val f : 'a -> 'a list end
 module M3_1 : S3_1'
 val x3 : int list = [42]

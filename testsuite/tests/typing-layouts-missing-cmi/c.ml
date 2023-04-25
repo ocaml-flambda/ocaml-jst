@@ -30,7 +30,7 @@ type bar = b_value value_arg
 (* type baz = b_void void_arg *)
 type boz = b_imm value_arg;;
 [%%expect {|
-type 'a imm_arg
+type ('a : immediate) imm_arg
 type 'b value_arg
 type foo = B.b_imm imm_arg
 type bar = B.b_value value_arg

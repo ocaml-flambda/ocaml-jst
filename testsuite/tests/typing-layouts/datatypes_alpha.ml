@@ -276,7 +276,7 @@ let f6' x =
   let { fld6 = fld6 } = x in S6 fld6;;
 [%%expect {|
 type t6 = { fld6 : float; }
-type 'a s6 = S6 of 'a
+type ('a : immediate) s6 = S6 of 'a
 val f6 : t6 -> float = <fun>
 Line 8, characters 32-36:
 8 |   let { fld6 = fld6 } = x in S6 fld6;;

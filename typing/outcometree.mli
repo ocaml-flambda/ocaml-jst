@@ -56,7 +56,15 @@ type out_value =
   | Oval_tuple of out_value list
   | Oval_variant of string * out_value option
 
-type out_type_param = string * (Asttypes.variance * Asttypes.injectivity)
+type out_layout =
+  | Olay_const of Asttypes.const_layout
+  | Olay_var (* CR layouts: We likely need to invent names for these *)
+
+type out_type_param =
+  { oparam_name : string;
+    oparam_variance : Asttypes.variance;
+    oparam_injectivity : Asttypes.injectivity;
+    oparam_layout : out_layout option }
 
 type out_mutable_or_global =
   | Ogom_mutable
@@ -68,10 +76,6 @@ type out_global =
   | Ogf_global
   | Ogf_nonlocal
   | Ogf_unrestricted
-
-type out_layout =
-  | Olay_const of Asttypes.const_layout
-  | Olay_var (* CR layouts: We likely need to invent names for these *)
 
 type out_type =
   | Otyp_abstract

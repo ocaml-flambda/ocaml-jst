@@ -1363,6 +1363,16 @@ let prepare_type_constructor_arguments = function
   | Cstr_tuple l -> List.iter (fun (ty, _) -> prepare_type ty) l
   | Cstr_record l -> List.iter (fun l -> prepare_type l.ld_type) l
 
+let param_layout ty =
+  match get_desc ty with
+  | Tvar { layout; _ } | Tunivar { layout; _ } ->
+    begin match Layouts.Layout.get layout with
+    | Const Value -> None
+    | Const clay -> Some (Olay_const clay)
+    | Var _ -> Some Olay_var
+    end
+  | _ -> None
+
 let rec tree_of_type_decl id decl =
 
   reset_except_context();
@@ -1454,9 +1464,14 @@ let rec tree_of_type_decl id decl =
           else (NoVariance, NoInjectivity))
         decl.type_params decl.type_variance
     in
+    let mk_param ty (variance, injectivity) =
+      { oparam_name = type_param (tree_of_typexp Type ty);
+        oparam_variance = variance;
+        oparam_injectivity = injectivity;
+        oparam_layout = param_layout ty }
+    in
     (Ident.name id,
-     List.map2 (fun ty cocn -> type_param (tree_of_typexp Type ty), cocn)
-       params vari)
+     List.map2 mk_param params vari)
   in
   let tree_of_manifest ty1 =
     match ty_manifest with
@@ -1759,11 +1774,18 @@ let class_type ppf cty =
   !Oprint.out_class_type ppf (tree_of_class_type Type [] cty)
 
 let tree_of_class_param param variance =
-  (match tree_of_typexp Type_scheme param with
-    Otyp_var (_, s) -> s
-  | _ -> "?"),
-  if is_Tvar param then Asttypes.(NoVariance, NoInjectivity)
-  else variance
+  let variance, injectivity =
+    if is_Tvar param
+    then Asttypes.(NoVariance, NoInjectivity)
+    else variance
+  in
+  { oparam_name = begin match tree_of_typexp Type_scheme param with
+      | Otyp_var (_, s) -> s
+      | _ -> "?"
+    end;
+    oparam_variance = variance;
+    oparam_injectivity = injectivity;
+    oparam_layout = param_layout param }
 
 let class_variance =
   let open Variance in let open Asttypes in

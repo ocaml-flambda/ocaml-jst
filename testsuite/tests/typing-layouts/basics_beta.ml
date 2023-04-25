@@ -51,7 +51,7 @@ module type S = sig val f1 : t_value -> t_value val f2 : t_imm -> t_imm64 end
 type 'a [@immediate] imm_id = 'a
 
 [%%expect{|
-type 'a imm_id = 'a
+type ('a : immediate) imm_id = 'a
 |}];;
 
 type my_int = int imm_id
@@ -122,7 +122,7 @@ and 'a [@immediate] t4;;
 
 [%%expect{|
 type s4 = int t4
-and 'a t4
+and ('a : immediate) t4
 |}]
 
 type s4 = s5 t4
@@ -131,7 +131,7 @@ and s5 = int;;
 
 [%%expect{|
 type s4 = s5 t4
-and 'a t4
+and ('a : immediate) t4
 and s5 = int
 |}]
 
@@ -195,7 +195,7 @@ Error: Layout any is used here, but the appropriate layouts extension is not ena
 type ('a : immediate) t6_imm = T6imm of 'a
 type ('a : value) t6_val = T6val of 'a;;
 [%%expect{|
-type 'a t6_imm = T6imm of 'a
+type ('a : immediate) t6_imm = T6imm of 'a
 type 'a t6_val = T6val of 'a
 |}];;
 
@@ -239,7 +239,7 @@ type 'a [@immediate] t7 = Foo7 of 'a
 
 type t7' = (int * int) t7;;
 [%%expect{|
-type 'a t7 = Foo7 of 'a
+type ('a : immediate) t7 = Foo7 of 'a
 Line 3, characters 12-21:
 3 | type t7' = (int * int) t7;;
                 ^^^^^^^^^
@@ -287,7 +287,7 @@ Lines 3-9, characters 6-3:
 9 | end..
 Error: Signature mismatch:
        Modules do not match:
-         sig type 'a t = 'a val f : 'a t -> 'a val x : 'a end
+         sig type ('a : immediate) t = 'a val f : 'a t -> 'a val x : 'a end
        is not included in
          sig val x : string end
        Values do not match: val x : 'a is not included in val x : string
@@ -317,7 +317,11 @@ Lines 3-9, characters 6-3:
 9 | end..
 Error: Signature mismatch:
        Modules do not match:
-         sig type 'a t = 'a val f : 'a t -> 'a t val x : 'a t end
+         sig
+           type ('a : immediate) t = 'a
+           val f : 'a t -> 'a t
+           val x : 'a t
+         end
        is not included in
          sig val x : string end
        Values do not match: val x : 'a t is not included in val x : string
