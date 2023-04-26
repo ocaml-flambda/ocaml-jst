@@ -67,9 +67,13 @@ external unsafe_sub_of_array_local :
 external unsafe_set_local : local_ 'a array -> int -> local_ 'a -> unit =
   "%array_unsafe_set"
 
+(* We can't use immutable array literals in this file, since we don't want to
+   require the stdlib to be compiled with extensions, so instead of [[::]] we
+   use [unsafe_of_array [||]] below.  Thankfully, we never need it in the
+   [local] case so we don't have to think about the details. *)
+
 (* CR aspectorzabusky: Really trusting the inliner here; to get maximum
    performance, it has to inline both [unsafe_init_local] *and* [f]. *)
-
 (** Precondition: [l >= 0]. *)
 let[@inline always] unsafe_init_local l (local_ f : int -> local_ 'a) = local_
   if l = 0 then
@@ -616,7 +620,7 @@ let split_local x = local_
 let combine a b =
   let na = length a in
   let nb = length b in
-  if na <> nb then invalid_arg "Array.combine";
+  if na <> nb then invalid_arg "Iarray.combine";
   let r = if na = 0 then [||]
   else begin
     let x = Array.make na (unsafe_get a 0, unsafe_get b 0) in
@@ -630,7 +634,7 @@ let combine a b =
 let combine_local a b = local_
   let na = length a in
   let nb = length b in
-  if na <> nb then invalid_arg "Iarray.combine";
+  if na <> nb then invalid_arg "Iarray.combine_local";
   unsafe_init_local na (fun i -> local_ unsafe_get a i, unsafe_get b i)
 
 (* Must be fully applied due to the value restriction *)
