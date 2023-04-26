@@ -93,18 +93,13 @@ external unsafe_sub_of_array_local :
 external unsafe_set_local : local_ 'a array -> int -> local_ 'a -> unit =
   "%array_unsafe_set"
 
-(* We can't use immutable array literals here, since we don't want to require
-   the stdlib to be compiled with extensions *)
-external empty_iarray : unit -> 'a iarray =
-  "%empty_iarray"
-
 (* CR aspectorzabusky: Really trusting the inliner here; to get maximum
    performance, it has to inline both [unsafe_init_local] *and* [f]. *)
 
 (** Precondition: [l >= 0]. *)
 let[@inline always] unsafe_init_local l (local_ f : int -> local_ 'a) = local_
   if l = 0 then
-    empty_iarray ()
+    unsafe_of_array [||]
   else
     (* The design of this function is exceedingly delicate, and is the only way
        we can correctly allocate a local array on the stack via mutation.  We
@@ -131,7 +126,7 @@ let[@inline always] unsafe_init_local l (local_ f : int -> local_ 'a) = local_
 
 (* The implementation is copied from [Array] so that [f] can be [local_] *)
 let init l (local_ f) =
-  if l = 0 then empty_iarray () else
+  if l = 0 then unsafe_of_array [||] else
   if l < 0 then invalid_arg "Iarray.init"
   (* See #6575. We could also check for maximum array size, but this depends
      on whether we create a float array or a regular one... *)
@@ -200,7 +195,7 @@ let iter2_local_second f a b =
 
 let map f a =
   let l = length a in
-  if l = 0 then empty_iarray () else begin
+  if l = 0 then unsafe_of_array [||] else begin
     let r = Array.make l (f(unsafe_get a 0)) in
     for i = 1 to l - 1 do
       Array.unsafe_set r i (f(unsafe_get a i))
@@ -213,7 +208,7 @@ let map_local f a = local_
 
 let map_local_input f a =
   let l = length a in
-  if l = 0 then empty_iarray () else begin
+  if l = 0 then unsafe_of_array [||] else begin
     let r = Array.make l (f(unsafe_get a 0)) in
     for i = 1 to l - 1 do
       Array.unsafe_set r i (f(unsafe_get a i))
@@ -230,7 +225,7 @@ let map2 f a b =
   if la <> lb then
     invalid_arg "Iarray.map2: arrays must have the same length"
   else begin
-    if la = 0 then empty_iarray () else begin
+    if la = 0 then unsafe_of_array [||] else begin
       let r = Array.make la (f (unsafe_get a 0) (unsafe_get b 0)) in
       for i = 1 to la - 1 do
         Array.unsafe_set r i (f (unsafe_get a i) (unsafe_get b i))
@@ -253,7 +248,7 @@ let map2_local_inputs f a b =
   if la <> lb then
     invalid_arg "Iarray.map2: arrays must have the same length"
   else begin
-    if la = 0 then empty_iarray () else begin
+    if la = 0 then unsafe_of_array [||] else begin
       let r = Array.make la (f (unsafe_get a 0) (unsafe_get b 0)) in
       for i = 1 to la - 1 do
         Array.unsafe_set r i (f (unsafe_get a i) (unsafe_get b i))
@@ -276,7 +271,7 @@ let map2_local_first_input f a b =
   if la <> lb then
     invalid_arg "Iarray.map2: arrays must have the same length"
   else begin
-    if la = 0 then empty_iarray () else begin
+    if la = 0 then unsafe_of_array [||] else begin
       let r = Array.make la (f (unsafe_get a 0) (unsafe_get b 0)) in
       for i = 1 to la - 1 do
         Array.unsafe_set r i (f (unsafe_get a i) (unsafe_get b i))
@@ -291,7 +286,7 @@ let map2_local_second_input f a b =
   if la <> lb then
     invalid_arg "Iarray.map2: arrays must have the same length"
   else begin
-    if la = 0 then empty_iarray () else begin
+    if la = 0 then unsafe_of_array [||] else begin
       let r = Array.make la (f (unsafe_get a 0) (unsafe_get b 0)) in
       for i = 1 to la - 1 do
         Array.unsafe_set r i (f (unsafe_get a i) (unsafe_get b i))
@@ -324,7 +319,7 @@ let iteri_local f a =
 
 let mapi f a =
   let l = length a in
-  if l = 0 then empty_iarray () else begin
+  if l = 0 then unsafe_of_array [||] else begin
     let r = Array.make l (f 0 (unsafe_get a 0)) in
     for i = 1 to l - 1 do
       Array.unsafe_set r i (f i (unsafe_get a i))
@@ -337,7 +332,7 @@ let mapi_local f a = local_
 
 let mapi_local_input f a =
   let l = length a in
-  if l = 0 then empty_iarray () else begin
+  if l = 0 then unsafe_of_array [||] else begin
     let r = Array.make l (f 0 (unsafe_get a 0)) in
     for i = 1 to l - 1 do
       Array.unsafe_set r i (f i (unsafe_get a i))
@@ -368,7 +363,7 @@ let rec list_length accu = function
 (* This shouldn't violate the forward-pointers restriction because the list
    elements already exist *)
 let of_list_local = function
-  | [] -> local_ empty_iarray ()
+  | [] -> local_ unsafe_of_array [||]
   | hd::tl as l -> local_
       let a = make_mutable_local (list_length 0 l) hd in
       let rec fill i = function
@@ -389,7 +384,7 @@ let fold_left f x a =
 
 let fold_left_map f acc input_array =
   let len = length input_array in
-  if len = 0 then (acc, empty_iarray ()) else begin
+  if len = 0 then (acc, unsafe_of_array [||]) else begin
     let acc, elt = f acc (unsafe_get input_array 0) in
     let output_array = Array.make len elt in
     let acc = ref acc in
@@ -610,8 +605,8 @@ let find_map_local_output f a = local_
   loop 0
 
 let split x =
-  if x = empty_iarray ()
-  then empty_iarray (), empty_iarray ()
+  if x = unsafe_of_array [||]
+  then unsafe_of_array [||], unsafe_of_array [||]
   else begin
     let a0, b0 = unsafe_get x 0 in
     let n = length x in
@@ -629,8 +624,8 @@ let split x =
    elements already exist.  (This doesn't work for [combine], where we need to
    create the tuples.) *)
 let split_local x = local_
-  if x = empty_iarray ()
-  then empty_iarray (), empty_iarray ()
+  if x = unsafe_of_array [||]
+  then unsafe_of_array [||], unsafe_of_array [||]
   else begin
     let a0, b0 = unsafe_get x 0 in
     let n = length x in
