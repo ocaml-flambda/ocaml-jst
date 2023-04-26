@@ -91,8 +91,6 @@ external make_mutable_local : int -> local_ 'a -> local_ 'a array =
   "caml_make_local_vect"
 external unsafe_of_local_array : local_ 'a array -> local_ 'a iarray =
   "%array_to_iarray"
-external unsafe_sub_of_array_local :
-  local_ 'a array -> int -> int -> local_ 'a iarray = "caml_array_sub_local"
 external unsafe_set_local : local_ 'a array -> int -> local_ 'a -> unit =
   "%array_unsafe_set"
 
@@ -129,7 +127,7 @@ let[@inline always] unsafe_init_local l (local_ f : int -> local_ 'a) = local_
         res
       end
     end in
-    unsafe_sub_of_array_local (go 0) 0 l
+    unsafe_of_local_array (go 0)
 
 (* The implementation is copied from [Array] so that [f] can be [local_] *)
 let init l (local_ f) =
