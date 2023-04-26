@@ -56,7 +56,8 @@ external unsafe_to_array : 'a iarray -> 'a array = "%array_of_iarray"
 (* Used only to reimplement [init] *)
 external unsafe_set_mutable : 'a array -> int -> 'a -> unit = "%array_unsafe_set"
 
-(* VERY UNSAFE: Can be used to violate the "no forward pointers" restriction. *)
+(* VERY UNSAFE: If you're not careful with the resulting array, you can violate
+   the "no forward pointers" restriction by mutating it improperly. *)
 external make_mutable_local : int -> local_ 'a -> local_ 'a array =
   "caml_make_local_vect"
 external unsafe_of_local_array : local_ 'a array -> local_ 'a iarray =
@@ -71,12 +72,25 @@ external unsafe_set_local : local_ 'a array -> int -> local_ 'a -> unit =
 external empty_iarray : unit -> 'a iarray =
   "%empty_iarray"
 
-(* CR aspectorzabusky: Really trusting the inliner here, it has to inline
-   [unsafe_init_local] *and* [f] *)
-let[@inline always] unsafe_init_local l (local_ f) = local_
+(* CR aspectorzabusky: Really trusting the inliner here; to get maximum
+   performance, it has to inline both [unsafe_init_local] *and* [f]. *)
+
+(** Precondition: [l >= 0]. *)
+let[@inline always] unsafe_init_local l (local_ f : int -> local_ 'a) = local_
   if l = 0 then
     empty_iarray ()
   else
+    (* The design of this function is exceedingly delicate, and is the only way
+       we can correctly allocate a local array on the stack via mutation.  We
+       are subject to the "no forward pointers" constraint on the local stack;
+       we're not allowed to make pointers to later-allocated objects even within
+       the same stack frame.  Thus, in order to get this right, we consume O(n)
+       call-stack space: we allocate the values to put in the array, and only
+       *then* recurse, creating the array as the very last thing of all and
+       *returning* it.  This is why the [f i] call is the first thing in the
+       function, and why it's not tail-recursive; if it were tail-recursive,
+       then we wouldn't have anywhere to put the array elements during the whole
+       process. *)
     let rec go i = local_ begin
       let x = f i in
       if i = l - 1 then
@@ -90,7 +104,7 @@ let[@inline always] unsafe_init_local l (local_ f) = local_
     unsafe_sub_of_array_local (go 0) 0 l
 
 (* The implementation is copied from [Array] so that [f] can be [local_] *)
-let init l f =
+let init l (local_ f) =
   if l = 0 then empty_iarray () else
   if l < 0 then invalid_arg "Iarray.init"
   (* See #6575. We could also check for maximum array size, but this depends
