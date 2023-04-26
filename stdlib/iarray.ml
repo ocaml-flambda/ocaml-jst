@@ -80,10 +80,13 @@ external unsafe_of_array : 'a array -> 'a iarray = "%array_to_iarray"
 external unsafe_to_array : 'a iarray -> 'a array = "%array_of_iarray"
 
 (* Used only to reimplement [init] *)
-external unsafe_set_mutable : 'a array -> int -> 'a -> unit = "%array_unsafe_set"
+external unsafe_set_mutable : 'a array -> int -> 'a -> unit =
+  "%array_unsafe_set"
 
-(* VERY UNSAFE: If you're not careful with the resulting array, you can violate
-   the "no forward pointers" restriction by mutating it improperly. *)
+(* VERY UNSAFE: Any of these functions can be used to violate the "no forward
+   pointers" restriction for the local stack if not used carefully.  Each of
+   these can either make a local mutable array or mutate its contents, and if
+   not careful, this can lead to an array's contents pointing forwards. *)
 external make_mutable_local : int -> local_ 'a -> local_ 'a array =
   "caml_make_local_vect"
 external unsafe_of_local_array : local_ 'a array -> local_ 'a iarray =
