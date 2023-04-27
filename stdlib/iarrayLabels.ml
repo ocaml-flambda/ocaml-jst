@@ -78,7 +78,7 @@ external unsafe_set_local : local_ 'a array -> int -> local_ 'a -> unit =
 (** Precondition: [l >= 0]. *)
 let[@inline always] unsafe_init_local l (local_ f : int -> local_ 'a) = local_
   if l = 0 then
-    unsafe_of_array [||]
+    unsafe_of_local_array [||]
   else
     (* The design of this function is exceedingly delicate, and is the only way
        we can correctly allocate a local array on the stack via mutation.  We
@@ -361,6 +361,31 @@ let fold_left f x a =
   done;
   !r
 
+let fold_left_local f x a = local_
+  let len = length a in
+  let rec go r i = local_
+    if i = len
+    then r
+    else go (f r (unsafe_get a i)) (i+1)
+  in
+  go x 0
+
+let fold_left_local_input f x a =
+  let r = ref x in
+  for i = 0 to length a - 1 do
+    r := f !r (unsafe_get a i)
+  done;
+  !r
+
+let fold_left_local_output f x a = local_
+  let len = length a in
+  let rec go r i = local_
+    if i = len
+    then r
+    else go (f r (unsafe_get a i)) (i+1)
+  in
+  go x 0
+
 let fold_left_map f acc input_array =
   let len = length input_array in
   if len = 0 then (acc, unsafe_of_array [||]) else begin
@@ -375,12 +400,83 @@ let fold_left_map f acc input_array =
     !acc, unsafe_of_array output_array
   end
 
+let fold_left_map_local f acc input_array = local_
+  let len = length input_array in
+  if len = 0 then (acc, unsafe_of_local_array [||]) else begin
+    let rec go acc i = local_
+      let acc', elt = f acc (unsafe_get input_array i) in
+      if i = len - 1 then
+        acc', make_mutable_local len elt
+      else begin
+        let (_, output_array) as res = go acc (i+1) in
+        unsafe_set_local output_array i elt;
+        res
+      end
+    in
+    let acc, output_array = go acc 0 in
+    acc, unsafe_of_local_array output_array
+  end
+
+let fold_left_map_local_input f acc input_array =
+  let len = length input_array in
+  if len = 0 then (acc, unsafe_of_array [||]) else begin
+    let acc, elt = f acc (unsafe_get input_array 0) in
+    let output_array = Array.make len elt in
+    let acc = ref acc in
+    for i = 1 to len - 1 do
+      let acc', elt = f !acc (unsafe_get input_array i) in
+      acc := acc';
+      Array.unsafe_set output_array i elt;
+    done;
+    !acc, unsafe_of_array output_array
+  end
+
+let fold_left_map_local_output f acc input_array = local_
+  let len = length input_array in
+  if len = 0 then (acc, unsafe_of_local_array [||]) else begin
+    let rec go acc i = local_
+      let acc', elt = f acc (unsafe_get input_array i) in
+      if i = len - 1 then
+        acc', make_mutable_local len elt
+      else begin
+        let (_, output_array) as res = go acc (i+1) in
+        unsafe_set_local output_array i elt;
+        res
+      end
+    in
+    let acc, output_array = go acc 0 in
+    acc, unsafe_of_local_array output_array
+  end
+
 let fold_right f a x =
   let r = ref x in
   for i = length a - 1 downto 0 do
     r := f (unsafe_get a i) !r
   done;
   !r
+
+let fold_right_local f a x = local_
+  let rec go r i = local_
+    if i = -1
+    then r
+    else go (f (unsafe_get a i) r) (i-1)
+  in
+  go x (length a - 1)
+
+let fold_right_local_input f a x =
+  let r = ref x in
+  for i = length a - 1 downto 0 do
+    r := f (unsafe_get a i) !r
+  done;
+  !r
+
+let fold_right_local_output f a x = local_
+  let rec go r i = local_
+    if i = -1
+    then r
+    else go (f (unsafe_get a i) r) (i-1)
+  in
+  go x (length a - 1)
 
 (* CR aspectorzabusky: Why do I need this?  Shouldn't mode-crossing handle doing
    this? *)

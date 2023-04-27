@@ -182,13 +182,15 @@ val fold_left : f:local_ ('a -> 'b -> 'a) -> init:'a -> 'b iarray -> 'a
    [f (... (f (f init a.:(0)) a.:(1)) ...) a.:(n-1)],
    where [n] is the length of the immutable array [a]. *)
 
-(* MISSING: Requires [let mutable]
 val fold_left_local :
   f:local_ (local_ 'a -> local_ 'b -> local_ 'a) ->
   init:local_ 'a ->
   local_ 'b iarray ->
   local_ 'a
-(** The locally-constrained and locally-allocating version of [fold_left]. *)
+(** The locally-constrained and locally-allocating version of [fold_left].
+
+   WARNING: This function consumes O(n) extra stack space, as every intermediate
+   accumulator will be left on the local stack! *)
 
 val fold_left_local_input :
   f:local_ ('a -> local_ 'b -> 'a) -> init:'a -> local_ 'b iarray -> 'a
@@ -199,21 +201,25 @@ val fold_left_local_output :
   init:local_ 'a ->
   'b iarray ->
   local_ 'a
-(** The locally-allocating but global-input version of [fold_left]. *)
-*)
+(** The locally-allocating but global-input version of [fold_left].
+
+   WARNING: This function consumes O(n) extra stack space, as every intermediate
+   accumulator will be left on the local stack! *)
 
 val fold_left_map :
   f:local_ ('a -> 'b -> 'a * 'c) -> init:'a -> 'b iarray -> 'a * 'c iarray
 (** [fold_left_map] is a combination of {!fold_left} and {!map} that threads an
     accumulator through calls to [f]. *)
 
-(* MISSING: Requires [let mutable]
 val fold_left_map_local :
   f:local_ (local_ 'a -> local_ 'b -> local_ 'a * 'c) ->
   init:local_ 'a ->
   local_ 'b iarray ->
   local_ 'a * 'c iarray
-(** The locally-constrained and locally-allocating version of [fold_left]. *)
+(** The locally-constrained and locally-allocating version of [fold_left].
+
+   WARNING: This function consumes O(n) extra stack space, as every intermediate
+   accumulator will be left on the local stack! *)
 
 val fold_left_map_local_input :
   f:local_ ('a -> local_ 'b -> 'a * 'c) ->
@@ -227,33 +233,39 @@ val fold_left_map_local_output :
   init:local_ 'a ->
   'b iarray ->
   local_ 'a * 'c iarray
-(** The locally-allocating but global-input version of [fold_left]. *)
-*)
+(** The locally-allocating but global-input version of [fold_left].
+
+   WARNING: This function consumes O(n) extra stack space, as every intermediate
+   accumulator will be left on the local stack! *)
 
 val fold_right : f:local_ ('b -> 'a -> 'a) -> 'b iarray -> init:'a -> 'a
 (** [fold_right ~f a ~init] computes
    [f a.:(0) (f a.:(1) ( ... (f a.:(n-1) init) ...))],
    where [n] is the length of the immutable array [a]. *)
 
-(* MISSING: Requires [let mutable]
 val fold_right_local :
   f:local_ (local_ 'b -> local_ 'a -> local_ 'a) ->
   local_ 'b iarray ->
   init:local_ 'a ->
   local_ 'a
-(** The locally-constrained and locally-allocating version of [fold_right]. *)
+(** The locally-constrained and locally-allocating version of [fold_right].
+
+   WARNING: This function consumes O(n) extra stack space, as every intermediate
+   accumulator will be left on the local stack! *)
 
 val fold_right_local_input :
-  f:local_ ('b -> local_ 'a -> 'a) -> local_ 'b iarray -> init:'a -> 'a
+  f:local_ (local_ 'b -> 'a -> 'a) -> local_ 'b iarray -> init:'a -> 'a
 (** The locally-constrained but globally-allocating version of [fold_right]. *)
 
 val fold_right_local_output :
-  f:local_ (local_ 'b -> 'a -> local_ 'a) ->
+  f:local_ ('b -> local_ 'a -> local_ 'a) ->
   'b iarray ->
   init:local_ 'a ->
   local_ 'a
-(** The locally-allocating but global-input version of [fold_right]. *)
-*)
+(** The locally-allocating but global-input version of [fold_right].
+
+   WARNING: This function consumes O(n) extra stack space, as every intermediate
+   accumulator will be left on the local stack! *)
 
 
 (** {1 Iterators on two arrays} *)
