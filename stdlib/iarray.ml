@@ -17,6 +17,10 @@
 
 open! Stdlib
 
+(* NOTE: If you update this file, please also update iarrayLabels.ml; from the
+   declaration of [type +'a t = 'a iarray] on down, they're the same.  This is a
+   temporary state of affairs, but for now, please copy things! *)
+
 (* In this file, we use four different implementation strategies:
 
      1. Reusing [external]s for mutable arrays.  (E.g., [get].)
@@ -50,8 +54,6 @@ open! Stdlib
 *)
 
 [@@@ocaml.flambda_o3]
-
-(* If you update this file please also update iarrayLabels.ml *)
 
 (* An alias for the type of immutable arrays. *)
 type +'a t = 'a iarray

@@ -23,6 +23,10 @@ open! Stdlib
 
 [@@@ocaml.nolabels]
 
+(* NOTE: Please work in iarray.ml and then copy the results here; for more
+   information, see the top of that file.  This is a temporary state of affairs,
+   but for now, please copy things! *)
+
 (* CR mshinwell: Change to "include Iarray"; we can't do this at present
    as it requires referencing Stdlib__Iarray which will work under the make
    build but not under dune. *)
