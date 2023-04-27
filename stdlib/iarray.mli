@@ -26,9 +26,11 @@ open! Stdlib
  *)
 
 (** Operations on immutable arrays.  This module mirrors the API of [Array], but
-    omits functions that assume mutability; in particular, it omits [copy] along
-    with the functions [make], [create_float], and [make_matrix] that produce
-    all-constant arrays. *)
+    omits functions that assume mutability; in addition to obviously mutating
+    functions, it omits [copy] along with the functions [make], [create_float],
+    and [make_matrix] that produce all-constant arrays.  The exception is the
+    sorting functions, which are given a copying API to replace the in-place
+    one. *)
 
 type +'a t = 'a iarray
 (** An alias for the type of immutable arrays. *)
@@ -81,7 +83,8 @@ val concat_local : local_ 'a iarray list -> local_ 'a iarray
 val sub : 'a iarray -> int -> int -> 'a iarray
 (** [sub a pos len] returns a fresh immutable array of length [len],
    containing the elements number [pos] to [pos + len - 1]
-   of immutable array [a].
+   of immutable array [a].  This creates a copy of the selected
+   portion of the immutable array.
 
    @raise Invalid_argument if [pos] and [len] do not
    designate a valid subarray of [a]; that is, if

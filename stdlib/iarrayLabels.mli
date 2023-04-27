@@ -25,9 +25,6 @@ open! Stdlib
    iarrayLabels.mli instead.
  *)
 
-(* If you update any types in this module, you need to update iarray.ml as well;
-   it uses Obj.magic, so changes won't be detected. *)
-
 (** Operations on immutable arrays.  This module mirrors the API of [Array], but
     omits functions that assume mutability; in addition to obviously mutating
     functions, it omits [copy] along with the functions [make], [create_float],
@@ -313,10 +310,7 @@ val map2_local_inputs :
 (** The locally-scoped but globally-allocating version of [map2]. *)
 
 val map2_local_output :
-  f:local_ ('a -> 'b -> local_ 'c) ->
-  'a iarray ->
-  'b iarray ->
-  local_ 'c iarray
+  f:local_ ('a -> 'b -> local_ 'c) -> 'a iarray -> 'b iarray -> local_ 'c iarray
 (** The locally-allocating but global-inputs version of [map2]. *)
 
 val map2_local_first_input :
