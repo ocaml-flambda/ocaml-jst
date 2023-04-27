@@ -73,8 +73,8 @@ external unsafe_set_local : local_ 'a array -> int -> local_ 'a -> unit =
    use [unsafe_of_array [||]] below.  Thankfully, we never need it in the
    [local] case so we don't have to think about the details. *)
 
-(* CR aspectorzabusky: Really trusting the inliner here; to get maximum
-   performance, it has to inline both [unsafe_init_local] *and* [f]. *)
+(* Really trusting the inliner here; to get maximum performance, it has to
+   inline both [unsafe_init_local] *and* [f]. *)
 (** Precondition: [l >= 0]. *)
 let[@inline always] unsafe_init_local l (local_ f : int -> local_ 'a) = local_
   if l = 0 then
@@ -619,7 +619,6 @@ let find_opt p a =
       if p x then Some x
       else loop (succ i)
   in
-  (* CR aspectorzabusky: Does this really have to be [@nontail]? *)
   loop 0 [@nontail]
 
 let find_opt_local p a = local_
@@ -642,7 +641,6 @@ let find_map f a =
       | None -> loop (succ i)
       | Some _ as r -> r
   in
-  (* CR aspectorzabusky: Does this really have to be [@nontail]? *)
   loop 0 [@nontail]
 
 let find_map_local f a = local_
@@ -665,7 +663,6 @@ let find_map_local_input f a =
       | None -> loop (succ i)
       | Some _ as r -> r
   in
-  (* CR aspectorzabusky: Does this really have to be [@nontail]? *)
   loop 0 [@nontail]
 
 let find_map_local_output f a = local_
