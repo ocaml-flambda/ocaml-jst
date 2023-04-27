@@ -199,10 +199,6 @@ type primitive =
                         one; O(1) *)
   | Parray_of_iarray (* Unsafely reinterpret an immutable array as a mutable
                         one; O(1) *)
-  | Pempty_iarray (* The equivalent of [[::]], but available without any
-                     language extensions; useful when implementing
-                     [stdlib/iarray.ml], where we can't turn on [-extension
-                     immutable_arrays], but probably not otherwise *)
 
 and integer_comparison =
     Ceq | Cne | Clt | Cgt | Cle | Cge

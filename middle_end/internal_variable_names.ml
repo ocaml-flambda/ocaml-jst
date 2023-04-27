@@ -176,7 +176,6 @@ let pxorint = "Pxorint"
 let pprobe_is_enabled = "Pprobe_is_enabled"
 let parray_of_iarray = "Parray_of_iarray"
 let parray_to_iarray = "Parray_to_iarray"
-let pempty_iarray = "Pempty_iarray"
 let pabsfloat_arg = "Pabsfloat_arg"
 let paddbint_arg = "Paddbint_arg"
 let paddfloat_arg = "Paddfloat_arg"
@@ -286,7 +285,6 @@ let pxorint_arg = "Pxorint_arg"
 let pprobe_is_enabled_arg = "Pprobe_is_enabled_arg"
 let parray_of_iarray_arg = "Parray_of_iarray_arg"
 let parray_to_iarray_arg = "Parray_to_iarray_arg"
-let pempty_iarray_arg = "Pempty_iarray_arg"
 let raise = "raise"
 let raise_arg = "raise_arg"
 let read_mutable = "read_mutable"
@@ -316,7 +314,6 @@ let punbox_int = "Punbox_int"
 let pbox_int = "Pbox_int"
 let punbox_int_arg = "Punbox_int_arg"
 let pbox_int_arg = "Pbox_int_arg"
-let empty_iarray = "empty_iarray"
 
 let anon_fn_with_loc (sloc: Lambda.scoped_location) =
   let loc = Debuginfo.Scoped_location.to_location sloc in
@@ -442,7 +439,6 @@ let of_primitive : Lambda.primitive -> string = function
   | Pbox_int _ -> pbox_int
   | Parray_of_iarray -> parray_of_iarray
   | Parray_to_iarray -> parray_to_iarray
-  | Pempty_iarray -> pempty_iarray
 
 let of_primitive_arg : Lambda.primitive -> string = function
   | Pbytes_of_string -> pbytes_of_string_arg
@@ -557,4 +553,3 @@ let of_primitive_arg : Lambda.primitive -> string = function
   | Pbox_int _ -> pbox_int_arg
   | Parray_of_iarray -> parray_of_iarray_arg
   | Parray_to_iarray -> parray_to_iarray_arg
-  | Pempty_iarray -> pempty_iarray_arg
