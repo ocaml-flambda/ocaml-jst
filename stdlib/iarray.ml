@@ -98,8 +98,7 @@ external unsafe_set_local : local_ 'a array -> int -> local_ 'a -> unit =
 
 (* We can't use immutable array literals in this file, since we don't want to
    require the stdlib to be compiled with extensions, so instead of [[::]] we
-   use [unsafe_of_array [||]] below.  Thankfully, we never need it in the
-   [local] case so we don't have to think about the details. *)
+   use [unsafe_of_(local_)array [||]] below. *)
 
 (* Really trusting the inliner here; to get maximum performance, it has to
    inline both [unsafe_init_local] *and* [f]. *)
