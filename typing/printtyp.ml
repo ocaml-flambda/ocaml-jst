@@ -1417,7 +1417,7 @@ let rec tree_of_type_decl id decl =
   in
   begin match decl.type_kind with
   | Type_abstract _ -> ()
-  | Type_variant (cstrs, _) ->
+  | Type_variant (cstrs, _rep) ->
       List.iter
         (fun c ->
            prepare_type_constructor_arguments c.cd_args;
@@ -1440,7 +1440,7 @@ let rec tree_of_type_decl id decl =
           decl.type_manifest = None || decl.type_private = Private
       | Type_record _ ->
           decl.type_private = Private
-      | Type_variant (tll, _) ->
+      | Type_variant (tll, _rep) ->
           decl.type_private = Private ||
           List.exists (fun cd -> cd.cd_res <> None) tll
       | Type_open ->
@@ -2514,7 +2514,9 @@ let error trace_format mode subst env tr txt1 ppf txt2 ty_expect_explanation =
   let layout_error = match Misc.last tr with
     | Some (Bad_layout _ | Bad_layout_sort _ | Unequal_var_layouts _) ->
         true
-    | Some _ | None ->
+    | Some (Diff _ | Escape _ | Variant _ | Obj _ | Incompatible_fields _
+           | Rec_occur _)
+    | None ->
         false
   in
   let mis = mismatch txt1 env tr in

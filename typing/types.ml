@@ -469,6 +469,7 @@ include Make_wrapped(struct type 'a t = 'a end)
 
 (* Constructor and record label descriptions inserted held in typing
    environments *)
+
 type constructor_description =
   { cstr_name: string;                  (* Constructor name *)
     cstr_res: type_expr;                (* Type of the result *)

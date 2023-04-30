@@ -442,9 +442,7 @@ and transl_type_aux env policy mode styp =
       begin try
         TyVarEnv.lookup_local name
       with Not_found ->
-        let v =
-          TyVarEnv.new_var ~name Layout.any policy
-        in
+        let v = TyVarEnv.new_var ~name Layout.any policy in
         TyVarEnv.remember_used name v styp.ptyp_loc;
         v
       end
@@ -763,8 +761,8 @@ and transl_type_aux env policy mode styp =
         create_row ~fields ~more ~closed:(closed = Closed) ~fixed:None ~name
       in
       let more =
-        if Btype.static_row (make_row (newvar Layout.value)) then newty Tnil else
-           TyVarEnv.new_var Layout.value policy
+        if Btype.static_row (make_row (newvar Layout.value)) then newty Tnil
+        else TyVarEnv.new_var Layout.value policy
       in
       let ty = newty (Tvariant (make_row more)) in
       ctyp (Ttyp_variant (tfields, closed, present)) ty

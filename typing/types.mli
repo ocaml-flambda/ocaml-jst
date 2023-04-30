@@ -473,6 +473,7 @@ module Separability : sig
 end
 
 (* Type definitions *)
+
 type type_declaration =
   { type_params: type_expr list;
     type_arity: int;

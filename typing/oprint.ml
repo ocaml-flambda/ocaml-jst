@@ -502,7 +502,8 @@ let print_out_class_params ppf =
     [] -> ()
   | tyl ->
       fprintf ppf "@[<1>[%a]@]@ "
-        (print_list (type_parameter ~in_parens:true) (fun ppf -> fprintf ppf ", "))
+        (print_list (type_parameter ~in_parens:true)
+           (fun ppf -> fprintf ppf ", "))
         tyl
 
 let rec print_out_class_type ppf =

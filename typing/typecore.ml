@@ -948,8 +948,9 @@ and build_as_type_aux ~refine ~mode (env : Env.t ref) p =
       let lbl = snd3 (List.hd lpl) in
       if lbl.lbl_private = Private then p.pat_type, mode else
       (* The layout here is filled in via unification with [ty_res] in
-         [unify_pat].  This should be a sort variable and could be now (but make
-         sure it gets defaulted at some point.) *)
+         [unify_pat]. *)
+      (* CR layouts v2: This should be a sort variable and could be now (but
+         think about when it gets defaulted.) *)
       let ty = newvar Layout.any in
       let ppl = List.map (fun (_, l, p) -> l.lbl_num, p) lpl in
       let do_label lbl =
@@ -3417,8 +3418,7 @@ let rec approx_type env sty =
       newty (Ttuple (List.map (approx_type env) args))
   | Ptyp_constr (lid, ctl) ->
       let path, decl = Env.lookup_type ~use:false ~loc:lid.loc lid.txt env in
-      if List.length ctl <> decl.type_arity then
-        newvar Layout.any
+      if List.length ctl <> decl.type_arity then newvar Layout.any
       else begin
         let tyl = List.map (approx_type env) ctl in
         newconstr path tyl
@@ -4756,7 +4756,8 @@ and type_expect_
       in
       let wh_body_layout = Ctype.type_layout env wh_body.exp_type in
       rue {
-        exp_desc = Texp_while {wh_cond; wh_body; wh_body_layout};
+        exp_desc =
+          Texp_while {wh_cond; wh_body; wh_body_layout};
         exp_loc = loc; exp_extra = [];
         exp_type = instance Predef.type_unit;
         exp_attributes = sexp.pexp_attributes;
