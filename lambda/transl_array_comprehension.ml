@@ -828,8 +828,6 @@ let comprehension
               ~array
               ~index
               ~body:(transl_exp ~scopes comp_body)),
-         (* CR layouts: None above to change when arrays don't contain just
-            values *)
          (* If it was dynamically grown, cut it down to size *)
          match array_sizing with
          | Fixed_size -> array.var

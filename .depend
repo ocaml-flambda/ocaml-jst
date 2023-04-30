@@ -3777,7 +3777,6 @@ lambda/matching.cmx : \
 lambda/matching.cmi : \
     typing/typedtree.cmi \
     parsing/location.cmi \
-    typing/layouts.cmi \
     lambda/lambda.cmi \
     typing/ident.cmi \
     lambda/debuginfo.cmi
@@ -4009,6 +4008,7 @@ lambda/translcore.cmo : \
     lambda/translattribute.cmi \
     lambda/transl_list_comprehension.cmi \
     lambda/transl_array_comprehension.cmi \
+    typing/subst.cmi \
     typing/printtyp.cmi \
     typing/primitive.cmi \
     typing/predef.cmi \
@@ -4043,6 +4043,7 @@ lambda/translcore.cmx : \
     lambda/translattribute.cmx \
     lambda/transl_list_comprehension.cmx \
     lambda/transl_array_comprehension.cmx \
+    typing/subst.cmx \
     typing/printtyp.cmx \
     typing/primitive.cmx \
     typing/predef.cmx \
@@ -4245,6 +4246,7 @@ file_formats/cmi_format.cmx : \
     utils/compilation_unit.cmx \
     file_formats/cmi_format.cmi
 file_formats/cmi_format.cmi : \
+    typing/types.cmi \
     typing/subst.cmi \
     utils/misc.cmi \
     utils/import_info.cmi \
@@ -6800,7 +6802,6 @@ toplevel/topdirs.cmo : \
     typing/types.cmi \
     toplevel/toploop.cmi \
     toplevel/topeval.cmi \
-    typing/subst.cmi \
     typing/printtyp.cmi \
     typing/predef.cmi \
     typing/path.cmi \
@@ -6826,7 +6827,6 @@ toplevel/topdirs.cmx : \
     typing/types.cmx \
     toplevel/toploop.cmx \
     toplevel/topeval.cmi \
-    typing/subst.cmx \
     typing/printtyp.cmx \
     typing/predef.cmx \
     typing/path.cmx \
