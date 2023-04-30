@@ -199,4 +199,4 @@ report
   ~text:("\"" ^ extension_name ^ "\" is " ^
          if Language_extension.is_enabled extension
          then "INCORRECTLY enabled"
-         else "correctly disabled");
+         else "correctly disabled")

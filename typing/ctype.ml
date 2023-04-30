@@ -331,7 +331,6 @@ let without_generating_equations f =
     let new_umode = Pattern { r with equations_generation = Forbidden } in
     Misc.protect_refs [ Misc.R (umode, new_umode) ] f
 
-
 (* Unification generally must check that the layouts of the two types being
    unified agree.  However, sometimes we need to delay or skip these layout
    checks, and this is tracked by the [layout_unification_mode] in [lmode].
@@ -1977,9 +1976,6 @@ let rec estimate_type_layout env ty =
    it's a valid argument to [t].  (We believe there are still loops like this
    that can occur, though, and may need a more principled solution later).
 *)
-(* CR layouts: We only use the result layout of this in one place
-   (check_coherence).  Maybe that should be implemented differently and this
-   shouldn't return a layout on success. *)
 let rec constrain_type_layout ~reason ~fixed env ty layout fuel =
   let constrain_unboxed ty =
     match estimate_type_layout env ty with
@@ -2018,8 +2014,7 @@ let rec constrain_type_layout ~reason ~fixed env ty layout fuel =
   | _ -> constrain_unboxed ty
 
 let constrain_type_layout ~reason ~fixed env ty layout fuel =
-  (* An optimization to avoid doing any work if we're checking against
-     any. *)
+  (* An optimization to avoid doing any work if we're checking against any. *)
   if Layout.(equal layout any) then Ok ()
   else constrain_type_layout ~reason ~fixed env ty layout fuel
 
@@ -2058,7 +2053,7 @@ let type_sort ~reason env ty =
   | Error _ as e -> e
 
 (* Note: Because [estimate_type_layout] actually returns an upper bound, this
-   function computes an innaccurate intersection in some cases.
+   function computes an inaccurate intersection in some cases.
 
    This is OK because of where it is used, which is related to gadt equations.
    The question we're trying to answer there is not really "is this
@@ -2893,9 +2888,9 @@ let find_expansion_scope env path =
 
 let layout_of_abstract_type_declaration env p =
   try
-    (* This lookup duplicates work already done in is_instantiable, which guards
-       the case of unify3 that reaches this function.  Would be nice to
-       eliminate the duplication, but is seems tricky to do so without
+    (* CR layouts: This lookup duplicates work already done in is_instantiable,
+       which guards the case of unify3 that reaches this function.  Would be
+       nice to eliminate the duplication, but is seems tricky to do so without
        complicating unify3. *)
     match (Env.find_type p env).type_kind with
     | Type_abstract {layout} -> layout
@@ -2939,9 +2934,9 @@ let add_gadt_equation env source destination =
     let expansion_scope =
       Int.max (Path.scope source) (get_gadt_equations_level ())
     in
-    (* Layouts: recording the actual layout here is required, not just for
-       efficiency.  When we check the layout later, we may not be able to see
-       the local equation because of its scope. *)
+    (* Recording the actual layout here is required, not just for efficiency.
+       When we check the layout later, we may not be able to see the local
+       equation because of its scope. *)
     let layout = layout_of_abstract_type_declaration !env source in
     add_layout_equation ~reason:(Gadt_equation source) env destination layout;
     let decl =
@@ -3077,7 +3072,8 @@ let unify3_var ~var_name env layout1 t1' t2 t2' =
   occur_for Unify !env t1' t2;
   match occur_univar_for Unify !env t2 with
   | () -> begin
-      unification_layout_check ~reason:(Unified_with_tvar var_name) !env t2' layout1;
+      unification_layout_check ~reason:(Unified_with_tvar var_name) !env t2'
+        layout1;
       link_type t1' t2
     end
   | exception Unify_trace _ when in_pattern_mode () ->
@@ -3403,8 +3399,7 @@ and unify_list env tl1 tl2 =
 and make_rowvar level use1 rest1 use2 rest2  =
   let set_name ty name =
     match get_desc ty with
-      Tvar { name = None; layout } ->
-        set_type_desc ty (Tvar { name; layout })
+      Tvar { name = None; layout } -> set_type_desc ty (Tvar { name; layout })
     | _ -> ()
   in
   let name =
@@ -3418,8 +3413,7 @@ and make_rowvar level use1 rest1 use2 rest2  =
     | _ -> None
   in
   if use1 then rest1 else
-  if use2 then rest2
-  else newty2 ~level (Tvar { name; layout = Layout.value })
+  if use2 then rest2 else newty2 ~level (Tvar { name; layout = Layout.value })
 
 and unify_fields env ty1 ty2 =          (* Optimization *)
   let (fields1, rest1) = flatten_fields ty1
@@ -3688,7 +3682,7 @@ let unify_var ~from_subst env t1 t2 =
   match get_desc t1, get_desc t2 with
     Tvar _, Tconstr _ when deep_occur t1 t2 ->
       unify (ref env) t1 t2
-    | Tvar { name; layout }, _ ->
+  | Tvar { name; layout }, _ ->
       let reset_tracing = check_trace_gadt_instances env in
       begin try
         occur_for Unify env t1 t2;
@@ -3753,7 +3747,7 @@ exception Filter_arrow_failed of filter_arrow_failure
 
 let filter_arrow env t l ~force_tpoly =
   let function_type level =
-    (* Layouts: This is one of two primary places where we are restricting
+    (* CR layouts v2: This is one of two primary places where we are restricting
        function arguments / returns to have layout value.  This one handles
        function types that arise from inference, and the check in
        [Typetexp.transl_type_aux] handles function types explicitly written in
@@ -3894,8 +3888,7 @@ let filter_method env name ty =
       let scope = get_scope ty in
       let ty', ty_meth = object_type ~level ~scope in
       begin match
-        constrain_type_layout ~reason:(Fixed_layout Object)
-          env ty Layout.value
+        constrain_type_layout ~reason:(Fixed_layout Object) env ty Layout.value
       with
       | Ok _ -> ()
       | Error err -> raise (Filter_method_failed (Not_a_value err))
@@ -5875,9 +5868,7 @@ let rec nondep_type_rec ?(expand_private=false) env ids ty =
     Tvar _ | Tunivar _ -> ty
   | _ -> try TypeHash.find nondep_hash ty
   with Not_found ->
-    let ty' =
-      newgenstub ~scope:(get_scope ty) Layout.any
-    in
+    let ty' = newgenstub ~scope:(get_scope ty) Layout.any in
     TypeHash.add nondep_hash ty ty';
     match
       match get_desc ty with
