@@ -1,7 +1,7 @@
 (* TEST
- * skip
+   * skip
    flags += "-extension unique"
- * expect
+   ** expect
 *)
 
 (* Ocaml tends to lift locally defined constants to global *)
