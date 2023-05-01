@@ -34,18 +34,21 @@ type immediate_or_pointer =
   | Immediate
   | Pointer
 
-type alloc_mode = private
+type locality_mode = private
   | Alloc_heap
   | Alloc_local
+
+(* for now, middle-end only knows locality *)
+type alloc_mode = locality_mode
 
 type modify_mode = private
   | Modify_heap
   | Modify_maybe_stack
 
-val alloc_heap : alloc_mode
+val alloc_heap : locality_mode
 
 (* Actually [Alloc_heap] if [Config.stack_allocation] is [false] *)
-val alloc_local : alloc_mode
+val alloc_local : locality_mode
 
 val modify_heap : modify_mode
 

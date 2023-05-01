@@ -3,6 +3,7 @@ type maturity = Stable | Beta | Alpha
 type t =
   | Comprehensions
   | Local
+  | Unique
   | Include_functor
   | Polymorphic_parameters
   | Immutable_arrays
@@ -14,6 +15,7 @@ let equal (a : t) (b : t) = (a = b)
 let all =
   [ Comprehensions
   ; Local
+  ; Unique
   ; Include_functor
   ; Polymorphic_parameters
   ; Immutable_arrays
@@ -42,6 +44,7 @@ let default_extensions =
 let to_string = function
   | Comprehensions -> "comprehensions"
   | Local -> "local"
+  | Unique -> "unique"
   | Include_functor -> "include_functor"
   | Polymorphic_parameters -> "polymorphic_parameters"
   | Immutable_arrays -> "immutable_arrays"
@@ -53,6 +56,7 @@ let to_string = function
 let of_string extn = match String.lowercase_ascii extn with
   | "comprehensions" -> Some Comprehensions
   | "local" -> Some Local
+  | "unique" -> Some Unique
   | "include_functor" -> Some Include_functor
   | "polymorphic_parameters" -> Some Polymorphic_parameters
   | "immutable_arrays" -> Some Immutable_arrays
@@ -81,6 +85,7 @@ let is_erasable = function
   | Layouts Beta
   | Layouts Stable ->
       true
+  | Unique
   | Comprehensions
   | Include_functor
   | Polymorphic_parameters

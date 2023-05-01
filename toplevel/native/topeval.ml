@@ -135,7 +135,7 @@ let name_expression ~loc ~attrs exp =
    in
    let sg = [Sig_value(id, vd, Exported)] in
    let pat =
-     { pat_desc = Tpat_var(id, mknoloc name, Value_mode.global);
+     { pat_desc = Tpat_var(id, mknoloc name, Mode.Value.legacy);
        pat_loc = loc;
        pat_extra = [];
        pat_type = exp.exp_type;

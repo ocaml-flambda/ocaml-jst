@@ -42,9 +42,11 @@ type field_read_semantics =
 
 include (struct
 
-  type alloc_mode =
+  type locality_mode =
     | Alloc_heap
     | Alloc_local
+
+  type alloc_mode = locality_mode
 
   type modify_mode =
     | Modify_heap
@@ -78,17 +80,19 @@ include (struct
 
 end : sig
 
-  type alloc_mode = private
+  type locality_mode = private
     | Alloc_heap
     | Alloc_local
+
+  type alloc_mode = locality_mode
 
   type modify_mode = private
     | Modify_heap
     | Modify_maybe_stack
 
-  val alloc_heap : alloc_mode
+  val alloc_heap : locality_mode
 
-  val alloc_local : alloc_mode
+  val alloc_local : locality_mode
 
   val modify_heap : modify_mode
 

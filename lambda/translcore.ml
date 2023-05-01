@@ -237,7 +237,7 @@ let rec push_defaults loc bindings use_lhs arg_mode cases partial warnings =
     when use_lhs || trivial_pat pat && exp.exp_desc <> Texp_unreachable ->
       [{case with c_rhs = wrap_bindings bindings exp}]
   | {c_lhs=pat; c_rhs=exp; c_guard=_} :: _ when bindings <> [] ->
-      let mode = Value_mode.of_alloc arg_mode in
+      let mode = Mode.Value.of_alloc arg_mode in
       let param = Typecore.name_cases "param" cases in
       let desc =
         {val_type = pat.pat_type; val_kind = Val_reg;
@@ -256,7 +256,7 @@ let rec push_defaults loc bindings use_lhs arg_mode cases partial warnings =
             ({exp with exp_type = pat.pat_type; exp_env = env; exp_desc =
               Texp_ident
                 (Path.Pident param, mknoloc (Longident.Lident name),
-                 desc, Id_value)},
+                 desc, Id_value, (mode.uniqueness, mode.linearity))},
              Sort.value,
              (* CR layouts v2: Value here will changes when functions take other
                 layouts.  Maybe we need a sort in [Typedtree.case]? *)
@@ -348,7 +348,7 @@ let can_apply_primitive p pmode pos args =
     else if pos <> Typedtree.Tail then true
     else begin
       let return_mode = Ctype.prim_mode pmode p.prim_native_repr_res in
-      is_heap_mode (transl_alloc_mode return_mode)
+      is_heap_mode (transl_locality_mode return_mode)
     end
   end
 
@@ -374,7 +374,7 @@ and transl_exp1 ~scopes ~in_new_scope e =
 
 and transl_exp0 ~in_new_scope ~scopes e =
   match e.exp_desc with
-  | Texp_ident(path, _, desc, kind) ->
+  | Texp_ident(path, _, desc, kind, _) ->
       transl_ident (of_location ~scopes e.exp_loc)
         e.exp_env e.exp_type path desc kind
   | Texp_constant cst ->
@@ -398,7 +398,7 @@ and transl_exp0 ~in_new_scope ~scopes e =
       in
       transl_function ~scopes e alloc_mode param arg_mode arg_layout cases partial warnings region curry
   | Texp_apply({ exp_desc = Texp_ident(path, _, {val_kind = Val_prim p},
-                                       Id_prim pmode);
+                                       Id_prim pmode, _);
                 exp_type = prim_type; } as funct, oargs, pos, alloc_mode)
     when can_apply_primitive p pmode pos oargs ->
       let argl, extra_args = cut p.prim_arity oargs in
@@ -515,7 +515,7 @@ and transl_exp0 ~in_new_scope ~scopes e =
       transl_record ~scopes e.exp_loc e.exp_env
         (Option.map transl_alloc_mode alloc_mode)
         fields representation extended_expression
-  | Texp_field(arg, _, lbl, alloc_mode) ->
+  | Texp_field(arg, _, lbl, _, alloc_mode) ->
       let targ = transl_exp ~scopes arg in
       let sem =
         match lbl.lbl_mut with
@@ -1688,7 +1688,7 @@ and transl_letop ~scopes loc env let_ ands param case partial warnings =
                   Typeopt.layout env loc arg_type
     in
     let return_layout = layout_exp case.c_rhs in
-    let curry = More_args { partial_mode = Alloc_mode.global } in
+    let curry = More_args { partial_mode = Mode.Alloc.legacy } in
     let (kind, params, return, _region), body =
       event_function ~scopes case.c_rhs
         (function repr ->

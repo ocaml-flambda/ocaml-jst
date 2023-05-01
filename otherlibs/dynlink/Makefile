@@ -104,12 +104,14 @@ COMPILERLIBS_SOURCES=\
   parsing/ast_mapper.ml \
   parsing/attr_helper.ml \
   parsing/pprintast.ml \
+  typing/modes.ml \
   typing/path.ml \
   typing/primitive.ml \
   typing/shape.ml \
   typing/layouts.ml \
   typing/types.ml \
   typing/btype.ml \
+  typing/mode.ml \
   typing/subst.ml \
   typing/predef.ml \
   typing/datarepr.ml \

@@ -344,8 +344,8 @@ let expr sub x =
           extended_expression = Option.map (sub.expr sub) extended_expression;
           alloc_mode
         }
-    | Texp_field (exp, lid, ld, am) ->
-        Texp_field (sub.expr sub exp, lid, ld, am)
+    | Texp_field (exp, lid, ld, mode, am) ->
+        Texp_field (sub.expr sub exp, lid, ld, mode, am)
     | Texp_setfield (exp1, am, lid, ld, exp2) ->
         Texp_setfield (
           sub.expr sub exp1,

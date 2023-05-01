@@ -2316,7 +2316,8 @@ and type_module_aux ~alias sttn funct_body anchor env smod =
           Named (id, param, mty), Types.Named (id, mty.mty_type), newenv,
           var, true
       in
-      let newenv = Env.add_lock Alloc_mode.global newenv in
+      let newenv = Env.add_locality_lock Mode.Locality.global newenv in
+      let newenv = Env.add_linearity_lock ~shared_context:Module Mode.Linearity.many newenv in
       let body, body_shape = type_module true funct_body None newenv sbody in
       { mod_desc = Tmod_functor(t_arg, body);
         mod_type = Mty_functor(ty_arg, body.mod_type);
@@ -2563,13 +2564,13 @@ and type_structure ?(toplevel = None) funct_body anchor env sstr =
         let layout = Ctype.type_layout expr.exp_env expr.exp_type in
         Tstr_eval (expr, layout, attrs), [], shape_map, env
     | Pstr_value(rec_flag, sdefs) ->
-        let force_global =
+        let force_toplevel =
           (* Values bound by '_' still escape in the toplevel, because
              they may be printed even though they are not named *)
           Option.is_some toplevel
         in
         let (defs, newenv) =
-          Typecore.type_binding env rec_flag ~force_global sdefs in
+          Typecore.type_binding env rec_flag ~force_toplevel sdefs in
         let () = if rec_flag = Recursive then
           Typecore.check_recursive_bindings env defs
         in
