@@ -622,12 +622,12 @@ CAMLprim value caml_array_fill(value array,
   return Val_unit;
 }
 
-CAMLprim value caml_iarray_of_array(value bv)
+CAMLprim value caml_iarray_of_array(value a)
 {
-  return bv;
+  return a;
 }
 
-CAMLprim value caml_array_of_iarray(value bv)
+CAMLprim value caml_array_of_iarray(value a)
 {
-  return bv;
+  return a;
 }
