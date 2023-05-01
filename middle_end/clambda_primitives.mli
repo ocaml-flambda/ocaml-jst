@@ -81,8 +81,12 @@ type primitive =
   | Parraylength of array_kind
   | Parrayrefu of array_kind
   | Parraysetu of modify_mode * array_kind
+  (** The [modify_mode] only matters for arrays that contain (or might contain)
+      pointers; otherwise, access is uniform. *)
   | Parrayrefs of array_kind
   | Parraysets of modify_mode * array_kind
+  (** The [modify_mode] only matters for arrays that contain (or might contain)
+      pointers; otherwise, access is uniform. *)
   (* Test if the argument is a block or an immediate integer *)
   | Pisint
   (* Test if the (integer) argument is outside an interval *)
