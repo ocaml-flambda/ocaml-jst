@@ -1,2 +1,2 @@
-    access from literal: Allocation
-access from Iarray.init: Allocation
+    access from literal: No Allocation
+access from Iarray.init: No Allocation
