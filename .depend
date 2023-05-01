@@ -1076,16 +1076,16 @@ typing/mtype.cmi : \
 typing/oprint.cmo : \
     parsing/pprintast.cmi \
     typing/outcometree.cmi \
-    typing/layouts.cmi \
     typing/modes.cmi \
+    typing/layouts.cmi \
     utils/language_extension.cmi \
     parsing/asttypes.cmi \
     typing/oprint.cmi
 typing/oprint.cmx : \
     parsing/pprintast.cmx \
     typing/outcometree.cmi \
-    typing/layouts.cmx \
     typing/modes.cmx \
+    typing/layouts.cmx \
     utils/language_extension.cmx \
     parsing/asttypes.cmi \
     typing/oprint.cmi
