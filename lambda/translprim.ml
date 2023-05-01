@@ -244,7 +244,12 @@ let lookup_primitive loc poly pos p =
     | "%obj_size" -> Primitive ((Parraylength gen_array_kind), 1)
     | "%obj_field" -> Primitive ((Parrayrefu gen_array_kind), 2)
     | "%obj_set_field" ->
-      Primitive ((Parraysetu (modify_heap, gen_array_kind)), 3)
+       let obj_mode =
+         match arg_modes with
+         | obj_mode :: _ -> obj_mode
+         | [] -> assert false
+       in
+       Primitive ((Parraysetu (obj_mode, gen_array_kind)), 3)
     | "%floatarray_length" -> Primitive ((Parraylength Pfloatarray), 1)
     | "%floatarray_safe_get" -> Primitive ((Parrayrefs Pfloatarray), 2)
     | "%floatarray_safe_set" ->
