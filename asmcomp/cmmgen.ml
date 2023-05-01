@@ -1155,20 +1155,20 @@ and transl_prim_3 env p arg1 arg2 arg3 dbg =
         (transl env arg1) (transl env arg2) (transl env arg3) dbg
 
   (* Array operations *)
-  | Parraysetu kind ->
+  | Parraysetu (mode, kind) ->
       let newval =
         match kind with
         | Pfloatarray -> transl_unbox_float dbg env arg3
         | _ -> transl env arg3
       in
-      arrayset_unsafe kind (transl env arg1) (transl env arg2) newval dbg
-  | Parraysets kind ->
+      arrayset_unsafe mode kind (transl env arg1) (transl env arg2) newval dbg
+  | Parraysets (mode, kind) ->
       let newval =
         match kind with
         | Pfloatarray -> transl_unbox_float dbg env arg3
         | _ -> transl env arg3
       in
-      arrayset_safe kind (transl env arg1) (transl env arg2) newval dbg
+      arrayset_safe mode kind (transl env arg1) (transl env arg2) newval dbg
 
   | Pbytes_set(size, unsafe) ->
       bytes_set size unsafe (transl env arg1) (transl env arg2)

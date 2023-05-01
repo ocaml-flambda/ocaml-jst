@@ -1102,7 +1102,7 @@ and simplify_named env r (tree : Flambda.named) : Flambda.named * R.t =
           end
         end
       | Pfield _, _, _ -> Misc.fatal_error "Pfield arity error"
-      | (Parraysetu kind | Parraysets kind),
+      | (Parraysetu (mode, kind) | Parraysets (mode, kind)),
         [_block; _field; _value],
         [block_approx; _field_approx; value_approx] ->
         if A.warn_on_mutation block_approx then begin
@@ -1128,8 +1128,8 @@ and simplify_named env r (tree : Flambda.named) : Flambda.named * R.t =
             kind
         in
         let prim : Clambda_primitives.primitive = match prim with
-          | Parraysetu _ -> Parraysetu kind
-          | Parraysets _ -> Parraysets kind
+          | Parraysetu _ -> Parraysetu (mode, kind)
+          | Parraysets _ -> Parraysets (mode, kind)
           | _ -> assert false
         in
         Prim (prim, args, dbg), ret r (A.value_unknown Other)

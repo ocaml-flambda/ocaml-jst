@@ -88,7 +88,9 @@ external unsafe_set_mutable : 'a array -> int -> 'a -> unit =
 (* VERY UNSAFE: Any of these functions can be used to violate the "no forward
    pointers" restriction for the local stack if not used carefully.  Each of
    these can either make a local mutable array or mutate its contents, and if
-   not careful, this can lead to an array's contents pointing forwards. *)
+   not careful, this can lead to an array's contents pointing forwards.  The
+   latter two functions could be overloaded via [[@local_opt]], but we don't do
+   that in order to isolate the unsafety. *)
 external make_mutable_local : int -> local_ 'a -> local_ 'a array =
   "caml_make_local_vect"
 external unsafe_of_local_array : local_ 'a array -> local_ 'a iarray =

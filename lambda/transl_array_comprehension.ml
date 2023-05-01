@@ -756,7 +756,9 @@ let body
   let open Let_binding in
   let set_element_raw elt =
     (* array.(index) <- elt *)
-    Lprim(Parraysetu array_kind, [array.var; index.var; elt], loc)
+    Lprim(Parraysetu (Lambda.modify_heap, array_kind),
+          [array.var; index.var; elt],
+          loc)
   in
   let set_element_in_bounds elt = match array_sizing with
     | Fixed_size ->

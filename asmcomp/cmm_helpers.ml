@@ -793,19 +793,25 @@ let unboxed_float_array_ref arr ofs dbg =
 let float_array_ref arr ofs dbg =
   box_float dbg Lambda.alloc_heap (unboxed_float_array_ref arr ofs dbg)
 
-let addr_array_set arr ofs newval dbg =
+let addr_array_set_heap arr ofs newval dbg =
   Cop(Cextcall("caml_modify", typ_void, [], false),
       [array_indexing log2_size_addr arr ofs dbg; newval], dbg)
+
+let addr_array_set_local arr ofs newval dbg =
+  Cop(Cextcall("caml_modify_local", typ_void, [], false),
+      [arr; untag_int ofs dbg; newval], dbg)
+
+let addr_array_set (mode : Lambda.modify_mode) =
+  match mode with
+  | Modify_heap -> addr_array_set_heap
+  | Modify_maybe_stack -> addr_array_set_local
+(* int and float arrays can be written to uniformly regardless of their mode *)
 let int_array_set arr ofs newval dbg =
   Cop(Cstore (Word_int, Assignment),
     [array_indexing log2_size_addr arr ofs dbg; newval], dbg)
 let float_array_set arr ofs newval dbg =
   Cop(Cstore (Double, Assignment),
     [array_indexing log2_size_float arr ofs dbg; newval], dbg)
-
-let addr_array_set_local arr ofs newval dbg =
-  Cop(Cextcall("caml_modify_local", typ_void, [], false),
-      [arr; untag_int ofs dbg; newval], dbg)
 
 let addr_array_initialize arr ofs newval dbg =
   Cop(Cextcall("caml_initialize", typ_void, [], false),
@@ -2826,7 +2832,7 @@ type ternary_primitive =
 let setfield_computed ptr init arg1 arg2 arg3 dbg =
   match assignment_kind ptr init with
   | Caml_modify ->
-      return_unit dbg (addr_array_set arg1 arg2 arg3 dbg)
+      return_unit dbg (addr_array_set_heap arg1 arg2 arg3 dbg)
   | Caml_modify_local ->
       return_unit dbg (addr_array_set_local arg1 arg2 arg3 dbg)
   | Caml_initialize ->
@@ -2850,7 +2856,7 @@ let bytesset_safe arg1 arg2 arg3 dbg =
               [add_int str idx dbg; newval],
               dbg))))))
 
-let arrayset_unsafe kind arg1 arg2 arg3 dbg =
+let arrayset_unsafe mode kind arg1 arg2 arg3 dbg =
   return_unit dbg (match (kind: Lambda.array_kind) with
   | Pgenarray ->
       bind "newval" arg3 (fun newval ->
@@ -2858,20 +2864,20 @@ let arrayset_unsafe kind arg1 arg2 arg3 dbg =
           bind "arr" arg1 (fun arr ->
             Cifthenelse(is_addr_array_ptr arr dbg,
                         dbg,
-                        addr_array_set arr index newval dbg,
+                        addr_array_set mode arr index newval dbg,
                         dbg,
                         float_array_set arr index (unbox_float dbg newval)
                           dbg,
                         dbg, Any))))
   | Paddrarray ->
-      addr_array_set arg1 arg2 arg3 dbg
+      addr_array_set mode arg1 arg2 arg3 dbg
   | Pintarray ->
       int_array_set arg1 arg2 arg3 dbg
   | Pfloatarray ->
       float_array_set arg1 arg2 arg3 dbg
   )
 
-let arrayset_safe kind arg1 arg2 arg3 dbg =
+let arrayset_safe mode kind arg1 arg2 arg3 dbg =
   return_unit dbg (match (kind: Lambda.array_kind) with
   | Pgenarray ->
       bind "newval" arg3 (fun newval ->
@@ -2883,7 +2889,7 @@ let arrayset_safe kind arg1 arg2 arg3 dbg =
             make_checkbound dbg [addr_array_length_shifted hdr dbg; idx],
             Cifthenelse(is_addr_array_hdr hdr dbg,
                         dbg,
-                        addr_array_set arr idx newval dbg,
+                        addr_array_set mode arr idx newval dbg,
                         dbg,
                         float_array_set arr idx
                           (unbox_float dbg newval)
@@ -2895,7 +2901,7 @@ let arrayset_safe kind arg1 arg2 arg3 dbg =
             dbg,
             Csequence(
               make_checkbound dbg [addr_array_length_shifted hdr dbg; idx],
-              addr_array_set arr idx newval dbg),
+              addr_array_set mode arr idx newval dbg),
             dbg,
             Csequence(
               make_checkbound dbg [float_array_length_shifted hdr dbg; idx],
@@ -2911,7 +2917,7 @@ let arrayset_safe kind arg1 arg2 arg3 dbg =
             addr_array_length_shifted
               (get_header_without_profinfo arr dbg) dbg;
             idx],
-          addr_array_set arr idx newval dbg))))
+          addr_array_set mode arr idx newval dbg))))
   | Pintarray ->
       bind "newval" arg3 (fun newval ->
       bind "index" arg2 (fun idx ->

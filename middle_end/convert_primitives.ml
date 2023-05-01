@@ -82,9 +82,9 @@ let convert (prim : Lambda.primitive) : Clambda_primitives.primitive =
   | Pduparray (kind, mutability) -> Pduparray (kind, mutability)
   | Parraylength kind -> Parraylength kind
   | Parrayrefu kind -> Parrayrefu kind
-  | Parraysetu kind -> Parraysetu kind
+  | Parraysetu (mode, kind) -> Parraysetu (mode, kind)
   | Parrayrefs kind -> Parrayrefs kind
-  | Parraysets kind -> Parraysets kind
+  | Parraysets (mode, kind) -> Parraysets (mode, kind)
   | Pisint _ -> Pisint
   | Pisout -> Pisout
   | Pcvtbint (src, dest, m) -> Pcvtbint (src, dest, m)

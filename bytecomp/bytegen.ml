@@ -457,14 +457,18 @@ let comp_primitive p args =
   | Parrayrefs Pgenarray -> Kccall("caml_array_get", 2)
   | Parrayrefs Pfloatarray -> Kccall("caml_floatarray_get", 2)
   | Parrayrefs _ -> Kccall("caml_array_get_addr", 2)
-  | Parraysets Pgenarray -> Kccall("caml_array_set", 3)
-  | Parraysets Pfloatarray -> Kccall("caml_floatarray_set", 3)
+  (* In bytecode, nothing is ever actually stack-allocated, so we ignore the
+     modification mode for [Parraysets] *)
+  | Parraysets (_, Pgenarray) -> Kccall("caml_array_set", 3)
+  | Parraysets (_, Pfloatarray) -> Kccall("caml_floatarray_set", 3)
   | Parraysets _ -> Kccall("caml_array_set_addr", 3)
   | Parrayrefu Pgenarray -> Kccall("caml_array_unsafe_get", 2)
   | Parrayrefu Pfloatarray -> Kccall("caml_floatarray_unsafe_get", 2)
   | Parrayrefu _ -> Kgetvectitem
-  | Parraysetu Pgenarray -> Kccall("caml_array_unsafe_set", 3)
-  | Parraysetu Pfloatarray -> Kccall("caml_floatarray_unsafe_set", 3)
+  (* In bytecode, nothing is ever actually stack-allocated, so we ignore the
+     modification mode for [Parraysetu] *)
+  | Parraysetu (_, Pgenarray) -> Kccall("caml_array_unsafe_set", 3)
+  | Parraysetu (_, Pfloatarray) -> Kccall("caml_floatarray_unsafe_set", 3)
   | Parraysetu _ -> Ksetvectitem
   | Pctconst c ->
      let const_name = match c with

@@ -266,10 +266,13 @@ val int_array_ref : expression -> expression -> Debuginfo.t -> expression
 val unboxed_float_array_ref :
   expression -> expression -> Debuginfo.t -> expression
 val float_array_ref : expression -> expression -> Debuginfo.t -> expression
-val addr_array_set :
+val addr_array_set_heap :
   expression -> expression -> expression -> Debuginfo.t -> expression
 val addr_array_set_local :
   expression -> expression -> expression -> Debuginfo.t -> expression
+val addr_array_set :
+  Lambda.modify_mode -> expression -> expression -> expression -> Debuginfo.t ->
+  expression
 val int_array_set :
   expression -> expression -> expression -> Debuginfo.t -> expression
 val float_array_set :
@@ -574,12 +577,15 @@ val bytesset_unsafe : ternary_primitive
 val bytesset_safe : ternary_primitive
 
 (** Set the element at the given index in the given array to the given value.
+    The array is expected to be at the given mode.
     WARNING: if [kind] is [Pfloatarray], then [value] is expected to be an
     _unboxed_ float. Otherwise, it is expected to be a regular caml value,
     including in the case where the array contains floats.
     Args: array, index, value *)
-val arrayset_unsafe : Lambda.array_kind -> ternary_primitive
-val arrayset_safe : Lambda.array_kind -> ternary_primitive
+val arrayset_unsafe :
+  Lambda.modify_mode -> Lambda.array_kind -> ternary_primitive
+val arrayset_safe :
+  Lambda.modify_mode -> Lambda.array_kind -> ternary_primitive
 
 (** Set a chunk of data in the given bytes or bigstring structure.
     See also [string_load] and [bigstring_load].

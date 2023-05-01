@@ -32,6 +32,8 @@ type memory_access_size =
 
 type alloc_mode = Lambda.alloc_mode
 
+type modify_mode = Lambda.modify_mode
+
 type primitive =
   | Pread_symbol of string
   (* Operations on heap blocks *)
@@ -75,9 +77,9 @@ type primitive =
       array being *produced* by the duplication. *)
   | Parraylength of array_kind
   | Parrayrefu of array_kind
-  | Parraysetu of array_kind
+  | Parraysetu of modify_mode * array_kind
   | Parrayrefs of array_kind
-  | Parraysets of array_kind
+  | Parraysets of modify_mode * array_kind
   (* Test if the argument is a block or an immediate integer *)
   | Pisint
   (* Test if the (integer) argument is outside an interval *)

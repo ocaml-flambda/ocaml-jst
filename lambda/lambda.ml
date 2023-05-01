@@ -177,9 +177,9 @@ type primitive =
   | Pduparray of array_kind * mutable_flag
   | Parraylength of array_kind
   | Parrayrefu of array_kind
-  | Parraysetu of array_kind
+  | Parraysetu of modify_mode * array_kind
   | Parrayrefs of array_kind
-  | Parraysets of array_kind
+  | Parraysets of modify_mode * array_kind
   (* Test if the argument is a block or an immediate integer *)
   | Pisint of { variant_only : bool }
   (* Test if the (integer) argument is outside an interval *)
