@@ -1067,10 +1067,10 @@ and transl_prim_2 env p arg1 arg2 dbg =
       bigstring_load size unsafe mode (transl env arg1) (transl env arg2) dbg
 
   (* Array operations *)
-  | Parrayrefu kind ->
-      arrayref_unsafe kind (transl env arg1) (transl env arg2) dbg
-  | Parrayrefs kind ->
-      arrayref_safe kind (transl env arg1) (transl env arg2) dbg
+  | Parrayrefu (mode, kind) ->
+      arrayref_unsafe mode kind (transl env arg1) (transl env arg2) dbg
+  | Parrayrefs (mode, kind) ->
+      arrayref_safe mode kind (transl env arg1) (transl env arg2) dbg
 
   (* Boxed integers *)
   | Paddbint (bi, mode) ->

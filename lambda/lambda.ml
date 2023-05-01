@@ -176,9 +176,9 @@ type primitive =
   | Pmakearray of array_kind * mutable_flag * alloc_mode
   | Pduparray of array_kind * mutable_flag
   | Parraylength of array_kind
-  | Parrayrefu of array_kind
+  | Parrayrefu of alloc_mode * array_kind
   | Parraysetu of modify_mode * array_kind
-  | Parrayrefs of array_kind
+  | Parrayrefs of alloc_mode * array_kind
   | Parraysets of modify_mode * array_kind
   (* Test if the argument is a block or an immediate integer *)
   | Pisint of { variant_only : bool }
@@ -1355,12 +1355,10 @@ let primitive_may_allocate : primitive -> alloc_mode option = function
   | Pduparray _ -> Some alloc_heap
   | Parraylength _ -> None
   | Parraysetu _ | Parraysets _
-  | Parrayrefu (Paddrarray|Pintarray)
-  | Parrayrefs (Paddrarray|Pintarray) -> None
-  | Parrayrefu (Pgenarray|Pfloatarray)
-  | Parrayrefs (Pgenarray|Pfloatarray) ->
-     (* The float box from flat floatarray access is always Alloc_heap *)
-     Some alloc_heap
+  | Parrayrefu (_, (Paddrarray|Pintarray))
+  | Parrayrefs (_, (Paddrarray|Pintarray)) -> None
+  | Parrayrefu (m, (Pgenarray|Pfloatarray))
+  | Parrayrefs (m, (Pgenarray|Pfloatarray)) -> Some m
   | Pisint _ | Pisout -> None
   | Pintofbint _ -> None
   | Pbintofint (_,m)
@@ -1449,7 +1447,7 @@ let primitive_result_layout (p : primitive) =
   | Pstring_load_16 _ | Pbytes_load_16 _ | Pbigstring_load_16 _
   | Pprobe_is_enabled _ | Pbswap16
     -> layout_int
-  | Parrayrefu array_kind | Parrayrefs array_kind ->
+  | Parrayrefu (_, array_kind) | Parrayrefs (_, array_kind) ->
       (match array_kind with
        | Pintarray -> layout_int
        | Pfloatarray -> layout_float

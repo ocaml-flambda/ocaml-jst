@@ -265,7 +265,8 @@ val addr_array_ref : expression -> expression -> Debuginfo.t -> expression
 val int_array_ref : expression -> expression -> Debuginfo.t -> expression
 val unboxed_float_array_ref :
   expression -> expression -> Debuginfo.t -> expression
-val float_array_ref : expression -> expression -> Debuginfo.t -> expression
+val float_array_ref :
+  Lambda.alloc_mode -> expression -> expression -> Debuginfo.t -> expression
 val addr_array_set_heap :
   expression -> expression -> expression -> Debuginfo.t -> expression
 val addr_array_set_local :
@@ -558,9 +559,12 @@ val bigstring_load :
 
 (** Arrays *)
 
-(** Array access. Args: array, index *)
-val arrayref_unsafe : Lambda.array_kind -> binary_primitive
-val arrayref_safe : Lambda.array_kind -> binary_primitive
+(** Array access.  The [alloc_mode] is used only if the [array_kind] is
+    [Pfloatarray]; the resulting [float] will then be allocated at the specified
+    mode.
+    Args: array, index *)
+val arrayref_unsafe : Lambda.alloc_mode -> Lambda.array_kind -> binary_primitive
+val arrayref_safe : Lambda.alloc_mode -> Lambda.array_kind -> binary_primitive
 
 type ternary_primitive =
   expression -> expression -> expression -> Debuginfo.t -> expression

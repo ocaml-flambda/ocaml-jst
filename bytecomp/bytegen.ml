@@ -454,19 +454,18 @@ let comp_primitive p args =
   | Pbytes_load_32(_) -> Kccall("caml_bytes_get32", 2)
   | Pbytes_load_64(_) -> Kccall("caml_bytes_get64", 2)
   | Parraylength _ -> Kvectlength
-  | Parrayrefs Pgenarray -> Kccall("caml_array_get", 2)
-  | Parrayrefs Pfloatarray -> Kccall("caml_floatarray_get", 2)
-  | Parrayrefs _ -> Kccall("caml_array_get_addr", 2)
   (* In bytecode, nothing is ever actually stack-allocated, so we ignore the
-     modification mode for [Parraysets] *)
+     array modes (allocation for [Parrayref{s,u}], modification for
+     [Parrayset{s,u}]). *)
+  | Parrayrefs (_, Pgenarray) -> Kccall("caml_array_get", 2)
+  | Parrayrefs (_, Pfloatarray) -> Kccall("caml_floatarray_get", 2)
+  | Parrayrefs _ -> Kccall("caml_array_get_addr", 2)
   | Parraysets (_, Pgenarray) -> Kccall("caml_array_set", 3)
   | Parraysets (_, Pfloatarray) -> Kccall("caml_floatarray_set", 3)
   | Parraysets _ -> Kccall("caml_array_set_addr", 3)
-  | Parrayrefu Pgenarray -> Kccall("caml_array_unsafe_get", 2)
-  | Parrayrefu Pfloatarray -> Kccall("caml_floatarray_unsafe_get", 2)
+  | Parrayrefu (_, Pgenarray) -> Kccall("caml_array_unsafe_get", 2)
+  | Parrayrefu (_, Pfloatarray) -> Kccall("caml_floatarray_unsafe_get", 2)
   | Parrayrefu _ -> Kgetvectitem
-  (* In bytecode, nothing is ever actually stack-allocated, so we ignore the
-     modification mode for [Parraysetu] *)
   | Parraysetu (_, Pgenarray) -> Kccall("caml_array_unsafe_set", 3)
   | Parraysetu (_, Pfloatarray) -> Kccall("caml_floatarray_unsafe_set", 3)
   | Parraysetu _ -> Ksetvectitem

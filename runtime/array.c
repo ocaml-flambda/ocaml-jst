@@ -77,13 +77,40 @@ CAMLprim value caml_floatarray_get(value array, value index)
   return res;
 }
 
-/* [ 'a array -> int -> 'a ]
-   [ local_ 'a array -> int -> local_ 'a ] */
+/* [ floatarray -> int -> local_ float ] */
+CAMLprim value caml_floatarray_get_local(value array, value index)
+{
+  intnat idx = Long_val(index);
+  double d;
+  value res;
+
+  CAMLassert (Tag_val(array) == Double_array_tag);
+  if (idx < 0 || idx >= Wosize_val(array) / Double_wosize)
+    caml_array_bound_error();
+  d = Double_flat_field(array, idx);
+  res = caml_alloc_local(Double_wosize, Double_tag);
+  Store_double_val(res, d);
+  return res;
+}
+
+/* [ 'a array -> int -> 'a ] */
 CAMLprim value caml_array_get(value array, value index)
 {
 #ifdef FLAT_FLOAT_ARRAY
   if (Tag_val(array) == Double_array_tag)
     return caml_floatarray_get(array, index);
+#else
+  CAMLassert (Tag_val(array) != Double_array_tag);
+#endif
+  return caml_array_get_addr(array, index);
+}
+
+/* [ local_ 'a array -> int -> local_ 'a ] */
+CAMLprim value caml_array_get_local(value array, value index)
+{
+#ifdef FLAT_FLOAT_ARRAY
+  if (Tag_val(array) == Double_array_tag)
+    return caml_floatarray_get_local(array, index);
 #else
   CAMLassert (Tag_val(array) != Double_array_tag);
 #endif
@@ -163,12 +190,38 @@ CAMLprim value caml_floatarray_unsafe_get(value array, value index)
   return res;
 }
 
+/* [ floatarray -> int -> local_ float ] */
+CAMLprim value caml_floatarray_unsafe_get_local(value array, value index)
+{
+  intnat idx = Long_val(index);
+  double d;
+  value res;
+
+  CAMLassert (Tag_val(array) == Double_array_tag);
+  d = Double_flat_field(array, idx);
+  res = caml_alloc_local(Double_wosize, Double_tag);
+  Store_double_val(res, d);
+  return res;
+}
+
 /* [ 'a array -> int -> 'a ] */
 CAMLprim value caml_array_unsafe_get(value array, value index)
 {
 #ifdef FLAT_FLOAT_ARRAY
   if (Tag_val(array) == Double_array_tag)
     return caml_floatarray_unsafe_get(array, index);
+#else
+  CAMLassert (Tag_val(array) != Double_array_tag);
+#endif
+  return Field(array, Long_val(index));
+}
+
+/* [ local_ 'a array -> int -> local_ 'a ] */
+CAMLprim value caml_array_unsafe_get_local(value array, value index)
+{
+#ifdef FLAT_FLOAT_ARRAY
+  if (Tag_val(array) == Double_array_tag)
+    return caml_floatarray_unsafe_get_local(array, index);
 #else
   CAMLassert (Tag_val(array) != Double_array_tag);
 #endif

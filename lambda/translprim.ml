@@ -225,7 +225,7 @@ let lookup_primitive loc poly pos p =
     | "%bytes_unsafe_get" -> Primitive (Pbytesrefu, 2)
     | "%bytes_unsafe_set" -> Primitive (Pbytessetu, 3)
     | "%array_length" -> Primitive ((Parraylength gen_array_kind), 1)
-    | "%array_safe_get" -> Primitive ((Parrayrefs gen_array_kind), 2)
+    | "%array_safe_get" -> Primitive ((Parrayrefs (mode, gen_array_kind)), 2)
     | "%array_safe_set" ->
        let array_mode =
          match arg_modes with
@@ -233,7 +233,7 @@ let lookup_primitive loc poly pos p =
          | [] -> assert false
        in
        Primitive ((Parraysets (array_mode, gen_array_kind)), 3)
-    | "%array_unsafe_get" -> Primitive ((Parrayrefu gen_array_kind), 2)
+    | "%array_unsafe_get" -> Primitive ((Parrayrefu (mode, gen_array_kind)), 2)
     | "%array_unsafe_set" ->
        let array_mode =
          match arg_modes with
@@ -242,7 +242,10 @@ let lookup_primitive loc poly pos p =
        in
        Primitive ((Parraysetu (array_mode, gen_array_kind)), 3)
     | "%obj_size" -> Primitive ((Parraylength gen_array_kind), 1)
-    | "%obj_field" -> Primitive ((Parrayrefu gen_array_kind), 2)
+    | "%obj_field" ->
+      (* The mode doesn't actually matter here, since we're not accessing a flat
+         float array *)
+      Primitive ((Parrayrefu (mode, gen_array_kind)), 2)
     | "%obj_set_field" ->
        let obj_mode =
          match arg_modes with
@@ -251,7 +254,7 @@ let lookup_primitive loc poly pos p =
        in
        Primitive ((Parraysetu (obj_mode, gen_array_kind)), 3)
     | "%floatarray_length" -> Primitive ((Parraylength Pfloatarray), 1)
-    | "%floatarray_safe_get" -> Primitive ((Parrayrefs Pfloatarray), 2)
+    | "%floatarray_safe_get" -> Primitive ((Parrayrefs (mode, Pfloatarray)), 2)
     | "%floatarray_safe_set" ->
        (* The mode doesn't actually matter for floatarrays, it turns out *)
        let array_mode =
@@ -260,7 +263,8 @@ let lookup_primitive loc poly pos p =
          | [] -> assert false
        in
        Primitive ((Parraysets (array_mode, Pfloatarray)), 3)
-    | "%floatarray_unsafe_get" -> Primitive ((Parrayrefu Pfloatarray), 2)
+    | "%floatarray_unsafe_get" ->
+       Primitive ((Parrayrefu (mode, Pfloatarray)), 2)
     | "%floatarray_unsafe_set" ->
        (* The mode doesn't actually matter for floatarrays, it turns out *)
        let array_mode =
@@ -498,20 +502,20 @@ let specialize_primitive env loc ty ~has_constant_constructor prim =
       if t = array_type then None
       else Some (Primitive (Parraylength array_type, arity))
     end
-  | Primitive (Parrayrefu t, arity), p1 :: _ -> begin
+  | Primitive (Parrayrefu (m, t), arity), p1 :: _ -> begin
       let array_type = glb_array_type t (array_type_kind env p1) in
       if t = array_type then None
-      else Some (Primitive (Parrayrefu array_type, arity))
+      else Some (Primitive (Parrayrefu (m, array_type), arity))
     end
   | Primitive (Parraysetu (m, t), arity), p1 :: _ -> begin
       let array_type = glb_array_type t (array_type_kind env p1) in
       if t = array_type then None
       else Some (Primitive (Parraysetu (m, array_type), arity))
     end
-  | Primitive (Parrayrefs t, arity), p1 :: _ -> begin
+  | Primitive (Parrayrefs (m, t), arity), p1 :: _ -> begin
       let array_type = glb_array_type t (array_type_kind env p1) in
       if t = array_type then None
-      else Some (Primitive (Parrayrefs array_type, arity))
+      else Some (Primitive (Parrayrefs (m, array_type), arity))
     end
   | Primitive (Parraysets (m, t), arity), p1 :: _ -> begin
       let array_type = glb_array_type t (array_type_kind env p1) in
@@ -898,7 +902,7 @@ let lambda_primitive_needs_event_after = function
   | Paddfloat _ | Psubfloat _ | Pmulfloat _ | Pdivfloat _ | Pstringrefs | Pbytesrefs
   | Pbox_float _ | Pbox_int _
   | Pbytessets | Pmakearray (Pgenarray, _, _) | Pduparray _
-  | Parrayrefu (Pgenarray | Pfloatarray)
+  | Parrayrefu (_, (Pgenarray | Pfloatarray))
   | Parraysetu (_, (Pgenarray | Pfloatarray))
   | Parrayrefs _ | Parraysets _ | Pbintofint _ | Pcvtbint _ | Pnegbint _
   | Paddbint _ | Psubbint _ | Pmulbint _ | Pdivbint _ | Pmodbint _ | Pandbint _

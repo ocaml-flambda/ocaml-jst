@@ -495,7 +495,7 @@ let iterator ~transl_exp ~scopes ~loc
                  Matching.for_let
                    ~scopes
                    pattern.pat_loc
-                   (Lprim(Parrayrefu iter_arr_kind,
+                   (Lprim(Parrayrefu (Lambda.alloc_heap, iter_arr_kind),
                           [iter_arr.var; Lvar iter_ix],
                           loc))
                    pattern

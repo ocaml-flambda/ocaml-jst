@@ -47,6 +47,12 @@ let array_modify_mode =
   | Modify_heap -> ""
   | Modify_maybe_stack -> "local, "
 
+let array_alloc_mode =
+  let open Lambda in
+  function
+  | Alloc_heap -> ""
+  | Alloc_local -> "local, "
+
 let access_size size =
   let open Clambda_primitives in
   match size with
@@ -177,10 +183,12 @@ let primitive ppf (prim:Clambda_primitives.primitive) =
   | Pduparray (k, Immutable) -> fprintf ppf "duparray_imm[%s]" (array_kind k)
   | Pduparray (k, Immutable_unique) ->
     fprintf ppf "duparray_unique[%s]" (array_kind k)
-  | Parrayrefu k -> fprintf ppf "array.unsafe_get[%s]" (array_kind k)
+  | Parrayrefu (m, k) -> fprintf ppf "array.unsafe_get[%s%s]"
+                           (array_alloc_mode m) (array_kind k)
   | Parraysetu (m, k) -> fprintf ppf "array.unsafe_set[%s%s]"
                            (array_modify_mode m) (array_kind k)
-  | Parrayrefs k -> fprintf ppf "array.get[%s]" (array_kind k)
+  | Parrayrefs (m, k) -> fprintf ppf "array.get[%s%s]"
+                           (array_alloc_mode m) (array_kind k)
   | Parraysets (m, k) -> fprintf ppf "array.set[%s%s]"
                            (array_modify_mode m) (array_kind k)
   | Pisint -> fprintf ppf "isint"

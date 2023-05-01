@@ -127,11 +127,15 @@ type primitive =
       The arguments of [Pduparray] give the kind and mutability of the
       array being *produced* by the duplication. *)
   | Parraylength of array_kind
-  | Parrayrefu of array_kind
+  | Parrayrefu of alloc_mode * array_kind
+  (** The [alloc_mode] only matters for flat float arrays; accessing them must
+      allocate the resulting [float]. *)
   | Parraysetu of modify_mode * array_kind
   (** The [modify_mode] only matters for arrays that contain (or might contain)
       pointers; otherwise, access is uniform. *)
-  | Parrayrefs of array_kind
+  | Parrayrefs of alloc_mode * array_kind
+  (** The [alloc_mode] only matters for flat float arrays; accessing them must
+      allocate the resulting [float]. *)
   | Parraysets of modify_mode * array_kind
   (** The [modify_mode] only matters for arrays that contain (or might contain)
       pointers; otherwise, access is uniform. *)

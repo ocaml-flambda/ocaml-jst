@@ -790,8 +790,8 @@ let int_array_ref arr ofs dbg =
 let unboxed_float_array_ref arr ofs dbg =
   Cop(Cload (Double, Mutable),
     [array_indexing log2_size_float arr ofs dbg], dbg)
-let float_array_ref arr ofs dbg =
-  box_float dbg Lambda.alloc_heap (unboxed_float_array_ref arr ofs dbg)
+let float_array_ref mode arr ofs dbg =
+  box_float dbg mode (unboxed_float_array_ref arr ofs dbg)
 
 let addr_array_set_heap arr ofs newval dbg =
   Cop(Cextcall("caml_modify", typ_void, [], false),
@@ -2754,7 +2754,7 @@ let bigstring_load size unsafe mode arg1 arg2 dbg =
           idx
           (unaligned_load size ba_data idx dbg)))))
 
-let arrayref_unsafe kind arg1 arg2 dbg =
+let arrayref_unsafe mode kind arg1 arg2 dbg =
   match (kind : Lambda.array_kind) with
   | Pgenarray ->
       bind "index" arg2 (fun idx ->
@@ -2763,7 +2763,7 @@ let arrayref_unsafe kind arg1 arg2 dbg =
                       dbg,
                       addr_array_ref arr idx dbg,
                       dbg,
-                      float_array_ref arr idx dbg,
+                      float_array_ref mode arr idx dbg,
                       dbg, Any)))
   | Paddrarray ->
       addr_array_ref arg1 arg2 dbg
@@ -2771,9 +2771,9 @@ let arrayref_unsafe kind arg1 arg2 dbg =
       (* CR mshinwell: for int/addr_array_ref move "dbg" to first arg *)
       int_array_ref arg1 arg2 dbg
   | Pfloatarray ->
-      float_array_ref arg1 arg2 dbg
+      float_array_ref mode arg1 arg2 dbg
 
-let arrayref_safe kind arg1 arg2 dbg =
+let arrayref_safe mode kind arg1 arg2 dbg =
   match (kind : Lambda.array_kind) with
   | Pgenarray ->
       bind "index" arg2 (fun idx ->
@@ -2786,7 +2786,7 @@ let arrayref_safe kind arg1 arg2 dbg =
                         dbg,
                         addr_array_ref arr idx dbg,
                         dbg,
-                        float_array_ref arr idx dbg,
+                        float_array_ref mode arr idx dbg,
                         dbg, Any))
         else
           Cifthenelse(is_addr_array_hdr hdr dbg,
@@ -2797,7 +2797,7 @@ let arrayref_safe kind arg1 arg2 dbg =
             dbg,
             Csequence(
               make_checkbound dbg [float_array_length_shifted hdr dbg; idx],
-              float_array_ref arr idx dbg),
+              float_array_ref mode arr idx dbg),
             dbg, Any))))
       | Paddrarray ->
           bind "index" arg2 (fun idx ->
@@ -2816,7 +2816,7 @@ let arrayref_safe kind arg1 arg2 dbg =
                   (get_header_without_profinfo arr dbg) dbg; idx],
               int_array_ref arr idx dbg)))
       | Pfloatarray ->
-          box_float dbg Lambda.alloc_heap (
+          box_float dbg mode (
             bind "index" arg2 (fun idx ->
             bind "arr" arg1 (fun arr ->
               Csequence(
