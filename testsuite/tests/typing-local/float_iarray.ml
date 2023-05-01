@@ -45,6 +45,12 @@ let run name f x = local_
 let test_access : local_ float iarray -> local_ float =
   fun iarr -> local_ iarr.:(0)
 
+let test_match : local_ float iarray -> local_ float =
+  fun iarr ->
+  match iarr with
+  | [: _; two; _ :] -> two
+  | _ -> assert false
+
 (* Run the test, keeping the values alive *)
 let () =
   let local_ r0 = run "access from literal"
@@ -55,5 +61,13 @@ let () =
     test_access
     (Iarray.init_local 10 (fun i -> Float.of_int i))
   in
-  ignore_local (r0, r1);
+  let local_ r2 = run "match on literal"
+    test_match
+    [: 2.7; 3.1; 1.0 :]
+  in
+  let local_ r3 = run "match on Iarray.init"
+    test_match
+    (Iarray.init_local 3 (fun i -> Float.of_int i))
+  in
+  ignore_local (r0, r1, r2, r3);
   ()
