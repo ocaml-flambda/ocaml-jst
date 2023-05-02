@@ -132,11 +132,10 @@ end
 
 module BorrowedShared = struct
   (* auxilary module, see module Usage *)
-
-  type maybe_shared = { barrier : unique_barrier ref; occ : Occurrence.t }
-
   type t =
-    (* if already borrowed, only need one occurrence for future error messages *)
+    (* if already borrowed, only need one occurrence for future error messages
+    *)
+    (* This constructor currently not used, because we don't have explicit borrowing *)
     | Borrowed of Occurrence.t
     (* list of occurences together with modes to be forced as borrowed in the
        future if needed. It is a list because of multiple control flows. For
@@ -146,7 +145,7 @@ module BorrowedShared = struct
        Therefore, if this virtual mode needs to be forced borrowed, the whole list
        needs to be forced borrowed.
     *)
-    | MaybeShared of maybe_shared list
+    | MaybeShared of (unique_barrier ref * Occurrence.t) list
 
   let _to_string = function
     | Borrowed _ -> "borrowed"
@@ -154,7 +153,8 @@ module BorrowedShared = struct
 
   let extract_occurrence = function
     | Borrowed occ -> occ
-    | MaybeShared l -> (List.hd l).occ
+    | MaybeShared ((_, occ) :: _) -> occ
+    | MaybeShared [] -> assert false
 
   let par t0 t1 =
     match (t0, t1) with
@@ -211,7 +211,7 @@ module Usage = struct
      As a result, instead of having full-range inference, we only care about the
      following ranges:
      - unused
-     - borrowed
+     - borrowed (Currently not useful, because we don't have explicit borrowing)
      - borrowed or shared
      - shared
      - shared or unique
@@ -286,7 +286,7 @@ module Usage = struct
             in
             let uniq = Mode.Uniqueness.meet uniqs in
             List.iter
-              (fun { BorrowedShared.barrier; _ } ->
+              (fun (barrier, _) ->
                 assert (Option.is_none !barrier);
                 barrier := Some uniq)
               l0;
@@ -619,29 +619,32 @@ type value_to_match =
   | MatchTuple of single_value_to_match list
   | MatchSingle of single_value_to_match
 
-(* mark something's memory address as either borrowed or shared *)
-let _mark_maybe_shared paths maybe_shared =
+let mark_implicit_borrow_memory_address_paths paths occ =
   let mark_one path =
     (* borrow the memory address of the parent *)
     UF.singleton
       (UF.Path.child path UsageTree.Projection.Memory_address)
-      (BorrowedShared (MaybeShared [ maybe_shared ]))
+      (* Currently we just generate a dummy unique_barrier ref that won't be
+      consumed. The distinction between implicit and explicit borrowing is still
+      needed because they are handled differently in closures *)
+      (BorrowedShared (MaybeShared [ref None, occ]))
   in
   UF.pars (List.map (fun path -> mark_one path) paths)
 
-let mark_borrowed_memory_address_paths paths occ =
+let _mark_borrow_paths paths occ =
   let mark_one path =
     (* borrow the memory address of the parent *)
-    UF.singleton
-      (UF.Path.child path UsageTree.Projection.Memory_address)
+    UF.singleton path
+      (* Currently we just generate a dummy unique_barrier ref that won't be
+      consumed. *)
       (BorrowedShared (Borrowed occ))
   in
   UF.pars (List.map (fun path -> mark_one path) paths)
 
-let mark_borrowed_memory_address = function
+let mark_implicit_borrow_memory_address = function
   | MatchSingle (paths, loc, _) ->
-      mark_borrowed_memory_address_paths paths { loc; reason = DirectUse }
-  (* it's still a tuple - we own it and nothing to doh here *)
+      mark_implicit_borrow_memory_address_paths paths { loc; reason = DirectUse }
+  (* it's still a tuple - we own it and nothing to do here *)
   | MatchTuple _ -> UF.empty
 
 let _mark_shared paths occ =
@@ -697,7 +700,7 @@ let rec pattern_match pat value =
       let value, ienv0, uf0 = pattern_match_var ~loc:pat.pat_loc id value in
       let ienv1, uf1 = pattern_match pat' value in
       (Ienv.seq ienv0 ienv1, UF.seq uf0 uf1)
-  | Tpat_constant _ -> (Ienv.empty, mark_borrowed_memory_address value)
+  | Tpat_constant _ -> (Ienv.empty, mark_implicit_borrow_memory_address value)
   | Tpat_tuple pats ->
       pat_proj
         ~handle_tuple:(fun values ->
@@ -720,7 +723,7 @@ let rec pattern_match pat value =
           UsageTree.Projection.Construct_field (Longident.last lbl.txt, i))
         value pats
   | Tpat_variant (lbl, mpat, _) ->
-      let uf = mark_borrowed_memory_address value in
+      let uf = mark_implicit_borrow_memory_address value in
       let t =
         match value with
         | MatchSingle (paths, _, modes) ->
@@ -749,7 +752,7 @@ let rec pattern_match pat value =
       | MatchTuple _ -> assert false
       | MatchSingle (paths, loc, _) ->
           let occ = { Occurrence.loc; reason = DirectUse } in
-          let uf = mark_borrowed_memory_address_paths paths occ in
+          let uf = mark_implicit_borrow_memory_address_paths paths occ in
           let ienvs, ufs =
             List.split
               (List.map
@@ -781,7 +784,7 @@ and pat_proj :
   match value with
   | MatchSingle (paths, loc, _) ->
       let occ = { Occurrence.loc; reason = DirectUse } in
-      let uf = mark_borrowed_memory_address_paths paths occ in
+      let uf = mark_implicit_borrow_memory_address_paths paths occ in
       let ienvs, ufs =
         List.split
           (List.mapi
@@ -915,7 +918,8 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
       variables in the closure is in fact using shared. *)
       let uf' =
         UF.map (function
-        | BorrowedShared u ->
+        | BorrowedShared (MaybeShared _ as u) ->
+          (* only implicit borrowing lifted. *)
           SharedUnique (SharedUnique.Shared (BorrowedShared.extract_occurrence u))
         | _ -> Unused
        ) uf
@@ -1120,7 +1124,7 @@ and check_uniqueness_exp' exp ienv : (UF.Path.t list * unique_use) option * UF.t
           (* accessing the field meaning borrowing the parent record's mem block.
              Note that the field itself is not borrowed or used *)
           let occ = { Occurrence.loc = e.exp_loc; reason = DirectUse } in
-          let uf' = mark_borrowed_memory_address_paths paths occ in
+          let uf' = mark_implicit_borrow_memory_address_paths paths occ in
           let paths' =
             UF.Path.child_of_many paths
               (UsageTree.Projection.Record_field l.lbl_name)

@@ -41,10 +41,10 @@ type _ pattern_category =
 | Value : value pattern_category
 | Computation : computation pattern_category
 
-(* The following will be needed in the future when in-place update is introduced
+(* The following will be used in the future when overwriting is introduced
   and code-motion need to be checked. This is associated to each field
-  projection. If this points to a unique mode, that means this projection cannot
-  be moved. *)
+  projection. If this points to a unique mode, that means this projection must
+  be borrowed and cannot be moved *)
 type unique_barrier = Mode.Uniqueness.t option
 
 type unique_use = Modes.Uniqueness.t * Modes.Linearity.t
