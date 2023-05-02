@@ -61,6 +61,7 @@ let () =
     test_access
     (Iarray.init_local 10 (fun i -> Float.of_int i))
   in
+  (* TODO: Matching currently allocates, but that should be fixed eventually *)
   let local_ r2 = run "match on literal"
     test_match
     [: 2.7; 3.1; 1.0 :]
