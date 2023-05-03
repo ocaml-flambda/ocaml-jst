@@ -4,7 +4,7 @@
 
 (* This file is to test uniqueness_analysis.ml *)
 
-(* First some auxillary functions *)
+(* First some helper functions *)
 let unique_id : 'a. unique_ 'a -> unique_ 'a = fun x -> x
 [%%expect{|
 val unique_id : unique_ 'a -> unique_ 'a = <fun>
@@ -25,6 +25,8 @@ let update : unique_ box -> unique_ box = unique_id
 val update : unique_ box -> unique_ box = <fun>
 |}]
 
+
+(* testing Texp_ifthenelse  *)
 
 let branching (unique_ x : float) = unique_ if true then x else x
 [%%expect{|
@@ -178,6 +180,8 @@ Line 4, characters 65-66:
 
 |}]
 
+(* for some reason the following error message is missing "another use". Don't
+know what's wrong *)
 let mark_top_shared =
   let unique_ xs = 2 :: 3 :: [] in
   match xs with
@@ -388,7 +392,7 @@ Line 2, characters 11-14:
   which is in a tuple matched against a variable
 |}]
 
-(* closure over implicit borrowing *)
+(* testing Texp_function; closure over implicit borrowing *)
 let foo () =
   let unique_ r = {dim=1; x=2.0; y=3.0; z=4.0} in
   let _bar () = match r with
@@ -417,4 +421,45 @@ let foo () =
 val foo : unit -> point = <fun>
 |}]
 
+type mfoo = {
+  mutable a : string;
+  b : string;
+}
 
+(* testing Texp_setfield *)
+
+(* the following is bad - unique_id could strongly update x *)
+let foo () =
+  let x = {a = "hello"; b = "world"} in
+  ignore (unique_id x);
+  x.a <- "olleh"
+[%%expect{|
+type mfoo = { mutable a : string; b : string; }
+Line 11, characters 20-21:
+11 |   ignore (unique_id x);
+                         ^
+Error: This is used uniquely here so cannot be used twice.  Another use is
+Line 12, characters 2-16:
+12 |   x.a <- "olleh"
+       ^^^^^^^^^^^^^^
+
+|}]
+
+let foo () =
+  let x = {a = "hello"; b = "world"} in
+  x.a <- "olleh";
+  ignore (unique_id x)
+[%%expect{|
+val foo : unit -> unit = <fun>
+|}]
+
+(* the following is rather interesting - after uniquely used x.b, the x as a
+whole is unusable. However, one can still use x.mem_addr and x.a *)
+let foo () =
+  let x = {a = "hello"; b = "world"} in
+  ignore (unique_id x.b);
+  x.a <- "olleh";
+  ignore (shared_id x.a)
+[%%expect{|
+val foo : unit -> unit = <fun>
+|}]

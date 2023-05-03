@@ -941,11 +941,8 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
       let uf' = check_uniqueness_comp_cases value cs ienv in
       UF.seq uf uf'
   | Texp_try (e, cs) ->
-      let uf = check_uniqueness_exp_ e ienv in
-      let paths = [ UF.Path.fresh_root "try" ] in
-      let uf' =
-        check_uniqueness_cases (MatchSingle (paths, loc, None)) cs ienv
-      in
+      let value, uf = init_value_to_match e ienv in
+      let uf' = check_uniqueness_cases value cs ienv in
       (* we don't know how much of e will be run; safe to assume all of them *)
       UF.seq uf uf'
   | Texp_tuple (es, _) ->
@@ -1001,10 +998,14 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
           UF.seq uf (mark_maybe_unique ps maybe_unique)
       | None, uf -> uf)
   | Texp_setfield (exp', _, _, _, e) ->
-      (* assignment doesn't use the field itself, but only borrowing the record *)
-      let _, uf0 = check_uniqueness_exp' exp' ienv in
-      let uf1 = check_uniqueness_exp_ e ienv in
-      UF.seq uf0 uf1
+      (* setfield is understood as an opaque function which borrows the memory
+      address of the record *)
+      let uf = check_uniqueness_exp_ e ienv in
+      (match check_uniqueness_exp' exp' ienv with
+      | None, uf' -> UF.seq uf uf'
+      | Some (ps, _), uf' ->
+        let occ = {Occurrence.loc; reason = DirectUse} in
+        UF.seqs [uf; uf'; mark_implicit_borrow_memory_address_paths ps occ])
   | Texp_array (_, es, _) ->
       UF.seqs (List.map (fun e -> check_uniqueness_exp_ e ienv) es)
   | Texp_ifthenelse (if', then', else_opt) ->
@@ -1100,7 +1101,8 @@ This function corresponds to the first mode.
 Look at exp and see if it can be treated as alias
 currently only texp_ident and texp_field (and recursively so) are treated so.
 return paths and modes. paths is the list of possible memory locations.
-returns None if exp is not alias
+returns None if exp is not alias, which also implies that the usage of exp is
+included in the returned uf.
 *)
 and check_uniqueness_exp' exp ienv : (UF.Path.t list * unique_use) option * UF.t
     =
@@ -1110,14 +1112,7 @@ and check_uniqueness_exp' exp ienv : (UF.Path.t list * unique_use) option * UF.t
       | None -> (None, UF.empty)
       | Some ps ->
           (Some (ps, unique_use), UF.empty)
-          (* ienv doesn't always contain everything that are in scope. ienv
-             starts as empty in each Pstr_eval, Pmod_unpack, Pstr_value, Pcl_let,
-             Pcf_val, etc.
-             We add `many` lock before type checking those, so they can only access
-             outside-variables as shared and many. As a result, the UA algorithm
-             doesn't need to restrict those accesses - they are already shared and
-             many.
-          *))
+  )
   | Texp_field (e, _, l, modes, _) -> (
       match check_uniqueness_exp' e ienv with
       | Some (paths, _), uf ->
@@ -1256,10 +1251,6 @@ let report_error = function
       let there_reason =
         match there.reason with
         | DirectUse -> Format.dprintf ""
-        (* | ModuleClass ->
-            Format.dprintf
-              "you cannot use uniquely the variable because it is from outside \
-               the module or class" *)
         | MatchTupleWithVar _loc' ->
             Format.dprintf "which is in a tuple matched against a variable"
       in
