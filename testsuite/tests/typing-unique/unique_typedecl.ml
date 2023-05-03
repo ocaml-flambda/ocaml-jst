@@ -3,7 +3,7 @@ flags += "-extension unique"
 * expect *)
 
 (* This file tests how unique_ and once_ are interpreated in signatures
-   especially when currying involved *)
+   especially when currying is involved *)
 
 (* When a [unique_] argument appears in a function type with multiple arguments,
 return modes are implicitly once_ until the final argument. *)
@@ -24,7 +24,7 @@ constraint
 type equ_fn = unit
 |}]
 
-(* uniqueness of closures are taken to be shared,
+(* uniqueness of closures are by default shared,
    regardless of anything; unique would be better
    except for some backward compatibility issues *)
 type equ_fn = unit

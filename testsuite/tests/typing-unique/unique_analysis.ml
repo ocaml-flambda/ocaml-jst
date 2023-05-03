@@ -2,8 +2,9 @@
    flags += "-extension unique"
  * expect *)
 
-(* This file is mostly to test the uniqueness analysis *)
+(* This file is to test uniqueness_analysis.ml *)
 
+(* First some auxillary functions *)
 let unique_id : 'a. unique_ 'a -> unique_ 'a = fun x -> x
 [%%expect{|
 val unique_id : unique_ 'a -> unique_ 'a = <fun>

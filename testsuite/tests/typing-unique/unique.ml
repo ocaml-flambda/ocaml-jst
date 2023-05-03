@@ -211,8 +211,7 @@ let foo y = once_ x
 val foo : 'a -> once_ string = <fun>
 |}]
 
-(* top-level must be shared *)
-(* the error message is slightly confusing; TODO *)
+(* top-level must be shared; the following unique is weakened to shared *)
 let unique_ foo = "foo"
 [%%expect{|
 val foo : string = "foo"
@@ -227,7 +226,8 @@ Line 1, characters 20-21:
                         ^
 Error: Found a shared value where a unique value was expected
   Hint: This identifier was defined outside of the current closure.
-  Did you forget to use a !-> arrow in a function type?
+  Either this closure has to be once, or the identifier can be used only
+  as shared
 |}]
 
 
@@ -458,8 +458,6 @@ Line 3, characters 2-15:
 3 |   foo ~a:3 ~c:4
       ^^^^^^^^^^^^^
 Error: Found a once value where a many value was expected
-  Hint: This is a partial application
-        Adding 2 more arguments may make the value non-local
 |}]
 
 let curry =
@@ -470,8 +468,6 @@ Line 3, characters 2-15:
 3 |   foo ~a:3 ~c:4
       ^^^^^^^^^^^^^
 Error: Found a once value where a many value was expected
-  Hint: This is a partial application
-        Adding 2 more arguments may make the value non-local
 |}]
 
 let curry =

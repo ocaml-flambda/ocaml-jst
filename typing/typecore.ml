@@ -463,7 +463,7 @@ let mode_lazy expected_mode =
   { (mode_global expected_mode) with
     position = RTail (Mode.Regionality.global, Tail) }
 
-let submode ~loc ~env ~reason mode expected_mode =
+let submode ~loc ~env ?(reason = Other) mode expected_mode =
   let res =
     match expected_mode.tuple_modes with
     | [] -> Mode.Value.submode mode expected_mode.mode
@@ -7833,6 +7833,7 @@ let escaping_hint failure_reason submode_reason
   end
   @
   begin match submode_reason with
+  (* TODO: generalize this to other axis as well *)
   | Application result_ty ->
     (* [get_non_local_arity ty] returns [Some (n_args, sureness)] iff [ty] is a
        function type with [n_args] arguments and its return type is
@@ -7868,35 +7869,41 @@ let escaping_hint failure_reason submode_reason
   | Other -> []
   end
 
-let sharedness_hint reason (context : Env.shared_context list) =
-  match reason with
-  | `Uniqueness ->
-      if List.mem Env.For_loop context then
-        [ Location.msg
-            "@[Hint: This identifier cannot be used uniquely,@ \
-             because it was defined outside of the for-loop.@]" ]
-      else if List.mem Env.While_loop context then
-          [ Location.msg
-              "@[Hint: This identifier cannot be used uniquely,@ \
-               because it was defined outside of the while-loop.@]" ]
-      else if List.mem Env.Comprehension context then
-        [ Location.msg
-            "@[Hint: This identifier cannot be used uniquely,@ \
-             because it was defined outside of the comprehension.@]" ]
-      else if List.mem Env.Letop context then
-        [ Location.msg
-            "@[Hint: This identifier cannot be used uniquely,@ \
-             because it was defined outside of the let-op.@]" ]
-      else if List.mem Env.Class context then
-        [ Location.msg
-            "@[Hint: This identifier cannot be used uniquely,@ \
-             because it is defined in a class.@]" ]
-      else if List.mem Env.Closure context then
-        [ Location.msg
-            "@[Hint: This identifier was defined outside of the current closure.@ \
-             Did you forget to use a !-> arrow in a function type?@]" ]
-      else []
-  | _ -> []
+let sharedness_hint _fail_reason submode_reason (context : Env.shared_context list) =
+  (List.map (function
+  | Env.For_loop ->
+    Location.msg
+        "@[Hint: This identifier cannot be used uniquely,@ \
+          because it was defined outside of the for-loop.@]"
+  | Env.While_loop ->
+    Location.msg
+        "@[Hint: This identifier cannot be used uniquely,@ \
+          because it was defined outside of the while-loop.@]"
+  | Env.Comprehension ->
+    Location.msg
+        "@[Hint: This identifier cannot be used uniquely,@ \
+          because it was defined outside of the comprehension.@]"
+  | Env.Letop ->
+    Location.msg
+        "@[Hint: This identifier cannot be used uniquely,@ \
+          because it was defined outside of the let-op.@]"
+  | Env.Class ->
+    Location.msg
+        "@[Hint: This identifier cannot be used uniquely,@ \
+          because it is defined in a class.@]"
+  | Env.Closure ->
+    Location.msg
+        "@[Hint: This identifier was defined outside of the current closure.@ \
+          Either this closure has to be once, or the identifier can be used only@ \
+          as shared @]"
+  | Env.Module ->
+    Location.msg
+        "@[Hint: This identifier cannot be used uniquely,@ \
+          because it is defined in a module.@]"
+  ) context)
+  @
+  match submode_reason with
+  | Application _ | Other -> []
 
 let report_type_expected_explanation_opt expl ppf =
   match expl with
@@ -8333,10 +8340,12 @@ let report_error ~loc env = function
          which is not a record type."
         Printtyp.type_expr ty
   | Submode_failed(fail_reason, submode_reason, escaping_context, shared_contexts) ->
-      let sub1 = escaping_hint fail_reason submode_reason escaping_context in
-      let sub2 = sharedness_hint fail_reason shared_contexts in
-      (* let sub3 = manyness_hint reason many_contexts in *)
-      Location.errorf ~loc ~sub:(sub1 @ sub2) begin
+      let sub =
+        match fail_reason with
+        | `Linearity | `Uniqueness -> sharedness_hint fail_reason submode_reason shared_contexts
+        | `Locality | `Regionality -> escaping_hint fail_reason submode_reason escaping_context
+      in
+      Location.errorf ~loc ~sub begin
         match fail_reason with
         | `Locality -> "This local value escapes its region"
         | `Regionality -> "This value escapes its region"

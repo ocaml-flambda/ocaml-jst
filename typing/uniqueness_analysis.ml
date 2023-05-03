@@ -43,11 +43,7 @@ module SharedUnique = struct
   (* which axis cannot be forced? *)
   type error = [ `Uniqueness | `Linearity ]
 
-  exception
-    CannotForce of {
-      occ : Occurrence.t;
-      error : error;
-    }
+  exception CannotForce of { occ : Occurrence.t; error : error }
 
   exception
     MultiUse of {
@@ -64,12 +60,7 @@ module SharedUnique = struct
     | FreeVariableOfModClass (* currently will never trigger *)
     | JustTopLevel
 
-  exception
-    TopLevel of {
-      occ : Occurrence.t;
-      error : error;
-      reason : reason;
-    }
+  exception TopLevel of { occ : Occurrence.t; error : error; reason : reason }
 
   type t =
     (* if already shared, we only need an occurrence for future error messages *)
@@ -84,7 +75,7 @@ module SharedUnique = struct
        forced shared. *)
     | MaybeUnique of (unique_use * Occurrence.t) list
 
-  let _to_string = function
+  let to_string = function
     | Shared _ -> "shared"
     | MaybeUnique _ -> "maybe_unique"
 
@@ -95,12 +86,10 @@ module SharedUnique = struct
         let force_one ((uni, lin), occ) =
           (match Mode.Linearity.submode lin Mode.Linearity.many with
           | Ok () -> ()
-          | Error () ->
-              raise (CannotForce { occ; error = `Linearity }));
+          | Error () -> raise (CannotForce { occ; error = `Linearity }));
           match Mode.Uniqueness.submode Mode.Uniqueness.shared uni with
           | Ok () -> ()
-          | Error () ->
-              raise (CannotForce { occ; error = `Uniqueness })
+          | Error () -> raise (CannotForce { occ; error = `Uniqueness })
         in
         List.iter force_one l;
         let _, occ = List.hd l in
@@ -108,11 +97,12 @@ module SharedUnique = struct
 
   let force_multiuse t there =
     try force t
-    with CannotForce {occ; error} -> raise (MultiUse {here = occ; there; error})
+    with CannotForce { occ; error } ->
+      raise (MultiUse { here = occ; there; error })
 
   let force_toplevel t reason =
     try force t
-    with CannotForce {occ; error} -> raise (TopLevel {occ; error; reason})
+    with CannotForce { occ; error } -> raise (TopLevel { occ; error; reason })
 
   let par t0 t1 =
     match (t0, t1) with
@@ -147,7 +137,7 @@ module BorrowedShared = struct
     *)
     | MaybeShared of (unique_barrier ref * Occurrence.t) list
 
-  let _to_string = function
+  let to_string = function
     | Borrowed _ -> "borrowed"
     | MaybeShared _ -> "maybe_shared"
 
@@ -225,12 +215,12 @@ module Usage = struct
     | BorrowedShared of BorrowedShared.t
     | SharedUnique of SharedUnique.t
 
-  let _to_string = function
+  let to_string = function
     | Unused -> "unused"
-    | BorrowedShared s -> BorrowedShared._to_string s
-    | SharedUnique s -> SharedUnique._to_string s
+    | BorrowedShared s -> BorrowedShared.to_string s
+    | SharedUnique s -> SharedUnique.to_string s
 
-  let _print ppf t = Format.fprintf ppf "%s" (_to_string t)
+  let print ppf t = Format.fprintf ppf "%s" (to_string t)
 
   let extract_occurrence = function
     | Unused -> assert false
@@ -281,14 +271,14 @@ module Usage = struct
                I.e. if any of l1 is U, then each of l0 cannot be S. After the type
                checking of the whole file, l1 will correctly tells whether it needs
                to be unique, and by extension whether l0 can be shared. *)
-            let uniqs =
-              List.map (fun ((uniq, _), _) -> uniq) l1
-            in
+            let uniqs = List.map (fun ((uniq, _), _) -> uniq) l1 in
+            (* if any of l1 is unique, then all of l0 must be borrowed *)
             let uniq = Mode.Uniqueness.meet uniqs in
             List.iter
               (fun (barrier, _) ->
-                assert (Option.is_none !barrier);
-                barrier := Some uniq)
+                match !barrier with
+                | Some _ -> assert false
+                | None -> barrier := Some uniq)
               l0;
             SharedUnique m1)
     | SharedUnique m0, BorrowedShared m1 -> (
@@ -296,7 +286,8 @@ module Usage = struct
         | Shared _, Borrowed _ -> SharedUnique m0
         | MaybeUnique _, Borrowed _ ->
             SharedUnique
-              (SharedUnique.force_multiuse m0 (BorrowedShared.extract_occurrence m1))
+              (SharedUnique.force_multiuse m0
+                 (BorrowedShared.extract_occurrence m1))
         | Shared _, MaybeShared _ -> SharedUnique m0
         | MaybeUnique _, MaybeShared _ ->
             (* four cases:
@@ -309,7 +300,8 @@ module Usage = struct
                be constrained. The result is always S.
             *)
             SharedUnique
-              (SharedUnique.force_multiuse m0 (BorrowedShared.extract_occurrence m1)))
+              (SharedUnique.force_multiuse m0
+                 (BorrowedShared.extract_occurrence m1)))
     | SharedUnique m0, SharedUnique m1 -> SharedUnique (SharedUnique.seq m0 m1)
 end
 
@@ -334,7 +326,7 @@ module UsageTree = struct
         | Memory_address
 
       (* hopefully this function is injective *)
-      let _print ppf = function
+      let print ppf = function
         | Tuple_field i -> Format.fprintf ppf ".%i" i
         | Record_field s -> Format.fprintf ppf ".%s" s
         | Construct_field (s, i) -> Format.fprintf ppf "|%s.%i" s i
@@ -354,7 +346,7 @@ module UsageTree = struct
             Format.fprintf ppf "the field \"%s\" of the variant" l
         | Memory_address -> Format.fprintf ppf ""
 
-      let to_string (t : t) = Format.asprintf "%a" _print t
+      let to_string (t : t) = Format.asprintf "%a" print t
 
       (* Yes, compare based on string is bad, but it saves 20
          lines of spaghetti code. Also I believe to_string is injective so it might
@@ -385,21 +377,21 @@ module UsageTree = struct
   *)
   type t = { children : t Projection.Map.t; usage : Usage.t }
 
-  let rec _print_children ppf children =
+  let rec print_children ppf children =
     Projection.Map.iter
       (fun proj child ->
-        Format.fprintf ppf "%a = %a," Projection._print proj _print child)
+        Format.fprintf ppf "%a = %a," Projection.print proj print child)
       children
 
-  and _print ppf t =
-    Format.fprintf ppf "%a {%a}" Usage._print t.usage _print_children t.children
+  and print ppf t =
+    Format.fprintf ppf "%a {%a}" Usage.print t.usage print_children t.children
 
   module Path = struct
     type t = Projection.t list
 
     let child (p : t) (a : Projection.t) : t = p @ [ a ]
     let root : t = []
-    let _print ppf = Format.pp_print_list Projection._print ppf
+    let _print ppf = Format.pp_print_list Projection.print ppf
 
     let human_readable ppf t =
       Format.pp_print_list
@@ -491,7 +483,7 @@ module UsageTree = struct
       (* to ensure the tree invariant: children >= parent *)
       let usage = Usage.par acc (f t.usage) in
       let children = Projection.Map.map (loop usage) t.children in
-      {usage; children}
+      { usage; children }
     in
     loop Usage.Unused t
 end
@@ -516,7 +508,7 @@ module UsageForest = struct
 
     let fresh_of_ident ident = fresh (Ident.name ident)
     let name t1 = t1.name
-    let _print ppf t = Format.fprintf ppf "%s" (name t)
+    let print ppf t = Format.fprintf ppf "%s" (name t)
   end
 
   (* maps rootid to trees; contains only the roots *)
@@ -525,8 +517,7 @@ module UsageForest = struct
   let _print ppf t =
     Root_id.Map.iter
       (fun rootid tree ->
-        Format.fprintf ppf "%a = %a, " Root_id._print rootid UsageTree._print
-          tree)
+        Format.fprintf ppf "%a = %a, " Root_id.print rootid UsageTree.print tree)
       t
 
   module Path = struct
@@ -625,9 +616,9 @@ let mark_implicit_borrow_memory_address_paths paths occ =
     UF.singleton
       (UF.Path.child path UsageTree.Projection.Memory_address)
       (* Currently we just generate a dummy unique_barrier ref that won't be
-      consumed. The distinction between implicit and explicit borrowing is still
-      needed because they are handled differently in closures *)
-      (BorrowedShared (MaybeShared [ref None, occ]))
+         consumed. The distinction between implicit and explicit borrowing is still
+         needed because they are handled differently in closures *)
+      (BorrowedShared (MaybeShared [ (ref None, occ) ]))
   in
   UF.pars (List.map (fun path -> mark_one path) paths)
 
@@ -636,14 +627,15 @@ let _mark_borrow_paths paths occ =
     (* borrow the memory address of the parent *)
     UF.singleton path
       (* Currently we just generate a dummy unique_barrier ref that won't be
-      consumed. *)
+         consumed. *)
       (BorrowedShared (Borrowed occ))
   in
   UF.pars (List.map (fun path -> mark_one path) paths)
 
 let mark_implicit_borrow_memory_address = function
   | MatchSingle (paths, loc, _) ->
-      mark_implicit_borrow_memory_address_paths paths { loc; reason = DirectUse }
+      mark_implicit_borrow_memory_address_paths paths
+        { loc; reason = DirectUse }
   (* it's still a tuple - we own it and nothing to do here *)
   | MatchTuple _ -> UF.empty
 
@@ -804,25 +796,27 @@ let comp_pattern_match pat value =
   | Some pat', _ -> pattern_match pat' value
   | None, _ -> (Ienv.empty, UF.empty)
 
-
 let maybe_paths_of_ident ?unique_use ienv path loc =
-  let force reason unique_use  =
-    let occ = {Occurrence.loc; reason = DirectUse} in
+  let force reason unique_use =
+    let occ = { Occurrence.loc; reason = DirectUse } in
     let maybe_unique = (unique_use, occ) in
-    let use = SharedUnique.MaybeUnique [maybe_unique] in
+    let use = SharedUnique.MaybeUnique [ maybe_unique ] in
     ignore (SharedUnique.force_toplevel use reason)
   in
   match path with
-  | Path.Pident id ->
-    (match Ident.Map.find_opt id ienv with
-    (* TODO: for better error message, we should record in ienv why some
-    variables are not in it. *)
-    | None -> Option.iter (force JustTopLevel) unique_use; None
-    | Some paths -> Some paths
-    )
+  | Path.Pident id -> (
+      match Ident.Map.find_opt id ienv with
+      (* TODO: for better error message, we should record in ienv why some
+         variables are not in it. *)
+      | None ->
+          Option.iter (force JustTopLevel) unique_use;
+          None
+      | Some paths -> Some paths)
   (* accessing a module, which is forced by typemod to be shared and many.
-    Here we force it again just to be sure *)
-  | Path.Pdot _ -> Option.iter (force ValueFromModClass) unique_use; None
+     Here we force it again just to be sure *)
+  | Path.Pdot _ ->
+      Option.iter (force ValueFromModClass) unique_use;
+      None
   | Path.Papply _ -> assert false
 
 (*
@@ -849,10 +843,14 @@ let open_variables ienv f =
           | Texp_ident (path, _, _, _, modes) -> (
               match maybe_paths_of_ident ienv path e.exp_loc with
               | None -> ()
-              | Some paths -> (
-                let occ = {Occurrence.loc = e.exp_loc; reason = DirectUse} in
-                let maybe_unique = SharedUnique.MaybeUnique [(modes, occ)] in
-                ll := ((paths, maybe_unique) :: !ll)))
+              | Some paths ->
+                  let occ =
+                    { Occurrence.loc = e.exp_loc; reason = DirectUse }
+                  in
+                  let maybe_unique =
+                    SharedUnique.MaybeUnique [ (modes, occ) ]
+                  in
+                  ll := (paths, maybe_unique) :: !ll)
           | _ -> ());
           Tast_iterator.default_iterator.expr self e);
     }
@@ -861,19 +859,19 @@ let open_variables ienv f =
   !ll
 
 (* The following function marks all open variables in a class/module as shared,
-as well as returning a UF reflecting all those shared usage. *)
+   as well as returning a UF reflecting all those shared usage. *)
 let mark_shared_open_variables ienv f _loc =
   let ll = open_variables ienv f in
   let ufs =
     List.map
       (fun (paths, maybe_unique) ->
         (* the following force is not needed, because when UA the module/class,
-        maybe_paths_of_ident will force free variables to shared, because ienv
-        given to it will not include the outside variables. We nevertheless
-        force it here just to be sure *)
+           maybe_paths_of_ident will force free variables to shared, because ienv
+           given to it will not include the outside variables. We nevertheless
+           force it here just to be sure *)
         let shared =
-            Usage.SharedUnique
-              (SharedUnique.force_toplevel maybe_unique FreeVariableOfModClass)
+          Usage.SharedUnique
+            (SharedUnique.force_toplevel maybe_unique FreeVariableOfModClass)
         in
         let ufs = List.map (fun path -> UF.singleton path shared) paths in
         UF.seqs ufs)
@@ -915,14 +913,16 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
       let value = MatchSingle ([ UF.Path.fresh_root_of_id param ], loc, None) in
       let uf = check_uniqueness_cases value cases ienv in
       (* we are constructing a closure here, and therefore any borrowing of free
-      variables in the closure is in fact using shared. *)
+         variables in the closure is in fact using shared. *)
       let uf' =
-        UF.map (function
-        | BorrowedShared (MaybeShared _ as u) ->
-          (* only implicit borrowing lifted. *)
-          SharedUnique (SharedUnique.Shared (BorrowedShared.extract_occurrence u))
-        | _ -> Unused
-       ) uf
+        UF.map
+          (function
+            | BorrowedShared (MaybeShared _ as u) ->
+                (* only implicit borrowing lifted. *)
+                SharedUnique
+                  (SharedUnique.Shared (BorrowedShared.extract_occurrence u))
+            | _ -> Unused)
+          uf
       in
       UF.par uf' uf
   | Texp_apply (f, xs, _, _) ->
@@ -1106,10 +1106,10 @@ and check_uniqueness_exp' exp ienv : (UF.Path.t list * unique_use) option * UF.t
     =
   match exp.exp_desc with
   | Texp_ident (p, _, _, _, unique_use) -> (
-      match maybe_paths_of_ident ~unique_use ienv p exp.exp_loc  with
+      match maybe_paths_of_ident ~unique_use ienv p exp.exp_loc with
       | None -> (None, UF.empty)
-      | Some ps -> ((Some (ps, unique_use), UF.empty))
-      )
+      | Some ps ->
+          (Some (ps, unique_use), UF.empty)
           (* ienv doesn't always contain everything that are in scope. ienv
              starts as empty in each Pstr_eval, Pmod_unpack, Pstr_value, Pcl_let,
              Pcf_val, etc.
@@ -1117,7 +1117,7 @@ and check_uniqueness_exp' exp ienv : (UF.Path.t list * unique_use) option * UF.t
              outside-variables as shared and many. As a result, the UA algorithm
              doesn't need to restrict those accesses - they are already shared and
              many.
-          *)
+          *))
   | Texp_field (e, _, l, modes, _) -> (
       match check_uniqueness_exp' e ienv with
       | Some (paths, _), uf ->
@@ -1282,19 +1282,21 @@ let report_error = function
       Location.errorf ~loc:here.loc ~sub
         "@[%s so cannot be used twice. %s Another use is @]"
         why_cannot_use_twice here_reason
-  | SharedUnique.TopLevel {occ; error; reason} ->
-    let reason =
-      match reason with
-      | ValueFromModClass -> "a value from a module or class"
-      | FreeVariableOfModClass -> "a value outside the current module or class"
-      | JustTopLevel -> "a value that is top-level"
-    in
-    let error =
-      match error with
-      | `Uniqueness -> "used as unique"
-      | `Linearity -> "defined as once"
-    in
-    Location.errorf ~loc:occ.loc "@[This value is %s but it is %s@]" error reason
+  | SharedUnique.TopLevel { occ; error; reason } ->
+      let reason =
+        match reason with
+        | ValueFromModClass -> "a value from a module or class"
+        | FreeVariableOfModClass ->
+            "a value outside the current module or class"
+        | JustTopLevel -> "a value that is top-level"
+      in
+      let error =
+        match error with
+        | `Uniqueness -> "used as unique"
+        | `Linearity -> "defined as once"
+      in
+      Location.errorf ~loc:occ.loc "@[This value is %s but it is %s@]" error
+        reason
   | _ -> assert false
 
 let report_error err =
