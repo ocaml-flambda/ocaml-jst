@@ -457,18 +457,20 @@ let comp_primitive p args =
   (* In bytecode, nothing is ever actually stack-allocated, so we ignore the
      array modes (allocation for [Parrayref{s,u}], modification for
      [Parrayset{s,u}]). *)
-  | Parrayrefs (_, Pgenarray) -> Kccall("caml_array_get", 2)
-  | Parrayrefs (_, Pfloatarray) -> Kccall("caml_floatarray_get", 2)
-  | Parrayrefs _ -> Kccall("caml_array_get_addr", 2)
-  | Parraysets (_, Pgenarray) -> Kccall("caml_array_set", 3)
-  | Parraysets (_, Pfloatarray) -> Kccall("caml_floatarray_set", 3)
-  | Parraysets _ -> Kccall("caml_array_set_addr", 3)
-  | Parrayrefu (_, Pgenarray) -> Kccall("caml_array_unsafe_get", 2)
-  | Parrayrefu (_, Pfloatarray) -> Kccall("caml_floatarray_unsafe_get", 2)
-  | Parrayrefu _ -> Kgetvectitem
-  | Parraysetu (_, Pgenarray) -> Kccall("caml_array_unsafe_set", 3)
-  | Parraysetu (_, Pfloatarray) -> Kccall("caml_floatarray_unsafe_set", 3)
-  | Parraysetu _ -> Ksetvectitem
+  | Parrayrefs (Pgenarray_ref _) -> Kccall("caml_array_get", 2)
+  | Parrayrefs (Pfloatarray_ref _) -> Kccall("caml_floatarray_get", 2)
+  | Parrayrefs (Paddrarray_ref | Pintarray_ref) ->
+      Kccall("caml_array_get_addr", 2)
+  | Parraysets (Pgenarray_set _) -> Kccall("caml_array_set", 3)
+  | Parraysets Pfloatarray_set -> Kccall("caml_floatarray_set", 3)
+  | Parraysets (Paddrarray_set _ | Pintarray_set) ->
+      Kccall("caml_array_set_addr", 3)
+  | Parrayrefu (Pgenarray_ref _) -> Kccall("caml_array_unsafe_get", 2)
+  | Parrayrefu (Pfloatarray_ref _) -> Kccall("caml_floatarray_unsafe_get", 2)
+  | Parrayrefu (Paddrarray_ref | Pintarray_ref) -> Kgetvectitem
+  | Parraysetu (Pgenarray_set _) -> Kccall("caml_array_unsafe_set", 3)
+  | Parraysetu Pfloatarray_set -> Kccall("caml_floatarray_unsafe_set", 3)
+  | Parraysetu (Paddrarray_set _ | Pintarray_set) -> Ksetvectitem
   | Pctconst c ->
      let const_name = match c with
        | Big_endian -> "big_endian"

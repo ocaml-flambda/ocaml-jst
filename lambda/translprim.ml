@@ -114,6 +114,12 @@ let get_units_with_used_primitives () =
 let gen_array_kind =
   if Config.flat_float_array then Pgenarray else Paddrarray
 
+let gen_array_ref_kind mode =
+  if Config.flat_float_array then Pgenarray_ref mode else Paddrarray_ref
+
+let gen_array_set_kind mode =
+  if Config.flat_float_array then Pgenarray_set mode else Paddrarray_set mode
+
 let prim_sys_argv =
   Primitive.simple ~name:"caml_sys_argv" ~arity:1 ~alloc:true
 
@@ -225,54 +231,38 @@ let lookup_primitive loc poly pos p =
     | "%bytes_unsafe_get" -> Primitive (Pbytesrefu, 2)
     | "%bytes_unsafe_set" -> Primitive (Pbytessetu, 3)
     | "%array_length" -> Primitive ((Parraylength gen_array_kind), 1)
-    | "%array_safe_get" -> Primitive ((Parrayrefs (mode, gen_array_kind)), 2)
+    | "%array_safe_get" -> Primitive ((Parrayrefs (gen_array_ref_kind mode)), 2)
     | "%array_safe_set" ->
        let array_mode =
          match arg_modes with
          | array_mode :: _ -> array_mode
          | [] -> assert false
        in
-       Primitive ((Parraysets (array_mode, gen_array_kind)), 3)
-    | "%array_unsafe_get" -> Primitive ((Parrayrefu (mode, gen_array_kind)), 2)
+       Primitive (Parraysets (gen_array_set_kind array_mode), 3)
+    | "%array_unsafe_get" -> Primitive (Parrayrefu (gen_array_ref_kind mode), 2)
     | "%array_unsafe_set" ->
        let array_mode =
          match arg_modes with
          | array_mode :: _ -> array_mode
          | [] -> assert false
        in
-       Primitive ((Parraysetu (array_mode, gen_array_kind)), 3)
-    | "%obj_size" -> Primitive ((Parraylength gen_array_kind), 1)
-    | "%obj_field" ->
-      (* The mode doesn't actually matter here, since we're not accessing a flat
-         float array *)
-      Primitive ((Parrayrefu (mode, gen_array_kind)), 2)
+       Primitive ((Parraysetu (gen_array_set_kind array_mode)), 3)
+    | "%obj_size" -> Primitive ((Parraylength Pgenarray), 1)
+    | "%obj_field" -> Primitive ((Parrayrefu (Pgenarray_ref mode)), 2)
     | "%obj_set_field" ->
        let obj_mode =
          match arg_modes with
          | obj_mode :: _ -> obj_mode
          | [] -> assert false
        in
-       Primitive ((Parraysetu (obj_mode, gen_array_kind)), 3)
+       Primitive ((Parraysetu (Pgenarray_set obj_mode)), 3)
     | "%floatarray_length" -> Primitive ((Parraylength Pfloatarray), 1)
-    | "%floatarray_safe_get" -> Primitive ((Parrayrefs (mode, Pfloatarray)), 2)
-    | "%floatarray_safe_set" ->
-       (* The mode doesn't actually matter for floatarrays, it turns out *)
-       let array_mode =
-         match arg_modes with
-         | array_mode :: _ -> array_mode
-         | [] -> assert false
-       in
-       Primitive ((Parraysets (array_mode, Pfloatarray)), 3)
+    | "%floatarray_safe_get" ->
+       Primitive ((Parrayrefs (Pfloatarray_ref mode)), 2)
+    | "%floatarray_safe_set" -> Primitive (Parraysets Pfloatarray_set, 3)
     | "%floatarray_unsafe_get" ->
-       Primitive ((Parrayrefu (mode, Pfloatarray)), 2)
-    | "%floatarray_unsafe_set" ->
-       (* The mode doesn't actually matter for floatarrays, it turns out *)
-       let array_mode =
-         match arg_modes with
-         | array_mode :: _ -> array_mode
-         | [] -> assert false
-       in
-       Primitive ((Parraysetu (array_mode, Pfloatarray)), 3)
+       Primitive ((Parrayrefu (Pfloatarray_ref mode)), 2)
+    | "%floatarray_unsafe_set" -> Primitive ((Parraysetu Pfloatarray_set), 3)
     | "%obj_is_int" -> Primitive (Pisint { variant_only = false }, 1)
     | "%lazy_force" -> Lazy_force pos
     | "%nativeint_of_int" -> Primitive ((Pbintofint (Pnativeint, mode)), 1)
@@ -471,13 +461,67 @@ let simplify_constant_constructor = function
 *)
 let glb_array_type t1 t2 =
   match t1, t2 with
+  (* No GLB; only used in the [Obj.magic] case *)
   | Pfloatarray, (Paddrarray | Pintarray)
   | (Paddrarray | Pintarray), Pfloatarray -> t1
 
+  (* Compute the correct GLB *)
   | Pgenarray, x | x, Pgenarray -> x
   | Paddrarray, x | x, Paddrarray -> x
   | Pintarray, Pintarray -> Pintarray
   | Pfloatarray, Pfloatarray -> Pfloatarray
+
+let glb_array_ref_type t1 t2 =
+  match t1, t2 with
+  (* No GLB; only used in the [Obj.magic] case *)
+  | Pfloatarray_ref _, (Paddrarray | Pintarray)
+  | (Paddrarray_ref | Pintarray_ref), Pfloatarray -> t1
+
+  (* Compute the correct GLB *)
+
+  (* Pgenarray >= _ *)
+  | (Pgenarray_ref _ as x), Pgenarray -> x
+  | Pgenarray_ref _, Pintarray -> Pintarray_ref
+  | Pgenarray_ref _, Paddrarray -> Paddrarray_ref
+  | Pgenarray_ref mode, Pfloatarray -> Pfloatarray_ref mode
+  | (Paddrarray_ref | Pintarray_ref | Pfloatarray_ref _ as x), Pgenarray -> x
+
+  (* Paddrarray > Pintarray *)
+  | Paddrarray_ref, Paddrarray -> Paddrarray_ref
+  | Paddrarray_ref, Pintarray -> Pintarray_ref
+  | Pintarray_ref, Paddrarray -> Pintarray_ref
+
+  (* Pintarray is a minimum *)
+  | Pintarray_ref, Pintarray -> Pintarray_ref
+
+  (* Pfloatarray is a minimum *)
+  | (Pfloatarray_ref _ as x), Pfloatarray -> x
+
+let glb_array_set_type t1 t2 =
+  match t1, t2 with
+  (* No GLB; only used in the [Obj.magic] case *)
+  | Pfloatarray_set, (Paddrarray | Pintarray)
+  | (Paddrarray_set _ | Pintarray_set), Pfloatarray -> t1
+
+  (* Compute the correct GLB *)
+
+  (* Pgenarray >= _ *)
+  | (Pgenarray_set _ as x), Pgenarray -> x
+  | Pgenarray_set _, Pintarray -> Pintarray_set
+  | Pgenarray_set mode, Paddrarray -> Paddrarray_set mode
+  | Pgenarray_set _, Pfloatarray -> Pfloatarray_set
+  | (Paddrarray_set _ | Pintarray_set | Pfloatarray_set as x), Pgenarray -> x
+
+  (* Paddrarray > Pintarray *)
+  | (Paddrarray_set _ as x), Paddrarray -> x
+  | Paddrarray_set _, Pintarray -> Pintarray_set
+  | Pintarray_set, Paddrarray -> Pintarray_set
+
+  (* Pintarray is a minimum *)
+  | Pintarray_set, Pintarray -> Pintarray_set
+
+  (* Pfloatarray is a minimum *)
+  | Pfloatarray_set, Pfloatarray -> Pfloatarray_set
 
 (* Specialize a primitive from available type information. *)
 (* CR layouts v2: This function had a loc argument added just to support the void
@@ -502,25 +546,26 @@ let specialize_primitive env loc ty ~has_constant_constructor prim =
       if t = array_type then None
       else Some (Primitive (Parraylength array_type, arity))
     end
-  | Primitive (Parrayrefu (m, t), arity), p1 :: _ -> begin
-      let array_type = glb_array_type t (array_type_kind env p1) in
-      if t = array_type then None
-      else Some (Primitive (Parrayrefu (m, array_type), arity))
+  | Primitive (Parrayrefu rt, arity), p1 :: _ -> begin
+      let array_ref_type = glb_array_ref_type rt (array_type_kind env p1)
+      in
+      if rt = array_ref_type then None
+      else Some (Primitive (Parrayrefu array_ref_type, arity))
     end
-  | Primitive (Parraysetu (m, t), arity), p1 :: _ -> begin
-      let array_type = glb_array_type t (array_type_kind env p1) in
-      if t = array_type then None
-      else Some (Primitive (Parraysetu (m, array_type), arity))
+  | Primitive (Parraysetu st, arity), p1 :: _ -> begin
+      let array_set_type = glb_array_set_type st (array_type_kind env p1) in
+      if st = array_set_type then None
+      else Some (Primitive (Parraysetu array_set_type, arity))
     end
-  | Primitive (Parrayrefs (m, t), arity), p1 :: _ -> begin
-      let array_type = glb_array_type t (array_type_kind env p1) in
-      if t = array_type then None
-      else Some (Primitive (Parrayrefs (m, array_type), arity))
+  | Primitive (Parrayrefs rt, arity), p1 :: _ -> begin
+      let array_ref_type = glb_array_ref_type rt (array_type_kind env p1) in
+      if rt = array_ref_type then None
+      else Some (Primitive (Parrayrefs array_ref_type, arity))
     end
-  | Primitive (Parraysets (m, t), arity), p1 :: _ -> begin
-      let array_type = glb_array_type t (array_type_kind env p1) in
-      if t = array_type then None
-      else Some (Primitive (Parraysets (m, array_type), arity))
+  | Primitive (Parraysets st, arity), p1 :: _ -> begin
+      let array_set_type = glb_array_set_type st (array_type_kind env p1) in
+      if st = array_set_type then None
+      else Some (Primitive (Parraysets array_set_type, arity))
     end
   | Primitive (Pbigarrayref(unsafe, n, Pbigarray_unknown,
                             Pbigarray_unknown_layout), arity), p1 :: _ -> begin
@@ -902,8 +947,10 @@ let lambda_primitive_needs_event_after = function
   | Paddfloat _ | Psubfloat _ | Pmulfloat _ | Pdivfloat _ | Pstringrefs | Pbytesrefs
   | Pbox_float _ | Pbox_int _
   | Pbytessets | Pmakearray (Pgenarray, _, _) | Pduparray _
-  | Parrayrefu (_, (Pgenarray | Pfloatarray))
-  | Parraysetu (_, (Pgenarray | Pfloatarray))
+  | Parrayrefu (Pgenarray_ref _ | Pfloatarray_ref _)
+  | Parraysetu (Pgenarray_set _ | Pfloatarray_set)
+    (* CR aspectorzabusky for mshinwell: It seems to be that unsafe set should
+       never allocate or throw an exception; am I missing something? *)
   | Parrayrefs _ | Parraysets _ | Pbintofint _ | Pcvtbint _ | Pnegbint _
   | Paddbint _ | Psubbint _ | Pmulbint _ | Pdivbint _ | Pmodbint _ | Pandbint _
   | Porbint _ | Pxorbint _ | Plslbint _ | Plsrbint _ | Pasrbint _ | Pbintcomp _

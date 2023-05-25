@@ -127,18 +127,10 @@ type primitive =
       The arguments of [Pduparray] give the kind and mutability of the
       array being *produced* by the duplication. *)
   | Parraylength of array_kind
-  | Parrayrefu of alloc_mode * array_kind
-  (** The [alloc_mode] only matters for flat float arrays; accessing them must
-      allocate the resulting [float]. *)
-  | Parraysetu of modify_mode * array_kind
-  (** The [modify_mode] only matters for arrays that contain (or might contain)
-      pointers; otherwise, access is uniform. *)
-  | Parrayrefs of alloc_mode * array_kind
-  (** The [alloc_mode] only matters for flat float arrays; accessing them must
-      allocate the resulting [float]. *)
-  | Parraysets of modify_mode * array_kind
-  (** The [modify_mode] only matters for arrays that contain (or might contain)
-      pointers; otherwise, access is uniform. *)
+  | Parrayrefu of array_ref_kind
+  | Parraysetu of array_set_kind
+  | Parrayrefs of array_ref_kind
+  | Parraysets of array_set_kind
   (* Test if the argument is a block or an immediate integer *)
   | Pisint of { variant_only : bool }
   (* Test if the (integer) argument is outside an interval *)
@@ -216,6 +208,22 @@ and float_comparison =
 
 and array_kind =
     Pgenarray | Paddrarray | Pintarray | Pfloatarray
+
+(** When accessing a flat float array, we need to know the mode which we should
+    box the resulting float at. *)
+and array_ref_kind =
+  | Pgenarray_ref of alloc_mode (* This might be a flat float array *)
+  | Paddrarray_ref
+  | Pintarray_ref
+  | Pfloatarray_ref of alloc_mode
+
+(** When updating an array that might contain pointers, we need to know what
+    mode they're at; otherwise, access is uniform. *)
+and array_set_kind =
+  | Pgenarray_set of modify_mode (* This might be an array of pointers *)
+  | Paddrarray_set of modify_mode
+  | Pintarray_set
+  | Pfloatarray_set
 
 and value_kind =
     Pgenval | Pfloatval | Pboxedintval of boxed_integer | Pintval
@@ -678,3 +686,9 @@ val structured_constant_layout : structured_constant -> layout
 val primitive_result_layout : primitive -> layout
 
 val compute_expr_layout : layout Ident.Map.t -> lambda -> layout
+
+(** The mode will be discarded if unnecessary for the given [array_kind] *)
+val array_ref_kind : alloc_mode -> array_kind -> array_ref_kind
+
+(** The mode will be discarded if unnecessary for the given [array_kind] *)
+val array_set_kind : modify_mode -> array_kind -> array_set_kind
