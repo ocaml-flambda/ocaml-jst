@@ -1067,10 +1067,10 @@ and transl_prim_2 env p arg1 arg2 dbg =
       bigstring_load size unsafe mode (transl env arg1) (transl env arg2) dbg
 
   (* Array operations *)
-  | Parrayrefu (mode, kind) ->
-      arrayref_unsafe mode kind (transl env arg1) (transl env arg2) dbg
-  | Parrayrefs (mode, kind) ->
-      arrayref_safe mode kind (transl env arg1) (transl env arg2) dbg
+  | Parrayrefu rkind ->
+      arrayref_unsafe rkind (transl env arg1) (transl env arg2) dbg
+  | Parrayrefs rkind ->
+      arrayref_safe rkind (transl env arg1) (transl env arg2) dbg
 
   (* Boxed integers *)
   | Paddbint (bi, mode) ->
@@ -1155,20 +1155,20 @@ and transl_prim_3 env p arg1 arg2 arg3 dbg =
         (transl env arg1) (transl env arg2) (transl env arg3) dbg
 
   (* Array operations *)
-  | Parraysetu (mode, kind) ->
+  | Parraysetu skind ->
       let newval =
-        match kind with
-        | Pfloatarray -> transl_unbox_float dbg env arg3
+        match skind with
+        | Pfloatarray_set -> transl_unbox_float dbg env arg3
         | _ -> transl env arg3
       in
-      arrayset_unsafe mode kind (transl env arg1) (transl env arg2) newval dbg
-  | Parraysets (mode, kind) ->
+      arrayset_unsafe skind (transl env arg1) (transl env arg2) newval dbg
+  | Parraysets skind ->
       let newval =
-        match kind with
-        | Pfloatarray -> transl_unbox_float dbg env arg3
+        match skind with
+        | Pfloatarray_set -> transl_unbox_float dbg env arg3
         | _ -> transl env arg3
       in
-      arrayset_safe mode kind (transl env arg1) (transl env arg2) newval dbg
+      arrayset_safe skind (transl env arg1) (transl env arg2) newval dbg
 
   | Pbytes_set(size, unsafe) ->
       bytes_set size unsafe (transl env arg1) (transl env arg2)

@@ -559,12 +559,9 @@ val bigstring_load :
 
 (** Arrays *)
 
-(** Array access.  The [alloc_mode] is used only if the [array_kind] is
-    [Pfloatarray]; the resulting [float] will then be allocated at the specified
-    mode.
-    Args: array, index *)
-val arrayref_unsafe : Lambda.alloc_mode -> Lambda.array_kind -> binary_primitive
-val arrayref_safe : Lambda.alloc_mode -> Lambda.array_kind -> binary_primitive
+(** Array access.  Args: array, index *)
+val arrayref_unsafe : Lambda.array_ref_kind -> binary_primitive
+val arrayref_safe : Lambda.array_ref_kind -> binary_primitive
 
 type ternary_primitive =
   expression -> expression -> expression -> Debuginfo.t -> expression
@@ -581,15 +578,12 @@ val bytesset_unsafe : ternary_primitive
 val bytesset_safe : ternary_primitive
 
 (** Set the element at the given index in the given array to the given value.
-    The array is expected to be at the given mode.
     WARNING: if [kind] is [Pfloatarray], then [value] is expected to be an
     _unboxed_ float. Otherwise, it is expected to be a regular caml value,
     including in the case where the array contains floats.
     Args: array, index, value *)
-val arrayset_unsafe :
-  Lambda.modify_mode -> Lambda.array_kind -> ternary_primitive
-val arrayset_safe :
-  Lambda.modify_mode -> Lambda.array_kind -> ternary_primitive
+val arrayset_unsafe : Lambda.array_set_kind -> ternary_primitive
+val arrayset_safe : Lambda.array_set_kind -> ternary_primitive
 
 (** Set a chunk of data in the given bytes or bigstring structure.
     See also [string_load] and [bigstring_load].

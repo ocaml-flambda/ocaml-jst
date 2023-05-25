@@ -159,8 +159,8 @@ let return_type_of_primitive (prim:Clambda_primitives.primitive) =
   | Pmulfloat _
   | Pdivfloat _
   | Pfloatfield _
-  | Parrayrefu (_, Pfloatarray)
-  | Parrayrefs (_, Pfloatarray) ->
+  | Parrayrefu (Pfloatarray_ref _)
+  | Parrayrefs (Pfloatarray_ref _) ->
       Float
   | _ ->
       Other

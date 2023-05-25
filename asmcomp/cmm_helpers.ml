@@ -2754,9 +2754,9 @@ let bigstring_load size unsafe mode arg1 arg2 dbg =
           idx
           (unaligned_load size ba_data idx dbg)))))
 
-let arrayref_unsafe mode kind arg1 arg2 dbg =
-  match (kind : Lambda.array_kind) with
-  | Pgenarray ->
+let arrayref_unsafe rkind arg1 arg2 dbg =
+  match (rkind : Lambda.array_ref_kind) with
+  | Pgenarray_ref mode ->
       bind "index" arg2 (fun idx ->
         bind "arr" arg1 (fun arr ->
           Cifthenelse(is_addr_array_ptr arr dbg,
@@ -2765,17 +2765,17 @@ let arrayref_unsafe mode kind arg1 arg2 dbg =
                       dbg,
                       float_array_ref mode arr idx dbg,
                       dbg, Any)))
-  | Paddrarray ->
+  | Paddrarray_ref ->
       addr_array_ref arg1 arg2 dbg
-  | Pintarray ->
+  | Pintarray_ref ->
       (* CR mshinwell: for int/addr_array_ref move "dbg" to first arg *)
       int_array_ref arg1 arg2 dbg
-  | Pfloatarray ->
+  | Pfloatarray_ref mode ->
       float_array_ref mode arg1 arg2 dbg
 
-let arrayref_safe mode kind arg1 arg2 dbg =
-  match (kind : Lambda.array_kind) with
-  | Pgenarray ->
+let arrayref_safe rkind arg1 arg2 dbg =
+  match (rkind : Lambda.array_ref_kind) with
+  | Pgenarray_ref mode ->
       bind "index" arg2 (fun idx ->
       bind "arr" arg1 (fun arr ->
       bind "header" (get_header_without_profinfo arr dbg) (fun hdr ->
@@ -2799,32 +2799,32 @@ let arrayref_safe mode kind arg1 arg2 dbg =
               make_checkbound dbg [float_array_length_shifted hdr dbg; idx],
               float_array_ref mode arr idx dbg),
             dbg, Any))))
-      | Paddrarray ->
-          bind "index" arg2 (fun idx ->
-          bind "arr" arg1 (fun arr ->
-            Csequence(
-              make_checkbound dbg [
-                addr_array_length_shifted
-                  (get_header_without_profinfo arr dbg) dbg; idx],
-              addr_array_ref arr idx dbg)))
-      | Pintarray ->
-          bind "index" arg2 (fun idx ->
-          bind "arr" arg1 (fun arr ->
-            Csequence(
-              make_checkbound dbg [
-                addr_array_length_shifted
-                  (get_header_without_profinfo arr dbg) dbg; idx],
-              int_array_ref arr idx dbg)))
-      | Pfloatarray ->
-          box_float dbg mode (
-            bind "index" arg2 (fun idx ->
-            bind "arr" arg1 (fun arr ->
-              Csequence(
-                make_checkbound dbg [
-                  float_array_length_shifted
-                    (get_header_without_profinfo arr dbg) dbg;
-                  idx],
-                unboxed_float_array_ref arr idx dbg))))
+  | Paddrarray_ref ->
+      bind "index" arg2 (fun idx ->
+      bind "arr" arg1 (fun arr ->
+        Csequence(
+          make_checkbound dbg [
+            addr_array_length_shifted
+              (get_header_without_profinfo arr dbg) dbg; idx],
+          addr_array_ref arr idx dbg)))
+  | Pintarray_ref ->
+      bind "index" arg2 (fun idx ->
+      bind "arr" arg1 (fun arr ->
+        Csequence(
+          make_checkbound dbg [
+            addr_array_length_shifted
+              (get_header_without_profinfo arr dbg) dbg; idx],
+          int_array_ref arr idx dbg)))
+  | Pfloatarray_ref mode ->
+      box_float dbg mode (
+        bind "index" arg2 (fun idx ->
+        bind "arr" arg1 (fun arr ->
+          Csequence(
+            make_checkbound dbg [
+              float_array_length_shifted
+                (get_header_without_profinfo arr dbg) dbg;
+              idx],
+            unboxed_float_array_ref arr idx dbg))))
 
 type ternary_primitive =
   expression -> expression -> expression -> Debuginfo.t -> expression
@@ -2856,9 +2856,9 @@ let bytesset_safe arg1 arg2 arg3 dbg =
               [add_int str idx dbg; newval],
               dbg))))))
 
-let arrayset_unsafe mode kind arg1 arg2 arg3 dbg =
-  return_unit dbg (match (kind: Lambda.array_kind) with
-  | Pgenarray ->
+let arrayset_unsafe skind arg1 arg2 arg3 dbg =
+  return_unit dbg (match (skind: Lambda.array_set_kind) with
+  | Pgenarray_set mode ->
       bind "newval" arg3 (fun newval ->
         bind "index" arg2 (fun index ->
           bind "arr" arg1 (fun arr ->
@@ -2869,17 +2869,17 @@ let arrayset_unsafe mode kind arg1 arg2 arg3 dbg =
                         float_array_set arr index (unbox_float dbg newval)
                           dbg,
                         dbg, Any))))
-  | Paddrarray ->
+  | Paddrarray_set mode ->
       addr_array_set mode arg1 arg2 arg3 dbg
-  | Pintarray ->
+  | Pintarray_set ->
       int_array_set arg1 arg2 arg3 dbg
-  | Pfloatarray ->
+  | Pfloatarray_set ->
       float_array_set arg1 arg2 arg3 dbg
   )
 
-let arrayset_safe mode kind arg1 arg2 arg3 dbg =
-  return_unit dbg (match (kind: Lambda.array_kind) with
-  | Pgenarray ->
+let arrayset_safe skind arg1 arg2 arg3 dbg =
+  return_unit dbg (match (skind: Lambda.array_set_kind) with
+  | Pgenarray_set mode ->
       bind "newval" arg3 (fun newval ->
       bind "index" arg2 (fun idx ->
       bind "arr" arg1 (fun arr ->
@@ -2908,7 +2908,7 @@ let arrayset_safe mode kind arg1 arg2 arg3 dbg =
               float_array_set arr idx
                 (unbox_float dbg newval) dbg),
             dbg, Any)))))
-  | Paddrarray ->
+  | Paddrarray_set mode ->
       bind "newval" arg3 (fun newval ->
       bind "index" arg2 (fun idx ->
       bind "arr" arg1 (fun arr ->
@@ -2918,7 +2918,7 @@ let arrayset_safe mode kind arg1 arg2 arg3 dbg =
               (get_header_without_profinfo arr dbg) dbg;
             idx],
           addr_array_set mode arr idx newval dbg))))
-  | Pintarray ->
+  | Pintarray_set ->
       bind "newval" arg3 (fun newval ->
       bind "index" arg2 (fun idx ->
       bind "arr" arg1 (fun arr ->
@@ -2928,7 +2928,7 @@ let arrayset_safe mode kind arg1 arg2 arg3 dbg =
               (get_header_without_profinfo arr dbg) dbg;
             idx],
           int_array_set arr idx newval dbg))))
-  | Pfloatarray ->
+  | Pfloatarray_set ->
       bind_load "newval" arg3 (fun newval ->
       bind "index" arg2 (fun idx ->
       bind "arr" arg1 (fun arr ->
