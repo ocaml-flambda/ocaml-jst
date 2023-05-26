@@ -137,7 +137,7 @@ and type_desc =
   (** Type of a first-class module (a.k.a package). *)
 
 and arrow_desc =
-  arg_label * Modes.Alloc.t * Modes.Alloc.t
+  arg_label * Mode.Alloc.t * Mode.Alloc.t
 
 and _ row_field_gen =
     RFpresent : type_expr option -> [> `some] row_field_gen
@@ -811,34 +811,6 @@ val bound_value_identifiers: signature -> Ident.t list
 val signature_item_id : signature_item -> Ident.t
 
 (**** Utilities for backtracking ****)
-
-type change =
-    Ctype : type_expr * type_desc -> change
-  | Ccompress : type_expr * type_desc * type_desc -> change
-  | Clevel : type_expr * int -> change
-  | Cscope : type_expr * int -> change
-  | Cname :
-      (Path.t * type_expr list) option ref * (Path.t * type_expr list) option -> change
-  | Crow : [`none|`some] row_field_gen ref -> change
-  | Ckind : [`var] field_kind_gen -> change
-  | Ccommu : [`var] commutable_gen -> change
-  | Cuniv : type_expr option ref * type_expr option -> change
-  | Cmode_upper : 'a Modes.var * 'a -> change
-  | Cmode_lower : 'a Modes.var * 'a -> change
-  | Cmode_vlower : 'a Modes.var * 'a Modes.var list -> change
-
-type changes =
-    Change of change * changes ref
-  | Unchanged
-  | Invalid
-
-val append_change : changes ref ref -> change -> unit
-
-val log_changes : changes -> changes ref -> unit
-
-val undo_change : change -> unit
-
-val rev_log : change list -> changes -> change list
 
 type snapshot
         (* A snapshot for backtracking *)

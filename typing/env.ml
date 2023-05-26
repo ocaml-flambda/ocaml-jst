@@ -2921,7 +2921,7 @@ let lock_mode ~errors ~loc env id vmode locks =
       match lock with
       | Region_lock -> (Mode.Value.local_to_regional vmode, reasons)
       | Linearity_lock {mode;shared_context} -> begin
-          (match Mode.Linearity.submode vmode.Mode.linearity mode with
+          (match Mode.Linearity.submode (Mode.Value.linearity vmode) mode with
           | Error _ ->
               may_lookup_error errors loc env
               (Once_value_used_in (id, shared_context))
@@ -2929,23 +2929,33 @@ let lock_mode ~errors ~loc env id vmode locks =
           );
           (* the following says that accessing a unique value inside a loop will give you shared *)
           let vmode = Mode.Value.with_uniqueness
-            (Mode.Uniqueness.join [vmode.Mode.uniqueness; Mode.Linearity.to_dual mode])
+            (Mode.Uniqueness.join
+               [Mode.Value.uniqueness vmode;
+                Mode.Linearity.to_dual mode])
             vmode
           in
           vmode, shared_context :: reasons
-          end
+        end
       | Locality_lock {mode; escaping_context} -> begin
-          match Mode.Regionality.submode vmode.Mode.locality (Mode.Regionality.of_locality mode) with
+          match
+            Mode.Regionality.submode
+              (Mode.Value.locality vmode)
+              (Mode.Regionality.of_locality mode)
+          with
           | Ok () -> (vmode, reasons)
           | Error _ ->
             may_lookup_error errors loc env (Local_value_used_in_closure (id, escaping_context))
-          end
+        end
       | Exclave_lock -> begin
-        match Mode.Regionality.submode vmode.Mode.locality Mode.Regionality.regional with
-        | Ok () -> (Mode.Value.regional_to_local vmode, reasons)
-        | Error _ ->
-          may_lookup_error errors loc env
-            (Local_value_used_in_exclave id)
+          match
+            Mode.Regionality.submode
+              (Mode.Value.locality vmode)
+              Mode.Regionality.regional
+          with
+          | Ok () -> (Mode.Value.regional_to_local vmode, reasons)
+          | Error _ ->
+            may_lookup_error errors loc env
+              (Local_value_used_in_exclave id)
         end
     ) (vmode, []) locks
 

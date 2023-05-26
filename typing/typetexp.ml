@@ -392,22 +392,28 @@ let transl_type_param env styp layout =
     (fun () -> transl_type_param env styp layout)
 
 let get_alloc_mode styp =
-  let locality = match Builtin_attributes.has_local styp.ptyp_attributes with
-    | Ok true -> Mode.Locality.Local
-    | Ok false -> Mode.Locality.Global
+  let locality =
+    match Builtin_attributes.has_local styp.ptyp_attributes with
+    | Ok true -> Mode.Locality.Const.Local
+    | Ok false -> Mode.Locality.Const.Global
     | Error () ->
       raise (Error(styp.ptyp_loc, Env.empty, Unsupported_extension Local))
-  and uniqueness = match Builtin_attributes.has_unique styp.ptyp_attributes with
-    | Ok true -> Mode.Uniqueness.Unique
-    | Ok false -> Mode.Uniqueness.Shared
+  in
+  let uniqueness =
+    match Builtin_attributes.has_unique styp.ptyp_attributes with
+    | Ok true -> Mode.Uniqueness.Const.Unique
+    | Ok false -> Mode.Uniqueness.Const.Shared
     | Error () ->
       raise (Error(styp.ptyp_loc, Env.empty, Unsupported_extension Unique))
-  and linearity = match Builtin_attributes.has_once styp.ptyp_attributes with
-    | Ok true -> Mode.Linearity.Once
-    | Ok false -> Mode.Linearity.Many
+  in
+  let linearity =
+    match Builtin_attributes.has_once styp.ptyp_attributes with
+    | Ok true -> Mode.Linearity.Const.Once
+    | Ok false -> Mode.Linearity.Const.Many
     | Error () ->
       raise (Error(styp.ptyp_loc, Env.empty, Unsupported_extension Unique))
-  in { Mode.locality = locality; uniqueness; linearity }
+  in
+  { Mode.locality = locality; uniqueness; linearity }
 
 let rec extract_params styp =
   let final styp =
@@ -432,7 +438,9 @@ let check_arg_type styp =
     | _ -> ()
   end
 
-let rec transl_type env policy locality linearity styp =
+let rec transl_type :
+  _ -> _ -> Mode.Locality.Const.t -> Mode.Linearity.Const.t -> _ -> _ =
+  fun env policy locality linearity styp ->
   Builtin_attributes.warning_scope styp.ptyp_attributes
     (fun () -> transl_type_aux env policy locality linearity styp)
 
@@ -463,13 +471,17 @@ and transl_type_aux env policy locality linearity styp =
       let args, ret, ret_mode = extract_params styp in
       let rec loop locality linearity args =
         match args with
-        | (l, ({Mode.locality = arg_locality; uniqueness = arg_uniqueness; linearity = arg_linearity} as arg_mode), arg) :: rest ->
+        | (l, ({Mode.locality = arg_locality;
+                uniqueness = arg_uniqueness;
+                linearity = arg_linearity} as arg_mode), arg) :: rest ->
           check_arg_type arg;
           let arg_cty = transl_type env policy arg_locality arg_linearity arg in
-          let locality = Mode.Locality.join_const locality arg_locality in
-          let uniqueness = Mode.Uniqueness.Shared in
-          let linearity = Mode.Linearity.join_const linearity arg_linearity in
-          let linearity = Mode.Linearity.join_const linearity (Mode.Linearity.from_dconst arg_uniqueness)
+          let locality = Mode.Locality.Const.join locality arg_locality in
+          let uniqueness = Mode.Uniqueness.Const.Shared in
+          let linearity = Mode.Linearity.Const.join linearity arg_linearity in
+          let linearity =
+            Mode.Linearity.Const.join
+              linearity (Mode.Linearity.Const.of_dual arg_uniqueness)
           in
           let ret_mode =
             match rest with
@@ -519,7 +531,7 @@ and transl_type_aux env policy locality linearity styp =
       loop locality linearity args
   | Ptyp_tuple stl ->
     assert (List.length stl >= 2);
-    let ctys = List.map (transl_type env policy Mode.Locality.Global Mode.Linearity.Many) stl in
+    let ctys = List.map (transl_type env policy Global Many) stl in
     List.iter (fun {ctyp_type; ctyp_loc} ->
       (* CR layouts v5: remove value requirement *)
       match
@@ -545,7 +557,7 @@ and transl_type_aux env policy locality linearity styp =
         raise(Error(styp.ptyp_loc, env,
                     Type_arity_mismatch(lid.txt, decl.type_arity,
                                         List.length stl)));
-      let args = List.map (transl_type env policy Mode.Locality.Global Mode.Linearity.Many) stl in
+      let args = List.map (transl_type env policy Global Many) stl in
       let params = instance_list decl.type_params in
       let unify_param =
         match decl.type_manifest with
@@ -601,7 +613,7 @@ and transl_type_aux env policy locality linearity styp =
         raise(Error(styp.ptyp_loc, env,
                     Type_arity_mismatch(lid.txt, decl.type_arity,
                                         List.length stl)));
-      let args = List.map (transl_type env policy Mode.Locality.Global Mode.Linearity.Many) stl in
+      let args = List.map (transl_type env policy Global Many) stl in
       let params = instance_list decl.type_params in
       List.iter2
         (fun (sty, cty) ty' ->
@@ -701,7 +713,7 @@ and transl_type_aux env policy locality linearity styp =
             let tl =
               Builtin_attributes.warning_scope rf_attributes
                 (fun () ->
-                   List.map (transl_type env policy Mode.Locality.Global Mode.Linearity.Many) stl)
+                   List.map (transl_type env policy Global Many) stl)
             in
             List.iter (fun {ctyp_type; ctyp_loc} ->
               (* CR layouts: at some point we'll allow different layouts in
@@ -730,7 +742,7 @@ and transl_type_aux env policy locality linearity styp =
             add_typed_field styp.ptyp_loc l.txt f;
               Ttag (l,c,tl)
         | Rinherit sty ->
-          let cty = transl_type env policy Mode.Locality.Global Mode.Linearity.Many sty in
+          let cty = transl_type env policy Global Many sty in
             let ty = cty.ctyp_type in
             let nm =
               match get_desc cty.ctyp_type with
@@ -812,7 +824,7 @@ and transl_type_aux env policy locality linearity styp =
       let l, mty = create_package_mty true styp.ptyp_loc env (p, l) in
       let mty = TyVarEnv.with_local_scope (fun () -> !transl_modtype env mty) in
       let ptys = List.map (fun (s, pty) ->
-                             s, transl_type env policy Mode.Locality.Global Mode.Linearity.Many pty
+                             s, transl_type env policy Global Many pty
                           ) l in
       List.iter (fun (s,{ctyp_type=ty}) ->
         match
@@ -855,7 +867,9 @@ and transl_fields env policy o fields =
     | Otag (s, ty1) -> begin
         let ty1 =
           Builtin_attributes.warning_scope of_attributes
-            (fun () -> transl_type env policy Mode.Locality.Global Mode.Linearity.Many (Ast_helper.Typ.force_poly ty1))
+            (fun () ->
+               transl_type env policy Global Many
+                 (Ast_helper.Typ.force_poly ty1))
         in
         begin
           match
@@ -873,7 +887,7 @@ and transl_fields env policy o fields =
         field
       end
     | Oinherit sty -> begin
-        let cty = transl_type env policy Mode.Locality.Global Mode.Linearity.Many sty in
+        let cty = transl_type env policy Global Many sty in
         let nm =
           match get_desc cty.ctyp_type with
             Tconstr(p, _, _) -> Some p
@@ -956,7 +970,7 @@ let transl_simple_type_univars env styp =
   let typ, univs = TyVarEnv.collect_univars begin fun () ->
     begin_def ();
     let policy = TyVarEnv.univars_policy in
-    let typ = transl_type env policy Mode.Locality.Global Mode.Linearity.Many styp in
+    let typ = transl_type env policy Global Many styp in
     TyVarEnv.globalize_used_variables policy env ();
     end_def ();
     generalize typ.ctyp_type;
@@ -988,7 +1002,7 @@ let transl_type_scheme env styp =
      begin_def();
      let vars = List.map (fun v -> v.txt) vars in
      let univars = TyVarEnv.make_poly_univars vars in
-     let typ = transl_simple_type env ~univars ~closed:true Mode.Locality.Global Mode.Linearity.Many st in
+     let typ = transl_simple_type env ~univars ~closed:true Global Many st in
      end_def();
      generalize typ.ctyp_type;
      let _ = TyVarEnv.instance_poly_univars env styp.ptyp_loc univars in
@@ -999,7 +1013,7 @@ let transl_type_scheme env styp =
        ctyp_attributes = styp.ptyp_attributes }
   | _ ->
      begin_def();
-     let typ = transl_simple_type env ~closed:false Mode.Locality.Global Mode.Linearity.Many styp in
+     let typ = transl_simple_type env ~closed:false Global Many styp in
      end_def();
      generalize typ.ctyp_type;
      typ

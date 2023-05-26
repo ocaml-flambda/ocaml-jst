@@ -359,14 +359,14 @@ let mode_legacy =
 mode is the mode of the function region *)
 let mode_return mode =
   { (mode_default (Mode.Value.local_to_regional mode)) with
-    position = RTail (mode.locality, Tail);
+    position = RTail (Mode.Value.locality mode, Tail);
     escaping_context = Some Return;
   }
 
 (* used when entering a region.*)
 let mode_region mode =
   { (mode_default (Mode.Value.local_to_regional mode)) with
-    position = RTail (mode.locality, Nontail);
+    position = RTail (Mode.Value.locality mode, Nontail);
     escaping_context = None;
   }
 
@@ -689,16 +689,16 @@ let has_modes_attr_pat ppat =
 let type_modes_const_pat sp =
   let has_mode = has_modes_attr_pat sp in
   let locality =
-    if has_mode.locality then Mode.Locality.Local
-    else Mode.Locality.Global
+    if has_mode.locality then Mode.Locality.Const.Local
+    else Mode.Locality.Const.Global
   in
   let uniqueness =
-    if has_mode.uniqueness then Mode.Uniqueness.Unique
-    else Mode.Uniqueness.Shared
+    if has_mode.uniqueness then Mode.Uniqueness.Const.Unique
+    else Mode.Uniqueness.Const.Shared
   in
   let linearity =
-    if has_mode.linearity then Mode.Linearity.Once
-    else Mode.Linearity.Many
+    if has_mode.linearity then Mode.Linearity.Const.Once
+    else Mode.Linearity.Const.Many
   in
   {locality; uniqueness; linearity}
 
@@ -717,20 +717,20 @@ let type_modes_pat sp =
     if has_mode.linearity then Mode.Linearity.once
     else Mode.Linearity.newvar ()
   in
-  {locality; uniqueness; linearity}
+  Mode.Alloc.prod locality uniqueness linearity
 
 let type_mode_exp sp =
-  let locality =
-    if has_local_attr_exp sp then Mode.Locality.Local
-    else Mode.Locality.Global
+  let locality : Mode.Locality.Const.t =
+    if has_local_attr_exp sp then Local
+    else Global
   in
-  let uniqueness =
-    if has_unique_attr_exp sp then Mode.Uniqueness.Unique
-    else Mode.Uniqueness.Shared
+  let uniqueness : Mode.Uniqueness.Const.t =
+    if has_unique_attr_exp sp then Unique
+    else Shared
   in
-  let linearity =
-    if has_once_attr_exp sp then Mode.Linearity.Once
-    else Mode.Linearity.Many
+  let linearity : Mode.Linearity.Const.t =
+    if has_once_attr_exp sp then Once
+    else Many
   in
   {locality; uniqueness; linearity}
 
@@ -3231,15 +3231,28 @@ let type_omitted_parameters expected_mode env ty_ret mode_ret args =
              in
              let closed_args = new_closed_args @ closed_args in
              let open_args = [] in
-             let locality = Mode.Locality.join (List.map (fun m -> m.locality) (mode_fun :: closed_args)) in
+             let locality =
+               Mode.Locality.join
+                 (List.map Mode.Alloc.locality
+                    (mode_fun :: closed_args))
+             in
              let uniqueness= Mode.Uniqueness.newvar () in
              (* uniqueness of closure are not constrained *)
-             let linearity = Mode.Linearity.join
-                    ((List.map (fun m -> m.linearity) (mode_fun :: closed_args))
-                  @ (List.map (fun m -> Mode.Linearity.from_dual m.uniqueness) closed_args)) in
-             let mode_closure = {locality; uniqueness; linearity} in
+             let linearity =
+               Mode.Linearity.join
+                 ((List.map Mode.Alloc.linearity (mode_fun :: closed_args))
+                  @ (List.map (fun m -> Mode.Linearity.of_dual
+                                          (Mode.Alloc.uniqueness m))
+                       closed_args))
+             in
+             let mode_closure =
+               Mode.Alloc.prod locality uniqueness linearity
+             in
              register_allocation_mode mode_closure;
-             let arg = Omitted { mode_closure; mode_arg; mode_ret; ty_arg; ty_env = env } in
+             let arg =
+               Omitted
+                 { mode_closure; mode_arg; mode_ret; ty_arg; ty_env = env }
+             in
              let args = (lbl, arg) :: args in
              (ty_ret, mode_closure, open_args, closed_args, args))
       (ty_ret, mode_ret, [], [], []) (List.rev args)
@@ -4116,20 +4129,22 @@ exist what-so-ever.
 once_ annotations. This is easily done.
 *)
 let unique_use ~loc ~env mode =
+  let uniqueness = Mode.Value.uniqueness mode in
+  let linearity = Mode.Value.linearity mode in
   if not (Language_extension.is_enabled Unique) then begin
-      (* if unique extension is not enabled, we will not run uniqueness analysis ;
-      instead, we force all uses to be shared and many. This is equivalent to
-      running a UA which forces everything *)
-    (match Mode.Uniqueness.submode Mode.Uniqueness.shared mode.uniqueness with
+    (* if unique extension is not enabled, we will not run uniqueness analysis;
+       instead, we force all uses to be shared and many. This is equivalent to
+       running a UA which forces everything *)
+    (match Mode.Uniqueness.submode Mode.Uniqueness.shared uniqueness with
     | Ok () -> ()
     | Error () -> raise (Error(loc, env, Submode_failed(`Uniqueness, Other, None, [])))
     );
-    (match Mode.Linearity.submode mode.linearity Mode.Linearity.many with
+    (match Mode.Linearity.submode linearity Mode.Linearity.many with
     | Ok () -> ()
     | Error () -> raise (Error (loc, env, Submode_failed(`Linearity, Other, None, [])))
     )
   end;
-  (mode.uniqueness, mode.linearity)
+  (uniqueness, linearity)
 
 let rec type_exp ?recarg env expected_mode sexp =
   (* We now delegate everything to type_expect *)
@@ -4185,12 +4200,21 @@ and type_expect_
   | None      -> match sexp.pexp_desc with
   | Pexp_ident lid ->
       let path, mode, shared_reasons, desc, kind = type_ident env ~recarg lid in
-      let mode = match path with
+      let mode =
+        match path with
         | Path.Pident _ ->
-            let uniqueness, _ = Mode.Uniqueness.newvar_above mode.uniqueness in
-            let linearity, _ = Mode.Linearity.newvar_above mode.linearity in
-            Mode.Value.with_linearity linearity (Mode.Value.with_uniqueness uniqueness mode)
-        | _ -> mode in
+            let uniqueness, _ =
+              Mode.Uniqueness.newvar_above
+                (Mode.Value.uniqueness mode)
+            in
+            let linearity, _ =
+              Mode.Linearity.newvar_above
+                (Mode.Value.linearity mode)
+            in
+            Mode.Value.with_linearity linearity
+              (Mode.Value.with_uniqueness uniqueness mode)
+        | _ -> mode
+      in
       let exp_desc =
         match desc.val_kind with
         | Val_ivar (_, cl_num) ->
@@ -4452,16 +4476,22 @@ and type_expect_
         | RTail (regionality, _) ->
           (* mode' is RNontail, because currently our language cannot construct
              region in the tail of another region.*)
-          let mode' = mode_default {expected_mode.mode with locality = regionality} in
+          let mode' =
+            mode_default
+              (Mode.Value.with_locality regionality expected_mode.mode)
+          in
           (* The middle-end relies on all functions which allocate into their
              parent's region having a return mode of local. *)
-          submode ~loc ~env ~reason:Other {mode'.mode with locality = Mode.Regionality.local} mode';
+          submode ~loc ~env ~reason:Other
+            (Mode.Value.with_locality Mode.Regionality.local mode'.mode) mode';
           let new_env = Env.add_exclave_lock env in
           let exp =
             type_expect ?in_function ~recarg new_env mode' sbody ty_expected_explained
           in
-          submode ~loc ~env ~reason:Other {expected_mode.mode
-            with locality = Mode.Regionality.regional} expected_mode;
+          submode ~loc ~env ~reason:Other
+            (Mode.Value.with_locality
+               Mode.Regionality.regional expected_mode.mode)
+            expected_mode;
           { exp_desc = Texp_exclave exp;
             exp_loc = loc;
             exp_extra = [];
@@ -4866,8 +4896,12 @@ and type_expect_
           generalize_structure ty_arg
         end;
       let mode = mode_cross_to_min env ty_arg mode in
-      let uniqueness, _ = Mode.Uniqueness.newvar_above mode.uniqueness in
-      let linearity, _ = Mode.Linearity.newvar_above mode.linearity in
+      let uniqueness, _ =
+        Mode.Uniqueness.newvar_above (Mode.Value.uniqueness mode)
+      in
+      let linearity, _ =
+        Mode.Linearity.newvar_above (Mode.Value.linearity mode)
+      in
       let mode =
         Mode.Value.with_linearity linearity (
         Mode.Value.with_uniqueness uniqueness mode)
@@ -4893,7 +4927,7 @@ and type_expect_
         raise(Error(loc, env, Label_not_mutable lid.txt));
       rue {
         exp_desc = Texp_setfield(record,
-          (Mode.Value.regional_to_local_alloc rmode).locality,
+          (Mode.Alloc.locality (Mode.Value.regional_to_local_alloc rmode)),
           label_loc, label, newval);
         exp_loc = loc; exp_extra = [];
         exp_type = instance Predef.type_unit;
@@ -5710,11 +5744,10 @@ and type_ident env ?(recarg=Rejected) lid =
        begin match prim.prim_native_repr_res, mode with
        (* if the locality of returning value of the primitive is poly
         we then register allocation for further optimization *)
-       | (Prim_poly, _), Some mode -> register_allocation_mode
-          {locality = mode;
-           uniqueness = Mode.Uniqueness.shared;
-           linearity = Mode.Linearity.many
-          }
+       | (Prim_poly, _), Some mode ->
+           register_allocation_mode
+             (Mode.Alloc.prod
+                mode Mode.Uniqueness.shared Mode.Linearity.many)
        | _ -> ()
        end;
        ty, Id_prim mode
@@ -5756,7 +5789,8 @@ and type_function ?in_function loc attrs env (expected_mode : expected_mode)
   in
   if expected_mode.strictly_local then
     (* this will never raise *)
-    Mode.Locality.submode_exn Mode.Locality.local alloc_mode.locality;
+    Mode.Locality.submode_exn
+      Mode.Locality.local (Mode.Alloc.locality alloc_mode);
   register_allocation_mode alloc_mode;
   let (loc_fun, ty_fun) =
     match in_function with
@@ -5820,11 +5854,14 @@ and type_function ?in_function loc attrs env (expected_mode : expected_mode)
     | Some (_, _, region_locked) -> env, region_locked
     | None ->
       let region_locked = not (is_local_returning_function caselist) in
-      let env = Env.add_linearity_lock ~shared_context:Closure alloc_mode.linearity env in
+      let env =
+        Env.add_linearity_lock ~shared_context:Closure
+          (Mode.Alloc.linearity alloc_mode) env
+      in
       let env =
         Env.add_locality_lock
           ?escaping_context:expected_mode.escaping_context
-          alloc_mode.locality
+          (Mode.Alloc.locality alloc_mode)
           env
       in
       let env =
@@ -5843,23 +5880,39 @@ and type_function ?in_function loc attrs env (expected_mode : expected_mode)
       (* no need to check mode crossing in this case*)
       (* because ty_res always a function *)
       let inner_alloc_mode, _ = Mode.Alloc.newvar_below ret_mode in
-      begin match Mode.Locality.submode arg_mode.locality inner_alloc_mode.locality with
+      begin match
+        Mode.Locality.submode
+          (Mode.Alloc.locality arg_mode)
+          (Mode.Alloc.locality inner_alloc_mode)
+      with
       | Ok () -> ()
       | Error () ->
         raise (Error(loc_fun, env, Uncurried_function_escapes))
       end;
-      begin match Mode.Locality.submode alloc_mode.locality inner_alloc_mode.locality with
+      begin match
+        Mode.Locality.submode
+          (Mode.Alloc.locality alloc_mode)
+          (Mode.Alloc.locality inner_alloc_mode)
+      with
       | Ok () -> ()
       | Error () ->
         raise (Error(loc_fun, env, Uncurried_function_escapes))
       end;
       (* uniqueness are not constrained *)
-      begin match Mode.Linearity.submode arg_mode.linearity inner_alloc_mode.linearity with
+      begin match
+        Mode.Linearity.submode
+          (Mode.Alloc.linearity arg_mode)
+          (Mode.Alloc.linearity inner_alloc_mode)
+      with
       | Ok () -> ()
       | Error () ->
         raise (Error(loc_fun, env, Uncurried_function_linearity))
       end;
-      begin match Mode.Linearity.submode alloc_mode.linearity inner_alloc_mode.linearity with
+      begin match
+        Mode.Linearity.submode
+          (Mode.Alloc.linearity alloc_mode)
+          (Mode.Alloc.linearity inner_alloc_mode)
+      with
       | Ok () -> ()
       | Error () ->
         raise (Error(loc_fun, env, Uncurried_function_linearity))
@@ -5867,8 +5920,11 @@ and type_function ?in_function loc attrs env (expected_mode : expected_mode)
       (* In addition, unique argument make the returning function once.
        In other words, if argument <= unique, returning function >= once.
        That is, returning function >= (dual of argument) *)
-      begin match Mode.Linearity.submode
-        (Mode.Linearity.from_dual arg_mode.uniqueness) inner_alloc_mode.linearity with
+      begin match
+        Mode.Linearity.submode
+          (Mode.Linearity.of_dual (Mode.Alloc.uniqueness arg_mode))
+          (Mode.Alloc.linearity inner_alloc_mode)
+      with
       | Ok () -> ()
       | Error () ->
         raise (Error(loc_fun, env, Uncurried_function_uniqueness_linearity))
@@ -5882,7 +5938,11 @@ and type_function ?in_function loc attrs env (expected_mode : expected_mode)
         if region_locked then mode_return ret_value_mode
         else begin
           (* if the function has no region, we force the ret_mode to be local *)
-          match Mode.Locality.submode Mode.Locality.local ret_mode.locality with
+          match
+            Mode.Locality.submode
+              Mode.Locality.local
+              (Mode.Alloc.locality ret_mode)
+          with
           | Ok () -> mode_default ret_value_mode
           | Error () -> raise (Error (loc_fun, env, Function_returns_local))
         end
@@ -7842,7 +7902,9 @@ let escaping_hint failure_reason submode_reason
       let rec loop sureness n ty =
         match get_desc ty with
         | Tarrow ((_, _, res_mode), _, res_ty, _) ->
-          begin match Mode.Locality.check_const res_mode.locality with
+          begin match
+            Mode.Locality.check_const (Mode.Alloc.locality res_mode)
+          with
           | Some Global ->
             Some (n+1, true)
           | (None | Some Local) as res_mode ->

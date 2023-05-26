@@ -1099,23 +1099,26 @@ let add_type_to_preparation = prepare_type
 let print_labels = ref true
 
 let tree_of_mode mode =
-  let {Modes.locality = locality; uniqueness; linearity} = Mode.Alloc.check_const mode in
-  let locality = match locality with
+  let {Mode.locality; uniqueness; linearity} = Mode.Alloc.check_const mode in
+  let oam_locality =
+    match locality with
     | Some Global -> Olm_global
     | Some Local -> Olm_local
     | None -> Olm_unknown
   in
-  let uniqueness = match uniqueness with
+  let oam_uniqueness =
+    match uniqueness with
     | Some Unique -> Oum_unique
     | Some Shared -> Oum_shared
     | None -> Oum_unknown
   in
-  let linearity = match linearity with
+  let oam_linearity =
+    match linearity with
     | Some Many -> Olinm_many
     | Some Once -> Olinm_once
     | None -> Olinm_unknown
   in
-  {Modes.locality = locality; uniqueness; linearity}
+  {oam_locality; oam_uniqueness; oam_linearity}
 
 let rec tree_of_typexp mode ty =
   let px = proxy ty in

@@ -256,7 +256,8 @@ let rec push_defaults loc bindings use_lhs arg_mode cases partial warnings =
             ({exp with exp_type = pat.pat_type; exp_env = env; exp_desc =
               Texp_ident
                 (Path.Pident param, mknoloc (Longident.Lident name),
-                 desc, Id_value, (mode.uniqueness, mode.linearity))},
+                 desc, Id_value,
+                 (Mode.Value.uniqueness mode, Mode.Value.linearity mode))},
              Sort.value,
              (* CR layouts v2: Value here will changes when functions take other
                 layouts.  Maybe we need a sort in [Typedtree.case]? *)

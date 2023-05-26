@@ -44,7 +44,7 @@ and type_desc =
   | Tpackage of Path.t * (Longident.t * type_expr) list
 
 and arrow_desc =
-  arg_label * Modes.Alloc.t * Modes.Alloc.t
+  arg_label * Mode.Alloc.t * Mode.Alloc.t
 
 and row_desc =
     { row_fields: (label * row_field) list;
@@ -637,9 +637,7 @@ type change =
   | Ckind : [`var] field_kind_gen -> change
   | Ccommu : [`var] commutable_gen -> change
   | Cuniv : type_expr option ref * type_expr option -> change
-  | Cmode_upper : 'a Modes.var * 'a -> change
-  | Cmode_lower : 'a Modes.var * 'a -> change
-  | Cmode_vlower : 'a Modes.var * 'a Modes.var list -> change
+  | Cmodes : Mode.changes -> change
 
 type changes =
     Change of change * changes ref
@@ -653,18 +651,8 @@ let log_change ch =
   !trail := Change (ch, r');
   trail := r'
 
-let log_changes chead ctail =
-  if chead = Unchanged then (assert (!ctail = Unchanged))
-  else begin
-    !trail := chead;
-    trail := ctail
-  end
-
-let append_change ctail ch =
-  assert (!(!ctail) = Unchanged);
-  let r' = ref Unchanged in
-  (!ctail) := Change (ch, r');
-  ctail := r'
+let () =
+  Mode.change_log := (fun changes -> log_change (Cmodes changes))
 
 (* constructor and accessors for [field_kind] *)
 
@@ -913,9 +901,7 @@ let undo_change = function
   | Ckind  (FKvar r) -> r.field_kind <- FKprivate
   | Ccommu (Cvar r)  -> r.commu <- Cunknown
   | Cuniv  (r, v)    -> r := v
-  | Cmode_upper (v, u) -> v.upper <- u
-  | Cmode_lower (v, l) -> v.lower <- l
-  | Cmode_vlower (v, vs) -> v.vlower <- vs
+  | Cmodes ms -> Mode.undo_changes ms
 
 type snapshot = changes ref * int
 let last_snapshot = Local_store.s_ref 0

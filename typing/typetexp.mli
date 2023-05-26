@@ -48,13 +48,14 @@ end
 val valid_tyvar_name : string -> bool
 
 val transl_simple_type:
-        Env.t -> ?univars:TyVarEnv.poly_univars -> closed:bool -> Mode.Locality.const
-        -> Mode.Linearity.const
+        Env.t -> ?univars:TyVarEnv.poly_univars -> closed:bool
+        -> Mode.Locality.Const.t
+        -> Mode.Linearity.Const.t
         -> Parsetree.core_type -> Typedtree.core_type
 val transl_simple_type_univars:
         Env.t -> Parsetree.core_type -> Typedtree.core_type
 val transl_simple_type_delayed
-  :  Env.t -> Mode.Locality.const -> Mode.Linearity.const
+  :  Env.t -> Mode.Locality.Const.t -> Mode.Linearity.Const.t
   -> Parsetree.core_type
   -> Typedtree.core_type * type_expr * (unit -> unit)
         (* Translate a type, but leave type variables unbound. Returns
@@ -65,7 +66,7 @@ val transl_type_scheme:
 val transl_type_param:
   Env.t -> Parsetree.core_type -> layout -> Typedtree.core_type
 
-val get_alloc_mode : Parsetree.core_type -> Mode.Alloc.const
+val get_alloc_mode : Parsetree.core_type -> Mode.Alloc.Const.t
 
 exception Already_bound
 

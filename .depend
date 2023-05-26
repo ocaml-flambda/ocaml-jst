@@ -782,7 +782,6 @@ typing/env.cmi : \
     typing/shape.cmi \
     typing/path.cmi \
     parsing/parsetree.cmi \
-    typing/modes.cmi \
     typing/mode.cmi \
     utils/misc.cmi \
     parsing/longident.cmi \
@@ -1027,22 +1026,12 @@ typing/layouts.cmi : \
     typing/ident.cmi \
     parsing/asttypes.cmi
 typing/mode.cmo : \
-    typing/types.cmi \
-    typing/modes.cmi \
     utils/misc.cmi \
     typing/mode.cmi
 typing/mode.cmx : \
-    typing/types.cmx \
-    typing/modes.cmx \
     utils/misc.cmx \
     typing/mode.cmi
-typing/mode.cmi : \
-    typing/modes.cmi
-typing/modes.cmo : \
-    typing/modes.cmi
-typing/modes.cmx : \
-    typing/modes.cmi
-typing/modes.cmi :
+typing/mode.cmi :
 typing/mtype.cmo : \
     typing/types.cmi \
     typing/subst.cmi \
@@ -1076,7 +1065,6 @@ typing/mtype.cmi : \
 typing/oprint.cmo : \
     parsing/pprintast.cmi \
     typing/outcometree.cmi \
-    typing/modes.cmi \
     typing/layouts.cmi \
     utils/language_extension.cmi \
     parsing/asttypes.cmi \
@@ -1084,7 +1072,6 @@ typing/oprint.cmo : \
 typing/oprint.cmx : \
     parsing/pprintast.cmx \
     typing/outcometree.cmi \
-    typing/modes.cmx \
     typing/layouts.cmx \
     utils/language_extension.cmx \
     parsing/asttypes.cmi \
@@ -1092,7 +1079,6 @@ typing/oprint.cmx : \
 typing/oprint.cmi : \
     typing/outcometree.cmi
 typing/outcometree.cmi : \
-    typing/modes.cmi \
     parsing/asttypes.cmi
 typing/parmatch.cmo : \
     utils/warnings.cmi \
@@ -1166,7 +1152,7 @@ typing/path.cmi : \
 typing/patterns.cmo : \
     typing/types.cmi \
     typing/typedtree.cmi \
-    typing/modes.cmi \
+    typing/mode.cmi \
     parsing/longident.cmi \
     parsing/location.cmi \
     typing/ident.cmi \
@@ -1177,7 +1163,7 @@ typing/patterns.cmo : \
 typing/patterns.cmx : \
     typing/types.cmx \
     typing/typedtree.cmx \
-    typing/modes.cmx \
+    typing/mode.cmx \
     parsing/longident.cmx \
     parsing/location.cmx \
     typing/ident.cmx \
@@ -1188,7 +1174,7 @@ typing/patterns.cmx : \
 typing/patterns.cmi : \
     typing/types.cmi \
     typing/typedtree.cmi \
-    typing/modes.cmi \
+    typing/mode.cmi \
     parsing/longident.cmi \
     typing/ident.cmi \
     parsing/asttypes.cmi
@@ -1296,7 +1282,6 @@ typing/printtyp.cmo : \
     parsing/parsetree.cmi \
     typing/outcometree.cmi \
     typing/oprint.cmi \
-    typing/modes.cmi \
     typing/mode.cmi \
     utils/misc.cmi \
     parsing/longident.cmi \
@@ -1322,7 +1307,6 @@ typing/printtyp.cmx : \
     parsing/parsetree.cmi \
     typing/outcometree.cmi \
     typing/oprint.cmx \
-    typing/modes.cmx \
     typing/mode.cmx \
     utils/misc.cmx \
     parsing/longident.cmx \
@@ -1843,7 +1827,6 @@ typing/typedtree.cmo : \
     typing/primitive.cmi \
     typing/path.cmi \
     parsing/parsetree.cmi \
-    typing/modes.cmi \
     typing/mode.cmi \
     parsing/longident.cmi \
     parsing/location.cmi \
@@ -1859,7 +1842,6 @@ typing/typedtree.cmx : \
     typing/primitive.cmx \
     typing/path.cmx \
     parsing/parsetree.cmi \
-    typing/modes.cmx \
     typing/mode.cmx \
     parsing/longident.cmx \
     parsing/location.cmx \
@@ -1875,7 +1857,6 @@ typing/typedtree.cmi : \
     typing/primitive.cmi \
     typing/path.cmi \
     parsing/parsetree.cmi \
-    typing/modes.cmi \
     typing/mode.cmi \
     parsing/longident.cmi \
     parsing/location.cmi \
@@ -2032,7 +2013,7 @@ typing/types.cmo : \
     typing/primitive.cmi \
     typing/path.cmi \
     parsing/parsetree.cmi \
-    typing/modes.cmi \
+    typing/mode.cmi \
     utils/misc.cmi \
     parsing/longident.cmi \
     parsing/location.cmi \
@@ -2047,7 +2028,7 @@ typing/types.cmx : \
     typing/primitive.cmx \
     typing/path.cmx \
     parsing/parsetree.cmi \
-    typing/modes.cmx \
+    typing/mode.cmx \
     utils/misc.cmx \
     parsing/longident.cmx \
     parsing/location.cmx \
@@ -2062,7 +2043,7 @@ typing/types.cmi : \
     typing/primitive.cmi \
     typing/path.cmi \
     parsing/parsetree.cmi \
-    typing/modes.cmi \
+    typing/mode.cmi \
     parsing/longident.cmi \
     parsing/location.cmi \
     typing/layouts.cmi \

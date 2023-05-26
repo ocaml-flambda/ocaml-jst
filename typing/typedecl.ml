@@ -1890,10 +1890,11 @@ let rec parse_native_repr_attributes env core_type ty rmode ~global_repr =
     let mode =
       if Builtin_attributes.has_local_opt ct1.ptyp_attributes
       then Prim_poly
-      else prim_const_mode marg.locality
+      else prim_const_mode (Mode.Alloc.locality marg)
     in
     let repr_args, repr_res =
-      parse_native_repr_attributes env ct2 t2 (prim_const_mode mret.locality) ~global_repr
+      parse_native_repr_attributes env ct2 t2
+        (prim_const_mode (Mode.Alloc.locality mret)) ~global_repr
     in
     ((mode,repr_arg) :: repr_args, repr_res)
   | (Ptyp_poly (_, t) | Ptyp_alias (t, _)), _, _ ->

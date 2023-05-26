@@ -83,9 +83,9 @@ let is_erasable = function
   | Local
   | Layouts Alpha
   | Layouts Beta
-  | Layouts Stable ->
+  | Layouts Stable
+  | Unique ->
       true
-  | Unique
   | Comprehensions
   | Include_functor
   | Polymorphic_parameters

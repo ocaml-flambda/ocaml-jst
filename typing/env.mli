@@ -234,7 +234,7 @@ function as argument, so that sub-moding error is triggered at the place where
 the error hints are immediately available. *)
 val lookup_value:
   ?use:bool -> loc:Location.t -> Longident.t -> t ->
-  Path.t * value_description * Modes.Value.t * shared_context list
+  Path.t * value_description * Mode.Value.t * shared_context list
 val lookup_type:
   ?use:bool -> loc:Location.t -> Longident.t -> t ->
   Path.t * type_declaration
@@ -314,10 +314,10 @@ val make_copy_of_types: t -> (t -> t)
 (* Insertion by identifier *)
 
 val add_value_lazy:
-    ?check:(string -> Warnings.t) -> ?mode:(Modes.Value.t) ->
+    ?check:(string -> Warnings.t) -> ?mode:(Mode.Value.t) ->
     Ident.t -> Subst.Lazy.value_description -> t -> t
 val add_value:
-    ?check:(string -> Warnings.t) -> ?mode:(Modes.Value.t) ->
+    ?check:(string -> Warnings.t) -> ?mode:(Mode.Value.t) ->
     Ident.t -> Types.value_description -> t -> t
 val add_type: check:bool -> Ident.t -> type_declaration -> t -> t
 val add_extension:
@@ -412,13 +412,13 @@ val enter_unbound_module : string -> module_unbound_reason -> t -> t
 
 (* Lock the environment *)
 
-val add_locality_lock : ?escaping_context:escaping_context -> Modes.Locality.t
+val add_locality_lock : ?escaping_context:escaping_context -> Mode.Locality.t
 -> t -> t
 (* Adding `once` lock is a no-op.
    Adding a `many` lock to the env has two consequences:
 - `once` variables beyond the lock cannot be accessed
 - `unique` variables beyond the lock can still be accessed, but will be relaxed to `shared` *)
-val add_linearity_lock : shared_context:shared_context -> Modes.Linearity.t -> t -> t
+val add_linearity_lock : shared_context:shared_context -> Mode.Linearity.t -> t -> t
 val add_region_lock : t -> t
 val add_exclave_lock : t -> t
 

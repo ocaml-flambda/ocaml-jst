@@ -15,7 +15,6 @@
 
 open Format
 open Outcometree
-open Modes
 
 exception Ellipsis
 
@@ -297,45 +296,37 @@ let join_linearity l1 l2 =
   | _ -> Olinm_many
 
 let default_mode =
-  {locality = Olm_global
-  ;uniqueness = Oum_shared
-  ;linearity = Olinm_many
-  }
+  { oam_locality = Olm_global;
+    oam_uniqueness = Oum_shared;
+    oam_linearity = Olinm_many; }
 
-  (* 1 is the mode of (A -> B -> C)
-     2 is the mode of A
-     need to calculate the mode of B -> C *)
-let join_modes  {locality = lm1;
-                uniqueness = _um1;
-                linearity = linm1}
-                {locality = lm2;
-                uniqueness = um2;
-                linearity = linm2} =
-  let linearity = join_linearity linm1 linm2 in
-  (* now check if argument is unique *)
-  let linearity = match um2 with
-  | Oum_unique -> join_linearity Olinm_once linearity
-  | _ -> linearity
+(* [join_modes oam_fun oam_arg] is the mode of B -> C, where [oam_fun]
+   is the mode of (A -> B -> C) and [oam_arg] is the mode of A. *)
+let join_modes fn arg =
+  let oam_locality = join_locality fn.oam_locality arg.oam_locality in
+  let oam_uniqueness = Oum_shared in
+  let oam_linearity = join_linearity fn.oam_linearity arg.oam_linearity in
+  let oam_linearity =
+    match arg.oam_uniqueness with
+    | Oum_unique -> join_linearity Olinm_once oam_linearity
+    | Oum_shared | Oum_unknown -> oam_linearity
   in
-  {locality = join_locality lm1 lm2
-  ;uniqueness = Oum_shared
-  ;linearity = linearity
-  }
+  { oam_locality; oam_uniqueness; oam_linearity; }
 
-let same_locality {locality=m1;_} {locality=m2;_} =
-  match m1, m2 with
+let same_locality m1 m2 =
+  match m1.oam_locality, m2.oam_locality with
   | Olm_local, Olm_global -> false
   | Olm_global, Olm_local -> false
   | _, _ -> true
 
-let same_uniqueness {uniqueness=m1;_} {uniqueness=m2;_} =
-  match m1, m2 with
+let same_uniqueness m1 m2 =
+  match m1.oam_uniqueness, m2.oam_uniqueness with
   | Oum_unique, Oum_shared -> false
   | Oum_shared, Oum_unique -> false
   | _, _ -> true
 
-let same_linearity {linearity=m1;_} {linearity=m2;_} =
-  match m1, m2 with
+let same_linearity m1 m2 =
+  match m1.oam_linearity, m2.oam_linearity with
   | Olinm_many, Olinm_once
   | Olinm_once, Olinm_many -> false
   | _, _ -> true
@@ -362,15 +353,15 @@ let rec print_out_type_0 mode ppf =
       print_out_type_1 mode ppf ty
 
 and print_out_type_mode mode ppf ty =
-  let is_local = match mode.locality with
+  let is_local = match mode.oam_locality with
     | Olm_local -> true
     | _ -> false
   in
-  let is_unique = match mode.uniqueness with
+  let is_unique = match mode.oam_uniqueness with
     | Oum_unique -> true
     | _ -> false
   in
-  let is_once = match mode.linearity with
+  let is_once = match mode.oam_linearity with
     | Olinm_once -> true
     | _ -> false
   in

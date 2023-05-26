@@ -12,56 +12,99 @@
 (*   special exception on linking described in the file LICENSE.          *)
 (*                                                                        *)
 (**************************************************************************)
-(* Modes *)
-include
-  module type of Modes
-    with type 'a var = 'a Modes.var
-     and type 'a mode = 'a Modes.mode
-     and type ('loc, 'u, 'lin) modes = ('loc, 'u, 'lin) Modes.modes
+
+type changes
+
+val undo_changes : changes -> unit
+
+val change_log : (changes -> unit) ref
 
 module Locality : sig
-  include module type of Modes.Locality with type const = Modes.Locality.const
 
-  type t = Modes.Locality.t
+  module Const : sig
 
-  val min_const : const
-  val max_const : const
-  val le_const : const -> const -> bool
-  val join_const : const -> const -> const
-  val meet_const : const -> const -> const
-  val print_const : Format.formatter -> const -> unit
+    type t =
+      | Global
+      | Local
+
+    val min : t
+    val max : t
+    val le : t -> t -> bool
+    val join : t -> t -> t
+    val meet : t -> t -> t
+    val print : Format.formatter -> t -> unit
+
+  end
+
+  type t
+
   val legacy : t
-  val of_const : const -> t
+  val of_const : Const.t -> t
   val global : t
   val local : t
   val submode : t -> t -> (unit, unit) result
   val submode_exn : t -> t -> unit
   val equate : t -> t -> (unit, unit) result
   val join : t list -> t
-  val constrain_upper : t -> const
-  val constrain_lower : t -> const
+  val constrain_upper : t -> Const.t
+  val constrain_lower : t -> Const.t
   val newvar : unit -> t
   val newvar_below : t -> t * bool
   val newvar_above : t -> t * bool
-  val check_const : t -> const option
+  val check_const : t -> Const.t option
   val print' : ?verbose:bool -> ?label:string -> Format.formatter -> t -> unit
   val print : Format.formatter -> t -> unit
 end
 
-module Uniqueness : sig
-  include
-    module type of Modes.Uniqueness with type const = Modes.Uniqueness.const
+module Regionality : sig
 
-  type t = Modes.Uniqueness.t
+  module Const : sig
+
+    type t =
+      | Global
+      | Regional
+      | Local
+
+  end
+
+  type t
+
+  type error = [ `Regionality | `Locality ]
+
+  val global : t
+  val regional : t
+  val local : t
+  val submode : t -> t -> (unit, error) result
+  val of_locality : Locality.t -> t
+
+  val regional_to_local : t -> t
+  val global_to_regional : t -> t
+  val local_to_regional : t -> t
+  val regional_to_global : t -> t
+
+  val print : Format.formatter -> t -> unit
+
+end
+
+module Uniqueness : sig
+
+  module Const : sig
+
+    type t = Unique | Shared
+
+    val min : t
+    val max : t
+    val le : t -> t -> bool
+    val join : t -> t -> t
+    val meet : t -> t -> t
+    val print : Format.formatter -> t -> unit
+
+  end
+
+  type t
 
   val legacy : t
-  val min_const : const
-  val max_const : const
-  val le_const : const -> const -> bool
-  val join_const : const -> const -> const
-  val meet_const : const -> const -> const
-  val print_const : Format.formatter -> const -> unit
-  val of_const : const -> t
+  val of_const : Const.t -> t
   val unique : t
   val shared : t
   val submode : t -> t -> (unit, unit) result
@@ -69,85 +112,110 @@ module Uniqueness : sig
   val equate : t -> t -> (unit, unit) result
   val join : t list -> t
   val meet : t list -> t
-  val constrain_upper : t -> const
-  val constrain_lower : t -> const
+  val constrain_upper : t -> Const.t
+  val constrain_lower : t -> Const.t
   val newvar : unit -> t
   val newvar_below : t -> t * bool
   val newvar_above : t -> t * bool
-  val check_const : t -> const option
+  val check_const : t -> Const.t option
   val print' : ?verbose:bool -> ?label:string -> Format.formatter -> t -> unit
   val print : Format.formatter -> t -> unit
 end
 
 module Linearity : sig
-  include module type of Modes.Linearity with type const = Modes.Linearity.const
 
-  type t = Modes.Linearity.t
+  module Const : sig
 
-  val min_const : const
-  val max_const : const
-  val le_const : const -> const -> bool
-  val join_const : const -> const -> const
-  val meet_const : const -> const -> const
-  val print_const : Format.formatter -> const -> unit
-  val of_const : const -> t
-  val to_dconst : const -> Uniqueness.const
-  val from_dconst : Uniqueness.const -> const
+    type t = Many | Once
+
+    val min : t
+    val max : t
+    val le : t -> t -> bool
+    val join : t -> t -> t
+    val meet : t -> t -> t
+    val print : Format.formatter -> t -> unit
+
+    val to_dual : t -> Uniqueness.Const.t
+    val of_dual : Uniqueness.Const.t -> t
+
+  end
+
+  type t
+
+  val of_const : Const.t -> t
   val to_dual : t -> Uniqueness.t
-  val from_dual : Uniqueness.t -> t
+  val of_dual : Uniqueness.t -> t
   val once : t
   val many : t
   val submode : t -> t -> (unit, unit) result
   val submode_exn : t -> t -> unit
   val equate : t -> t -> (unit, unit) result
   val join : t list -> t
-  val constrain_upper : t -> const
-  val constrain_lower : t -> const
+  val constrain_upper : t -> Const.t
+  val constrain_lower : t -> Const.t
   val newvar : unit -> t
   val newvar_below : t -> t * bool
   val newvar_above : t -> t * bool
-  val check_const : t -> const option
+  val check_const : t -> Const.t option
   val print' : ?verbose:bool -> ?label:string -> Format.formatter -> t -> unit
   val print : Format.formatter -> t -> unit
 end
 
+type ('a, 'b, 'c) modes =
+  { locality : 'a;
+    uniqueness : 'b;
+    linearity : 'c; }
+
 module Alloc : sig
-  include module type of Modes.Alloc with type const = Modes.Alloc.const
 
-  type t = Modes.Alloc.t
+  module Const : sig
 
-  (* Modes are ordered so that [global] is a submode of [local] *)
-  (* Modes are ordered so that [unique] is a submode of [shared] *)
+    type t =
+      (Locality.Const.t, Uniqueness.Const.t, Linearity.Const.t) modes
+
+    val join : t -> t -> t
+
+  end
+
+  type t
+
   val legacy : t
   val local : t
   val unique : t
   val local_unique : t
 
+  val prod : Locality.t -> Uniqueness.t -> Linearity.t -> t
+
   (* val unique : const
 
      val local_unique : t *)
 
-  val of_const : const -> t
+  val of_const : Const.t -> t
   val is_const : t -> bool
   val min_mode : t
   val max_mode : t
+
+  (** Projections to Locality, Uniqueness and Linearity *)
+
+  val locality : t -> Locality.t
+  val uniqueness : t -> Uniqueness.t
+  val linearity : t -> Linearity.t
 
   type error = [ `Locality | `Uniqueness | `Linearity ]
 
   val submode : t -> t -> (unit, error) result
   val submode_exn : t -> t -> unit
   val equate : t -> t -> (unit, error) result
-  val join_const : const -> const -> const
   val join : t list -> t
 
   (* Force a mode variable to its upper bound *)
-  val constrain_upper : t -> const
+  val constrain_upper : t -> Const.t
 
   (* Force a mode variable to its lower bound *)
-  val constrain_lower : t -> const
+  val constrain_lower : t -> Const.t
 
   (* Force a mode variable to legacys *)
-  val constrain_legacy : t -> const
+  val constrain_legacy : t -> Const.t
   val newvar : unit -> t
   val newvar_below : t -> t * bool
   val newvar_above : t -> t * bool
@@ -160,36 +228,24 @@ module Alloc : sig
 
   val check_const :
     t ->
-    ( Locality.const option,
-      Uniqueness.const option,
-      Linearity.const option )
-    Modes.modes
+    ( Locality.Const.t option,
+      Uniqueness.Const.t option,
+      Linearity.Const.t option ) modes
 
   val print' : ?verbose:bool -> Format.formatter -> t -> unit
   val print : Format.formatter -> t -> unit
 end
 
-module Regionality : sig
-  include
-    module type of Modes.Regionality
-      with type const = Modes.Regionality.const
-       and type t = Modes.Regionality.t
-
-  type error = [ `Regionality | `Locality ]
-
-  val global : t
-  val regional : t
-  val local : t
-  val submode : t -> t -> (unit, error) result
-  val of_locality : Locality.t -> t
-  val print : Format.formatter -> t -> unit
-end
-
 module Value : sig
-  include
-    module type of Modes.Value
-      with type const = Modes.Value.const
-       and type t = Modes.Value.t
+
+  module Const : sig
+
+    type t =
+      (Regionality.Const.t, Uniqueness.Const.t, Linearity.Const.t) modes
+
+  end
+
+  type t
 
   val legacy : t
   val regional : t
@@ -197,7 +253,7 @@ module Value : sig
   val unique : t
   val regional_unique : t
   val local_unique : t
-  val of_const : const -> t
+  val of_const : Const.t -> t
   val max_mode : t
   val min_mode : t
 
@@ -212,6 +268,12 @@ module Value : sig
   val with_locality : Regionality.t -> t -> t
   val with_uniqueness : Uniqueness.t -> t -> t
   val with_linearity : Linearity.t -> t -> t
+
+  (** Projections to Locality, Uniqueness and Linearity *)
+
+  val locality : t -> Regionality.t
+  val uniqueness : t -> Uniqueness.t
+  val linearity : t -> Linearity.t
 
   (** Injections from [Alloc.t] into [Value_mode.t] *)
 
@@ -289,18 +351,18 @@ module Value : sig
   val equate : t -> t -> (unit, error) result
   val submode_meet : t -> t list -> (unit, error) result
   val join : t list -> t
-  val constrain_upper : t -> const
-  val constrain_lower : t -> const
+  val constrain_upper : t -> Const.t
+  val constrain_lower : t -> Const.t
   val newvar : unit -> t
   val newvar_below : t -> t * bool
   val newvar_above : t -> t * bool
 
   val check_const :
     t ->
-    ( Regionality.const option,
-      Uniqueness.const option,
-      Linearity.const option )
-    Modes.modes
+    ( Regionality.Const.t option,
+      Uniqueness.Const.t option,
+      Linearity.Const.t option )
+    modes
 
   val print' : ?verbose:bool -> Format.formatter -> t -> unit
   val print : Format.formatter -> t -> unit

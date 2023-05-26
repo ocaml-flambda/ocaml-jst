@@ -1541,11 +1541,25 @@ let rec instance_prim_locals locals mvar macc finalret ty =
   match locals, get_desc ty with
   | l :: locals, Tarrow ((lbl,marg,mret),arg,ret,commu) ->
      let marg = Mode.Alloc.with_locality (prim_mode (Some mvar) l) marg in
-     let locality = Mode.Locality.join [marg.locality; mret.locality; macc.Mode.locality] in
+     let locality =
+       Mode.Locality.join
+         [Mode.Alloc.locality marg;
+          Mode.Alloc.locality mret;
+          Mode.Alloc.locality macc]
+     in
      let uniqueness = Mode.Uniqueness.shared in
-     let linearity = Mode.Linearity.join [marg.linearity; mret.linearity; macc.Mode.linearity] in
-     let linearity = Mode.Linearity.join [linearity; (Mode.Linearity.from_dual marg.uniqueness)] in
-     let macc = {Mode.locality; uniqueness; linearity} in
+     let linearity =
+       Mode.Linearity.join
+         [Mode.Alloc.linearity marg;
+          Mode.Alloc.linearity mret;
+          Mode.Alloc.linearity macc]
+     in
+     let linearity =
+       Mode.Linearity.join
+         [linearity;
+          Mode.Linearity.of_dual (Mode.Alloc.uniqueness marg)]
+     in
+     let macc = Mode.Alloc.prod locality uniqueness linearity in
      let mret =
        match locals with
        | [] -> Mode.Alloc.with_locality finalret mret

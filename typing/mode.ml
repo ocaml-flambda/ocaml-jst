@@ -12,30 +12,129 @@
 (*   special exception on linking described in the file LICENSE.          *)
 (*                                                                        *)
 (**************************************************************************)
-open Types
-open Either
-include Modes
+
+type 'a var = {
+  mutable upper: 'a;
+  mutable lower: 'a;
+  mutable vlower: 'a var list;
+  mutable mark: bool;
+  mvid: int;
+}
+
+type changes =
+  | Cnil : changes
+  | Cupper : 'a var * 'a * changes -> changes
+  | Clower : 'a var * 'a * changes -> changes
+  | Cvlower : 'a var * 'a var list * changes -> changes
+
+let set_lower ~log v lower =
+  log := Clower(v, v.lower, !log);
+  v.lower <- lower
+
+let set_upper ~log v upper =
+  log := Cupper(v, v.upper, !log);
+  v.upper <- upper
+
+let set_vlower ~log v vlower =
+  log := Cvlower(v, v.vlower, !log);
+  v.vlower <- vlower
+
+let rec undo_changes = function
+  | Cnil -> ()
+  | Cupper(v, upper, rest) ->
+      v.upper <- upper;
+      undo_changes rest
+  | Clower(v, lower, rest) ->
+      v.lower <- lower;
+      undo_changes rest
+  | Cvlower(v, vlower, rest) ->
+      v.vlower <- vlower;
+      undo_changes rest
+
+let change_log : (changes -> unit) ref = ref (fun _ -> ())
+
+let is_not_nil = function
+  | Cnil -> false
+  | Cupper _ | Clower _ | Cvlower _ -> true
+
+let log_changes changes =
+  if is_not_nil changes then !change_log changes
+
+type ('a, 'b) const_or_var =
+  | Const of 'a
+  | Var of 'b
+
+type ('loc, 'u, 'lin) modes =
+{ locality : 'loc
+; uniqueness : 'u
+; linearity : 'lin
+}
 
 module type Lattice = sig
-  type const
 
-  val min_const : const
-  val max_const : const
-  val eq_const : const -> const -> bool
-  val le_const : const -> const -> bool
-  val join_const : const -> const -> const
-  val meet_const : const -> const -> const
-  val print_const : Format.formatter -> const -> unit
+  type t
+
+  val min : t
+  val max : t
+  val eq : t -> t -> bool
+  val le : t -> t -> bool
+  val join : t -> t -> t
+  val meet : t -> t -> t
+  val print : Format.formatter -> t -> unit
+
 end
 
-module type DualLattice = sig
-  module D : Lattice
+module type Solver = sig
 
   type const
 
-  val to_dconst : const -> D.const
-  val from_dconst : D.const -> const
-  val print_const : Format.formatter -> const -> unit
+  type t
+
+  type var
+
+  val of_const : const -> t
+
+  val min_mode : t
+
+  val max_mode : t
+
+  val is_const : t -> bool
+
+  val submode : t -> t -> (unit, unit) Result.t
+
+  val submode_exn : t -> t -> unit
+
+  val equate : t -> t -> (unit, unit) Result.t
+
+  val constrain_upper : t -> const
+
+  val newvar : unit -> t
+
+  val newvar_below : t -> t * bool
+
+  val newvar_above : t -> t * bool
+
+  val join : t list -> t
+
+  val meet : t list -> t
+
+  val constrain_lower : t -> const
+
+  val const_or_var : t -> (const, var) const_or_var
+
+  val check_const : t -> const option
+
+  val print_var : Format.formatter -> var -> unit
+
+  val print : Format.formatter -> t -> unit
+
+  val print' :
+    ?verbose:bool
+    -> ?label:string
+    -> Format.formatter
+    -> t
+    -> unit
+
 end
 
 (* The interface we provide to the user would build a directed graph where
@@ -44,7 +143,7 @@ end
    inefficient. Instead, we use the following data structure which can be derived
    from the above virtual graph. First of all, for each var, we store all vars
    that are directly (not recursively) less or equal than it, called `vlower`. In
-   additiona, we store the lower and upper bound for the variable, called `lower`
+   addition, we store the lower and upper bound for the variable, called `lower`
    and `upper`.
 
    To help understand, we also note the following:
@@ -56,42 +155,48 @@ end
    - `upper` and `lower` will not change unless some const is involved. If v.upper
    = v.lower, than v is determined.
 *)
-module Solver (L : Lattice) = struct
-  type t = L.const mode
+module Solver (L : Lattice) : Solver with type const := L.t = struct
+
+  type nonrec var = L.t var
+
+  type t =
+    | Amode of L.t
+    | Amodevar of var
+
+  let next_id = ref (-1)
+
+  let fresh () =
+    incr next_id;
+    {
+      upper = L.max;
+      lower = L.min;
+      vlower = [];
+      mvid = !next_id;
+      mark = false;
+    }
 
   exception NotSubmode
 
-  let min_mode = Amode L.min_const
-  let max_mode = Amode L.max_const
+  let of_const c = Amode c
+  let min_mode = Amode L.min
+  let max_mode = Amode L.max
   let is_const = function Amode _ -> true | Amodevar _ -> false
-
-  let set_lower ~log v lower =
-    append_change log (Cmode_lower (v, v.lower));
-    v.lower <- lower
-
-  let set_upper ~log v upper =
-    append_change log (Cmode_upper (v, v.upper));
-    v.upper <- upper
-
-  let set_vlower ~log v vlower =
-    append_change log (Cmode_vlower (v, v.vlower));
-    v.vlower <- vlower
 
   let submode_cv ~log m v =
     (* Printf.printf "  %a <= %a\n" pp_c m pp_v v; *)
-    if L.le_const m v.lower then ()
-    else if not (L.le_const m v.upper) then raise NotSubmode
+    if L.le m v.lower then ()
+    else if not (L.le m v.upper) then raise NotSubmode
     else
-      let m = L.join_const v.lower m in
+      let m = L.join v.lower m in
       set_lower ~log v m;
-      if L.eq_const m v.upper then set_vlower ~log v []
+      if L.eq m v.upper then set_vlower ~log v []
 
   let rec submode_vc ~log v m =
     (* Printf.printf "  %a <= %a\n" pp_v v pp_c m; *)
-    if L.le_const v.upper m then ()
-    else if not (L.le_const v.lower m) then raise NotSubmode
+    if L.le v.upper m then ()
+    else if not (L.le v.lower m) then raise NotSubmode
     else
-      let m = L.meet_const v.upper m in
+      let m = L.meet v.upper m in
       set_upper ~log v m;
       v.vlower
       |> List.iter (fun a ->
@@ -101,12 +206,12 @@ module Solver (L : Lattice) = struct
                 submode_cv while v.lower is not, because from `a` we cannot find `v` *)
              (* In contrast, the `upper` field is always updated timely, because we
                 have `vlower` *)
-             set_lower ~log v (L.join_const v.lower a.lower));
-      if L.eq_const v.lower m then set_vlower ~log v []
+             set_lower ~log v (L.join v.lower a.lower));
+      if L.eq v.lower m then set_vlower ~log v []
 
   let submode_vv ~log a b =
     (* Printf.printf "  %a <= %a\n" pp_v a pp_v b; *)
-    if L.le_const a.upper b.lower then ()
+    if L.le a.upper b.lower then ()
     else if a == b || List.memq a b.vlower then ()
     else (
       (* the ordering of the following three clauses doesn't matter
@@ -117,12 +222,67 @@ module Solver (L : Lattice) = struct
       (* as mentioned, at this point, vars larger than `b` will have
          `lower` out-of-date *))
 
+  let rec all_equal v = function
+    | [] -> true
+    | v' :: rest -> if v == v' then all_equal v rest else false
+
+  let join_vc v m =
+    if L.le v.upper m then Amode m
+    else if L.le m v.lower then Amodevar v
+    else begin
+      let log = ref Cnil in
+      let v' = fresh () in
+      submode_cv ~log m v';
+      submode_vv ~log v v';
+      log_changes !log;
+      Amodevar v'
+    end
+
+  let join_vsc vs m =
+    match vs with
+    | [] -> Amode m
+    | v :: rest ->
+        if all_equal v rest then join_vc v m
+        else begin
+          let log = ref Cnil in
+          let v = fresh () in
+          submode_cv ~log m v;
+          List.iter (fun v' -> submode_vv ~log v' v) vs;
+          log_changes !log;
+          Amodevar v
+        end
+
+  let meet_vc v m =
+    if L.le m v.lower then Amode m
+    else if L.le v.upper m then Amodevar v
+    else begin
+      let log = ref Cnil in
+      let v' = fresh () in
+      submode_vc ~log v' m;
+      submode_vv ~log v' v;
+      log_changes !log;
+      Amodevar v'
+    end
+
+  let meet_vsc vs m =
+    match vs with
+    | [] -> Amode m
+    | v :: rest ->
+        if all_equal v rest then meet_vc v m
+        else begin
+          let log = ref Cnil in
+          let v = fresh () in
+          submode_vc ~log v m;
+          List.iter (fun v' -> submode_vv ~log v v') vs;
+          log_changes !log;
+          Amodevar v
+        end
+
   let submode a b =
-    let log_head = ref Unchanged in
-    let log = ref log_head in
+    let log = ref Cnil in
     match
       match (a, b) with
-      | Amode a, Amode b -> if not (L.le_const a b) then raise NotSubmode
+      | Amode a, Amode b -> if not (L.le a b) then raise NotSubmode
       | Amodevar v, Amode c ->
           (* Printf.printf "%a <= %a\n" pp_v v pp_c c; *)
           submode_vc ~log v c
@@ -134,11 +294,10 @@ module Solver (L : Lattice) = struct
           submode_vv ~log a b
     with
     | () ->
-        log_changes !log_head !log;
+        log_changes !log;
         Ok ()
     | exception NotSubmode ->
-        let backlog = rev_log [] !log_head in
-        List.iter undo_change backlog;
+        undo_changes !log;
         Error ()
 
   let submode_exn t1 t2 =
@@ -157,63 +316,39 @@ module Solver (L : Lattice) = struct
         submode_exn (Amode v.upper) (Amodevar v);
         v.upper
 
-  let next_id = ref (-1)
-
-  let fresh () =
-    incr next_id;
-    {
-      upper = L.max_const;
-      lower = L.min_const;
-      vlower = [];
-      mvid = !next_id;
-      mark = false;
-    }
-
   let newvar () = Amodevar (fresh ())
 
   let newvar_below = function
-    | Amode c when L.eq_const c L.min_const -> (min_mode, false)
+    | Amode c when L.eq c L.min -> (min_mode, false)
     | m ->
         let v = newvar () in
         submode_exn v m;
         (v, true)
 
   let newvar_above = function
-    | Amode c when L.eq_const c L.max_const -> (max_mode, false)
+    | Amode c when L.eq c L.max -> (max_mode, false)
     | m ->
         let v = newvar () in
         submode_exn m v;
         (v, true)
 
-  let rec all_equal v = function
-    | [] -> true
-    | v' :: rest -> if v == v' then all_equal v rest else false
+  let join ms =
+    let rec aux vars const = function
+      | [] -> join_vsc vars const
+      | Amode c :: _ when L.eq c L.max -> max_mode
+      | Amode c :: ms -> aux vars (L.join c const) ms
+      | Amodevar v :: ms -> aux (v :: vars) const ms
+    in
+    aux [] L.min ms
 
-  let joinvars vars =
-    match vars with
-    | [] -> min_mode
-    | v :: rest ->
-        let v =
-          if all_equal v rest then v
-          else
-            let v = fresh () in
-            List.iter (fun v' -> submode_exn (Amodevar v') (Amodevar v)) vars;
-            v
-        in
-        Amodevar v
-
-  let meetvars vars =
-    match vars with
-    | [] -> max_mode
-    | v :: rest ->
-        let v =
-          if all_equal v rest then v
-          else
-            let v = fresh () in
-            List.iter (fun v' -> submode_exn (Amodevar v) (Amodevar v')) vars;
-            v
-        in
-        Amodevar v
+  let meet ms =
+    let rec aux vars const = function
+      | [] -> meet_vsc vars const
+      | Amode c :: _ when L.eq c L.min -> min_mode
+      | Amode c :: ms -> aux vars (L.join c const) ms
+      | Amodevar v :: ms -> aux (v :: vars) const ms
+    in
+    aux [] L.max ms
 
   exception Became_constant
 
@@ -234,7 +369,7 @@ module Solver (L : Lattice) = struct
     (* Ensure that each transitive lower bound of v
        is a direct lower bound of v *)
     let rec trans v' =
-      if L.le_const v'.upper !new_lower then ()
+      if L.le v'.upper !new_lower then ()
       else if v'.mark then ()
       else (
         mark v';
@@ -242,10 +377,10 @@ module Solver (L : Lattice) = struct
         trans_low v')
     and trans_low v' =
       assert (v != v');
-      if not (L.le_const v'.lower v.upper) then
+      if not (L.le v'.lower v.upper) then
         Misc.fatal_error "compress_vlower: invalid bounds";
-      if not (L.le_const v'.lower !new_lower) then (
-        new_lower := L.join_const !new_lower v'.lower;
+      if not (L.le v'.lower !new_lower) then (
+        new_lower := L.join !new_lower v'.lower;
         if !new_lower = v.upper then
           (* v is now a constant, no need to keep computing bounds *)
           raise Became_constant);
@@ -263,11 +398,10 @@ module Solver (L : Lattice) = struct
     assert (!nmarked = 0);
     if became_constant then new_vlower := [];
     if !new_lower != v.lower || !new_vlower != v.vlower then (
-      let log_head = ref Unchanged in
-      let log = ref log_head in
+      let log = ref Cnil in
       set_lower ~log v !new_lower;
       set_vlower ~log v !new_vlower;
-      log_changes !log_head !log)
+      log_changes !log)
 
   let constrain_lower = function
     | Amode m -> m
@@ -276,14 +410,16 @@ module Solver (L : Lattice) = struct
         submode_exn (Amodevar v) (Amode v.lower);
         v.lower
 
-  let check_const' = function
-    | Amode m -> Either.Left m
+  let const_or_var = function
+    | Amode m -> Const m
     | Amodevar v ->
         compress_vlower v;
-        if L.eq_const v.lower v.upper then Left v.lower else Right v
+        if L.eq v.lower v.upper then Const v.lower else Var v
 
   let check_const a =
-    match check_const' a with Left m -> Some m | Right _ -> None
+    match const_or_var a with
+    | Const m -> Some m
+    | Var _ -> None
 
   let print_var_id ppf v = Format.fprintf ppf "?%i" v.mvid
 
@@ -295,209 +431,388 @@ module Solver (L : Lattice) = struct
         v.vlower
 
   let print' ?(verbose = true) ?label ppf a =
-    match check_const' a with
-    | Left m -> L.print_const ppf m
-    | Right v ->
+    match const_or_var a with
+    | Const m -> L.print ppf m
+    | Var v ->
         (match label with None -> () | Some s -> Format.fprintf ppf "%s:" s);
         if verbose then print_var ppf v else Format.fprintf ppf "?"
 
   let print ppf a = print' ~verbose:true ?label:None ppf a
 end
 
-module DualSolver (DL : DualLattice) = struct
-  module S = Solver (DL.D)
+module type DualLattice = sig
 
-  type t = DL.D.const dmode
+  include Lattice
 
-  let is_const (Dualized a) = S.is_const a
+  type dual
 
-  let join_const a b =
-    DL.from_dconst (DL.D.meet_const (DL.to_dconst a) (DL.to_dconst b))
+  val to_dual : t -> dual
+  val of_dual : dual -> t
 
-  let meet_const a b =
-    DL.from_dconst (DL.D.join_const (DL.to_dconst a) (DL.to_dconst b))
+end
 
-  let le_const a b = DL.D.le_const (DL.to_dconst b) (DL.to_dconst a)
-  let min_const = DL.from_dconst DL.D.max_const
-  let max_const = DL.from_dconst DL.D.min_const
-  let submode (Dualized a) (Dualized b) = S.submode b a
-  let submode_exn (Dualized a) (Dualized b) = S.submode_exn b a
-  let equate (Dualized a) (Dualized b) = S.equate b a
-  let constrain_upper (Dualized a) = DL.from_dconst (S.constrain_lower a)
-  let constrain_lower (Dualized a) = DL.from_dconst (S.constrain_upper a)
-  let to_dual (Dualized a) = a
-  let from_dual a = Dualized a
-  let min_mode = from_dual S.max_mode
-  let max_mode = from_dual S.min_mode
-  let newvar () = Dualized (S.newvar ())
+module type DualSolver = sig
 
-  let newvar_below (Dualized a) =
-    let a', boo = S.newvar_above a in
-    (Dualized a', boo)
+  include Solver
 
-  let newvar_above (Dualized a) =
-    let a', boo = S.newvar_below a in
-    (Dualized a', boo)
+  type dual
 
-  let check_const (Dualized a) =
-    match S.check_const a with
-    | Some m -> Some (DL.from_dconst m)
+  val to_dual : t -> dual
+  val of_dual : dual -> t
+
+end
+
+module DualSolver
+    (Dual : Lattice)
+    (Solver : Solver with type const := Dual.t)
+    (L : DualLattice with type dual := Dual.t)
+  : DualSolver with type const := L.t and type dual := Solver.t = struct
+
+  type var = Solver.var
+
+  type t = Solver.t
+
+  let of_const c = Solver.of_const (L.to_dual c)
+  let is_const a = Solver.is_const a
+  let submode a b = Solver.submode b a
+  let submode_exn a b = Solver.submode_exn b a
+  let equate a b = Solver.equate b a
+  let constrain_upper a = L.of_dual (Solver.constrain_lower a)
+  let constrain_lower a = L.of_dual (Solver.constrain_upper a)
+  let to_dual a = a
+  let of_dual a = a
+  let min_mode = of_dual Solver.max_mode
+  let max_mode = of_dual Solver.min_mode
+  let newvar () = Solver.newvar ()
+
+  let newvar_below a =
+    let a', changed = Solver.newvar_above a in
+    (a', changed)
+
+  let newvar_above a =
+    let a', changed = Solver.newvar_below a in
+    (a', changed)
+
+  let join ts = Solver.meet ts
+  let meet ts = Solver.join ts
+
+  let const_or_var a =
+    match Solver.const_or_var a with
+    | Const c -> Const (L.of_dual c)
+    | Var v -> Var v
+
+  let check_const a =
+    match Solver.check_const a with
+    | Some m -> Some (L.of_dual m)
     | None -> None
 
-  let print' ?(verbose = true) ?label ppf (Dualized a) =
-    match S.check_const' a with
-    | Left m -> DL.print_const ppf (DL.from_dconst m)
-    | Right v ->
+  let print_var = Solver.print_var
+
+  let print' ?(verbose = true) ?label ppf a =
+    match Solver.const_or_var a with
+    | Const m -> L.print ppf (L.of_dual m)
+    | Var v ->
         (match label with None -> () | Some s -> Format.fprintf ppf "%s:" s);
         if verbose then
           (* caret stands for dual *)
-          Format.fprintf ppf "^%a" S.print_var v
+          Format.fprintf ppf "^%a" print_var v
         else Format.fprintf ppf "?"
 
   let print ppf m = print' ~verbose:true ?label:None ppf m
 end
 
 module Locality = struct
-  module T = struct
-    type const = Modes.Locality.const = Global | Local
+  module Const = struct
+    type t = Global | Local
 
-    let min_const = Global
-    let max_const = Local
+    let min = Global
+    let max = Local
 
-    let le_const a b =
+    let le a b =
       match (a, b) with Global, _ | _, Local -> true | Local, Global -> false
 
-    let eq_const a b =
+    let eq a b =
       match (a, b) with
       | Global, Global | Local, Local -> true
       | Local, Global | Global, Local -> false
 
-    let join_const a b =
+    let join a b =
       match (a, b) with
       | Local, _ | _, Local -> Local
       | Global, Global -> Global
 
-    let meet_const a b =
+    let meet a b =
       match (a, b) with
       | Global, _ | _, Global -> Global
       | Local, Local -> Local
 
-    let print_const ppf = function
+    let print ppf = function
       | Global -> Format.fprintf ppf "Global"
       | Local -> Format.fprintf ppf "Local"
   end
 
-  include T
-  include Solver (T)
+  include Solver (Const)
 
-  let global = Amode Global
-  let local = Amode Local
+  let global = of_const Const.Global
+  let local = of_const Const.Local
   let legacy = global
   let constrain_legacy = constrain_lower
-  let of_const = function Global -> global | Local -> local
 
-  let join ms =
-    let rec aux vars = function
-      | [] -> joinvars vars
-      | Amode Global :: ms -> aux vars ms
-      | Amode Local :: _ -> Amode Local
-      | Amodevar v :: ms -> aux (v :: vars) ms
+end
+
+module Regionality = struct
+
+  module Const = struct
+
+    type t =
+      | Global
+      | Regional
+      | Local
+
+    let r_as_l : t -> Locality.Const.t = function
+      | Local | Regional -> Local
+      | Global -> Global
+
+    let r_as_g : t -> Locality.Const.t = function
+      | Local -> Local
+      | Regional | Global -> Global
+
+    let of_localities
+          ~(r_as_l : Locality.Const.t) ~(r_as_g : Locality.Const.t) =
+      match r_as_l, r_as_g with
+      | Global, Global -> Global
+      | Global, Local -> assert false
+      | Local, Global -> Regional
+      | Local, Local -> Local
+
+    let print ppf t =
+      let s =
+        match t with
+        | Global -> "Global"
+        | Regional -> "Regional"
+        | Local -> "Local"
+      in
+      Format.fprintf ppf "%s" s
+
+  end
+
+  type t = {
+    r_as_l : Locality.t;
+    r_as_g : Locality.t
+  }
+
+  let of_locality l = { r_as_l = l; r_as_g = l }
+
+  let of_const c =
+    let r_as_l, r_as_g =
+      match c with
+      | Const.Global -> (Locality.global, Locality.global)
+      | Const.Regional -> (Locality.local, Locality.global)
+      | Const.Local -> (Locality.local, Locality.local)
     in
-    aux [] ms
+    { r_as_l; r_as_g }
+
+  let local = of_const Local
+  let regional = of_const Regional
+  let global = of_const Global
+  let legacy = global
+
+  let max_mode =
+    let r_as_l = Locality.max_mode in
+    let r_as_g = Locality.max_mode in
+    { r_as_l; r_as_g }
+
+  let min_mode =
+    let r_as_l = Locality.min_mode in
+    let r_as_g = Locality.min_mode in
+    { r_as_l; r_as_g }
+
+  let local_to_regional t = { t with r_as_g = Locality.global }
+  let regional_to_global t = { t with r_as_l = t.r_as_g }
+  let regional_to_local t = { t with r_as_g = t.r_as_l }
+  let global_to_regional t = { t with r_as_l = Locality.local }
+  let regional_to_global_locality t = t.r_as_g
+  let regional_to_local_locality t = t.r_as_l
+
+  type error = [ `Regionality | `Locality ]
+
+  let submode t1 t2 =
+    match Locality.submode t1.r_as_l t2.r_as_l with
+    | Error () -> Error `Regionality
+    | Ok () -> (
+        match Locality.submode t1.r_as_g t2.r_as_g with
+        | Error () -> Error `Locality
+        | Ok () as ok -> ok)
+
+  let equate a b =
+    match (submode a b, submode b a) with
+    | Ok (), Ok () -> Ok ()
+    | Error e, _ | _, Error e -> Error e
+
+  let join ts =
+    let r_as_l = Locality.join (List.map (fun t -> t.r_as_l) ts) in
+    let r_as_g = Locality.join (List.map (fun t -> t.r_as_g) ts) in
+    { r_as_l; r_as_g }
+
+  let constrain_upper t =
+    let r_as_l = Locality.constrain_upper t.r_as_l in
+    let r_as_g = Locality.constrain_upper t.r_as_g in
+    Const.of_localities ~r_as_l ~r_as_g
+
+  let constrain_lower t =
+    let r_as_l = Locality.constrain_lower t.r_as_l in
+    let r_as_g = Locality.constrain_lower t.r_as_g in
+    Const.of_localities ~r_as_l ~r_as_g
+
+  let newvar () =
+    let r_as_l = Locality.newvar () in
+    let r_as_g, _ = Locality.newvar_below r_as_l in
+    { r_as_l; r_as_g }
+
+  let newvar_below t =
+    let r_as_l, changed1 = Locality.newvar_below t.r_as_l in
+    let r_as_g, changed2 = Locality.newvar_below t.r_as_g in
+    Locality.submode_exn r_as_g r_as_l;
+    ({ r_as_l; r_as_g }, changed1 || changed2)
+
+  let newvar_above t =
+    let r_as_l, changed1 = Locality.newvar_above t.r_as_l in
+    let r_as_g, changed2 = Locality.newvar_above t.r_as_g in
+    Locality.submode_exn r_as_g r_as_l;
+    ({ r_as_l; r_as_g }, changed1 || changed2)
+
+  let check_const t =
+    match Locality.check_const t.r_as_l with
+    | None -> None
+    | Some r_as_l -> (
+        match Locality.check_const t.r_as_g with
+        | None -> None
+        | Some r_as_g -> Some (Const.of_localities ~r_as_l ~r_as_g))
+
+  let print' ?(verbose = true) ?label ppf t =
+    match check_const t with
+    | Some l -> Const.print ppf l
+    | None -> (
+        match label with
+        | None -> ()
+        | Some l ->
+            Format.fprintf ppf "%s: " l;
+            Format.fprintf ppf "r_as_l=%a r_as_g=%a"
+              (Locality.print' ~verbose ?label:None)
+              t.r_as_l
+              (Locality.print' ~verbose ?label:None)
+              t.r_as_g)
+
+  let print ppf m = print' ~verbose:true ?label:None ppf m
 end
 
 module Uniqueness = struct
-  module T = struct
-    type const = Modes.Uniqueness.const = Unique | Shared
+  module Const = struct
+    type t = Unique | Shared
 
-    let min_const = Unique
-    let max_const = Shared
+    let min = Unique
+    let max = Shared
 
-    let le_const a b =
+    let le a b =
       match (a, b) with
       | Unique, _ | _, Shared -> true
       | Shared, Unique -> false
 
-    let eq_const a b =
+    let eq a b =
       match (a, b) with
       | Unique, Unique | Shared, Shared -> true
       | Shared, Unique | Unique, Shared -> false
 
-    let join_const a b =
+    let join a b =
       match (a, b) with
       | Shared, _ | _, Shared -> Shared
       | Unique, Unique -> Unique
 
-    let meet_const a b =
+    let meet a b =
       match (a, b) with
       | Unique, _ | _, Unique -> Unique
       | Shared, Shared -> Shared
 
-    let print_const ppf = function
+    let print ppf = function
       | Shared -> Format.fprintf ppf "Shared"
       | Unique -> Format.fprintf ppf "Unique"
   end
 
-  include T
-  include Solver (T)
+  include Solver (Const)
 
   let constrain_legacy = constrain_upper
-  let unique = Amode Unique
-  let shared = Amode Shared
+  let unique = of_const Const.Unique
+  let shared = of_const Const.Shared
   let legacy = shared
-  let of_const = function Unique -> unique | Shared -> shared
 
-  let join ms =
-    let rec aux vars = function
-      | [] -> joinvars vars
-      | Amode Unique :: ms -> aux vars ms
-      | Amode Shared :: _ -> Amode Shared
-      | Amodevar v :: ms -> aux (v :: vars) ms
-    in
-    aux [] ms
-
-  let meet ms =
-    let rec aux vars = function
-      | [] -> meetvars vars
-      | Amode Unique :: _ -> Amode Unique
-      | Amode Shared :: ms -> aux vars ms
-      | Amodevar v :: ms -> aux (v :: vars) ms
-    in
-    aux [] ms
 end
 
 module Linearity = struct
-  module DL = struct
-    type const = Modes.Linearity.const = Many | Once
+  module Const = struct
+    type t = Many | Once
 
-    module D = Uniqueness.T
+    let min = Many
+    let max = Once
 
-    let print_const ppf = function
+    let le a b =
+      match (a, b) with
+      | Many, _ | _, Once -> true
+      | Once, Many -> false
+
+    let eq a b =
+      match (a, b) with
+      | Many, Many | Once, Once -> true
+      | Once, Many | Many, Once -> false
+
+    let join a b =
+      match (a, b) with
+      | Once, _ | _, Once -> Once
+      | Many, Many -> Many
+
+    let meet a b =
+      match (a, b) with
+      | Many, _ | _, Many -> Many
+      | Once, Once -> Once
+
+    let print ppf = function
       | Once -> Format.fprintf ppf "Once"
       | Many -> Format.fprintf ppf "Many"
 
-    let to_dconst = function Once -> D.Unique | Many -> D.Shared
-    let from_dconst = function D.Unique -> Once | D.Shared -> Many
+    let to_dual : t -> Uniqueness.Const.t = function
+      | Once -> Unique
+      | Many -> Shared
+
+    let of_dual : Uniqueness.Const.t -> t = function
+      | Unique -> Once
+      | Shared -> Many
   end
 
-  include DL
-  include DualSolver (DL)
+  include DualSolver(Uniqueness.Const)(Uniqueness)(Const)
 
-  let once = Dualized (Amode DL.D.Unique)
-  let many = Dualized (Amode DL.D.Shared)
+  let once = of_const Once
+  let many = of_const Many
   let legacy = many
   let constrain_legacy = constrain_lower
-  let of_const = function Many -> many | Once -> once
 
-  let join ms =
-    (* CR zqian: need more efficient impl *)
-    let v = newvar () in
-    List.iter (fun x -> submode_exn x v) ms;
-    v
 end
 
 module Alloc = struct
-  include Modes.Alloc
+
+  module Const = struct
+
+    type t = (Locality.Const.t, Uniqueness.Const.t, Linearity.Const.t) modes
+
+    let join { locality = loc1; uniqueness = u1; linearity = lin1 }
+          { locality = loc2; uniqueness = u2; linearity = lin2 } =
+      {
+        locality = Locality.Const.join loc1 loc2;
+        uniqueness = Uniqueness.Const.join u1 u2;
+        linearity = Linearity.Const.join lin1 lin2;
+      }
+
+  end
+
+  type t = (Locality.t, Uniqueness.t, Linearity.t) modes
 
   let of_const { locality; uniqueness; linearity } : t =
     {
@@ -505,6 +820,9 @@ module Alloc = struct
       uniqueness = Uniqueness.of_const uniqueness;
       linearity = Linearity.of_const linearity;
     }
+
+  let prod locality uniqueness linearity =
+    { locality; uniqueness; linearity }
 
   let legacy =
     {
@@ -535,6 +853,10 @@ module Alloc = struct
       uniqueness = Uniqueness.max_mode;
       linearity = Linearity.max_mode;
     }
+
+  let locality t = t.locality
+  let uniqueness t = t.uniqueness
+  let linearity t = t.linearity
 
   type error = [ `Locality | `Uniqueness | `Linearity ]
 
@@ -567,14 +889,6 @@ module Alloc = struct
             | Error () -> Error `Linearity)
         | Error () -> Error `Uniqueness)
     | Error () -> Error `Locality
-
-  let join_const { locality = loc1; uniqueness = u1; linearity = lin1 }
-      { locality = loc2; uniqueness = u2; linearity = lin2 } =
-    {
-      locality = Locality.join_const loc1 loc2;
-      uniqueness = Uniqueness.join_const u1 u2;
-      linearity = Linearity.join_const lin1 lin2;
-    }
 
   let join ms : t =
     {
@@ -668,152 +982,28 @@ module Alloc = struct
   let print ppf m = print' ~verbose:true ppf m
 end
 
-module Regionality = struct
-  include Modes.Regionality
-
-  let r_as_l : const -> Locality.const = function
-    | Local -> Local
-    | Regional -> Local
-    | Global -> Global
-
-  let r_as_g : const -> Locality.const = function
-    | Local -> Local
-    | Regional -> Global
-    | Global -> Global
-
-  let const_of_locality ~(r_as_l : Locality.const) ~(r_as_g : Locality.const) =
-    match (r_as_l, r_as_g) with
-    | Global, Global -> Global
-    | Global, Local -> assert false
-    | Local, Global -> Regional
-    | Local, Local -> Local
-
-  let of_locality l = { r_as_l = l; r_as_g = l }
-
-  let of_const c =
-    let r_as_l, r_as_g =
-      match c with
-      | Global -> (Locality.global, Locality.global)
-      | Regional -> (Locality.local, Locality.global)
-      | Local -> (Locality.local, Locality.local)
-    in
-    { r_as_l; r_as_g }
-
-  let local = of_const Local
-  let regional = of_const Regional
-  let global = of_const Global
-  let legacy = global
-
-  let max_mode =
-    let r_as_l = Locality.max_mode in
-    let r_as_g = Locality.max_mode in
-    { r_as_l; r_as_g }
-
-  let min_mode =
-    let r_as_l = Locality.min_mode in
-    let r_as_g = Locality.min_mode in
-    { r_as_l; r_as_g }
-
-  let local_to_regional t = { t with r_as_g = Locality.global }
-  let regional_to_global t = { t with r_as_l = t.r_as_g }
-  let regional_to_local t = { t with r_as_g = t.r_as_l }
-  let regional_to_global_locality t = t.r_as_g
-  let regional_to_local_locality t = t.r_as_l
-  let global_to_regional t = { t with r_as_l = Locality.local }
-
-  type error = [ `Regionality | `Locality ]
-
-  let submode t1 t2 =
-    match Locality.submode t1.r_as_l t2.r_as_l with
-    | Error () -> Error `Regionality
-    | Ok () -> (
-        match Locality.submode t1.r_as_g t2.r_as_g with
-        | Error () -> Error `Locality
-        | Ok () as ok -> ok)
-
-  let equate a b =
-    match (submode a b, submode b a) with
-    | Ok (), Ok () -> Ok ()
-    | Error e, _ | _, Error e -> Error e
-
-  let join ts =
-    let r_as_l = Locality.join (List.map (fun t -> t.r_as_l) ts) in
-    let r_as_g = Locality.join (List.map (fun t -> t.r_as_g) ts) in
-    { r_as_l; r_as_g }
-
-  let constrain_upper t =
-    let r_as_l = Locality.constrain_upper t.r_as_l in
-    let r_as_g = Locality.constrain_upper t.r_as_g in
-    const_of_locality ~r_as_l ~r_as_g
-
-  let constrain_lower t =
-    let r_as_l = Locality.constrain_lower t.r_as_l in
-    let r_as_g = Locality.constrain_lower t.r_as_g in
-    const_of_locality ~r_as_l ~r_as_g
-
-  let newvar () =
-    let r_as_l = Locality.newvar () in
-    let r_as_g, _ = Locality.newvar_below r_as_l in
-    { r_as_l; r_as_g }
-
-  let newvar_below t =
-    let r_as_l, changed1 = Locality.newvar_below t.r_as_l in
-    let r_as_g, changed2 = Locality.newvar_below t.r_as_g in
-    Locality.submode_exn r_as_g r_as_l;
-    ({ r_as_l; r_as_g }, changed1 || changed2)
-
-  let newvar_above t =
-    let r_as_l, changed1 = Locality.newvar_above t.r_as_l in
-    let r_as_g, changed2 = Locality.newvar_above t.r_as_g in
-    Locality.submode_exn r_as_g r_as_l;
-    ({ r_as_l; r_as_g }, changed1 || changed2)
-
-  let check_const t =
-    match Locality.check_const t.r_as_l with
-    | None -> None
-    | Some r_as_l -> (
-        match Locality.check_const t.r_as_g with
-        | None -> None
-        | Some r_as_g -> Some (const_of_locality ~r_as_l ~r_as_g))
-
-  let print_const ppf t =
-    let s =
-      match t with
-      | Global -> "Global"
-      | Regional -> "Regional"
-      | Local -> "Local"
-    in
-    Format.fprintf ppf "%s" s
-
-  let print' ?(verbose = true) ?label ppf t =
-    match check_const t with
-    | Some l -> print_const ppf l
-    | None -> (
-        match label with
-        | None -> ()
-        | Some l ->
-            Format.fprintf ppf "%s: " l;
-            Format.fprintf ppf "r_as_l=%a r_as_g=%a"
-              (Locality.print' ~verbose ?label:None)
-              t.r_as_l
-              (Locality.print' ~verbose ?label:None)
-              t.r_as_g)
-
-  let print ppf m = print' ~verbose:true ?label:None ppf m
-end
-
 module Value = struct
-  include Modes.Value
 
-  let r_as_l : const -> Alloc.const = function
-    | { locality; uniqueness; linearity } ->
-        { locality = Regionality.r_as_l locality; uniqueness; linearity }
-    [@@warning "-unused-value-declaration"]
+  module Const = struct
 
-  let r_as_g : const -> Alloc.const = function
-    | { locality; uniqueness; linearity } ->
-        { locality = Regionality.r_as_g locality; uniqueness; linearity }
-    [@@warning "-unused-value-declaration"]
+    type t =
+      (Regionality.Const.t, Uniqueness.Const.t, Linearity.Const.t) modes
+
+    let r_as_l : t -> Alloc.Const.t = function
+      | { locality; uniqueness; linearity } ->
+          let locality = Regionality.Const.r_as_l locality in
+          { locality; uniqueness; linearity }
+      [@@warning "-unused-value-declaration"]
+
+    let r_as_g : t -> Alloc.Const.t = function
+      | { locality; uniqueness; linearity } ->
+          let locality = Regionality.Const.r_as_g locality in
+          { locality; uniqueness; linearity }
+      [@@warning "-unused-value-declaration"]
+
+  end
+
+  type t = (Regionality.t, Uniqueness.t, Linearity.t) modes
 
   let legacy =
     {
@@ -846,6 +1036,10 @@ module Value = struct
     let uniqueness = Uniqueness.min_mode in
     let linearity = Linearity.min_mode in
     { locality; uniqueness; linearity }
+
+  let locality t = t.locality
+  let uniqueness t = t.uniqueness
+  let linearity t = t.linearity
 
   let min_with_uniqueness u = { min_mode with uniqueness = u }
   let max_with_uniqueness u = { max_mode with uniqueness = u }

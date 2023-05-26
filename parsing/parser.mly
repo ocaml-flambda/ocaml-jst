@@ -149,40 +149,21 @@ let mkuplus ~oploc name arg =
       Pexp_apply(mkoperator ~loc:oploc ("~" ^ name), [Nolabel, arg])
 
 
-let local_ext_loc loc = mkloc "extension.local" loc
-
 let mk_attr ~loc name payload =
   Builtin_attributes.(register_attr Parser name);
   Attr.mk ~loc name payload
-
-let local_attr loc =
-  mk_attr ~loc (local_ext_loc loc) (PStr [])
-
-let local_extension loc =
-  Exp.mk ~loc:Location.none
-    (Pexp_extension(local_ext_loc loc, PStr []))
 
 let include_functor_ext_loc loc = mkloc "extension.include_functor" loc
 
 let include_functor_attr loc =
   mk_attr ~loc:loc (include_functor_ext_loc loc) (PStr [])
 
-let mkexp_stack exp loc eloc =
-  ghexp ~loc:eloc (Pexp_apply(local_extension loc, [Nolabel, exp]))
-
-let mkpat_stack pat loc =
-  {pat with ppat_attributes = local_attr loc :: pat.ppat_attributes}
-
-let mktyp_stack typ loc =
-  {typ with ptyp_attributes = local_attr loc :: typ.ptyp_attributes}
-
-let wrap_exp_stack exp loc =
-  {exp with pexp_attributes = local_attr loc :: exp.pexp_attributes}
-
+let local_ext_loc loc = mkloc "extension.local" loc
 let unique_ext_loc loc = mkloc "extension.unique" loc
-
 let once_ext_loc loc = mkloc "extension.once" loc
 
+let local_attr loc =
+  mk_attr ~loc (local_ext_loc loc) (PStr [])
 
 let unique_attr loc =
   mk_attr ~loc (unique_ext_loc loc) (PStr [])
@@ -190,46 +171,73 @@ let unique_attr loc =
 let once_attr loc =
   mk_attr ~loc (once_ext_loc loc) (PStr [])
 
+let local_extension loc =
+  Exp.mk ~loc:Location.none
+    (Pexp_extension(local_ext_loc loc, PStr []))
+
 let unique_extension loc =
   Exp.mk ~loc:Location.none (Pexp_extension(unique_ext_loc loc, PStr []))
 
 let once_extension loc =
   Exp.mk ~loc:Location.none (Pexp_extension(once_ext_loc loc, PStr []))
 
-let mkexp_unique exp loc eloc =
-  ghexp ~loc:eloc (Pexp_apply(unique_extension loc, [Nolabel, exp]))
+let mkexp_stack ~loc ~kwd_loc exp =
+  ghexp ~loc (Pexp_apply(local_extension (make_loc kwd_loc), [Nolabel, exp]))
 
-let mkexp_once exp loc eloc =
-  ghexp ~loc:eloc (Pexp_apply(once_extension loc, [Nolabel, exp]))
+let mkexp_unique ~loc ~kwd_loc exp =
+  ghexp ~loc (Pexp_apply(unique_extension (make_loc kwd_loc), [Nolabel, exp]))
+
+let mkexp_once ~loc ~kwd_loc exp =
+  ghexp ~loc (Pexp_apply(once_extension (make_loc kwd_loc), [Nolabel, exp]))
+
+let mkpat_stack pat loc =
+  {pat with
+   ppat_attributes = local_attr (make_loc loc) :: pat.ppat_attributes}
 
 let mkpat_unique pat loc =
-  {pat with ppat_attributes = unique_attr loc :: pat.ppat_attributes}
+  {pat with
+   ppat_attributes = unique_attr (make_loc loc) :: pat.ppat_attributes}
 
 let mkpat_once pat loc =
-  {pat with ppat_attributes = once_attr loc :: pat.ppat_attributes}
+  {pat with
+   ppat_attributes = once_attr (make_loc loc) :: pat.ppat_attributes}
+
+let mktyp_stack typ loc =
+  {typ with
+   ptyp_attributes = local_attr (make_loc loc) :: typ.ptyp_attributes}
 
 let mktyp_unique typ loc =
-  {typ with ptyp_attributes = unique_attr loc :: typ.ptyp_attributes}
+  {typ with
+   ptyp_attributes = unique_attr (make_loc loc) :: typ.ptyp_attributes}
 
 let mktyp_once typ loc =
-  {typ with ptyp_attributes = once_attr loc :: typ.ptyp_attributes}
+  {typ with
+   ptyp_attributes = once_attr (make_loc loc) :: typ.ptyp_attributes}
+
+let wrap_exp_stack exp loc =
+  {exp with
+   pexp_attributes = local_attr (make_loc loc) :: exp.pexp_attributes}
 
 let wrap_exp_unique exp loc =
-  {exp with pexp_attributes = unique_attr loc :: exp.pexp_attributes}
+  {exp with
+   pexp_attributes = unique_attr (make_loc loc) :: exp.pexp_attributes}
 
 let wrap_exp_once exp loc =
-  {exp with pexp_attributes = once_attr loc :: exp.pexp_attributes}
+  {exp with
+   pexp_attributes = once_attr (make_loc loc) :: exp.pexp_attributes}
 
 type modes = Local | Unique | Once
 
-let mkexp_with_mode flag exp loc eloc =
+let mkexp_with_mode ~loc ~kwd_loc flag exp =
   match flag with
-  | Local -> mkexp_stack exp loc eloc
-  | Unique -> mkexp_unique exp loc eloc
-  | Once -> mkexp_once exp loc eloc
+  | Local -> mkexp_stack exp ~loc ~kwd_loc
+  | Unique -> mkexp_unique exp ~loc ~kwd_loc
+  | Once -> mkexp_once exp ~loc ~kwd_loc
 
-let mkexp_with_modes flags exp eloc =
-  List.fold_left (fun exp (flag, loc) -> mkexp_with_mode flag exp loc eloc) exp flags
+let mkexp_with_modes flags exp loc =
+  List.fold_left
+    (fun exp (flag, kwd_loc) -> mkexp_with_mode flag exp ~loc ~kwd_loc)
+    exp flags
 
 let mkpat_with_mode flag pat loc =
   match flag with
@@ -2406,30 +2414,30 @@ seq_expr:
       mkexp ~loc:$sloc (Pexp_extension ($4, payload)) }
 ;
 labeled_simple_pattern:
-    QUESTION LPAREN imode_flags label_let_pattern opt_default RPAREN
+    QUESTION LPAREN mode_flags label_let_pattern opt_default RPAREN
       { (Optional (fst $4), $5, mkpat_with_modes $3 (snd $4) ) }
   | QUESTION label_var
       { (Optional (fst $2), None, snd $2) }
-  | OPTLABEL LPAREN imode_flags let_pattern opt_default RPAREN
+  | OPTLABEL LPAREN mode_flags let_pattern opt_default RPAREN
       { (Optional $1, $5, mkpat_with_modes $3 $4) }
   | OPTLABEL pattern_var
       { (Optional $1, None, $2) }
-  | TILDE LPAREN imode_flags label_let_pattern RPAREN
+  | TILDE LPAREN mode_flags label_let_pattern RPAREN
       { (Labelled (fst $4), None,
          mkpat_with_modes $3 (snd $4) ) }
   | TILDE label_var
       { (Labelled (fst $2), None, snd $2) }
   | LABEL simple_pattern
       { (Labelled $1, None, $2) }
-  | LABEL LPAREN mode_flags_nonempty pattern RPAREN
+  | LABEL LPAREN mode_flag+ pattern RPAREN
       { (Labelled $1, None, mkpat_with_modes $3 $4 ) }
   | simple_pattern
       { (Nolabel, None, $1) }
-  | LPAREN mode_flags_nonempty let_pattern RPAREN
+  | LPAREN mode_flag+ let_pattern RPAREN
       { (Nolabel, None, mkpat_with_modes $2 $3 ) }
   | LABEL LPAREN poly_pattern RPAREN
       { (Labelled $1, None, $3) }
-  | LABEL LPAREN mode_flags_nonempty poly_pattern RPAREN
+  | LABEL LPAREN mode_flag+ poly_pattern RPAREN
       { (Labelled $1, None, mkpat_with_modes $3 $4) }
   | LPAREN poly_pattern RPAREN
       { (Nolabel, None, $2) }
@@ -2648,9 +2656,12 @@ comprehension_clause_binding:
      We have to have that as a separate rule here because it moves the [local_]
      over to the RHS of the binding, so we need everything to be visible. *)
   | attributes LOCAL pattern IN expr
-      { Extensions.Comprehensions.
+      { let expr =
+          mkexp_stack $5 ~kwd_loc:$loc($2) ~loc:$sloc
+        in
+        Extensions.Comprehensions.
           { pattern    = $3
-          ; iterator   = In (mkexp_stack $5 (make_loc $loc($2)) $sloc)
+          ; iterator   = In expr
           ; attributes = $1
           }
       }
@@ -2825,7 +2836,7 @@ labeled_simple_expr:
 let_binding_body_no_punning:
     let_ident strict_binding
       { ($1, $2) }
-  | imode_flags let_ident type_constraint EQUAL seq_expr
+  | mode_flags let_ident type_constraint EQUAL seq_expr
       { let v = $2 in (* PR#7344 *)
         let t =
           match $3 with
@@ -2841,17 +2852,18 @@ let_binding_body_no_punning:
         in
         let exp =
           mkexp_with_modes $1
-            (wrap_exp_with_modes $1 (mkexp_constraint ~loc:$sloc $5 $3)) $sloc
+            (wrap_exp_with_modes $1 (mkexp_constraint ~loc:$sloc $5 $3))
+            $sloc
         in
         (pat, exp) }
-  | imode_flags let_ident COLON poly(core_type) EQUAL seq_expr
+  | mode_flags let_ident COLON poly(core_type) EQUAL seq_expr
       { let patloc = ($startpos($2), $endpos($4)) in
         let pat =
           mkpat_with_modes $1
             (ghpat ~loc:patloc
                (Ppat_constraint($2, ghtyp ~loc:($loc($4)) $4)))
         in
-        let exp = mkexp_with_modes $1 $6 $sloc  in
+        let exp = mkexp_with_modes $1 $6 $sloc in
         (pat, exp) }
   | let_ident COLON TYPE lident_list DOT core_type EQUAL seq_expr
       { let exp, poly =
@@ -2863,8 +2875,8 @@ let_binding_body_no_punning:
   | simple_pattern_not_ident COLON core_type EQUAL seq_expr
       { let loc = ($startpos($1), $endpos($3)) in
         (ghpat ~loc (Ppat_constraint($1, $3)), $5) }
-  | mode_flags_nonempty let_ident strict_binding_modes
-    { ($2, mkexp_with_modes $1 ($3 $1) $sloc)}
+  | mode_flag+ let_ident strict_binding_modes
+    { ($2, mkexp_with_modes $1 ($3 $1) $sloc) }
 ;
 let_binding_body:
   | let_binding_body_no_punning
@@ -3711,7 +3723,7 @@ function_type:
 strict_function_type:
   | mktyp(
       label = arg_label
-      unique_local = imode_flags
+      unique_local = mode_flags
       domain = extra_rhs(param_type)
       MINUSGREATER
       codomain = strict_function_type
@@ -3720,10 +3732,10 @@ strict_function_type:
     { $1 }
   | mktyp(
       label = arg_label
-      arg_unique_local = imode_flags
+      arg_unique_local = mode_flags
       domain = extra_rhs(param_type)
       MINUSGREATER
-      ret_unique_local = imode_flags
+      ret_unique_local = mode_flags
       codomain = tuple_type
       %prec MINUSGREATER
         { Ptyp_arrow(label,
@@ -3742,9 +3754,16 @@ strict_function_type:
 ;
 
 %inline mode_flag:
-     LOCAL {(Local, make_loc $sloc)}
-   | UNIQUE {(Unique, make_loc $sloc)}
-   | ONCE {(Once, make_loc $sloc)}
+   | LOCAL
+       { (Local, $sloc) }
+   | UNIQUE
+       { (Unique, $sloc) }
+   | ONCE
+       { (Once, $sloc) }
+;
+%inline mode_flags:
+   | flags = iloption(mode_flag+)
+       { flags }
 ;
 %inline param_type:
   | mktyp(
@@ -3755,17 +3774,6 @@ strict_function_type:
   | ty = tuple_type
     { ty }
 ;
-
-mode_flags:
-  {[]}
-  | mode_flag mode_flags {$1 :: $2}
-
-%inline imode_flags:
-  {[]}
-  | mode_flags_nonempty {$1}
-
-%inline mode_flags_nonempty:
-  mode_flag mode_flags {$1 :: $2}
 
 (* Tuple types include:
    - atomic types (see below);
