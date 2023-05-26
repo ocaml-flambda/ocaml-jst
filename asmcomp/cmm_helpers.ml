@@ -801,10 +801,10 @@ let addr_array_set_local arr ofs newval dbg =
   Cop(Cextcall("caml_modify_local", typ_void, [], false),
       [arr; untag_int ofs dbg; newval], dbg)
 
-let addr_array_set (mode : Lambda.modify_mode) =
+let addr_array_set (mode : Lambda.modify_mode) arr ofs newval dbg =
   match mode with
-  | Modify_heap -> addr_array_set_heap
-  | Modify_maybe_stack -> addr_array_set_local
+  | Modify_heap -> addr_array_set_heap arr ofs newval dbg
+  | Modify_maybe_stack -> addr_array_set_local arr ofs newval dbg
 (* int and float arrays can be written to uniformly regardless of their mode *)
 let int_array_set arr ofs newval dbg =
   Cop(Cstore (Word_int, Assignment),
