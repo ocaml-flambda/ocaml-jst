@@ -142,6 +142,13 @@ let to_modify_mode ~poly = function
 let lookup_primitive loc poly pos p =
   let mode = to_alloc_mode ~poly p.prim_native_repr_res in
   let arg_modes = List.map (to_modify_mode ~poly) p.prim_native_repr_args in
+  let get_first_arg_mode () =
+    match arg_modes with
+    | mode :: _ -> mode
+    | [] ->
+        Misc.fatal_errorf "Primitive \"%s\" unexpectedly had zero arguments"
+          p.prim_name
+  in
   let prim = match p.prim_name with
     | "%identity" -> Identity
     | "%bytes_to_string" -> Primitive (Pbytes_to_string, 1)
@@ -160,12 +167,8 @@ let lookup_primitive loc poly pos p =
     | "%field0_immut" -> Primitive ((Pfield (0, Reads_agree)), 1)
     | "%field1_immut" -> Primitive ((Pfield (1, Reads_agree)), 1)
     | "%setfield0" ->
-       let mode =
-         match arg_modes with
-         | mode :: _ -> Assignment mode
-         | [] -> assert false
-       in
-       Primitive ((Psetfield(0, Pointer, mode)), 2)
+       let mode = get_first_arg_mode () in
+       Primitive ((Psetfield(0, Pointer, Assignment mode)), 2)
     | "%makeblock" -> Primitive ((Pmakeblock(0, Immutable, None, mode)), 1)
     | "%makemutable" -> Primitive ((Pmakeblock(0, Mutable, None, mode)), 1)
     | "%raise" -> Raise Raise_regular
@@ -233,29 +236,14 @@ let lookup_primitive loc poly pos p =
     | "%array_length" -> Primitive ((Parraylength gen_array_kind), 1)
     | "%array_safe_get" -> Primitive ((Parrayrefs (gen_array_ref_kind mode)), 2)
     | "%array_safe_set" ->
-       let array_mode =
-         match arg_modes with
-         | array_mode :: _ -> array_mode
-         | [] -> assert false
-       in
-       Primitive (Parraysets (gen_array_set_kind array_mode), 3)
+       Primitive (Parraysets (gen_array_set_kind (get_first_arg_mode ())), 3)
     | "%array_unsafe_get" -> Primitive (Parrayrefu (gen_array_ref_kind mode), 2)
     | "%array_unsafe_set" ->
-       let array_mode =
-         match arg_modes with
-         | array_mode :: _ -> array_mode
-         | [] -> assert false
-       in
-       Primitive ((Parraysetu (gen_array_set_kind array_mode)), 3)
+       Primitive ((Parraysetu (gen_array_set_kind (get_first_arg_mode ()))), 3)
     | "%obj_size" -> Primitive ((Parraylength Pgenarray), 1)
     | "%obj_field" -> Primitive ((Parrayrefu (Pgenarray_ref mode)), 2)
     | "%obj_set_field" ->
-       let obj_mode =
-         match arg_modes with
-         | obj_mode :: _ -> obj_mode
-         | [] -> assert false
-       in
-       Primitive ((Parraysetu (Pgenarray_set obj_mode)), 3)
+       Primitive ((Parraysetu (Pgenarray_set (get_first_arg_mode ()))), 3)
     | "%floatarray_length" -> Primitive ((Parraylength Pfloatarray), 1)
     | "%floatarray_safe_get" ->
        Primitive ((Parrayrefs (Pfloatarray_ref mode)), 2)
