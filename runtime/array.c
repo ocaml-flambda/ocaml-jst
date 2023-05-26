@@ -126,7 +126,10 @@ CAMLprim value caml_array_set_addr(value array, value index, value newval)
   return Val_unit;
 }
 
-/* [ local_ 'a array -> int -> local_ 'a -> unit ] where 'a != float */
+/* [ local_ 'a array -> int -> local_ 'a -> unit ] where 'a != float
+
+   Must be used carefully, as it can violate the "no forward pointers"
+   restriction on the local stack. */
 CAMLprim value caml_array_set_addr_local(value array, value index, value newval)
 {
   intnat idx = Long_val(index);
@@ -160,7 +163,11 @@ CAMLprim value caml_array_set(value array, value index, value newval)
   return caml_array_set_addr(array, index, newval);
 }
 
-/* [ local_ 'a array -> int -> local_ 'a -> unit ] */
+/* [ local_ 'a array -> int -> local_ 'a -> unit ]
+
+   Must be used carefully, as it can violate the "no forward pointers"
+   restriction on the local stack if the array contains pointers (vs. [int]s or
+   unboxed floats). */
 CAMLprim value caml_array_set_local(value array, value index, value newval)
 {
 #ifdef FLAT_FLOAT_ARRAY
@@ -273,7 +280,8 @@ CAMLprim value caml_array_unsafe_set(value array, value index, value newval)
 /* [ local_ 'a array -> int -> local_ 'a -> unit ]
 
    Must be used carefully, as it can violate the "no forward pointers"
-   restriction on the local stack. */
+   restriction on the local stack if the array contains pointers (vs. [int]s or
+   unboxed floats). */
 CAMLprim value caml_array_unsafe_set_local(value array, value index,
                                            value newval)
 {
