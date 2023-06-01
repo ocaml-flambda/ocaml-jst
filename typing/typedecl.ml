@@ -460,7 +460,9 @@ let make_constructor env loc type_path type_params svars sargs sret_type =
       let args, targs =
         transl_constructor_arguments env univars closed sargs
       in
-      let tret_type = transl_simple_type env ?univars ~closed Mode.Alloc.Const.legacy sret_type in
+      let tret_type = 
+        transl_simple_type env ?univars ~closed Mode.Alloc.Const.legacy sret_type 
+      in
       let ret_type = tret_type.ctyp_type in
       (* TODO add back type_path as a parameter ? *)
       begin match get_desc ret_type with

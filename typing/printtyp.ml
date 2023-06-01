@@ -23,6 +23,7 @@ open Path
 open Asttypes
 open Layouts
 open Types
+open Mode
 open Btype
 open Outcometree
 
@@ -528,7 +529,9 @@ and raw_type_desc ppf = function
         (Layout.to_string layout)
   | Tarrow((l,arg,ret),t1,t2,c) ->
       fprintf ppf "@[<hov1>Tarrow((\"%s\",%a,%a),@,%a,@,%a,@,%s)@]"
-        (string_of_label l) (Mode.Alloc.print' ~verbose:true) arg (Mode.Alloc.print' ~verbose:true) ret
+        (string_of_label l) 
+        (Alloc.print' ~verbose:true) arg 
+        (Alloc.print' ~verbose:true) ret
         raw_type t1 raw_type t2
         (if is_commu_ok c then "Cok" else "Cunknown")
   | Ttuple tl ->
@@ -1099,7 +1102,7 @@ let add_type_to_preparation = prepare_type
 let print_labels = ref true
 
 let tree_of_mode mode =
-  let {Mode.locality; uniqueness; linearity} = Mode.Alloc.check_const mode in
+  let {locality; uniqueness; linearity} = Alloc.check_const mode in
   let oam_locality =
     match locality with
     | Some Global -> Olm_global

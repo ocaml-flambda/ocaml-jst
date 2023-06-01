@@ -2920,22 +2920,6 @@ let lock_mode ~errors ~loc env id vmode locks =
     (fun (vmode, reasons) lock ->
       match lock with
       | Region_lock -> (Mode.Value.local_to_regional vmode, reasons)
-      | Linearity_lock {mode;shared_context} -> begin
-          (match Mode.Linearity.submode (Mode.Value.linearity vmode) mode with
-          | Error _ ->
-              may_lookup_error errors loc env
-              (Once_value_used_in (id, shared_context))
-          | Ok () -> ()
-          );
-          (* the following says that accessing a unique value inside a loop will give you shared *)
-          let vmode = Mode.Value.with_uniqueness
-            (Mode.Uniqueness.join
-               [Mode.Value.uniqueness vmode;
-                Mode.Linearity.to_dual mode])
-            vmode
-          in
-          vmode, shared_context :: reasons
-        end
       | Locality_lock {mode; escaping_context} -> begin
           match
             Mode.Regionality.submode
@@ -2944,8 +2928,25 @@ let lock_mode ~errors ~loc env id vmode locks =
           with
           | Ok () -> (vmode, reasons)
           | Error _ ->
-            may_lookup_error errors loc env (Local_value_used_in_closure (id, escaping_context))
+              may_lookup_error errors loc env
+                (Local_value_used_in_closure (id, escaping_context))
         end
+      | Linearity_lock {mode;shared_context} -> begin
+          (match Mode.Linearity.submode (Mode.Value.linearity vmode) mode with
+          | Error _ ->
+              may_lookup_error errors loc env
+              (Once_value_used_in (id, shared_context))
+          | Ok () -> ()
+          );
+          (* outside unique values can be accessed inside a loop but only at shared *)
+          let min_uniq = 
+            Mode.Uniqueness.join
+              [ Mode.Value.uniqueness vmode;
+                Mode.Linearity.to_dual mode ]
+          in
+          let vmode = Mode.Value.with_uniqueness min_uniq vmode in
+          vmode, shared_context :: reasons
+        end        
       | Exclave_lock -> begin
           match
             Mode.Regionality.submode
@@ -2954,8 +2955,8 @@ let lock_mode ~errors ~loc env id vmode locks =
           with
           | Ok () -> (Mode.Value.regional_to_local vmode, reasons)
           | Error _ ->
-            may_lookup_error errors loc env
-              (Local_value_used_in_exclave id)
+              may_lookup_error errors loc env
+                (Local_value_used_in_exclave id)
         end
     ) (vmode, []) locks
 

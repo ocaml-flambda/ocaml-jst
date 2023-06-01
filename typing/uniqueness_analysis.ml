@@ -13,8 +13,7 @@
 (*                                                                        *)
 (**************************************************************************)
 
-(* uniqueness analysis, ran after type-checking, to detect multiple uses of
-   variables and forces them to be shared if needed. *)
+(* Uniqueness analysis, ran after type-checking *)
 
 open Asttypes
 open Types
@@ -369,11 +368,8 @@ module UsageTree = struct
   *)
 
   (* INVARIANT: children >= parent. For example, having a shared child
-     under a unique parent is redundant information, so we simply don't allow that
-     children.
-
-     The invariant is preserved because Usage.par and Usage.seq above is monotone,
-     and UsageTree.par and UsageTree.seq here is node-wise.
+     under a unique parent is nonsense. The invariant is preserved because Usage.par and 
+     Usage.seq above is monotone, and UsageTree.par and UsageTree.seq here is node-wise.
   *)
   type t = { children : t Projection.Map.t; usage : Usage.t }
 
@@ -819,18 +815,17 @@ let maybe_paths_of_ident ?unique_use ienv path loc =
       None
   | Path.Papply _ -> assert false
 
-(*
-TODO: replace the dirty hack
-The following functions are dirty hack and used for modules and classes.
-Currently we treat the boundary between modules/classes and their surrounding
-environment coarsely. To be specific, all references in the modules/classes
-pointing to the environment are treated as many and shared. This translates to
-enforcement on both ends:
-- inside the module, those uses needs to be forced as many and shared
-- need a UsageForest which marks those uses as many and shared, so that the parent
-expression can detect conflict if any.
+(* TODO: replace the dirty hack
+   The following functions are dirty hack and used for modules and classes.
+   Currently we treat the boundary between modules/classes and their surrounding
+   environment coarsely. To be specific, all references in the modules/classes
+   pointing to the environment are treated as many and shared. This translates to
+   enforcement on both ends:
+   - inside the module, those uses needs to be forced as many and shared
+   - need a UsageForest which marks those uses as many and shared, so that the parent
+   expression can detect conflict if any.
 
-The following function returns all open variables inside a module.
+   The following function returns all open variables inside a module.
 *)
 let open_variables ienv f =
   let ll = ref [] in
@@ -997,15 +992,15 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
           let maybe_unique = (modes, occ) in
           UF.seq uf (mark_maybe_unique ps maybe_unique)
       | None, uf -> uf)
-  | Texp_setfield (exp', _, _, _, e) ->
+  | Texp_setfield (exp', _, _, _, e) -> (
       (* setfield is understood as an opaque function which borrows the memory
-      address of the record *)
+         address of the record *)
       let uf = check_uniqueness_exp_ e ienv in
-      (match check_uniqueness_exp' exp' ienv with
+      match check_uniqueness_exp' exp' ienv with
       | None, uf' -> UF.seq uf uf'
       | Some (ps, _), uf' ->
-        let occ = {Occurrence.loc; reason = DirectUse} in
-        UF.seqs [uf; uf'; mark_implicit_borrow_memory_address_paths ps occ])
+          let occ = { Occurrence.loc; reason = DirectUse } in
+          UF.seqs [ uf; uf'; mark_implicit_borrow_memory_address_paths ps occ ])
   | Texp_array (_, es, _) ->
       UF.seqs (List.map (fun e -> check_uniqueness_exp_ e ienv) es)
   | Texp_ifthenelse (if', then', else_opt) ->
@@ -1110,9 +1105,7 @@ and check_uniqueness_exp' exp ienv : (UF.Path.t list * unique_use) option * UF.t
   | Texp_ident (p, _, _, _, unique_use) -> (
       match maybe_paths_of_ident ~unique_use ienv p exp.exp_loc with
       | None -> (None, UF.empty)
-      | Some ps ->
-          (Some (ps, unique_use), UF.empty)
-  )
+      | Some ps -> (Some (ps, unique_use), UF.empty))
   | Texp_field (e, _, l, modes, _) -> (
       match check_uniqueness_exp' e ienv with
       | Some (paths, _), uf ->

@@ -42,7 +42,7 @@ type _ pattern_category =
 | Computation : computation pattern_category
 
 (* The following will be used in the future when overwriting is introduced
-  and code-motion need to be checked. This is associated to each field
+  and code-motion need to be checked. This will be associated to each field
   projection. If this points to a unique mode, that means this projection must
   be borrowed and cannot be moved *)
 type unique_barrier = Mode.Uniqueness.t option
@@ -266,7 +266,8 @@ and expression_desc =
   | Texp_tuple of expression list * Mode.Alloc.t
         (** (E1, ..., EN) *)
   | Texp_construct of
-      Longident.t loc * Types.constructor_description * expression list * Mode.Alloc.t option
+      Longident.t loc * Types.constructor_description * 
+      expression list * Mode.Alloc.t option
         (** C                []
             C E              [E]
             C (E1, ..., En)  [E1;...;En]
@@ -306,7 +307,8 @@ and expression_desc =
         only when getting a (float) field from a [Record_float] record
       *)
   | Texp_setfield of
-      expression * Mode.Locality.t * Longident.t loc * Types.label_description * expression
+      expression * Mode.Locality.t * Longident.t loc * 
+      Types.label_description * expression
     (** [alloc_mode] translates to the [modify_mode] of the record *)
   | Texp_array of mutable_flag * expression list * Mode.Alloc.t
   | Texp_list_comprehension of comprehension

@@ -258,7 +258,9 @@ type error =
   | Missing_type_constraint
   | Wrong_expected_kind of wrong_kind_sort * wrong_kind_context * type_expr
   | Expr_not_a_record_type of type_expr
-  | Submode_failed of Mode.Value.error * submode_reason * Env.escaping_context option * Env.shared_context list
+  | Submode_failed of 
+      Mode.Value.error * submode_reason * 
+      Env.escaping_context option * Env.shared_context list
   | Local_application_complete of Asttypes.arg_label * [`Prefix|`Single_arg|`Entire_apply]
   | Param_mode_mismatch of type_expr * Mode.Alloc.error
   | Uncurried_function_escapes of Mode.Alloc.error

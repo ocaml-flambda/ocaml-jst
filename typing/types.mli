@@ -139,25 +139,6 @@ and type_desc =
 and arrow_desc =
   arg_label * Mode.Alloc.t * Mode.Alloc.t
 
-and _ row_field_gen =
-    RFpresent : type_expr option -> [> `some] row_field_gen
-  | RFeither :
-      { no_arg: bool;
-        arg_type: type_expr list;
-        matched: bool;
-        ext: [`some | `none] row_field_gen ref} -> [> `some] row_field_gen
-  | RFabsent : [> `some] row_field_gen
-  | RFnone : [> `none] row_field_gen
-and any = [`some | `none | `var]
-and _ field_kind_gen =
-    FKvar : {mutable field_kind: any field_kind_gen} -> [> `var] field_kind_gen
-  | FKprivate : [> `none] field_kind_gen  (* private method; only under FKvar *)
-  | FKpublic  : [> `some] field_kind_gen  (* public method *)
-  | FKabsent  : [> `some] field_kind_gen  (* hidden private method *)
-and _ commutable_gen =
-    Cok      : [> `some] commutable_gen
-  | Cunknown : [> `none] commutable_gen
-  | Cvar : {mutable commu: any commutable_gen} -> [> `var] commutable_gen
 
 
 and fixed_explanation =

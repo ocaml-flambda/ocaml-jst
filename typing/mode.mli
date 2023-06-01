@@ -16,26 +16,19 @@
 type changes
 
 val undo_changes : changes -> unit
-
 val change_log : (changes -> unit) ref
 
 module Locality : sig
-
   module Const : sig
-
-    type t =
-      | Global
-      | Local
+    type t = Global | Local
 
     val legacy : t
-
     val min : t
     val max : t
     val le : t -> t -> bool
     val join : t -> t -> t
     val meet : t -> t -> t
     val print : Format.formatter -> t -> unit
-
   end
 
   type t
@@ -59,18 +52,11 @@ module Locality : sig
 end
 
 module Regionality : sig
-
   module Const : sig
-
-    type t =
-      | Global
-      | Regional
-      | Local
-
+    type t = Global | Regional | Local
   end
 
   type t
-
   type error = [ `Regionality | `Locality ]
 
   val global : t
@@ -78,31 +64,24 @@ module Regionality : sig
   val local : t
   val submode : t -> t -> (unit, error) result
   val of_locality : Locality.t -> t
-
   val regional_to_local : t -> t
   val global_to_regional : t -> t
   val local_to_regional : t -> t
   val regional_to_global : t -> t
-
   val print : Format.formatter -> t -> unit
-
 end
 
 module Uniqueness : sig
-
   module Const : sig
-
     type t = Unique | Shared
 
     val legacy : t
-
     val min : t
     val max : t
     val le : t -> t -> bool
     val join : t -> t -> t
     val meet : t -> t -> t
     val print : Format.formatter -> t -> unit
-
   end
 
   type t
@@ -127,23 +106,18 @@ module Uniqueness : sig
 end
 
 module Linearity : sig
-
   module Const : sig
-
     type t = Many | Once
 
     val legacy : t
-
     val min : t
     val max : t
     val le : t -> t -> bool
     val join : t -> t -> t
     val meet : t -> t -> t
     val print : Format.formatter -> t -> unit
-
     val to_dual : t -> Uniqueness.Const.t
     val of_dual : Uniqueness.Const.t -> t
-
   end
 
   type t
@@ -167,26 +141,17 @@ module Linearity : sig
   val print : Format.formatter -> t -> unit
 end
 
-type ('a, 'b, 'c) modes =
-  { locality : 'a;
-    uniqueness : 'b;
-    linearity : 'c; }
+type ('a, 'b, 'c) modes = { locality : 'a; uniqueness : 'b; linearity : 'c }
 
 module Alloc : sig
-
   module Const : sig
-
-    type t =
-      (Locality.Const.t, Uniqueness.Const.t, Linearity.Const.t) modes
+    type t = (Locality.Const.t, Uniqueness.Const.t, Linearity.Const.t) modes
 
     val legacy : t
-
     val join : t -> t -> t
     val uncurried_ret_mode_from_arg : t -> t
     val uncurried_ret_mode_from_alloc : t -> t
-
     val min_with_uniqueness : Uniqueness.Const.t -> t
-  
   end
 
   type t
@@ -195,7 +160,6 @@ module Alloc : sig
   val local : t
   val unique : t
   val local_unique : t
-
   val prod : Locality.t -> Uniqueness.t -> Linearity.t -> t
 
   (* val unique : const
@@ -242,22 +206,18 @@ module Alloc : sig
     t ->
     ( Locality.Const.t option,
       Uniqueness.Const.t option,
-      Linearity.Const.t option ) modes
+      Linearity.Const.t option )
+    modes
 
   val print' : ?verbose:bool -> Format.formatter -> t -> unit
   val print : Format.formatter -> t -> unit
-
   val uncurried_ret_mode_from_arg : t -> t
   val uncurried_ret_mode_from_alloc : t -> t
 end
 
 module Value : sig
-
   module Const : sig
-
-    type t =
-      (Regionality.Const.t, Uniqueness.Const.t, Linearity.Const.t) modes
-
+    type t = (Regionality.Const.t, Uniqueness.Const.t, Linearity.Const.t) modes
   end
 
   type t

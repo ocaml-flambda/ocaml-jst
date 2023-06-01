@@ -304,33 +304,27 @@ let uniqueness_to_linearity = function
   | Oum_unknown -> Olinm_unknown
 
 let join_modes m1 m2 = 
-  {oam_locality = join_locality m1.oam_locality m2.oam_locality;
-   oam_uniqueness = join_uniqueness m1.oam_uniqueness m2.oam_uniqueness;
-   oam_linearity = join_linearity m1.oam_linearity m2.oam_linearity}
+  { oam_locality = join_locality m1.oam_locality m2.oam_locality;
+    oam_uniqueness = join_uniqueness m1.oam_uniqueness m2.oam_uniqueness;
+    oam_linearity = join_linearity m1.oam_linearity m2.oam_linearity }
 
 let default_mode =
   { oam_locality = Olm_global;
     oam_uniqueness = Oum_shared;
     oam_linearity = Olinm_many; }
 
-(** constrain uncurried function ret_mode from arg_mode *)
 let uncurried_ret_mode_from_arg arg_mode = 
   let oam_locality = arg_mode.oam_locality in
-  (* uniqueness of the returned function is not constrained *)
   let oam_uniqueness = Oum_shared in 
   let oam_linearity = 
     join_linearity 
       arg_mode.oam_linearity
-      (* In addition, unique argument make the returning function once.
-        In other words, if argument <= unique, returning function >= once.
-        That is, returning function >= (dual of argument) *)
       (uniqueness_to_linearity arg_mode.oam_uniqueness)
   in
   { oam_locality;
     oam_uniqueness;
     oam_linearity }
 
-(** constrain uncurried function ret_mode from the mode of the whole function *)
 let uncurried_ret_mode_from_alloc alloc_mode = 
   let oam_locality = alloc_mode.oam_locality in
   let oam_uniqueness = Oum_shared in
@@ -377,21 +371,24 @@ let rec print_out_type_0 mode ppf =
       print_out_type_1 mode ppf ty
 
 and print_out_type_mode mode ppf ty =
-  let is_local = match mode.oam_locality with
+  let is_local = 
+    match mode.oam_locality with
     | Olm_local -> true
     | _ -> false
   in
-  let is_unique = match mode.oam_uniqueness with
+  let is_unique = 
+    match mode.oam_uniqueness with
     | Oum_unique -> true
     | _ -> false
   in
-  let is_once = match mode.oam_linearity with
+  let is_once = 
+    match mode.oam_linearity with
     | Olinm_once -> true
     | _ -> false
   in
-  if (not is_local || Language_extension.is_enabled Local)
-  && (not is_unique || Language_extension.is_enabled Unique)
-  && (not is_once || Language_extension.is_enabled Unique)
+  if (not is_local || Language_extension.is_enabled Local) &&
+     (not is_unique || Language_extension.is_enabled Unique) &&
+     (not is_once || Language_extension.is_enabled Unique)
   (* this branch does not need attributes at all *)
   then begin
     if is_local then begin
@@ -406,7 +403,7 @@ and print_out_type_mode mode ppf ty =
     print_out_type_2 mode ppf ty end
   else
     (* otherwise we would rather print everything in attributes
-      even if extensions are enabled *)
+       even if extensions are enabled *)
     let ty = if is_unique then Otyp_attribute (ty, {oattr_name="unique"}) else ty in
     let ty = if is_local then Otyp_attribute (ty, {oattr_name="local"}) else ty in
     let ty = if is_once then Otyp_attribute (ty, {oattr_name="once"}) else ty in
@@ -437,8 +434,8 @@ and print_out_ret mode rm ppf =
   (* the 'mode' argument only has meaning if we are talking about closure *)
   | Otyp_arrow _ as ty ->
     if same_locality mode rm && same_uniqueness mode rm && same_linearity mode rm
-    then print_out_type_1 rm ppf ty
-    else print_out_type_mode rm ppf ty
+      then print_out_type_1 rm ppf ty 
+      else print_out_type_mode rm ppf ty
   | ty -> print_out_type_mode rm ppf ty
 
 and print_out_type_2 mode ppf =

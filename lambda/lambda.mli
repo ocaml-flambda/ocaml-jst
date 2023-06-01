@@ -38,7 +38,8 @@ type locality_mode = private
   | Alloc_heap
   | Alloc_local
 
-(* for now, middle-end only knows locality *)
+(** For now we don't have strong update, and thus uniqueness is irrelavent in 
+    middle and back-end; in the future this will be extended with uniqueness *)
 type alloc_mode = locality_mode
 
 type modify_mode = private

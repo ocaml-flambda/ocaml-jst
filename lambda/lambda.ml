@@ -66,15 +66,6 @@ include (struct
   let modify_heap = Modify_heap
 
   let modify_maybe_stack : modify_mode =
-    (* CR zqian: possible to move this check to a better place? *)
-    (* idealy I don't want to do the checking here.
-       if stack allocations are disabled, then the alloc_mode which this modify_mode
-        depends on should be heap, which makes this modify_mode to be heap *)
-
-    (* one suggestion: move the check to optimize_allocation;
-      if stack_allocation not enabled, force all allocations to be heap,
-        which then propagates to all the other modes.
-       *)
     if Config.stack_allocation then Modify_maybe_stack
     else Modify_heap
 

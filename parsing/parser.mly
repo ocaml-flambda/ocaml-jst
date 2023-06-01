@@ -3752,7 +3752,6 @@ strict_function_type:
   | /* empty */
       { Nolabel }
 ;
-
 %inline mode_flag:
    | LOCAL
        { (Local, $sloc) }
@@ -3774,7 +3773,6 @@ strict_function_type:
   | ty = tuple_type
     { ty }
 ;
-
 (* Tuple types include:
    - atomic types (see below);
    - proper tuple types:                  int * int * int list
