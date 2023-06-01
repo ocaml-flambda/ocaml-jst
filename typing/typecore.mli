@@ -261,9 +261,7 @@ type error =
   | Submode_failed of Mode.Value.error * submode_reason * Env.escaping_context option * Env.shared_context list
   | Local_application_complete of Asttypes.arg_label * [`Prefix|`Single_arg|`Entire_apply]
   | Param_mode_mismatch of type_expr * Mode.Alloc.error
-  | Uncurried_function_escapes
-  | Uncurried_function_linearity
-  | Uncurried_function_uniqueness_linearity
+  | Uncurried_function_escapes of Mode.Alloc.error
   | Local_return_annotation_mismatch of Location.t
   | Function_returns_local
   | Bad_tail_annotation of [`Conflict|`Not_a_tailcall]

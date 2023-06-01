@@ -27,6 +27,8 @@ module Locality : sig
       | Global
       | Local
 
+    val legacy : t
+
     val min : t
     val max : t
     val le : t -> t -> bool
@@ -92,6 +94,8 @@ module Uniqueness : sig
 
     type t = Unique | Shared
 
+    val legacy : t
+
     val min : t
     val max : t
     val le : t -> t -> bool
@@ -127,6 +131,8 @@ module Linearity : sig
   module Const : sig
 
     type t = Many | Once
+
+    val legacy : t
 
     val min : t
     val max : t
@@ -173,8 +179,14 @@ module Alloc : sig
     type t =
       (Locality.Const.t, Uniqueness.Const.t, Linearity.Const.t) modes
 
-    val join : t -> t -> t
+    val legacy : t
 
+    val join : t -> t -> t
+    val uncurried_ret_mode_from_arg : t -> t
+    val uncurried_ret_mode_from_alloc : t -> t
+
+    val min_with_uniqueness : Uniqueness.Const.t -> t
+  
   end
 
   type t
@@ -234,6 +246,9 @@ module Alloc : sig
 
   val print' : ?verbose:bool -> Format.formatter -> t -> unit
   val print : Format.formatter -> t -> unit
+
+  val uncurried_ret_mode_from_arg : t -> t
+  val uncurried_ret_mode_from_alloc : t -> t
 end
 
 module Value : sig

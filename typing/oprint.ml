@@ -274,9 +274,6 @@ let pr_var = Pprintast.tyvar
 let pr_vars =
   print_list pr_var (fun ppf -> fprintf ppf "@ ")
 
-(* In function type A -> B -> C, the mode of (B -> C) can usually be infered from
-  that of A and A -> B -> C and does not need to be printed, which is calculated
-  by the following. *)
 let join_locality lm1 lm2 =
   match lm1, lm2 with
   | Olm_local, _ -> Olm_local
@@ -285,7 +282,13 @@ let join_locality lm1 lm2 =
   | _, Olm_unknown -> Olm_unknown
   | Olm_global, Olm_global -> Olm_global
 
-(* uniqueness is irrelavant in this regards *)
+let join_uniqueness u1 u2 = 
+  match u1, u2 with
+  | Oum_shared, _ -> Oum_shared
+  | _, Oum_shared -> Oum_shared
+  | Oum_unknown, _ -> Oum_unknown
+  | _, Oum_unknown -> Oum_unknown
+  | Oum_unique, Oum_unique -> Oum_unique
 
 let join_linearity l1 l2 =
   match l1, l2 with
@@ -293,25 +296,46 @@ let join_linearity l1 l2 =
   | _, Olinm_once -> Olinm_once
   | Olinm_unknown, _
   | _, Olinm_unknown -> Olinm_unknown
-  | _ -> Olinm_many
+  | Olinm_many, Olinm_many -> Olinm_many
+
+let uniqueness_to_linearity = function
+  | Oum_unique -> Olinm_once
+  | Oum_shared -> Olinm_many
+  | Oum_unknown -> Olinm_unknown
+
+let join_modes m1 m2 = 
+  {oam_locality = join_locality m1.oam_locality m2.oam_locality;
+   oam_uniqueness = join_uniqueness m1.oam_uniqueness m2.oam_uniqueness;
+   oam_linearity = join_linearity m1.oam_linearity m2.oam_linearity}
 
 let default_mode =
   { oam_locality = Olm_global;
     oam_uniqueness = Oum_shared;
     oam_linearity = Olinm_many; }
 
-(* [join_modes oam_fun oam_arg] is the mode of B -> C, where [oam_fun]
-   is the mode of (A -> B -> C) and [oam_arg] is the mode of A. *)
-let join_modes fn arg =
-  let oam_locality = join_locality fn.oam_locality arg.oam_locality in
-  let oam_uniqueness = Oum_shared in
-  let oam_linearity = join_linearity fn.oam_linearity arg.oam_linearity in
-  let oam_linearity =
-    match arg.oam_uniqueness with
-    | Oum_unique -> join_linearity Olinm_once oam_linearity
-    | Oum_shared | Oum_unknown -> oam_linearity
+(** constrain uncurried function ret_mode from arg_mode *)
+let uncurried_ret_mode_from_arg arg_mode = 
+  let oam_locality = arg_mode.oam_locality in
+  (* uniqueness of the returned function is not constrained *)
+  let oam_uniqueness = Oum_shared in 
+  let oam_linearity = 
+    join_linearity 
+      arg_mode.oam_linearity
+      (* In addition, unique argument make the returning function once.
+        In other words, if argument <= unique, returning function >= once.
+        That is, returning function >= (dual of argument) *)
+      (uniqueness_to_linearity arg_mode.oam_uniqueness)
   in
-  { oam_locality; oam_uniqueness; oam_linearity; }
+  { oam_locality;
+    oam_uniqueness;
+    oam_linearity }
+
+(** constrain uncurried function ret_mode from the mode of the whole function *)
+let uncurried_ret_mode_from_alloc alloc_mode = 
+  let oam_locality = alloc_mode.oam_locality in
+  let oam_uniqueness = Oum_shared in
+  let oam_linearity = alloc_mode.oam_linearity in
+  { oam_locality; oam_uniqueness; oam_linearity }
 
 let same_locality m1 m2 =
   match m1.oam_locality, m2.oam_locality with
@@ -396,7 +420,11 @@ and print_out_type_1 mode ppf =
       print_out_arg am ppf ty1;
       pp_print_string ppf " ->";
       pp_print_space ppf ();
-      let mode = join_modes mode am in
+      let mode = 
+        join_modes 
+          (uncurried_ret_mode_from_alloc mode)
+          (uncurried_ret_mode_from_arg am) 
+      in
       print_out_ret mode rm ppf ty2;
       pp_close_box ppf ()
   | ty -> print_out_type_mode mode ppf ty

@@ -49,13 +49,12 @@ val valid_tyvar_name : string -> bool
 
 val transl_simple_type:
         Env.t -> ?univars:TyVarEnv.poly_univars -> closed:bool
-        -> Mode.Locality.Const.t
-        -> Mode.Linearity.Const.t
+        -> Mode.Alloc.Const.t
         -> Parsetree.core_type -> Typedtree.core_type
 val transl_simple_type_univars:
         Env.t -> Parsetree.core_type -> Typedtree.core_type
 val transl_simple_type_delayed
-  :  Env.t -> Mode.Locality.Const.t -> Mode.Linearity.Const.t
+  :  Env.t -> Mode.Alloc.Const.t
   -> Parsetree.core_type
   -> Typedtree.core_type * type_expr * (unit -> unit)
         (* Translate a type, but leave type variables unbound. Returns

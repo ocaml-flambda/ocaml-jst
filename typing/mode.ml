@@ -137,24 +137,6 @@ module type Solver = sig
 
 end
 
-(* The interface we provide to the user would build a directed graph where
-   nodes are modes (either const or var) and edges are submoding relation.
-   Solving constraints directly on this graph directly would of course be very
-   inefficient. Instead, we use the following data structure which can be derived
-   from the above virtual graph. First of all, for each var, we store all vars
-   that are directly (not recursively) less or equal than it, called `vlower`. In
-   addition, we store the lower and upper bound for the variable, called `lower`
-   and `upper`.
-
-   To help understand, we also note the following:
-   - If a const sit between two vars, there is no point to record the indirect relation
-   between the two; instead, it's more straightward to record each of their
-   relation to the const.
-   - If a is in v.vlower, than a.lower <= v.lower and a.upper <= v.upper. We need
-   to maintain this invariant.
-   - `upper` and `lower` will not change unless some const is involved. If v.upper
-   = v.lower, than v is determined.
-*)
 module Solver (L : Lattice) : Solver with type const := L.t = struct
 
   type nonrec var = L.t var
@@ -183,7 +165,6 @@ module Solver (L : Lattice) : Solver with type const := L.t = struct
   let is_const = function Amode _ -> true | Amodevar _ -> false
 
   let submode_cv ~log m v =
-    (* Printf.printf "  %a <= %a\n" pp_c m pp_v v; *)
     if L.le m v.lower then ()
     else if not (L.le m v.upper) then raise NotSubmode
     else
@@ -192,7 +173,6 @@ module Solver (L : Lattice) : Solver with type const := L.t = struct
       if L.eq m v.upper then set_vlower ~log v []
 
   let rec submode_vc ~log v m =
-    (* Printf.printf "  %a <= %a\n" pp_v v pp_c m; *)
     if L.le v.upper m then ()
     else if not (L.le v.lower m) then raise NotSubmode
     else
@@ -202,10 +182,6 @@ module Solver (L : Lattice) : Solver with type const := L.t = struct
       |> List.iter (fun a ->
              (* a <= v <= m *)
              submode_vc ~log a m;
-             (* The following is needed because a.lower might have been updated in
-                submode_cv while v.lower is not, because from `a` we cannot find `v` *)
-             (* In contrast, the `upper` field is always updated timely, because we
-                have `vlower` *)
              set_lower ~log v (L.join v.lower a.lower));
       if L.eq v.lower m then set_vlower ~log v []
 
@@ -214,13 +190,10 @@ module Solver (L : Lattice) : Solver with type const := L.t = struct
     if L.le a.upper b.lower then ()
     else if a == b || List.memq a b.vlower then ()
     else (
-      (* the ordering of the following three clauses doesn't matter
-         as they operate on different things *)
       submode_vc ~log a b.upper;
       set_vlower ~log b (a :: b.vlower);
       submode_cv ~log a.lower b
-      (* as mentioned, at this point, vars larger than `b` will have
-         `lower` out-of-date *))
+    )
 
   let rec all_equal v = function
     | [] -> true
@@ -284,13 +257,10 @@ module Solver (L : Lattice) : Solver with type const := L.t = struct
       match (a, b) with
       | Amode a, Amode b -> if not (L.le a b) then raise NotSubmode
       | Amodevar v, Amode c ->
-          (* Printf.printf "%a <= %a\n" pp_v v pp_c c; *)
           submode_vc ~log v c
       | Amode c, Amodevar v ->
-          (* Printf.printf "%a <= %a\n" pp_c c pp_v v; *)
           submode_cv ~log c v
       | Amodevar a, Amodevar b ->
-          (* Printf.printf "%a <= %a\n" pp_v a pp_v b; *)
           submode_vv ~log a b
     with
     | () ->
@@ -528,6 +498,8 @@ module Locality = struct
     let min = Global
     let max = Local
 
+    let legacy = Global
+
     let le a b =
       match (a, b) with Global, _ | _, Local -> true | Local, Global -> false
 
@@ -710,6 +682,8 @@ module Uniqueness = struct
   module Const = struct
     type t = Unique | Shared
 
+    let legacy = Shared
+
     let min = Unique
     let max = Shared
 
@@ -750,6 +724,8 @@ end
 module Linearity = struct
   module Const = struct
     type t = Many | Once
+
+    let legacy = Many
 
     let min = Many
     let max = Once
@@ -802,6 +778,12 @@ module Alloc = struct
 
     type t = (Locality.Const.t, Uniqueness.Const.t, Linearity.Const.t) modes
 
+    let legacy = {
+      locality = Locality.Const.legacy;
+      uniqueness = Uniqueness.Const.legacy;
+      linearity = Linearity.Const.legacy
+    }
+
     let join { locality = loc1; uniqueness = u1; linearity = lin1 }
           { locality = loc2; uniqueness = u2; linearity = lin2 } =
       {
@@ -810,6 +792,36 @@ module Alloc = struct
         linearity = Linearity.Const.join lin1 lin2;
       }
 
+    (** constrain uncurried function ret_mode from arg_mode *)
+    let uncurried_ret_mode_from_arg arg_mode = 
+      let locality = arg_mode.locality in
+      (* uniqueness of the returned function is not constrained *)
+      let uniqueness = Uniqueness.Const.min in 
+      let linearity = 
+        Linearity.Const.join
+          arg_mode.linearity
+          (* In addition, unique argument make the returning function once.
+            In other words, if argument <= unique, returning function >= once.
+            That is, returning function >= (dual of argument) *)
+          (Linearity.Const.of_dual arg_mode.uniqueness)
+      in
+      {locality; uniqueness; linearity}
+
+    (** constrain uncurried function ret_mode from the mode of the whole function *)
+    let uncurried_ret_mode_from_alloc alloc_mode = 
+      let locality = alloc_mode.locality in
+      let uniqueness = Uniqueness.Const.min in
+      let linearity = alloc_mode.linearity in
+      {locality; uniqueness; linearity}
+
+    let min = {
+      locality = Locality.Const.min;
+      uniqueness = Uniqueness.Const.min;
+      linearity = Linearity.Const.min
+    }
+
+    let min_with_uniqueness uniqueness = 
+      {min with uniqueness }
   end
 
   type t = (Locality.t, Uniqueness.t, Linearity.t) modes
@@ -980,6 +992,30 @@ module Alloc = struct
       linearity
 
   let print ppf m = print' ~verbose:true ppf m
+
+  (** constrain uncurried function ret_mode from arg_mode *)
+  let uncurried_ret_mode_from_arg arg_mode = 
+    let locality = arg_mode.locality in
+    (* uniqueness of the returned function is not constrained *)
+    let uniqueness = Uniqueness.of_const Uniqueness.Const.min in 
+    let linearity = 
+      Linearity.join [
+        arg_mode.linearity; 
+        (* In addition, unique argument make the returning function once.
+          In other words, if argument <= unique, returning function >= once.
+          That is, returning function >= (dual of argument) *)
+        Linearity.of_dual arg_mode.uniqueness
+      ] 
+    in
+    {locality; uniqueness; linearity}
+
+  (** constrain uncurried function ret_mode from the mode of the whole function *)
+  let uncurried_ret_mode_from_alloc alloc_mode = 
+    let locality = alloc_mode.locality in
+    let uniqueness = Uniqueness.of_const Uniqueness.Const.min in
+    let linearity = alloc_mode.linearity in
+    {locality; uniqueness; linearity}
+
 end
 
 module Value = struct
@@ -1177,3 +1213,4 @@ module Value = struct
 
   let print ppf t = print' ~verbose:true ppf t
 end
+

@@ -384,7 +384,7 @@ let transl_labels env univars closed lbls =
     Builtin_attributes.warning_scope attrs
       (fun () ->
          let arg = Ast_helper.Typ.force_poly arg in
-         let cty = transl_simple_type env ?univars ~closed Global Many arg in
+         let cty = transl_simple_type env ?univars ~closed Mode.Alloc.Const.legacy arg in
          let gbl =
            match mut with
            | Mutable -> Types.Global
@@ -416,7 +416,7 @@ let transl_labels env univars closed lbls =
 
 let transl_types_gf env univars closed tyl =
   let mk arg =
-    let cty = transl_simple_type env ?univars ~closed Global Many arg in
+    let cty = transl_simple_type env ?univars ~closed Mode.Alloc.Const.legacy arg in
     let gf = transl_global_flags arg.ptyp_loc arg.ptyp_attributes in
     (cty, gf)
   in
@@ -460,7 +460,7 @@ let make_constructor env loc type_path type_params svars sargs sret_type =
       let args, targs =
         transl_constructor_arguments env univars closed sargs
       in
-      let tret_type = transl_simple_type env ?univars ~closed Global Many sret_type in
+      let tret_type = transl_simple_type env ?univars ~closed Mode.Alloc.Const.legacy sret_type in
       let ret_type = tret_type.ctyp_type in
       (* TODO add back type_path as a parameter ? *)
       begin match get_desc ret_type with
@@ -536,8 +536,8 @@ let transl_declaration env sdecl (id, uid) =
   let params = List.map (fun (cty, _) -> cty.ctyp_type) tparams in
   let cstrs = List.map
     (fun (sty, sty', loc) ->
-      transl_simple_type env ~closed:false Global Many sty,
-      transl_simple_type env ~closed:false Global Many sty', loc)
+      transl_simple_type env ~closed:false Mode.Alloc.Const.legacy sty,
+      transl_simple_type env ~closed:false Mode.Alloc.Const.legacy sty', loc)
     sdecl.ptype_cstrs
   in
   let unboxed_attr = get_unboxed_from_attributes sdecl in
@@ -561,7 +561,7 @@ let transl_declaration env sdecl (id, uid) =
       None -> None, None
     | Some sty ->
       let no_row = not (is_fixed_type sdecl) in
-      let cty = transl_simple_type env ~closed:no_row Global Many sty in
+      let cty = transl_simple_type env ~closed:no_row Mode.Alloc.Const.legacy sty in
       Some cty, Some cty.ctyp_type
   in
   let (tkind, kind) =
@@ -2019,8 +2019,8 @@ let transl_with_constraint id ?fixed_row_path ~sig_env ~sig_decl ~outer_env
   let arity = List.length params in
   let constraints =
     List.map (fun (ty, ty', loc) ->
-      let cty = transl_simple_type env ~closed:false Global Many ty in
-      let cty' = transl_simple_type env ~closed:false Global Many ty' in
+      let cty = transl_simple_type env ~closed:false Mode.Alloc.Const.legacy ty in
+      let cty' = transl_simple_type env ~closed:false Mode.Alloc.Const.legacy ty' in
       (* Note: We delay the unification of those constraints
          after the unification of parameters, so that clashing
          constraints report an error on the constraint location
@@ -2032,7 +2032,7 @@ let transl_with_constraint id ?fixed_row_path ~sig_env ~sig_decl ~outer_env
   let (tman, man) =  match sdecl.ptype_manifest with
       None -> None, None
     | Some sty ->
-        let cty = transl_simple_type env ~closed:no_row Global Many sty in
+        let cty = transl_simple_type env ~closed:no_row Mode.Alloc.Const.legacy sty in
         Some cty, Some cty.ctyp_type
   in
   (* In the second part, we check the consistency between the two

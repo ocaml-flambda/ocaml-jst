@@ -544,9 +544,8 @@ let curry : unique_ box -> (unique_ box -> unique_ box) = fun b1 b2 -> b1
 Line 1, characters 58-73:
 1 | let curry : unique_ box -> (unique_ box -> unique_ box) = fun b1 b2 -> b1
                                                               ^^^^^^^^^^^^^^^
-Error: This function when partially applied returns a once_ value
-       because it closes over a unique_ value; however, it might be used
-       several times
+Error: This function or one of its parameters violates once constraint
+       when it is partially applied
 |}]
 
 (* If both type and mode are wrong, complain about type *)

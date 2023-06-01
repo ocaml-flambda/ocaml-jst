@@ -185,9 +185,7 @@ type error =
   | Submode_failed of Mode.Value.error * submode_reason * Env.escaping_context option * Env.shared_context list
   | Local_application_complete of Asttypes.arg_label * [`Prefix|`Single_arg|`Entire_apply]
   | Param_mode_mismatch of type_expr * Mode.Alloc.error
-  | Uncurried_function_escapes
-  | Uncurried_function_linearity
-  | Uncurried_function_uniqueness_linearity
+  | Uncurried_function_escapes of Mode.Alloc.error
   | Local_return_annotation_mismatch of Location.t
   | Function_returns_local
   | Bad_tail_annotation of [`Conflict|`Not_a_tailcall]
@@ -1168,7 +1166,7 @@ let solve_constructor_annotation env name_list sty ty_args ty_ex =
       name_list
   in
   begin_def ();
-  let cty, ty, force = Typetexp.transl_simple_type_delayed !env Global Many sty in
+  let cty, ty, force = Typetexp.transl_simple_type_delayed !env Mode.Alloc.Const.legacy sty in
   end_def ();
   generalize_structure ty;
   pattern_force := force :: !pattern_force;
@@ -1302,9 +1300,9 @@ let solve_Ppat_lazy  ~refine loc env expected_ty =
     (generic_instance expected_ty);
   nv
 
-let solve_Ppat_constraint ~refine loc env locality linearity sty expected_ty =
+let solve_Ppat_constraint ~refine loc env modes sty expected_ty =
   begin_def();
-  let cty, ty, force = Typetexp.transl_simple_type_delayed !env locality linearity sty in
+  let cty, ty, force = Typetexp.transl_simple_type_delayed !env modes sty in
   end_def();
   pattern_force := force :: !pattern_force;
   generalize_structure ty;
@@ -2666,8 +2664,8 @@ and type_pat_aux
       assert construction_not_used_in_counterexamples;
       (* Pretend separate = true *)
       let cty, ty, expected_ty' =
-        let {locality; linearity; _} = type_modes_const_pat sp in
-        solve_Ppat_constraint ~refine loc env locality linearity sty expected_ty
+        let modes = type_modes_const_pat sp in
+        solve_Ppat_constraint ~refine loc env modes sty expected_ty
       in
       type_pat category sp' expected_ty' (fun p ->
         (*Format.printf "%a@.%a@."
@@ -3540,7 +3538,7 @@ let rec approx_type env sty =
           (* Polymorphic types will only unify with types that match all of their
            polymorphic parts, so we need to fully translate the type here
            unlike in the monomorphic case *)
-          Typetexp.transl_simple_type env ~closed:false arg_mode.locality arg_mode.linearity arg_sty
+          Typetexp.transl_simple_type env ~closed:false arg_mode arg_sty
         in
         let ret = approx_type env sty in
         let marg = Mode.Alloc.of_const arg_mode in
@@ -3581,9 +3579,9 @@ let type_pattern_approx env spat ty_expected =
   | None      ->
   match spat.ppat_desc with
   | Ppat_constraint(_, ({ptyp_desc=Ptyp_poly _} as sty)) ->
-      let {locality; linearity; _} = type_modes_const_pat spat in
+      let modes = type_modes_const_pat spat in
       let ty_pat =
-        Typetexp.transl_simple_type env ~closed:false locality linearity sty
+        Typetexp.transl_simple_type env ~closed:false modes sty
       in
       begin try unify env ty_pat.ctyp_type ty_expected with Unify trace ->
         raise(Error(spat.ppat_loc, env, Pattern_type_clash(trace, None)))
@@ -5038,8 +5036,8 @@ and type_expect_
   | Pexp_constraint (sarg, sty) ->
      (* Pretend separate = true, 1% slowdown for lablgtk *)
       begin_def ();
-      let {locality; linearity; _} = type_mode_exp sexp in
-      let cty = Typetexp.transl_simple_type env ~closed:false locality linearity sty in
+      let modes = type_mode_exp sexp in
+      let cty = Typetexp.transl_simple_type env ~closed:false modes sty in
       let ty = cty.ctyp_type in
       end_def ();
       generalize_structure ty;
@@ -5058,12 +5056,12 @@ and type_expect_
       (* Pretend separate = true, 1% slowdown for lablgtk *)
       (* Also see PR#7199 for a problem with the following:
          let separate = !Clflags.principal || Env.has_local_constraints env in*)
-      let {locality; linearity; _} = type_mode_exp sexp in
+      let modes = type_mode_exp sexp in
       let (arg, ty',cty,cty') =
         match sty with
         | None ->
             let (cty', ty', force) =
-              Typetexp.transl_simple_type_delayed env locality linearity sty'
+              Typetexp.transl_simple_type_delayed env modes sty'
             in
             begin_def ();
             let arg = type_exp env expected_mode sarg in
@@ -5110,9 +5108,9 @@ and type_expect_
         | Some sty ->
             begin_def ();
             let (cty, ty, force) =
-              Typetexp.transl_simple_type_delayed env locality linearity sty
+              Typetexp.transl_simple_type_delayed env modes sty
             and (cty', ty', force') =
-              Typetexp.transl_simple_type_delayed env locality linearity sty'
+              Typetexp.transl_simple_type_delayed env modes sty'
             in
             end_def ();
             generalize_structure ty;
@@ -5432,7 +5430,7 @@ and type_expect_
         match sty with None -> ty_expected, None
         | Some sty ->
             let sty = Ast_helper.Typ.force_poly sty in
-            let cty = Typetexp.transl_simple_type env ~closed:false Global Many sty in
+            let cty = Typetexp.transl_simple_type env ~closed:false Alloc.Const.legacy sty in
             cty.ctyp_type, Some cty
       in
       if !Clflags.principal then begin
@@ -5881,53 +5879,22 @@ and type_function ?in_function loc attrs env (expected_mode : expected_mode)
       (* because ty_res always a function *)
       let inner_alloc_mode, _ = Mode.Alloc.newvar_below ret_mode in
       begin match
-        Mode.Locality.submode
-          (Mode.Alloc.locality arg_mode)
-          (Mode.Alloc.locality inner_alloc_mode)
+        Mode.Alloc.submode
+          (Mode.Alloc.uncurried_ret_mode_from_arg arg_mode)
+          inner_alloc_mode
       with
       | Ok () -> ()
-      | Error () ->
-        raise (Error(loc_fun, env, Uncurried_function_escapes))
+      | Error e ->
+        raise (Error(loc_fun, env, Uncurried_function_escapes e))
       end;
       begin match
-        Mode.Locality.submode
-          (Mode.Alloc.locality alloc_mode)
-          (Mode.Alloc.locality inner_alloc_mode)
+        Mode.Alloc.submode
+          (Mode.Alloc.uncurried_ret_mode_from_alloc alloc_mode)
+          inner_alloc_mode
       with
       | Ok () -> ()
-      | Error () ->
-        raise (Error(loc_fun, env, Uncurried_function_escapes))
-      end;
-      (* uniqueness are not constrained *)
-      begin match
-        Mode.Linearity.submode
-          (Mode.Alloc.linearity arg_mode)
-          (Mode.Alloc.linearity inner_alloc_mode)
-      with
-      | Ok () -> ()
-      | Error () ->
-        raise (Error(loc_fun, env, Uncurried_function_linearity))
-      end;
-      begin match
-        Mode.Linearity.submode
-          (Mode.Alloc.linearity alloc_mode)
-          (Mode.Alloc.linearity inner_alloc_mode)
-      with
-      | Ok () -> ()
-      | Error () ->
-        raise (Error(loc_fun, env, Uncurried_function_linearity))
-      end;
-      (* In addition, unique argument make the returning function once.
-       In other words, if argument <= unique, returning function >= once.
-       That is, returning function >= (dual of argument) *)
-      begin match
-        Mode.Linearity.submode
-          (Mode.Linearity.of_dual (Mode.Alloc.uniqueness arg_mode))
-          (Mode.Alloc.linearity inner_alloc_mode)
-      with
-      | Ok () -> ()
-      | Error () ->
-        raise (Error(loc_fun, env, Uncurried_function_uniqueness_linearity))
+      | Error e ->
+        raise (Error(loc_fun, env, Uncurried_function_escapes e))
       end;
       mode_exact (Mode.Value.of_alloc inner_alloc_mode),
       More_args {partial_mode = inner_alloc_mode}
@@ -8446,19 +8413,15 @@ let report_error ~loc env = function
       Location.errorf ~loc
         "@[This function has a %s parameter, but was expected to have type:@ %a@]"
         mkind Printtyp.type_expr ty
-  | Uncurried_function_escapes ->
+  | Uncurried_function_escapes e ->
       Location.errorf ~loc
-        "This function or one of its parameters escape their region@ \
+        "This function or one of its parameters %s @ \
          when it is partially applied"
-  | Uncurried_function_linearity ->
-      Location.errorf ~loc
-        "This function or one of its parameters violates once@ \
-          when it is partially applied"
-  | Uncurried_function_uniqueness_linearity ->
-    Location.errorf ~loc
-      "This function when partially applied returns a once_ value@ \
-      because it closes over a unique_ value; however, it might be used@ \
-      several times"
+        (match e with
+        | `Locality -> "escape their region"
+        | `Uniqueness -> assert false
+        | `Linearity -> "violates once constraint"
+        )
   | Local_return_annotation_mismatch _ ->
       Location.errorf ~loc
         "This function return is not annotated with \"local_\"@ \
