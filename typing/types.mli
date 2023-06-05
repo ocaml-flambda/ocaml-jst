@@ -136,8 +136,7 @@ and type_desc =
   | Tpackage of Path.t * (Longident.t * type_expr) list
   (** Type of a first-class module (a.k.a package). *)
 
-and arrow_desc =
-  arg_label * Mode.Alloc.t * Mode.Alloc.t
+and arrow_desc = arg_label * Mode.Alloc.lr * Mode.Alloc.lr
 
 
 

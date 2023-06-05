@@ -37,7 +37,7 @@ let omega_list = Patterns.omega_list
 
 let extra_pat =
   make_pat
-    (Tpat_var (Ident.create_local "+", mknoloc "+", Mode.Value.max_mode))
+    (Tpat_var (Ident.create_local "+", mknoloc "+", Mode.Value.disallow_right Mode.Value.max))
     Ctype.none Env.empty
 
 
@@ -928,7 +928,7 @@ let build_other ext env =
           make_pat
             (Tpat_var (Ident.create_local "*extension*",
                        {txt="*extension*"; loc = d.pat_loc},
-                       Mode.Value.max_mode))
+                       Mode.Value.disallow_right Mode.Value.max))
             Ctype.none Env.empty
       | Construct _ ->
           begin match ext with

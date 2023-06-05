@@ -43,8 +43,7 @@ and type_desc =
   | Tpoly of type_expr * type_expr list
   | Tpackage of Path.t * (Longident.t * type_expr) list
 
-and arrow_desc =
-  arg_label * Mode.Alloc.t * Mode.Alloc.t
+and arrow_desc = arg_label * Mode.Alloc.lr * Mode.Alloc.lr
 
 and row_desc =
     { row_fields: (label * row_field) list;
@@ -637,7 +636,7 @@ type change =
   | Ckind : [`var] field_kind_gen -> change
   | Ccommu : [`var] commutable_gen -> change
   | Cuniv : type_expr option ref * type_expr option -> change
-  | Cmodes : Mode.changes -> change
+  | Cmode : Solver.changes -> change
 
 type changes =
     Change of change * changes ref
@@ -651,8 +650,6 @@ let log_change ch =
   !trail := Change (ch, r');
   trail := r'
 
-let () =
-  Mode.change_log := (fun changes -> log_change (Cmodes changes))
 
 (* constructor and accessors for [field_kind] *)
 
@@ -901,7 +898,7 @@ let undo_change = function
   | Ckind  (FKvar r) -> r.field_kind <- FKprivate
   | Ccommu (Cvar r)  -> r.commu <- Cunknown
   | Cuniv  (r, v)    -> r := v
-  | Cmodes ms -> Mode.undo_changes ms
+  | Cmode c          -> Solver.undo_changes c
 
 type snapshot = changes ref * int
 let last_snapshot = Local_store.s_ref 0
@@ -1060,4 +1057,5 @@ let undo_compress (changes, _old) =
         | _ -> ())
         log
 
-
+let () =
+  Solver.append_changes := fun changes -> log_change (Cmode !changes)

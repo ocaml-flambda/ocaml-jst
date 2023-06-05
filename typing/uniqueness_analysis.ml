@@ -80,7 +80,7 @@ module Maybe_unique : sig
   (** force this usage to be shared, due to boundary crossing. [reason] is,
       well, the reason *)
 
-  val uniqueness : t -> Mode.Uniqueness.t
+  val uniqueness : t -> Mode.Uniqueness.r
   (** Returns the uniqueness represented by this usage. If this identifier is
       expected to be unique in any branch, it will return unique. If the current
       usage is forced, it will return shared. *)
@@ -156,7 +156,7 @@ module Maybe_shared : sig
   val extract_occurrence : t -> Occurrence.t
   (** Extract an arbitrary occurrence from the usage *)
 
-  val set_barrier : t -> Uniqueness.t -> unit
+  val set_barrier : t -> Uniqueness.r -> unit
   (** Set the barrier. The uniqueness mode represents the usage immediately
       following the current usage. If that mode is Unique, the current usage
        must be Borrowed (hence no code motion); if that mode is not restricted
@@ -1227,7 +1227,7 @@ and check_uniqueness_binding_op bo exp ienv =
     match maybe_paths_of_ident ienv bo.bop_op_path with
     | Some paths ->
         let occ = { Occurrence.loc = exp.exp_loc } in
-        let unique_use = (Uniqueness.shared, Linearity.many) in
+        let unique_use = (Mode.Uniqueness.disallow_left Uniqueness.shared, Mode.Linearity.disallow_right Linearity.many) in
         mark_maybe_unique paths unique_use occ
     | None -> UF.unused
   in

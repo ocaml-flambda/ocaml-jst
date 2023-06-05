@@ -154,7 +154,7 @@ type module_unbound_reason =
 
 type summary =
     Env_empty
-  | Env_value of summary * Ident.t * value_description * Mode.Value.t
+  | Env_value of summary * Ident.t * value_description * Mode.Value.l
   | Env_type of summary * Ident.t * type_declaration
   | Env_extension of summary * Ident.t * extension_constructor
   | Env_module of summary * Ident.t * module_presence * module_declaration
@@ -341,7 +341,7 @@ type shared_context =
 type value_lock =
   | Escape_lock of escaping_context
   | Share_lock of shared_context
-  | Closure_lock of closure_context option * Mode.Locality.t * Mode.Linearity.t
+  | Closure_lock of closure_context option * Mode.Locality.r * Mode.Linearity.r
   | Region_lock
   | Exclave_lock
 
@@ -633,7 +633,7 @@ and address_lazy = (address_unforced, address) Lazy_backtrack.t
 and value_data =
   { vda_description : Subst.Lazy.value_description;
     vda_address : address_lazy;
-    vda_mode : Mode.Value.t;
+    vda_mode : Mode.Value.l;
     vda_shape : Shape.t }
 
 and value_entry =
@@ -1807,7 +1807,7 @@ let rec components_of_module_maker
             let vda_shape = Shape.proj cm_shape (Shape.Item.value id) in
             let vda =
               { vda_description = decl'; vda_address = addr;
-                vda_mode = Mode.Value.legacy; vda_shape }
+                vda_mode = Mode.Value.disallow_right Mode.Value.legacy; vda_shape }
             in
             c.comp_values <- NameMap.add (Ident.name id) vda c.comp_values;
         | Sig_type(id, decl, _, _) ->
@@ -1993,14 +1993,14 @@ and store_value ?check mode id addr decl shape env =
   let vda =
     { vda_description = decl;
       vda_address = addr;
-      vda_mode = mode;
+      vda_mode = Mode.Value.disallow_right mode;
       vda_shape = shape }
   in
   { env with
     values = IdTbl.add id (Val_bound vda) env.values;
     summary =
       Env_value(env.summary, id, Subst.Lazy.force_value_description decl,
-        mode) }
+        Mode.Value.disallow_right mode) }
 
 and store_constructor ~check type_decl type_id cstr_id cstr env =
   if check && not type_decl.type_loc.Location.loc_ghost
@@ -2258,7 +2258,7 @@ let add_functor_arg id env =
    functor_args = Ident.add id () env.functor_args;
    summary = Env_functor_arg (env.summary, id)}
 
-let add_value_lazy ?check ?shape ?(mode = Mode.Value.legacy) id desc env =
+let add_value_lazy ?check ?shape ?(mode=Mode.Value.allow_right Mode.Value.legacy)  id desc env =
   let addr = value_declaration_address env id desc in
   let shape = shape_or_leaf desc.Subst.Lazy.val_uid shape in
   store_value ?check mode id addr desc shape env
@@ -2331,7 +2331,7 @@ let enter_value ?check name desc env =
   let id = Ident.create_local name in
   let desc = Subst.Lazy.of_value_description desc in
   let addr = value_declaration_address env id desc in
-  let env = store_value ?check (Mode.Value.legacy) id addr desc (Shape.leaf desc.val_uid) env in
+  let env = store_value ?check Mode.Value.legacy id addr desc (Shape.leaf desc.val_uid) env in
   (id, env)
 
 let enter_type ~scope name info env =
@@ -2379,7 +2379,11 @@ let add_share_lock shared_context env =
   { env with values = IdTbl.add_lock lock env.values }
 
 let add_closure_lock ?closure_context locality linearity env =
-  let lock = Closure_lock (closure_context, locality, linearity) in
+  let lock = Closure_lock
+    (closure_context,
+     Mode.Locality.disallow_left locality,
+     Mode.Linearity.disallow_left linearity)
+  in
   { env with values = IdTbl.add_lock lock env.values }
 
 let add_region_lock env =
@@ -2934,11 +2938,13 @@ let lock_mode ~errors ~loc env id vmode locks =
   List.fold_left
     (fun (vmode, reason) lock ->
       match lock with
-      | Region_lock -> (Mode.Value.local_to_regional vmode, reason)
+      | Region_lock ->
+        let vmode = Mode.alloc_to_value_l2r (Mode.value_to_alloc_r2l vmode) in
+        Mode.Value.disallow_right vmode, reason
       | Escape_lock escaping_context ->
           (match
             Mode.Regionality.submode
-              (Mode.Value.locality vmode)
+              (Mode.Value.locality_of vmode)
               (Mode.Regionality.global)
           with
           | Ok () -> (vmode, reason)
@@ -2948,7 +2954,7 @@ let lock_mode ~errors ~loc env id vmode locks =
       | Share_lock shared_context ->
           (match
               Mode.Linearity.submode
-                (Mode.Value.linearity vmode)
+                (Mode.Value.linearity_of vmode)
                 Mode.Linearity.many
             with
             | Error _ ->
@@ -2956,39 +2962,43 @@ let lock_mode ~errors ~loc env id vmode locks =
                   (Once_value_used_in (id, shared_context))
             | Ok () -> ()
           );
-          let vmode = Mode.Value.with_uniqueness Mode.Uniqueness.shared vmode in
+          let vmode =
+            Mode.Value.join
+              [vmode;
+               Mode.Value.min_with_uniqueness Mode.Uniqueness.shared
+              ]
+          in
           vmode, Some shared_context
       | Closure_lock (closure_context, locality, linearity) ->
           (match
             Mode.Regionality.submode
-              (Mode.Value.locality vmode)
-              (Mode.Regionality.of_locality locality)
+              (Mode.Value.locality_of vmode)
+              (Mode.locality_as_regionality locality)
             with
           | Error _ ->
               may_lookup_error errors loc env
                 (Value_used_in_closure (id, `Locality, closure_context))
           | Ok () -> ()
           );
-          (match Mode.Linearity.submode (Mode.Value.linearity vmode) linearity with
+          (match Mode.Linearity.submode (Mode.Value.linearity_of vmode) linearity with
           | Error _ ->
               may_lookup_error errors loc env
                 (Value_used_in_closure (id, `Linearity, closure_context))
           | Ok () -> ()
           );
-          let uniqueness =
-            Mode.Uniqueness.join
-              [ Mode.Value.uniqueness vmode;
-                Mode.Linearity.to_dual linearity]
+          let vmode =
+            Mode.Value.join
+              [ vmode;
+                Mode.Value.min_with_uniqueness (Mode.linear_to_unique linearity)]
           in
-          let vmode = Mode.Value.with_uniqueness uniqueness vmode in
           vmode, reason
       | Exclave_lock ->
           (match
             Mode.Regionality.submode
-              (Mode.Value.locality vmode)
+              (Mode.Value.locality_of vmode)
               Mode.Regionality.regional
           with
-          | Ok () -> (Mode.Value.regional_to_local vmode, reason)
+          | Ok () -> (Mode.alloc_as_value (Mode.value_to_alloc_r2l vmode), reason)
           | Error _ ->
               may_lookup_error errors loc env
                 (Local_value_used_in_exclave id))
@@ -3278,7 +3288,7 @@ let lookup_value_lazy ~errors ~use ~loc lid env =
   | Lident s -> lookup_ident_value ~errors ~use ~loc s env
   | Ldot(l, s) ->
     let path, desc = lookup_dot_value ~errors ~use ~loc l s env in
-    let mode = Mode.Value.legacy in
+    let mode = Mode.Value.disallow_right Mode.Value.legacy in
     path, desc, mode, None
   | Lapply _ -> assert false
 

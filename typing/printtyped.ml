@@ -196,6 +196,17 @@ let attributes i ppf l =
     Printast.payload (i + 1) ppf a.Parsetree.attr_payload
   ) l
 
+let alloc_mode i ppf m =
+  line i ppf "alloc_mode %a\n" Mode.Alloc.print_simple m
+
+let alloc_mode_option i ppf m = Option.iter (alloc_mode i ppf) m
+
+let locality_mode i ppf m =
+  line i ppf "locality_mode %a\n" Mode.Locality.print_simple m
+
+let value_mode i ppf m =
+  line i ppf "value_mode %a\n" Mode.Value.print_simple m
+
 let rec core_type i ppf x =
   line i ppf "core_type %a\n" fmt_location x.ctyp_loc;
   attributes i ppf x.ctyp_attributes;
@@ -338,17 +349,6 @@ and expression_extra i ppf (x,_,attrs) =
   | Texp_newtype s ->
       line i ppf "Texp_newtype \"%s\"\n" s;
       attributes i ppf attrs;
-
-and alloc_mode i ppf m =
-  line i ppf "alloc_mode %a\n" (Mode.Alloc.print' ~verbose:false) m
-
-and alloc_mode_option i ppf m = Option.iter (alloc_mode i ppf) m
-
-and locality_mode i ppf m =
-  line i ppf "locality_mode %a\n" (Mode.Locality.print' ~verbose:false ?label:None) m
-
-and value_mode i ppf m =
-  line i ppf "value_mode %a\n" (Mode.Value.print' ~verbose:false) m
 
 and expression_alloc_mode i ppf (expr, am) =
   alloc_mode i ppf am;

@@ -134,7 +134,8 @@ let unbound_class =
 
 
 (* All class identifiers are used shared. *)
-let shared_use = (Mode.Uniqueness.shared, Mode.Linearity.many)
+let shared_use = (Mode.Uniqueness.disallow_left Mode.Uniqueness.shared,
+                Mode.Linearity.disallow_right Mode.Linearity.many)
 
                 (************************************)
                 (*  Some operations on class types  *)
@@ -1327,9 +1328,9 @@ and class_expr_aux cl_num val_env met_env virt self_scope scl =
                     if Btype.is_optional l && List.mem_assoc Nolabel sargs then
                       eliminate_optional_arg ()
                     else begin
-                      let mode_closure = Mode.Alloc.legacy in
-                      let mode_arg = Mode.Alloc.legacy in
-                      let mode_ret = Mode.Alloc.legacy in
+                      let mode_closure = Mode.Alloc.disallow_left Mode.Alloc.legacy in
+                      let mode_arg = Mode.Alloc.disallow_right Mode.Alloc.legacy in
+                      let mode_ret = Mode.Alloc.disallow_right Mode.Alloc.legacy in
                       Omitted { mode_closure; mode_arg; mode_ret; ty_arg = ty; ty_env = val_env }
                     end
             in

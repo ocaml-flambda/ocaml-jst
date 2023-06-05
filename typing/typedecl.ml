@@ -460,8 +460,8 @@ let make_constructor env loc type_path type_params svars sargs sret_type =
       let args, targs =
         transl_constructor_arguments env univars closed sargs
       in
-      let tret_type = 
-        transl_simple_type env ?univars ~closed Mode.Alloc.Const.legacy sret_type 
+      let tret_type =
+        transl_simple_type env ?univars ~closed Mode.Alloc.Const.legacy sret_type
       in
       let ret_type = tret_type.ctyp_type in
       (* TODO add back type_path as a parameter ? *)
@@ -1892,11 +1892,11 @@ let rec parse_native_repr_attributes env core_type ty rmode ~global_repr =
     let mode =
       if Builtin_attributes.has_local_opt ct1.ptyp_attributes
       then Prim_poly
-      else prim_const_mode (Mode.Alloc.locality marg)
+      else prim_const_mode (Mode.Alloc.locality_of marg)
     in
     let repr_args, repr_res =
       parse_native_repr_attributes env ct2 t2
-        (prim_const_mode (Mode.Alloc.locality mret)) ~global_repr
+        (prim_const_mode (Mode.Alloc.locality_of mret)) ~global_repr
     in
     ((mode,repr_arg) :: repr_args, repr_res)
   | (Ptyp_poly (_, t) | Ptyp_alias (t, _)), _, _ ->

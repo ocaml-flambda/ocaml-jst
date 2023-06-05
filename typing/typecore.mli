@@ -63,7 +63,7 @@ type type_expected = private {
 type pattern_variable =
   {
     pv_id: Ident.t;
-    pv_mode: Mode.Value.t;
+    pv_mode: Mode.Value.l;
     pv_type: type_expr;
     pv_loc: Location.t;
     pv_as_var: bool;
@@ -147,7 +147,7 @@ val type_argument:
         type_expr -> type_expr -> Typedtree.expression
 
 val option_some:
-  Env.t -> Typedtree.expression -> Mode.Value.t -> Typedtree.expression
+  Env.t -> Typedtree.expression -> ('l * Mode.allowed) Mode.Value.t -> Typedtree.expression
 val option_none:
   Env.t -> type_expr -> Location.t -> Typedtree.expression
 val extract_option_type: Env.t -> type_expr -> type_expr
@@ -172,7 +172,7 @@ type submode_reason =
 
   | Other (* add more cases here for better hints *)
 
-val escape : loc:Location.t -> env:Env.t -> reason:submode_reason -> Mode.Value.t -> unit
+val escape : loc:Location.t -> env:Env.t -> reason:submode_reason -> (Mode.allowed * 'r) Mode.Value.t -> unit
 
 val self_coercion : (Path.t * Location.t list ref) list ref
 

@@ -179,10 +179,10 @@ val instance_label:
         bool -> label_description -> type_expr list * type_expr * type_expr
         (* Same, for a label *)
 val prim_mode :
-        Mode.Locality.t option -> (Primitive.mode * Primitive.native_repr)
-        -> Mode.Locality.t
+        (Mode.allowed * 'r) Mode.Locality.t option -> (Primitive.mode * Primitive.native_repr)
+        -> (Mode.allowed * 'r) Mode.Locality.t
 val instance_prim_mode:
-        Primitive.description -> type_expr -> type_expr * Mode.Locality.t option
+        Primitive.description -> type_expr -> type_expr * Mode.Locality.lr option
 
 val apply:
         Env.t -> type_expr list -> type_expr -> type_expr list -> type_expr
@@ -246,7 +246,7 @@ val unify_delaying_layout_checks :
            safe. *)
 
 val filter_arrow: Env.t -> type_expr -> arg_label -> force_tpoly:bool ->
-                  Mode.Alloc.t * type_expr * Mode.Alloc.t * type_expr
+                  Mode.Alloc.lr * type_expr * Mode.Alloc.lr * type_expr
         (* A special case of unification (with l:'a -> 'b). If
            [force_poly] is false then the usual invariant that the
            argument type be a [Tpoly] node is not enforced. Raises
@@ -256,7 +256,7 @@ val filter_mono: type_expr -> type_expr
            only be called on [Tpoly] nodes. Raises [Filter_mono_failed]
            instead of [Unify] *)
 val filter_arrow_mono: Env.t -> type_expr -> arg_label ->
-                  Mode.Alloc.t * type_expr * Mode.Alloc.t * type_expr
+                  Mode.Alloc.lr * type_expr * Mode.Alloc.lr * type_expr
         (* A special case of unification. Composition of [filter_arrow]
            with [filter_mono] on the argument type. Raises
            [Filter_arrow_mono_failed] instead of [Unify] *)

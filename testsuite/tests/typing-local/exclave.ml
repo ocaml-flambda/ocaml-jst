@@ -156,7 +156,7 @@ let foo (local_ x) =
 Line 3, characters 15-16:
 3 |   [%exclave] { x }
                    ^
-Error: This local value escapes its region
+Error: This value escapes its region
 |}]
 
 (* semantics tests *)

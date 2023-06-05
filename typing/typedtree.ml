@@ -33,9 +33,9 @@ type _ pattern_category =
 | Value : value pattern_category
 | Computation : computation pattern_category
 
-type unique_barrier = Mode.Uniqueness.t option
+type unique_barrier = Mode.Uniqueness.r option
 
-type unique_use = Mode.Uniqueness.t * Mode.Linearity.t
+type unique_use = Mode.Uniqueness.r * Mode.Linearity.l
 
 type pattern = value general_pattern
 and 'k general_pattern = 'k pattern_desc pattern_data
@@ -58,9 +58,9 @@ and pat_extra =
 and 'k pattern_desc =
   (* value patterns *)
   | Tpat_any : value pattern_desc
-  | Tpat_var : Ident.t * string loc * Mode.Value.t -> value pattern_desc
+  | Tpat_var : Ident.t * string loc * Mode.Value.l -> value pattern_desc
   | Tpat_alias :
-      value general_pattern * Ident.t * string loc * Mode.Value.t -> value pattern_desc
+      value general_pattern * Ident.t * string loc * Mode.Value.l -> value pattern_desc
   | Tpat_constant : constant -> value pattern_desc
   | Tpat_tuple : value general_pattern list -> value pattern_desc
   | Tpat_construct :
@@ -104,8 +104,8 @@ and exp_extra =
 
 
 and fun_curry_state =
-  | More_args of { partial_mode : Mode.Alloc.t }
-  | Final_arg of { partial_mode : Mode.Alloc.t }
+  | More_args of { partial_mode : Mode.Alloc.l }
+  | Final_arg of { partial_mode : Mode.Alloc.l }
 
 and expression_desc =
     Texp_ident of
@@ -116,27 +116,27 @@ and expression_desc =
       cases : value case list; partial : partial;
       region : bool; curry : fun_curry_state;
       warnings : Warnings.state;
-      arg_mode : Mode.Alloc.t;
-      alloc_mode : Mode.Alloc.t }
-  | Texp_apply of 
-      expression * (arg_label * apply_arg) list * apply_position * Mode.Alloc.t
+      arg_mode : Mode.Alloc.l;
+      alloc_mode : Mode.Alloc.r }
+  | Texp_apply of
+      expression * (arg_label * apply_arg) list * apply_position * Mode.Alloc.l
   | Texp_match of expression * sort * computation case list * partial
   | Texp_try of expression * value case list
-  | Texp_tuple of expression list * Mode.Alloc.t
+  | Texp_tuple of expression list * Mode.Alloc.r
   | Texp_construct of
-      Longident.t loc * constructor_description * expression list * Mode.Alloc.t option
-  | Texp_variant of label * (expression * Mode.Alloc.t) option
+      Longident.t loc * constructor_description * expression list * Mode.Alloc.r option
+  | Texp_variant of label * (expression * Mode.Alloc.r) option
   | Texp_record of {
       fields : ( Types.label_description * record_label_definition ) array;
       representation : Types.record_representation;
       extended_expression : expression option;
-      alloc_mode : Mode.Alloc.t option
+      alloc_mode : Mode.Alloc.r option
     }
-  | Texp_field of 
-      expression * Longident.t loc * label_description * unique_use * Mode.Alloc.t option
+  | Texp_field of
+      expression * Longident.t loc * label_description * unique_use * Mode.Alloc.r option
   | Texp_setfield of
-      expression * Mode.Locality.t * Longident.t loc * label_description * expression
-  | Texp_array of mutable_flag * expression list * Mode.Alloc.t
+      expression * Mode.Locality.l * Longident.t loc * label_description * expression
+  | Texp_array of mutable_flag * expression list * Mode.Alloc.r
   | Texp_list_comprehension of comprehension
   | Texp_array_comprehension of mutable_flag * comprehension
   | Texp_ifthenelse of expression * expression * expression option
@@ -155,7 +155,7 @@ and expression_desc =
       for_body : expression;
       for_body_layout : Layouts.layout;
     }
-  | Texp_send of expression * meth * apply_position * Mode.Alloc.t
+  | Texp_send of expression * meth * apply_position * Mode.Alloc.r
   | Texp_new of
       Path.t * Longident.t loc * Types.class_declaration * apply_position
   | Texp_instvar of Path.t * Path.t * string loc
@@ -184,7 +184,7 @@ and expression_desc =
   | Texp_probe_is_enabled of { name:string }
   | Texp_exclave of expression
 
-and ident_kind = Id_value | Id_prim of Mode.Locality.t option
+and ident_kind = Id_value | Id_prim of Mode.Locality.l option
 
 and meth =
   | Tmeth_name of string
@@ -244,9 +244,9 @@ and ('a, 'b) arg_or_omitted =
   | Omitted of 'b
 
 and omitted_parameter =
-  { mode_closure : Mode.Alloc.t;
-    mode_arg : Mode.Alloc.t;
-    mode_ret : Mode.Alloc.t;
+  { mode_closure : Mode.Alloc.r;
+    mode_arg : Mode.Alloc.l;
+    mode_ret : Mode.Alloc.l;
     ty_arg : Types.type_expr;
     ty_env : Env.t }
 
@@ -415,7 +415,7 @@ and primitive_coercion =
   {
     pc_desc: Primitive.description;
     pc_type: type_expr;
-    pc_poly_mode: Mode.Locality.t option;
+    pc_poly_mode: Mode.Locality.l option;
     pc_env: Env.t;
     pc_loc : Location.t;
   }
@@ -861,7 +861,7 @@ let rec iter_bound_idents
        d
 
 type full_bound_ident_action =
-  Ident.t -> string loc -> type_expr -> Mode.Value.t -> sort -> unit
+  Ident.t -> string loc -> type_expr -> Mode.Value.l -> sort -> unit
 
 (* The intent is that the sort should be the sort of the type of the pattern.
    It's used to avoid computing layouts from types.  `f` then gets passed

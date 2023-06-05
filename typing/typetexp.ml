@@ -24,6 +24,7 @@ open Typedtree
 open Layouts
 open Types
 open Mode
+open Mode_intf
 open Ctype
 
 exception Already_bound
@@ -480,10 +481,7 @@ and transl_type_aux env policy mode styp =
               (Alloc.Const.close_over arg_mode)
               (Alloc.Const.partial_apply acc_mode)
           in
-          let acc_mode =
-            Alloc.Const.join acc_mode
-              (Alloc.Const.min_with_uniqueness Uniqueness.Const.Shared)
-          in
+          let acc_mode = {acc_mode with uniqueness = Uniqueness.Const.Shared } in
           let ret_mode =
             match rest with
             | [] -> ret_mode
