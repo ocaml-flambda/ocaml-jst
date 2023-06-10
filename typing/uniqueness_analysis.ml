@@ -37,7 +37,7 @@ module Occurrence = struct
 end
 
 module SharedUnique = struct
-  (* auxilary module. See module Usage*)
+  (** Auxilary module. See module Usage *)
 
   (* which axis cannot be forced? *)
   type error = [ `Uniqueness | `Linearity ]
@@ -64,14 +64,14 @@ module SharedUnique = struct
   type t =
     (* if already shared, we only need an occurrence for future error messages *)
     | Shared of Occurrence.t
-    (* Occurrences with modes to be forced shared and many in the future
-       if needed. This is a list because of multiple control flows. For example, if
+    (* Occurrences with modes to be forced shared and many in the future if
+       needed. This is a list because of multiple control flows. For example, if
        a value is used shared in one branch but unique in another branch, then
        overall the value is used uniquely (this is a "stricter" requirement).
        Therefore, techincally, the mode this list represents is the meet of all
        modes in the lists. (recall that shared > unique). Therefore, if this
-       virtual mode needs to be forced shared, the whole list needs to be
-       forced shared. *)
+       virtual mode needs to be forced shared, the whole list needs to be forced
+       shared. *)
     | MaybeUnique of (unique_use * Occurrence.t) list
 
   let to_string = function
@@ -124,16 +124,16 @@ module BorrowedShared = struct
   type t =
     (* if already borrowed, only need one occurrence for future error messages
     *)
-    (* This constructor currently not used, because we don't have explicit borrowing *)
+    (* This constructor currently not used, because we don't have explicit
+    borrowing *)
     | Borrowed of Occurrence.t
     (* list of occurences together with modes to be forced as borrowed in the
        future if needed. It is a list because of multiple control flows. For
        example, if a value is used borrowed in one branch but shared in another,
-       then the overall usage is shared. Therefore, the mode this list represents
-       is the meet of all modes in the list. (recall that borrowed > shared).
-       Therefore, if this virtual mode needs to be forced borrowed, the whole list
-       needs to be forced borrowed.
-    *)
+       then the overall usage is shared. Therefore, the mode this list
+       represents is the meet of all modes in the list. (recall that borrowed >
+       shared). Therefore, if this virtual mode needs to be forced borrowed, the
+       whole list needs to be forced borrowed. *)
     | MaybeShared of (unique_barrier ref * Occurrence.t) list
 
   let to_string = function
@@ -171,8 +171,8 @@ module Usage = struct
      Some observations:
      - It is sound to relax mode towards Error. It grants the access more
      "capability" and usually helps performance.
-       For example, relaxing borrowed to shared allows code motion of projections.
-       Relaxing shared to unique allows in-place update.
+       For example, relaxing borrowed to shared allows code motion of
+       projections. Relaxing shared to unique allows in-place update.
 
        An example of the relaxing borrowed to shared:
 
@@ -187,13 +187,14 @@ module Usage = struct
 
        and as a result, we can delay the projection at `x`.
 
-       The downside of relaxing is the loss of completeness: if we relax too much
-       the program will fail type check. In the extreme case we relax it to Error
-       which fails type check outright (and extremely sound, hehe).
+       The downside of relaxing is the loss of completeness: if we relax too
+       much the program will fail type check. In the extreme case we relax it to
+       Error which fails type check outright (and extremely sound, hehe).
 
-     - The purpose of this uniqueness analysis is to figure out the most relaxed mode
-     for each use, such that we get the best performance, while still type-check.
-     Currently there are really only two choices worth figuring out, Namely
+     - The purpose of this uniqueness analysis is to figure out the most relaxed
+     mode for each use, such that we get the best performance, while still
+     type-check. Currently there are really only two choices worth figuring out,
+     Namely
      - borrowed or shared?
      - shared or unique?
 
@@ -248,28 +249,30 @@ module Usage = struct
         | Borrowed _, MaybeUnique _ -> SharedUnique m1
         | MaybeShared _, Shared _ -> SharedUnique m1
         | MaybeShared l0, MaybeUnique l1 ->
-            (* four cases:
+            (* Four cases:
                B;S = S
                B;U = U
                S;S = S
                S;U /=
 
-               We are in a dilemma: recall that B->S allows code motion, and S->U allows
-               unique overwriting. We can't have both. We first note is that the
-               first is a soft optimization, and the second is a hard requirement.
+               We are in a dilemma: recall that B->S allows code motion, and
+               S->U allows unique overwriting. We can't have both. We first note
+               is that the first is a soft optimization, and the second is a
+               hard requirement.
 
-               A reasonable solution is thus to
-               check if the RHS actually needs to use the "unique" capabilities. If
-               not, there is no need to relax it to unique, and we will make
-               it shared, and make LHS shared for code-motion. However, there is no
-               good way to do that, because the "unique_use" in "maybe_unique" is
-               not complete, because the type-checking and uniqueness analysis is
-               performed on a per-top-level-expr basis.
+               A reasonable solution is thus to check if the RHS actually needs
+               to use the "unique" capabilities. If not, there is no need to
+               relax it to unique, and we will make it shared, and make LHS
+               shared for code-motion. However, there is no good way to do that,
+               because the "unique_use" in "maybe_unique" is not complete,
+               because the type-checking and uniqueness analysis is performed on
+               a per-top-level-expr basis.
 
-               Our solution is to record on the l0 that it is constrained by the l1.
-               I.e. if any of l1 is U, then each of l0 cannot be S. After the type
-               checking of the whole file, l1 will correctly tells whether it needs
-               to be unique, and by extension whether l0 can be shared. *)
+               Our solution is to record on the l0 that it is constrained by the
+               l1. I.e. if any of l1 is U, then each of l0 cannot be S. After
+               the type checking of the whole file, l1 will correctly tells
+               whether it needs to be unique, and by extension whether l0 can be
+               shared. *)
             let uniqs = List.map (fun ((uniq, _), _) -> uniq) l1 in
             (* if any of l1 is unique, then all of l0 must be borrowed *)
             let uniq = Mode.Uniqueness.meet uniqs in
@@ -289,13 +292,13 @@ module Usage = struct
                  (BorrowedShared.extract_occurrence m1))
         | Shared _, MaybeShared _ -> SharedUnique m0
         | MaybeUnique _, MaybeShared _ ->
-            (* four cases:
+            (* Four cases:
                S;B = S
                S;S = S
                U;B /=
                U;S /=
 
-               as you can see, we need to force the m0 to shared, and m1 needn't
+               As you can see, we need to force the m0 to shared, and m1 needn't
                be constrained. The result is always S.
             *)
             SharedUnique
@@ -305,7 +308,7 @@ module Usage = struct
 end
 
 module UsageTree = struct
-  (* lift Usage to trees *)
+  (* lifting module Usage to trees *)
   module Projection = struct
     (* Projections from parent to child. *)
     module T = struct
@@ -347,9 +350,9 @@ module UsageTree = struct
 
       let to_string (t : t) = Format.asprintf "%a" print t
 
-      (* Yes, compare based on string is bad, but it saves 20
-         lines of spaghetti code. Also I believe to_string is injective so it might
-         actaully be fine. *)
+      (* Yes, compare based on string is bad, but it saves 20 lines of spaghetti
+         code. Also I believe to_string is injective so it might actaully be
+         fine. *)
       let compare t1 t2 = String.compare (to_string t1) (to_string t2)
     end
 
@@ -359,18 +362,16 @@ module UsageTree = struct
 
   type relation = Ancestor | Descendant
 
-  (* Tree:
-     Each node records the par on all possible execution paths. As a result,
-     trees such as `S -> U` is valid, even though it would be invalid if it was
-     the result of a single path: using a parent shared and a child uniquely is
-     obviously bad. Howerver, it might be the result of "par"ing multiple path:
-     `S` par `N -> U`, which is valid.
-  *)
+  (* Tree: Each node records the par on all possible execution paths. As a
+     result, trees such as `S -> U` is valid, even though it would be invalid if
+     it was the result of a single path: using a parent shared and a child
+     uniquely is obviously bad. Howerver, it might be the result of "par"ing
+     multiple path: `S` par `N -> U`, which is valid. *)
 
-  (* INVARIANT: children >= parent. For example, having a shared child
-     under a unique parent is nonsense. The invariant is preserved because Usage.par and 
-     Usage.seq above is monotone, and UsageTree.par and UsageTree.seq here is node-wise.
-  *)
+  (* INVARIANT: children >= parent. For example, having a shared child under a
+     unique parent is nonsense. The invariant is preserved because Usage.par and
+     Usage.seq above is monotone, and UsageTree.par and UsageTree.seq here is
+     node-wise. *)
   type t = { children : t Projection.Map.t; usage : Usage.t }
 
   let rec print_children ppf children =
@@ -815,18 +816,16 @@ let maybe_paths_of_ident ?unique_use ienv path loc =
       None
   | Path.Papply _ -> assert false
 
-(* TODO: replace the dirty hack
-   The following functions are dirty hack and used for modules and classes.
-   Currently we treat the boundary between modules/classes and their surrounding
-   environment coarsely. To be specific, all references in the modules/classes
-   pointing to the environment are treated as many and shared. This translates to
-   enforcement on both ends:
-   - inside the module, those uses needs to be forced as many and shared
-   - need a UsageForest which marks those uses as many and shared, so that the parent
-   expression can detect conflict if any.
+(* TODO: replace the dirty hack The following functions are dirty hack and used
+   for modules and classes. Currently we treat the boundary between
+   modules/classes and their surrounding environment coarsely. To be specific,
+   all references in the modules/classes pointing to the environment are treated
+   as many and shared. This translates to enforcement on both ends: - inside the
+   module, those uses needs to be forced as many and shared - need a UsageForest
+   which marks those uses as many and shared, so that the parent expression can
+   detect conflict if any.
 
-   The following function returns all open variables inside a module.
-*)
+   The following function returns all open variables inside a module. *)
 let open_variables ienv f =
   let ll = ref [] in
   let iter =
@@ -861,9 +860,9 @@ let mark_shared_open_variables ienv f _loc =
     List.map
       (fun (paths, maybe_unique) ->
         (* the following force is not needed, because when UA the module/class,
-           maybe_paths_of_ident will force free variables to shared, because ienv
-           given to it will not include the outside variables. We nevertheless
-           force it here just to be sure *)
+           maybe_paths_of_ident will force free variables to shared, because
+           ienv given to it will not include the outside variables. We
+           nevertheless force it here just to be sure *)
         let shared =
           Usage.SharedUnique
             (SharedUnique.force_toplevel maybe_unique FreeVariableOfModClass)
@@ -876,15 +875,14 @@ let mark_shared_open_variables ienv f _loc =
 
 (* There are two modes our algorithm will work at.
 
-   In the first mode, we care about if the expression can be considered as alias,
-   for example, we want `a.x.y` to return the alias of a.x.y in addition to the
-   usage of borrowing a and a.x. Note that a.x.y is not included in the usage, and
-   the caller is responsible to mark a.x.y if it is used.
+   In the first mode, we care about if the expression can be considered as
+   alias, for example, we want `a.x.y` to return the alias of a.x.y in addition
+   to the usage of borrowing a and a.x. Note that a.x.y is not included in the
+   usage, and the caller is responsible to mark a.x.y if it is used.
 
-   In the second mode, we don't care about if the expression can be considered as
-   alias. Checking a.x.y will return the usage of borrowing a and a.x, and using
-   a.x.y. This mode is used in most occasions.
-*)
+   In the second mode, we don't care about if the expression can be considered
+   as alias. Checking a.x.y will return the usage of borrowing a and a.x, and
+   using a.x.y. This mode is used in most occasions. *)
 
 (* the following function corresponds to the second mode *)
 let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
@@ -964,8 +962,8 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
           match value with
           | None ->
               check_fields
-              (* {exp with ...}; don't know anything about exp
-                 so nothing we can do here*)
+              (* {exp with ...}; don't know anything about exp so nothing we can
+                 do here*)
           | Some (ps, modes) ->
               (* {x with ...} *)
               let ufs =
@@ -1093,12 +1091,10 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
 (*
 This function corresponds to the first mode.
 
-Look at exp and see if it can be treated as alias
-currently only texp_ident and texp_field (and recursively so) are treated so.
-return paths and modes. paths is the list of possible memory locations.
-returns None if exp is not alias, which also implies that the usage of exp is
-included in the returned uf.
-*)
+Look at exp and see if it can be treated as alias currently only texp_ident and
+texp_field (and recursively so) are treated so. return paths and modes. paths is
+the list of possible memory locations. returns None if exp is not alias, which
+also implies that the usage of exp is included in the returned uf. *)
 and check_uniqueness_exp' exp ienv : (UF.Path.t list * unique_use) option * UF.t
     =
   match exp.exp_desc with
@@ -1109,8 +1105,8 @@ and check_uniqueness_exp' exp ienv : (UF.Path.t list * unique_use) option * UF.t
   | Texp_field (e, _, l, modes, _) -> (
       match check_uniqueness_exp' e ienv with
       | Some (paths, _), uf ->
-          (* accessing the field meaning borrowing the parent record's mem block.
-             Note that the field itself is not borrowed or used *)
+          (* accessing the field meaning borrowing the parent record's mem
+             block. Note that the field itself is not borrowed or used *)
           let occ = { Occurrence.loc = e.exp_loc; reason = DirectUse } in
           let uf' = mark_implicit_borrow_memory_address_paths paths occ in
           let paths' =

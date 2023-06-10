@@ -703,7 +703,6 @@ type lookup_error =
   | Cannot_scrape_alias of Longident.t * Path.t
   | Local_value_used_in_closure of Longident.t * escaping_context option
   | Local_value_used_in_exclave of Longident.t
-  | Unique_value_used_in of Longident.t * shared_context
   | Once_value_used_in of Longident.t * shared_context
 
 type error =
@@ -2939,14 +2938,14 @@ let lock_mode ~errors ~loc env id vmode locks =
           | Ok () -> ()
           );
           (* outside unique values can be accessed inside a loop but only at shared *)
-          let min_uniq = 
+          let min_uniq =
             Mode.Uniqueness.join
               [ Mode.Value.uniqueness vmode;
                 Mode.Linearity.to_dual mode ]
           in
           let vmode = Mode.Value.with_uniqueness min_uniq vmode in
           vmode, shared_context :: reasons
-        end        
+        end
       | Exclave_lock -> begin
           match
             Mode.Regionality.submode
@@ -3852,11 +3851,6 @@ let report_lookup_error _loc env ppf = function
     fprintf ppf "@[The value %a is local, so cannot be used \
                  inside exclave @]"
       !print_longident lid
-  | Unique_value_used_in (lid, context) ->
-    fprintf ppf
-      "@[The value %a is unique, so cannot be used \
-          inside %s@]"
-      !print_longident lid (print_shared_context context)
   | Once_value_used_in (lid, context) ->
     fprintf ppf
       "@[The value %a is once, so cannot be used \

@@ -208,7 +208,6 @@ type lookup_error =
   | Cannot_scrape_alias of Longident.t * Path.t
   | Local_value_used_in_closure of Longident.t * escaping_context option
   | Local_value_used_in_exclave of Longident.t
-  | Unique_value_used_in of Longident.t * shared_context
   | Once_value_used_in of Longident.t * shared_context
 
 val lookup_error: Location.t -> t -> lookup_error -> 'a
