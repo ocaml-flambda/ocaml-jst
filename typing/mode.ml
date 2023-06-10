@@ -726,7 +726,8 @@ module Alloc = struct
       in
       { locality; uniqueness; linearity }
 
-    (** constrain uncurried function ret_mode from the mode of the whole function *)
+    (** constrain uncurried function ret_mode from the mode of the whole
+    function *)
     let uncurried_ret_mode_from_alloc alloc_mode =
       let locality = alloc_mode.locality in
       let uniqueness = Uniqueness.Const.min in
@@ -928,7 +929,8 @@ module Alloc = struct
     in
     { locality; uniqueness; linearity }
 
-  (** constrain uncurried function ret_mode from the mode of the whole function *)
+  (** constrain uncurried function ret_mode from the mode of the whole function
+  *)
   let uncurried_ret_mode_from_alloc alloc_mode =
     let locality = alloc_mode.locality in
     let uniqueness = Uniqueness.of_const Uniqueness.Const.min in
