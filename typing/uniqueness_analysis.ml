@@ -62,7 +62,8 @@ module SharedUnique = struct
   exception TopLevel of { occ : Occurrence.t; error : error; reason : reason }
 
   type t =
-    (* if already shared, we only need an occurrence for future error messages *)
+    (* if already shared, we only need an occurrence for future error messages
+    *)
     | Shared of Occurrence.t
     (* Occurrences with modes to be forced shared and many in the future if
        needed. This is a list because of multiple control flows. For example, if
@@ -211,7 +212,8 @@ module Usage = struct
   *)
   type t =
     | Unused
-    (* no good reason to factor out the two, except just to separating the code *)
+    (* no good reason to factor out the two, except just to separating the code
+    *)
     | BorrowedShared of BorrowedShared.t
     | SharedUnique of SharedUnique.t
 
@@ -513,8 +515,8 @@ module UsageForest = struct
 
   let _print ppf t =
     Root_id.Map.iter
-      (fun rootid tree ->
-        Format.fprintf ppf "%a = %a, " Root_id.print rootid UsageTree.print tree)
+      (fun rootid tree -> Format.fprintf ppf "%a = %a, " Root_id.print rootid
+        UsageTree.print tree)
       t
 
   module Path = struct
@@ -593,11 +595,8 @@ module Ienv = struct
   let singleton id locs = Ident.Map.singleton id locs
 end
 
-(* A tuple of:
-   First is the value's all possible paths.
-   Second is the location where it's defined.
-   Third is the modes, if it's actually an alias
-*)
+(* A tuple of: First is the value's all possible paths. Second is the location
+   where it's defined. Third is the modes, if it's actually an alias *)
 type single_value_to_match = UF.Path.t list * Location.t * unique_use option
 
 (* represent value to be match *)
@@ -613,8 +612,8 @@ let mark_implicit_borrow_memory_address_paths paths occ =
     UF.singleton
       (UF.Path.child path UsageTree.Projection.Memory_address)
       (* Currently we just generate a dummy unique_barrier ref that won't be
-         consumed. The distinction between implicit and explicit borrowing is still
-         needed because they are handled differently in closures *)
+         consumed. The distinction between implicit and explicit borrowing is
+         still needed because they are handled differently in closures *)
       (BorrowedShared (MaybeShared [ (ref None, occ) ]))
   in
   UF.pars (List.map (fun path -> mark_one path) paths)
