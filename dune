@@ -305,6 +305,7 @@
     (rec_check.mli as compiler-libs/rec_check.mli)
     (typecore.mli as compiler-libs/typecore.mli)
     (mode.mli as compiler-libs/mode.mli)
+    (uniqueness_analysis.mli as compiler-libs/uniqueness_analysis.mli)
     (typeclass.mli as compiler-libs/typeclass.mli)
     (typemod.mli as compiler-libs/typemod.mli)
     (typedecl_variance.mli as compiler-libs/typedecl_variance.mli)
