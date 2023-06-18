@@ -92,7 +92,7 @@ can still be used to ensure a specific mode, similar to explicit type
 annotation.
 
 As a preview, we are going to describing 5 mode axes in this document,
-which have the following modes ordered by increasing strictness.
+which have the following modes ordered by decreasing strictness.
 
 | Locality | Sync   | Uniqueness | Linearity  | Readonly  |
 | -------- | ------ | ---------- | ---------- | --------- |
