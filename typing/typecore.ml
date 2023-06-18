@@ -4386,8 +4386,7 @@ and type_expect_
         mode
       end
       in
-      let exp = type_expect ?in_function ~recarg env mode sbody ty_expected_explained in
-      { exp with exp_loc = loc }
+      type_expect ?in_function ~recarg env mode sbody ty_expected_explained
   | Pexp_apply
       ({ pexp_desc = Pexp_extension({
           txt = ("ocaml.once" | "once" | "extension.once" as txt)}, PStr []) },
@@ -4401,8 +4400,7 @@ and type_expect_
         mode
       end
       in
-      let exp = type_expect ?in_function ~recarg env mode sbody ty_expected_explained in
-      { exp with exp_loc = loc }
+      type_expect ?in_function ~recarg env mode sbody ty_expected_explained
   | Pexp_apply
       ({ pexp_desc = Pexp_extension({
           txt = ("ocaml.local" | "local" | "extension.local" as txt)}, PStr []) },
@@ -4423,20 +4421,13 @@ and type_expect_
         mode
       end
       in
-      let exp =
-        type_expect ?in_function ~recarg env mode sbody
-          ty_expected_explained
-      in
-      { exp with exp_loc = loc }
+      type_expect ?in_function ~recarg env mode sbody ty_expected_explained
   | Pexp_apply
       ({ pexp_desc = Pexp_extension({txt = "extension.escape"}, PStr []) },
        [Nolabel, sbody]) ->
       submode ~loc ~env ~reason:Other Value.legacy expected_mode;
-      let exp =
-        type_expect ?in_function ~recarg env mode_legacy sbody
-          ty_expected_explained
-      in
-      { exp with exp_loc = loc }
+      type_expect ?in_function ~recarg env mode_legacy sbody
+        ty_expected_explained
   | Pexp_apply
       ({ pexp_desc = Pexp_extension({
          txt = "extension.exclave" | "ocaml.exclave" | "exclave" as txt}, PStr []) },

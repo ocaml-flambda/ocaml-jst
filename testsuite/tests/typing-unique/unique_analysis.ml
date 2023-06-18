@@ -200,6 +200,9 @@ Line 5, characters 24-26:
 5 |       let _ = unique_id xs in
                             ^^
 Error: This is used uniquely here so cannot be used twice.  Another use is
+Line 6, characters 14-16:
+6 |       unique_ xx
+                  ^^
   The latter is the position-1 element of the constructor "::" in the value which is the former
 |}]
 
@@ -214,6 +217,9 @@ Line 3, characters 20-22:
 3 |   let _ = unique_id xs in
                         ^^
 Error: This is used uniquely here so cannot be used twice.  Another use is
+Line 5, characters 23-25:
+5 |   | x :: xx -> unique_ xx
+                           ^^
   The latter is the position-1 element of the constructor "::" in the value which is the former
 |}]
 
