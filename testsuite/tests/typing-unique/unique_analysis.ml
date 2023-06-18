@@ -86,58 +86,64 @@ Line 4, characters 17-18:
 
 |}]
 
-let children_unique (unique_ xs : float list) = match xs with
+let children_unique (unique_ xs : float list) =
+  match xs with
   | [] -> (0., [])
   | x :: xx -> unique_ (x, xx)
 [%%expect{|
 val children_unique : unique_ float list -> float * float list = <fun>
 |}]
 
-let borrow_match (unique_ fs : 'a list) = unique_ match fs with
+let borrow_match (unique_ fs : 'a list) =
+  match fs with
   | [] -> []
-  | x :: xs as gs -> gs
+  | x :: xs as gs -> unique_ gs
 [%%expect{|
 val borrow_match : unique_ 'a list -> 'a list = <fun>
 |}]
 
-let borrow_match (unique_ fs : 'a list) = unique_ match fs with
+let borrow_match (unique_ fs : 'a list) =
+  match fs with
     | [] -> []
-    | x :: xs -> fs
+    | x :: xs -> unique_ fs
 [%%expect{|
 val borrow_match : unique_ 'a list -> 'a list = <fun>
 |}]
 
-let dup_child (unique_ fs : 'a list) = unique_ match fs with
+let dup_child (unique_ fs : 'a list) =
+  match fs with
   | [] -> ([], [])
-  | x :: xs as gs -> (gs, xs)
+  | x :: xs as gs -> unique_ (gs, xs)
 [%%expect{|
-Line 3, characters 22-24:
-3 |   | x :: xs as gs -> (gs, xs)
-                          ^^
+Line 4, characters 30-32:
+4 |   | x :: xs as gs -> unique_ (gs, xs)
+                                  ^^
 Error: This is used uniquely here so cannot be used twice.  Another use is
-Line 3, characters 26-28:
-3 |   | x :: xs as gs -> (gs, xs)
-                              ^^
+Line 4, characters 34-36:
+4 |   | x :: xs as gs -> unique_ (gs, xs)
+                                      ^^
   The latter is the position-1 element of the constructor "::" in the value which is the former
 |}]
 
 
-let or_patterns1 : unique_ float list -> float list -> float = fun x y -> match x, y with
+let or_patterns1 : unique_ float list -> float list -> float =
+  fun x y -> match x, y with
   | z :: _, _ | _, z :: _ -> unique_ z
   | _, _ -> 42.0
 [%%expect{|
-Line 2, characters 37-38:
-2 |   | z :: _, _ | _, z :: _ -> unique_ z
+Line 3, characters 37-38:
+3 |   | z :: _, _ | _, z :: _ -> unique_ z
                                          ^
 Error: Found a shared value where a unique value was expected
 |}]
 
-let or_patterns2 : float list -> unique_ float list -> float = fun x y -> match x, y with
+let or_patterns2 : float list -> unique_ float list -> float =
+  fun x y -> match x, y with
   | z :: _, _ | _, z :: _ -> unique_ z
   | _, _ -> 42.0
 [%%expect{|
-Line 2, characters 37-38:
-2 |   | z :: _, _ | _, z :: _ -> unique_ z
+Line 3, characters 37-38:
+3 |   | z :: _, _ | _, z :: _ -> unique_ z
                                          ^
 Error: Found a shared value where a unique value was expected
 |}]
@@ -264,6 +270,10 @@ let tuple_parent_marked a b =
 val tuple_parent_marked : 'a -> 'b -> 'b = <fun>
 |}]
 
+(* TODO: Improve UA so that the following example can be allowed. The intuition
+  is that [as _t] in the second branch shouldn't interfere with the first
+  branch. One way to fix this is to try to link [_t] to the path of `a` and `b`.
+   *)
 let tuple_parent_marked a b =
   match (a, b) with
   | (true, b') -> unique_id b'
@@ -305,15 +315,16 @@ type ('a, 'b) record = { foo : 'a; bar : 'b }
 type ('a, 'b) record = { foo : 'a; bar : 'b; }
 |}]
 
-let match_function : unique_ 'a * 'b -> 'a * ('a * 'b) = function
+let match_function : unique_ 'a * 'b -> 'a * ('a * 'b) =
+  function
   | (a, b) as t -> unique_ (a, t)
 [%%expect{|
-Line 2, characters 28-29:
-2 |   | (a, b) as t -> unique_ (a, t)
+Line 3, characters 28-29:
+3 |   | (a, b) as t -> unique_ (a, t)
                                 ^
 Error: This is used uniquely here so cannot be used twice.  Another use is
-Line 2, characters 31-32:
-2 |   | (a, b) as t -> unique_ (a, t)
+Line 3, characters 31-32:
+3 |   | (a, b) as t -> unique_ (a, t)
                                    ^
   The former is the position-0 element of the tuple which is the latter
 |}]

@@ -282,7 +282,7 @@ let join_locality lm1 lm2 =
   | _, Olm_unknown -> Olm_unknown
   | Olm_global, Olm_global -> Olm_global
 
-let join_uniqueness u1 u2 = 
+let join_uniqueness u1 u2 =
   match u1, u2 with
   | Oum_shared, _ -> Oum_shared
   | _, Oum_shared -> Oum_shared
@@ -303,7 +303,7 @@ let uniqueness_to_linearity = function
   | Oum_shared -> Olinm_many
   | Oum_unknown -> Olinm_unknown
 
-let join_modes m1 m2 = 
+let join_modes m1 m2 =
   { oam_locality = join_locality m1.oam_locality m2.oam_locality;
     oam_uniqueness = join_uniqueness m1.oam_uniqueness m2.oam_uniqueness;
     oam_linearity = join_linearity m1.oam_linearity m2.oam_linearity }
@@ -313,11 +313,11 @@ let default_mode =
     oam_uniqueness = Oum_shared;
     oam_linearity = Olinm_many; }
 
-let uncurried_ret_mode_from_arg arg_mode = 
+let uncurried_ret_mode_from_arg arg_mode =
   let oam_locality = arg_mode.oam_locality in
-  let oam_uniqueness = Oum_shared in 
-  let oam_linearity = 
-    join_linearity 
+  let oam_uniqueness = Oum_shared in
+  let oam_linearity =
+    join_linearity
       arg_mode.oam_linearity
       (uniqueness_to_linearity arg_mode.oam_uniqueness)
   in
@@ -325,7 +325,7 @@ let uncurried_ret_mode_from_arg arg_mode =
     oam_uniqueness;
     oam_linearity }
 
-let uncurried_ret_mode_from_alloc alloc_mode = 
+let uncurried_ret_mode_from_alloc alloc_mode =
   let oam_locality = alloc_mode.oam_locality in
   let oam_uniqueness = Oum_shared in
   let oam_linearity = alloc_mode.oam_linearity in
@@ -371,17 +371,17 @@ let rec print_out_type_0 mode ppf =
       print_out_type_1 mode ppf ty
 
 and print_out_type_mode mode ppf ty =
-  let is_local = 
+  let is_local =
     match mode.oam_locality with
     | Olm_local -> true
     | _ -> false
   in
-  let is_unique = 
+  let is_unique =
     match mode.oam_uniqueness with
     | Oum_unique -> true
     | _ -> false
   in
-  let is_once = 
+  let is_once =
     match mode.oam_linearity with
     | Olinm_once -> true
     | _ -> false
@@ -417,10 +417,10 @@ and print_out_type_1 mode ppf =
       print_out_arg am ppf ty1;
       pp_print_string ppf " ->";
       pp_print_space ppf ();
-      let mode = 
-        join_modes 
+      let mode =
+        join_modes
           (uncurried_ret_mode_from_alloc mode)
-          (uncurried_ret_mode_from_arg am) 
+          (uncurried_ret_mode_from_arg am)
       in
       print_out_ret mode rm ppf ty2;
       pp_close_box ppf ()
@@ -434,7 +434,7 @@ and print_out_ret mode rm ppf =
   (* the 'mode' argument only has meaning if we are talking about closure *)
   | Otyp_arrow _ as ty ->
     if same_locality mode rm && same_uniqueness mode rm && same_linearity mode rm
-      then print_out_type_1 rm ppf ty 
+      then print_out_type_1 rm ppf ty
       else print_out_type_mode rm ppf ty
   | ty -> print_out_type_mode rm ppf ty
 

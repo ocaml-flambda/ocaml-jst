@@ -100,7 +100,7 @@ let value_descriptions ~loc env name
            let ty2, mode2 = Ctype.instance_prim_mode p2 vd2.val_type in
            Option.iter
              (fun m -> Mode.Locality.submode_exn m Mode.Locality.global)
-             mode2 ;
+             mode2;
            ty2
          in
          (try Ctype.moregeneral env true ty1_global ty2_global

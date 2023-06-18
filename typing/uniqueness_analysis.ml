@@ -54,12 +54,17 @@ module SharedUnique = struct
       error : error;
     }
 
-  type reason =
+  (* See [report_error] for explanation *)
+  type boundary_reason =
     | ValueFromModClass (* currently will never trigger *)
     | FreeVariableOfModClass (* currently will never trigger *)
-    | JustTopLevel
+    | OutOfModClass
 
-  exception TopLevel of { occ : Occurrence.t; error : error; reason : reason }
+  (* at the boundary of modules/classes we conservatively make everything legacy
+     (i.e., shared and many). Usage crossing the boundary might fail this
+     restriction. *)
+  exception
+    Boundary of { occ : Occurrence.t; error : error; reason : boundary_reason }
 
   type t =
     (* if already shared, we only need an occurrence for future error messages
@@ -100,9 +105,9 @@ module SharedUnique = struct
     with CannotForce { occ; error } ->
       raise (MultiUse { here = occ; there; error })
 
-  let force_toplevel t reason =
+  let force_boundary t reason =
     try force t
-    with CannotForce { occ; error } -> raise (TopLevel { occ; error; reason })
+    with CannotForce { occ; error } -> raise (Boundary { occ; error; reason })
 
   let par t0 t1 =
     match (t0, t1) with
@@ -126,7 +131,7 @@ module BorrowedShared = struct
     (* if already borrowed, only need one occurrence for future error messages
     *)
     (* This constructor currently not used, because we don't have explicit
-    borrowing *)
+       borrowing *)
     | Borrowed of Occurrence.t
     (* list of occurences together with modes to be forced as borrowed in the
        future if needed. It is a list because of multiple control flows. For
@@ -515,8 +520,8 @@ module UsageForest = struct
 
   let _print ppf t =
     Root_id.Map.iter
-      (fun rootid tree -> Format.fprintf ppf "%a = %a, " Root_id.print rootid
-        UsageTree.print tree)
+      (fun rootid tree ->
+        Format.fprintf ppf "%a = %a, " Root_id.print rootid UsageTree.print tree)
       t
 
   module Path = struct
@@ -527,7 +532,9 @@ module UsageForest = struct
 
     let child_of_many paths proj = List.map (fun path -> child path proj) paths
     let fresh_root name : t = (Root_id.fresh name, UsageTree.Path.root)
-    let fresh_root_of_id id = (Root_id.fresh_of_ident id, UsageTree.Path.root)
+
+    let fresh_root_of_ident ident =
+      (Root_id.fresh_of_ident ident, UsageTree.Path.root)
   end
 
   let empty = Root_id.Map.empty
@@ -654,14 +661,14 @@ let pattern_match_var ~loc id value =
   match value with
   | MatchSingle (paths, _, _) -> (value, Ienv.singleton id paths, UF.empty)
   | MatchTuple values ->
-      let path = UF.Path.fresh_root_of_id id in
+      let path = UF.Path.fresh_root_of_ident id in
       let ienv = Ienv.singleton id [ path ] in
       (* Mark all ps as seen, as we bind the tuple to a variable. *)
       (* Can we make it aliases instead of used? Hard to do if we want
          to preserve the tree-ness *)
       ( MatchSingle ([ path ], loc, None),
         ienv,
-        UF.pars
+        UF.seqs
           (List.map
              (fun (paths, loc', modes) ->
                match modes with
@@ -797,7 +804,7 @@ let maybe_paths_of_ident ?unique_use ienv path loc =
     let occ = { Occurrence.loc; reason = DirectUse } in
     let maybe_unique = (unique_use, occ) in
     let use = SharedUnique.MaybeUnique [ maybe_unique ] in
-    ignore (SharedUnique.force_toplevel use reason)
+    ignore (SharedUnique.force_boundary use reason)
   in
   match path with
   | Path.Pident id -> (
@@ -805,7 +812,7 @@ let maybe_paths_of_ident ?unique_use ienv path loc =
       (* TODO: for better error message, we should record in ienv why some
          variables are not in it. *)
       | None ->
-          Option.iter (force JustTopLevel) unique_use;
+          Option.iter (force OutOfModClass) unique_use;
           None
       | Some paths -> Some paths)
   (* accessing a module, which is forced by typemod to be shared and many.
@@ -858,13 +865,13 @@ let mark_shared_open_variables ienv f _loc =
   let ufs =
     List.map
       (fun (paths, maybe_unique) ->
-        (* the following force is not needed, because when UA the module/class,
-           maybe_paths_of_ident will force free variables to shared, because
-           ienv given to it will not include the outside variables. We
-           nevertheless force it here just to be sure *)
+        (* the following force is not needed, because when UA is done on the
+           module/class, maybe_paths_of_ident will force free variables to
+           shared, because ienv given to it will not include the outside
+           variables. We nevertheless force it here just to be sure *)
         let shared =
           Usage.SharedUnique
-            (SharedUnique.force_toplevel maybe_unique FreeVariableOfModClass)
+            (SharedUnique.force_boundary maybe_unique FreeVariableOfModClass)
         in
         let ufs = List.map (fun path -> UF.singleton path shared) paths in
         UF.seqs ufs)
@@ -902,7 +909,9 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
   | Texp_function { param; cases } ->
       (* `param` is only a hint not a binder;
          actual binding done in cases by Tpat_var and Tpat_alias *)
-      let value = MatchSingle ([ UF.Path.fresh_root_of_id param ], loc, None) in
+      let value =
+        MatchSingle ([ UF.Path.fresh_root_of_ident param ], loc, None)
+      in
       let uf = check_uniqueness_cases value cases ienv in
       (* we are constructing a closure here, and therefore any borrowing of free
          variables in the closure is in fact using shared. *)
@@ -1261,20 +1270,19 @@ let report_error = function
       Location.errorf ~loc:here.loc ~sub
         "@[%s so cannot be used twice. %s Another use is @]"
         why_cannot_use_twice here_reason
-  | SharedUnique.TopLevel { occ; error; reason } ->
+  | SharedUnique.Boundary { occ; error; reason } ->
       let reason =
         match reason with
-        | ValueFromModClass -> "a value from a module or class"
-        | FreeVariableOfModClass ->
-            "a value outside the current module or class"
-        | JustTopLevel -> "a value that is top-level"
+        | ValueFromModClass -> "from another module or class"
+        | FreeVariableOfModClass -> "outside the current module or class"
+        | OutOfModClass -> "outside the current module or class"
       in
       let error =
         match error with
         | `Uniqueness -> "used as unique"
         | `Linearity -> "defined as once"
       in
-      Location.errorf ~loc:occ.loc "@[This value is %s but it is %s@]" error
+      Location.errorf ~loc:occ.loc "@[This value is %s but it is %s.@]" error
         reason
   | _ -> assert false
 
@@ -1283,6 +1291,6 @@ let report_error err =
 
 let () =
   Location.register_error_of_exn (function
-    | (UsageTree.MultiUse _ | SharedUnique.TopLevel _) as e ->
+    | (UsageTree.MultiUse _ | SharedUnique.Boundary _) as e ->
         Some (report_error e)
     | _ -> None)

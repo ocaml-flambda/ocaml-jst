@@ -54,7 +54,7 @@ let texp_letmodule () =
 Line 4, characters 12-21:
 4 |     let y = unique_ x
                 ^^^^^^^^^
-Error: This value is used as unique but it is a value that is top-level
+Error: This value is used as unique but it is outside the current module or class.
 |}]
 
 (* you can use x as shared and many, but it might collide with external uses. *)
@@ -85,7 +85,7 @@ let texp_open () =
 Line 3, characters 27-36:
 3 |   let open (struct let y = unique_ x end) in
                                ^^^^^^^^^
-Error: This value is used as unique but it is a value that is top-level
+Error: This value is used as unique but it is outside the current module or class.
 |}]
 
 let texp_open () =
@@ -115,7 +115,7 @@ module type bar = sig val y : string end
 Line 5, characters 33-42:
 5 |   let z = (module struct let y = unique_ x end : bar) in
                                      ^^^^^^^^^
-Error: This value is used as unique but it is a value that is top-level
+Error: This value is used as unique but it is outside the current module or class.
 |}]
 
 let texp_pack () =

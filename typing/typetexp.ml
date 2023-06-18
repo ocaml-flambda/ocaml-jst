@@ -476,11 +476,11 @@ and transl_type_aux env policy mode styp =
           check_arg_type arg;
           let arg_cty = transl_type env policy arg_mode arg in
           let acc_mode =
-            Alloc.Const.join 
+            Alloc.Const.join
               (Alloc.Const.uncurried_ret_mode_from_arg arg_mode)
               (Alloc.Const.uncurried_ret_mode_from_alloc acc_mode)
           in
-          let acc_mode = 
+          let acc_mode =
             Alloc.Const.join acc_mode
               (Alloc.Const.min_with_uniqueness Uniqueness.Const.Shared)
           in

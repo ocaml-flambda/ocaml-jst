@@ -1541,11 +1541,11 @@ let rec instance_prim_locals locals mvar macc finalret ty =
   match locals, get_desc ty with
   | l :: locals, Tarrow ((lbl,marg,mret),arg,ret,commu) ->
      let marg = Mode.Alloc.with_locality (prim_mode (Some mvar) l) marg in
-     let macc = 
+     let macc =
        Mode.Alloc.join [mret;
          Mode.Alloc.uncurried_ret_mode_from_arg marg;
          Mode.Alloc.uncurried_ret_mode_from_alloc macc
-       ] 
+       ]
      in
      let mret =
        match locals with

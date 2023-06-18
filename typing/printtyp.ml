@@ -529,8 +529,8 @@ and raw_type_desc ppf = function
         (Layout.to_string layout)
   | Tarrow((l,arg,ret),t1,t2,c) ->
       fprintf ppf "@[<hov1>Tarrow((\"%s\",%a,%a),@,%a,@,%a,@,%s)@]"
-        (string_of_label l) 
-        (Alloc.print' ~verbose:true) arg 
+        (string_of_label l)
+        (Alloc.print' ~verbose:true) arg
         (Alloc.print' ~verbose:true) ret
         raw_type t1 raw_type t2
         (if is_commu_ok c then "Cok" else "Cunknown")
