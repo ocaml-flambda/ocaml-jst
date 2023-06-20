@@ -863,6 +863,11 @@ module Alloc = struct
     let linearity, changed3 = Linearity.newvar_below linearity in
     ({ locality; uniqueness; linearity }, changed1 || changed2 || changed3)
 
+  let newvar_below_comonadic {locality; uniqueness; linearity} =
+    let locality, changed1 = Locality.newvar_below locality in
+    let linearity, changed2 = Linearity.newvar_below linearity in
+    ({ locality; uniqueness; linearity }, changed1 || changed2)
+
   let newvar_above { locality; uniqueness; linearity } =
     let locality, changed1 = Locality.newvar_above locality in
     let uniqueness, changed2 = Uniqueness.newvar_above uniqueness in

@@ -567,7 +567,11 @@ let foo () =
     ((fun y z -> z) : int -> unique_ (int -> int)) in
   ()
 [%%expect{|
-val foo : unit -> unit = <fun>
+Line 3, characters 4-50:
+3 |     ((fun y z -> z) : int -> unique_ (int -> int)) in
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: This expression has type int -> unique_ (int -> int)
+       but an expression was expected of type int -> int -> int
 |}]
 
 

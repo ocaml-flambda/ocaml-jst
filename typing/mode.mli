@@ -194,6 +194,10 @@ module Alloc : sig
   val constrain_legacy : t -> Const.t
   val newvar : unit -> t
   val newvar_below : t -> t * bool
+
+  (* Same as [newvar_below] but only on the comonadic axes *)
+  val newvar_below_comonadic : t -> t * bool
+
   val newvar_above : t -> t * bool
   val with_locality : Locality.t -> t -> t
   val with_uniqueness : Uniqueness.t -> t -> t
@@ -234,8 +238,10 @@ module Value : sig
 
   (** Injections from Locality and Uniqueness into [Value_mode.t] *)
 
-  (* The 'of_*_min' functions extend the min_mode,
-     the 'of_*_max' functions extend the max_mode *)
+  (* The 'min_with_*' functions extend the min_mode,
+     the 'max_with_' functions extend the max_mode,
+     the 'with_*' functions extend given mode.
+     *)
   val min_with_uniqueness : Uniqueness.t -> t
   val max_with_uniqueness : Uniqueness.t -> t
   val min_with_locality : Locality.t -> t
