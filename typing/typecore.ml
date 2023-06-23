@@ -3230,8 +3230,8 @@ let type_omitted_parameters expected_mode env ty_ret mode_ret args =
              in
              let closed_args = new_closed_args @ closed_args in
              let open_args = [] in
-             let m0 = List.map Alloc.uncurried_ret_mode_from_arg closed_args in
-             let m1 = Alloc.uncurried_ret_mode_from_alloc mode_fun in
+             let m0 = List.map Alloc.close_over closed_args in
+             let m1 = Alloc.partial_apply mode_fun in
              let mode_closure, _ = Alloc.newvar_above (Alloc.join (m1 :: m0)) in
              register_allocation_mode mode_closure;
              let arg = Omitted { mode_closure; mode_arg; mode_ret; ty_arg; ty_env = env } in
@@ -4460,15 +4460,13 @@ and type_expect_
           (* The middle-end relies on all functions which allocate into their
              parent's region having a return mode of local. *)
           submode ~loc ~env ~reason:Other
-            (Value.with_locality Regionality.local mode'.mode) mode';
+            (Value.min_with_locality Regionality.local) mode';
           let new_env = Env.add_exclave_lock env in
           let exp =
             type_expect ?in_function ~recarg new_env mode' sbody ty_expected_explained
           in
           submode ~loc ~env ~reason:Other
-            (Value.with_locality
-               Regionality.regional expected_mode.mode)
-            expected_mode;
+            (Value.min_with_locality Regionality.regional) expected_mode;
           { exp_desc = Texp_exclave exp;
             exp_loc = loc;
             exp_extra = [];
@@ -5861,7 +5859,7 @@ and type_function ?in_function loc attrs env (expected_mode : expected_mode)
       let inner_alloc_mode, _ = Alloc.newvar_below ret_mode in
       begin match
         Alloc.submode
-          (Alloc.uncurried_ret_mode_from_arg arg_mode)
+          (Alloc.close_over arg_mode)
           inner_alloc_mode
       with
       | Ok () -> ()
@@ -5870,7 +5868,7 @@ and type_function ?in_function loc attrs env (expected_mode : expected_mode)
       end;
       begin match
         Alloc.submode
-          (Alloc.uncurried_ret_mode_from_alloc alloc_mode)
+          (Alloc.partial_apply alloc_mode)
           inner_alloc_mode
       with
       | Ok () -> ()

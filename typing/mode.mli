@@ -149,8 +149,8 @@ module Alloc : sig
 
     val legacy : t
     val join : t -> t -> t
-    val uncurried_ret_mode_from_arg : t -> t
-    val uncurried_ret_mode_from_alloc : t -> t
+    val close_over : t -> t
+    val partial_apply : t -> t
     val min_with_uniqueness : Uniqueness.Const.t -> t
   end
 
@@ -161,10 +161,6 @@ module Alloc : sig
   val unique : t
   val local_unique : t
   val prod : Locality.t -> Uniqueness.t -> Linearity.t -> t
-
-  (* val unique : const
-
-     val local_unique : t *)
 
   val of_const : Const.t -> t
   val is_const : t -> bool
@@ -215,8 +211,8 @@ module Alloc : sig
 
   val print' : ?verbose:bool -> Format.formatter -> t -> unit
   val print : Format.formatter -> t -> unit
-  val uncurried_ret_mode_from_arg : t -> t
-  val uncurried_ret_mode_from_alloc : t -> t
+  val close_over : t -> t
+  val partial_apply : t -> t
 end
 
 module Value : sig
@@ -244,8 +240,8 @@ module Value : sig
      *)
   val min_with_uniqueness : Uniqueness.t -> t
   val max_with_uniqueness : Uniqueness.t -> t
-  val min_with_locality : Locality.t -> t
-  val max_with_locality : Locality.t -> t
+  val min_with_locality : Regionality.t -> t
+  val max_with_locality : Regionality.t -> t
   val with_locality : Regionality.t -> t -> t
   val with_uniqueness : Uniqueness.t -> t -> t
   val with_linearity : Linearity.t -> t -> t

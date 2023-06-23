@@ -1543,8 +1543,8 @@ let rec instance_prim_locals locals mvar macc finalret ty =
      let marg = Mode.Alloc.with_locality (prim_mode (Some mvar) l) marg in
      let macc =
        Mode.Alloc.join [mret;
-         Mode.Alloc.uncurried_ret_mode_from_arg marg;
-         Mode.Alloc.uncurried_ret_mode_from_alloc macc
+         Mode.Alloc.close_over marg;
+         Mode.Alloc.partial_apply macc
        ]
      in
      let mret =

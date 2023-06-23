@@ -713,7 +713,7 @@ module Alloc = struct
       }
 
     (** constrain uncurried function ret_mode from arg_mode *)
-    let uncurried_ret_mode_from_arg arg_mode =
+    let close_over arg_mode =
       let locality = arg_mode.locality in
       (* uniqueness of the returned function is not constrained *)
       let uniqueness = Uniqueness.Const.min in
@@ -728,7 +728,7 @@ module Alloc = struct
 
     (** constrain uncurried function ret_mode from the mode of the whole
     function *)
-    let uncurried_ret_mode_from_alloc alloc_mode =
+    let partial_apply alloc_mode =
       let locality = alloc_mode.locality in
       let uniqueness = Uniqueness.Const.min in
       let linearity = alloc_mode.linearity in
@@ -918,7 +918,7 @@ module Alloc = struct
   let print ppf m = print' ~verbose:true ppf m
 
   (** constrain uncurried function ret_mode from arg_mode *)
-  let uncurried_ret_mode_from_arg arg_mode =
+  let close_over arg_mode =
     let locality = arg_mode.locality in
     (* uniqueness of the returned function is not constrained *)
     let uniqueness = Uniqueness.of_const Uniqueness.Const.min in
@@ -936,7 +936,7 @@ module Alloc = struct
 
   (** constrain uncurried function ret_mode from the mode of the whole function
   *)
-  let uncurried_ret_mode_from_alloc alloc_mode =
+  let partial_apply alloc_mode =
     let locality = alloc_mode.locality in
     let uniqueness = Uniqueness.of_const Uniqueness.Const.min in
     let linearity = alloc_mode.linearity in
@@ -1000,11 +1000,11 @@ module Value = struct
   let min_with_uniqueness u = { min_mode with uniqueness = u }
   let max_with_uniqueness u = { max_mode with uniqueness = u }
 
-  let min_with_locality l =
-    { min_mode with locality = Regionality.of_locality l }
+  let min_with_locality locality =
+    { min_mode with locality }
 
-  let max_with_locality l =
-    { max_mode with locality = Regionality.of_locality l }
+  let max_with_locality locality =
+    { max_mode with locality }
 
   let with_locality locality t = { t with locality }
   let with_uniqueness uniqueness t = { t with uniqueness }

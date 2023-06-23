@@ -224,13 +224,13 @@ val lookup_error: Location.t -> t -> lookup_error -> 'a
    [lookup_foo ~use:true] exactly one time -- otherwise warnings may be
    emitted the wrong number of times. *)
 
-(** The returned shared_context looks strange, but useful for error printing when
-    the returned uniqueness mode is too high because of some linearity_lock during
-    lookup, and fail to satisfy expected_mode in the caller.
+(** The returned shared_context looks strange, but useful for error printing
+    when the returned uniqueness mode is too high because of some linearity_lock
+    during lookup, and fail to satisfy expected_mode in the caller.
 
-    TODO: A better approach is passing down the expected mode to this
-    function as argument, so that sub-moding error is triggered at the place where
-    error hints are immediately available. *)
+    TODO: A better approach is passing down the expected mode to this function
+    as argument, so that sub-moding error is triggered at the place where error
+    hints are immediately available. *)
 val lookup_value:
   ?use:bool -> loc:Location.t -> Longident.t -> t ->
   Path.t * value_description * Mode.Value.t * shared_context list

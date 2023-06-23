@@ -1279,11 +1279,11 @@ let report_error = function
       in
       let error =
         match error with
-        | `Uniqueness -> "used as unique"
-        | `Linearity -> "defined as once"
+        | `Uniqueness -> "This value is shared but used as unique"
+        | `Linearity -> "This value is once but used as many"
       in
-      Location.errorf ~loc:occ.loc "@[This value is %s but it is %s.@]" error
-        reason
+      Location.errorf ~loc:occ.loc "@[%s.\nHint: This value comes from %s.@]"
+        error reason
   | _ -> assert false
 
 let report_error err =
