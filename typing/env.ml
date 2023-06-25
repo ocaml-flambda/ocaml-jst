@@ -2916,16 +2916,16 @@ let lookup_ident_module (type a) (load : a load) ~errors ~use ~loc s env =
 
 let lock_mode ~errors ~loc env id vmode locks =
   List.fold_left
-    (fun (vmode, reasons) lock ->
+    (fun (vmode, reason) lock ->
       match lock with
-      | Region_lock -> (Mode.Value.local_to_regional vmode, reasons)
+      | Region_lock -> (Mode.Value.local_to_regional vmode, reason)
       | Locality_lock {mode; escaping_context} -> begin
           match
             Mode.Regionality.submode
               (Mode.Value.locality vmode)
               (Mode.Regionality.of_locality mode)
           with
-          | Ok () -> (vmode, reasons)
+          | Ok () -> (vmode, reason)
           | Error _ ->
               may_lookup_error errors loc env
                 (Local_value_used_in_closure (id, escaping_context))
@@ -2944,7 +2944,7 @@ let lock_mode ~errors ~loc env id vmode locks =
                 Mode.Linearity.to_dual mode ]
           in
           let vmode = Mode.Value.with_uniqueness min_uniq vmode in
-          vmode, shared_context :: reasons
+          vmode, Some shared_context
         end
       | Exclave_lock -> begin
           match
@@ -2952,12 +2952,12 @@ let lock_mode ~errors ~loc env id vmode locks =
               (Mode.Value.locality vmode)
               Mode.Regionality.regional
           with
-          | Ok () -> (Mode.Value.regional_to_local vmode, reasons)
+          | Ok () -> (Mode.Value.regional_to_local vmode, reason)
           | Error _ ->
               may_lookup_error errors loc env
                 (Local_value_used_in_exclave id)
         end
-    ) (vmode, []) locks
+    ) (vmode, None) locks
 
 let lookup_ident_value ~errors ~use ~loc name env =
   match IdTbl.find_name_and_modes wrap_value ~mark:use name env.values with
@@ -3244,7 +3244,7 @@ let lookup_value_lazy ~errors ~use ~loc lid env =
   | Ldot(l, s) ->
     let path, desc = lookup_dot_value ~errors ~use ~loc l s env in
     let mode = Mode.Value.legacy in
-    path, desc, mode, []
+    path, desc, mode, None
   | Lapply _ -> assert false
 
 let lookup_type_full ~errors ~use ~loc lid env =

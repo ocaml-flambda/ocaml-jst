@@ -799,10 +799,8 @@ let comp_pattern_match pat value =
   | Some pat', _ -> pattern_match pat' value
   | None, _ -> (Ienv.empty, UF.empty)
 
-let maybe_paths_of_ident ?unique_use ienv path loc =
-  let force reason unique_use =
-    let occ = { Occurrence.loc; reason = DirectUse } in
-    let maybe_unique = (unique_use, occ) in
+let maybe_paths_of_ident ?maybe_unique ienv path =
+  let force reason maybe_unique =
     let use = SharedUnique.MaybeUnique [ maybe_unique ] in
     ignore (SharedUnique.force_boundary use reason)
   in
@@ -812,13 +810,13 @@ let maybe_paths_of_ident ?unique_use ienv path loc =
       (* TODO: for better error message, we should record in ienv why some
          variables are not in it. *)
       | None ->
-          Option.iter (force OutOfModClass) unique_use;
+          Option.iter (force OutOfModClass) maybe_unique;
           None
       | Some paths -> Some paths)
   (* accessing a module, which is forced by typemod to be shared and many.
      Here we force it again just to be sure *)
   | Path.Pdot _ ->
-      Option.iter (force ValueFromModClass) unique_use;
+      Option.iter (force ValueFromModClass) maybe_unique;
       None
   | Path.Papply _ -> assert false
 
@@ -841,7 +839,7 @@ let open_variables ienv f =
         (fun self e ->
           (match e.exp_desc with
           | Texp_ident (path, _, _, _, modes) -> (
-              match maybe_paths_of_ident ienv path e.exp_loc with
+              match maybe_paths_of_ident ienv path with
               | None -> ()
               | Some paths ->
                   let occ =
@@ -1107,7 +1105,9 @@ and check_uniqueness_exp' exp ienv : (UF.Path.t list * unique_use) option * UF.t
     =
   match exp.exp_desc with
   | Texp_ident (p, _, _, _, unique_use) -> (
-      match maybe_paths_of_ident ~unique_use ienv p exp.exp_loc with
+      let occ = {Occurrence.loc = exp.exp_loc; reason = DirectUse} in
+      let maybe_unique = (unique_use, occ) in
+      match maybe_paths_of_ident ~maybe_unique ienv p with
       | None -> (None, UF.empty)
       | Some ps -> (Some (ps, unique_use), UF.empty))
   | Texp_field (e, _, l, modes, _) -> (
@@ -1220,7 +1220,7 @@ and check_uniqueness_comprehensions cs ienv =
 
 and check_uniqueness_binding_op bo exp ienv =
   let uf0 =
-    match maybe_paths_of_ident ienv bo.bop_op_path bo.bop_loc with
+    match maybe_paths_of_ident ienv bo.bop_op_path with
     | Some paths ->
         let occ = { Occurrence.loc = exp.exp_loc; reason = DirectUse } in
         let maybe_unique = ((Uniqueness.shared, Linearity.many), occ) in

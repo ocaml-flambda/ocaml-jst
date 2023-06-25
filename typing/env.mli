@@ -233,7 +233,7 @@ val lookup_error: Location.t -> t -> lookup_error -> 'a
     hints are immediately available. *)
 val lookup_value:
   ?use:bool -> loc:Location.t -> Longident.t -> t ->
-  Path.t * value_description * Mode.Value.t * shared_context list
+  Path.t * value_description * Mode.Value.t * shared_context option
 val lookup_type:
   ?use:bool -> loc:Location.t -> Longident.t -> t ->
   Path.t * type_declaration

@@ -184,7 +184,7 @@ type error =
   | Expr_not_a_record_type of type_expr
   | Submode_failed of
       Value.error * submode_reason *
-      Env.escaping_context option * Env.shared_context list
+      Env.escaping_context option * Env.shared_context option
   | Local_application_complete of Asttypes.arg_label * [`Prefix|`Single_arg|`Entire_apply]
   | Param_mode_mismatch of type_expr * Alloc.error
   | Uncurried_function_escapes of Alloc.error
@@ -296,7 +296,7 @@ type region_position =
 type expected_mode =
   { position : region_position;
     escaping_context : Env.escaping_context option;
-    shared_context : Env.shared_context list;
+    shared_context : Env.shared_context option;
     (* the upper bound of mode*)
     mode : Value.t;
     (* in some scnearios, the above `mode` will be the exact mode of the
@@ -345,7 +345,7 @@ let apply_position env (expected_mode : expected_mode) sexp : apply_position =
 let mode_default mode =
   { position = RNontail;
     escaping_context = None;
-    shared_context = [];
+    shared_context = None;
     mode = mode;
     exact = false;
     strictly_local = false;
@@ -470,9 +470,9 @@ let submode ~loc ~env ?(reason = Other) mode expected_mode =
   | Ok () -> ()
   | Error failure_reason ->
       let escaping_context = expected_mode.escaping_context in
-      let shared_contexts = expected_mode.shared_context in
+      let shared_context = expected_mode.shared_context in
       let error =
-        Submode_failed(failure_reason, reason, escaping_context, shared_contexts)
+        Submode_failed(failure_reason, reason, escaping_context, shared_context)
       in
       raise (Error(loc, env, error))
 
@@ -4108,11 +4108,13 @@ let unique_use ~loc ~env mode =
        running a UA which forces everything *)
     (match Uniqueness.submode Uniqueness.shared uniqueness with
     | Ok () -> ()
-    | Error () -> raise (Error(loc, env, Submode_failed(`Uniqueness, Other, None, [])))
+    | Error () ->
+        raise (Error(loc, env, Submode_failed(`Uniqueness, Other, None, None)))
     );
     (match Linearity.submode linearity Linearity.many with
     | Ok () -> ()
-    | Error () -> raise (Error (loc, env, Submode_failed(`Linearity, Other, None, [])))
+    | Error () ->
+        raise (Error (loc, env, Submode_failed(`Linearity, Other, None, None)))
     )
   end;
   (uniqueness, linearity)
@@ -4170,7 +4172,7 @@ and type_expect_
         eexp
   | None      -> match sexp.pexp_desc with
   | Pexp_ident lid ->
-      let path, mode, shared_reasons, desc, kind = type_ident env ~recarg lid in
+      let path, mode, shared_reason, desc, kind = type_ident env ~recarg lid in
       let mode =
         match path with
         | Path.Pident _ ->
@@ -4205,7 +4207,9 @@ and type_expect_
         | _ ->
             Texp_ident(path, lid, desc, kind, unique_use ~env ~loc mode)
       in
-      let expected_mode = mode_with_shared_context shared_reasons expected_mode in
+      let expected_mode =
+        mode_with_shared_context shared_reason expected_mode
+      in
       ruem ~mode ~expected_mode {
         exp_desc; exp_loc = loc; exp_extra = [];
         exp_type = desc.val_type;
@@ -5701,7 +5705,7 @@ and type_expect_
            exp_env = env }
 
 and type_ident env ?(recarg=Rejected) lid =
-  let (path, desc, mode, reasons) = Env.lookup_value ~loc:lid.loc lid.txt env in
+  let (path, desc, mode, reason) = Env.lookup_value ~loc:lid.loc lid.txt env in
   let is_recarg =
     match get_desc desc.val_type with
     | Tconstr(p, _, _) -> Path.is_constructor_typath p
@@ -5731,12 +5735,12 @@ and type_ident env ?(recarg=Rejected) lid =
        ty, Id_prim mode
     | _ ->
        instance desc.val_type, Id_value in
-  path, mode, reasons, { desc with val_type }, kind
+  path, mode, reason, { desc with val_type }, kind
 
 and type_binding_op_ident env s =
   let loc = s.loc in
   let lid = Location.mkloc (Longident.Lident s.txt) loc in
-  let path, mode, _reasons, desc, kind = type_ident env lid in
+  let path, mode, _reason, desc, kind = type_ident env lid in
   submode ~env ~loc:lid.loc ~reason:Other mode mode_legacy;
   let path =
     match desc.val_kind with
@@ -7879,38 +7883,39 @@ let escaping_hint failure_reason submode_reason
   | Other -> []
   end
 
-let sharedness_hint _fail_reason submode_reason (context : Env.shared_context list) =
-  (List.map (function
-  | Env.For_loop ->
-    Location.msg
+let sharedness_hint _fail_reason submode_reason context =
+  (match context with
+  | None -> []
+  | Some Env.For_loop ->
+    [Location.msg
         "@[Hint: This identifier cannot be used uniquely,@ \
-          because it was defined outside of the for-loop.@]"
-  | Env.While_loop ->
-    Location.msg
+          because it was defined outside of the for-loop.@]"]
+  | Some Env.While_loop ->
+    [Location.msg
         "@[Hint: This identifier cannot be used uniquely,@ \
-          because it was defined outside of the while-loop.@]"
-  | Env.Comprehension ->
-    Location.msg
+          because it was defined outside of the while-loop.@]"]
+  | Some Env.Comprehension ->
+    [Location.msg
         "@[Hint: This identifier cannot be used uniquely,@ \
-          because it was defined outside of the comprehension.@]"
-  | Env.Letop ->
-    Location.msg
+          because it was defined outside of the comprehension.@]"]
+  | Some Env.Letop ->
+    [Location.msg
         "@[Hint: This identifier cannot be used uniquely,@ \
-          because it was defined outside of the let-op.@]"
-  | Env.Class ->
-    Location.msg
+          because it was defined outside of the let-op.@]"]
+  | Some Env.Class ->
+    [Location.msg
         "@[Hint: This identifier cannot be used uniquely,@ \
-          because it is defined in a class.@]"
-  | Env.Closure ->
-    Location.msg
+          because it is defined in a class.@]"]
+  | Some Env.Closure ->
+    [Location.msg
         "@[Hint: This identifier was defined outside of the current closure.@ \
           Either this closure has to be once, or the identifier can be used only@ \
-          as shared @]"
-  | Env.Module ->
-    Location.msg
+          as shared @]"]
+  | Some Env.Module ->
+    [Location.msg
         "@[Hint: This identifier cannot be used uniquely,@ \
-          because it is defined in a module.@]"
-  ) context)
+          because it is defined in a module.@]"]
+  )
   @
   match submode_reason with
   | Application _ | Other -> []
@@ -8349,11 +8354,14 @@ let report_error ~loc env = function
         "This expression has type %a@ \
          which is not a record type."
         Printtyp.type_expr ty
-  | Submode_failed(fail_reason, submode_reason, escaping_context, shared_contexts) ->
+  | Submode_failed(fail_reason, submode_reason,
+      escaping_context, shared_context) ->
       let sub =
         match fail_reason with
-        | `Linearity | `Uniqueness -> sharedness_hint fail_reason submode_reason shared_contexts
-        | `Locality | `Regionality -> escaping_hint fail_reason submode_reason escaping_context
+        | `Linearity | `Uniqueness ->
+          sharedness_hint fail_reason submode_reason shared_context
+        | `Locality | `Regionality ->
+          escaping_hint fail_reason submode_reason escaping_context
       in
       Location.errorf ~loc ~sub begin
         match fail_reason with

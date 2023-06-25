@@ -260,7 +260,7 @@ type error =
   | Expr_not_a_record_type of type_expr
   | Submode_failed of
       Mode.Value.error * submode_reason *
-      Env.escaping_context option * Env.shared_context list
+      Env.escaping_context option * Env.shared_context option
   | Local_application_complete of Asttypes.arg_label * [`Prefix|`Single_arg|`Entire_apply]
   | Param_mode_mismatch of type_expr * Mode.Alloc.error
   | Uncurried_function_escapes of Mode.Alloc.error
