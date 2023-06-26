@@ -122,7 +122,7 @@ Error: This is used uniquely here so cannot be used twice.  Another use is
 Line 4, characters 34-36:
 4 |   | x :: xs as gs -> unique_ (gs, xs)
                                       ^^
-  The latter is the position-1 element of the constructor "::" in the value which is the former
+  The latter is part of the former
 |}]
 
 
@@ -203,7 +203,7 @@ Error: This is used uniquely here so cannot be used twice.  Another use is
 Line 6, characters 6-16:
 6 |       unique_ xx
           ^^^^^^^^^^
-  The latter is the position-1 element of the constructor "::" in the value which is the former
+  The latter is part of the former
 |}]
 
 let mark_top_shared =
@@ -220,7 +220,7 @@ Error: This is used uniquely here so cannot be used twice.  Another use is
 Line 5, characters 15-25:
 5 |   | x :: xx -> unique_ xx
                    ^^^^^^^^^^
-  The latter is the position-1 element of the constructor "::" in the value which is the former
+  The latter is part of the former
 |}]
 
 let mark_shared_in_one_branch b x =
@@ -266,7 +266,7 @@ Error: This is used uniquely here so cannot be used twice.  Another use is
 Line 3, characters 54-55:
 3 |   | (a, b) as t, c -> let d = unique_id t in unique_ (a, d)
                                                           ^
-  The latter is the position-0 element of the tuple which is the former
+  The latter is part of the former
 |}]
 
 let tuple_parent_marked a b =
@@ -332,7 +332,7 @@ Error: This is used uniquely here so cannot be used twice.  Another use is
 Line 3, characters 31-32:
 3 |   | (a, b) as t -> unique_ (a, t)
                                    ^
-  The former is the position-0 element of the tuple which is the latter
+  The former is part of the latter
 |}]
 
 let tuple_parent_marked a b =
@@ -346,7 +346,7 @@ Error: This is used uniquely here so cannot be used twice.  Another use is
 Line 3, characters 36-37:
 3 |   | ((_, a), b) as t -> unique_ (a, t)
                                         ^
-  The former is the position-1 element of the tuple which is the position-0 element of the tuple which is the latter
+  The former is part of the latter
 |}]
 
 (* CR-someday anlorenzen: This one shouldn't fail in a more clever analysis. *)

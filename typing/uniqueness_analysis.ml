@@ -394,10 +394,17 @@ module UsageTree = struct
     type t = Projection.t list
 
     let child (p : t) (a : Projection.t) : t = p @ [ a ]
+
+    (** length of path ignoring memory_address *)
+    let rec real_length = function
+      | [] -> 0
+      | Projection.Memory_address :: xs -> real_length xs
+      | _ :: xs -> real_length xs + 1
+
     let root : t = []
     let _print ppf = Format.pp_print_list Projection.print ppf
 
-    let human_readable ppf t =
+    let _human_readable ppf t =
       Format.pp_print_list
         ~pp_sep:(fun ppf () -> Format.fprintf ppf " which is ")
         Projection.human_readable ppf t
@@ -1242,8 +1249,8 @@ let report_error = function
   | UsageTree.MultiUse { here; there; error; there_is_of_here; path } ->
       let why_cannot_use_twice =
         match error with
-        | `Uniqueness -> "This is used uniquely here"
-        | `Linearity -> "This is defined as once"
+        | `Uniqueness -> "used uniquely here"
+        | `Linearity -> "defined as once"
       in
       let there_reason =
         match there.reason with
@@ -1252,14 +1259,13 @@ let report_error = function
             Format.dprintf "which is in a tuple matched against a variable"
       in
       let relation =
-        let path = Format.asprintf "%a" UsageTree.Path.human_readable path in
-        if String.length path = 0 then Format.dprintf ""
+        if UsageTree.Path.real_length path = 0 then Format.dprintf ""
         else
           match there_is_of_here with
           | Ancestor ->
-              Format.dprintf "The former is %s which is the latter" path
+              Format.dprintf "The former is part of the latter"
           | Descendant ->
-              Format.dprintf "The latter is %s which is the former" path
+              Format.dprintf "The latter is part of the former"
       in
       let sub = [ Location.msg ~loc:there.loc "%t%t" there_reason relation ] in
       let here_reason =
@@ -1268,12 +1274,12 @@ let report_error = function
         | MatchTupleWithVar _ -> "It is in a tuple matched against a variable."
       in
       Location.errorf ~loc:here.loc ~sub
-        "@[%s so cannot be used twice. %s Another use is @]"
+        "@[This is %s so cannot be used twice. %s Another use is @]"
         why_cannot_use_twice here_reason
   | SharedUnique.Boundary { occ; error; reason } ->
       let reason =
         match reason with
-        | ValueFromModClass -> "from another module or class"
+        | ValueFromModClass -> "another module or class"
         | FreeVariableOfModClass -> "outside the current module or class"
         | OutOfModClass -> "outside the current module or class"
       in
