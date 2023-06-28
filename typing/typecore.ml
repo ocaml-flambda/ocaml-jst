@@ -678,10 +678,10 @@ let has_once_attr_pat ppat =
 let has_once_attr_exp pexp =
   has_once_attr pexp.pexp_loc pexp.pexp_attributes
 
-let modes_annotation_none =
+let mode_annots_none =
   {locality = None; uniqueness = None; linearity = None}
 
-let modes_annotation_pat sp =
+let mode_annots_from_pat_attrs sp =
   let locality =
     if has_local_attr_pat sp then Some Locality.Const.Local
     else None
@@ -694,13 +694,13 @@ let modes_annotation_pat sp =
   in
   {locality; uniqueness; linearity}
 
-let modes_annotation_or_default annot ~default =
+let mode_annots_or_default annot ~default =
   let locality = Option.value annot.locality ~default:default.locality in
   let uniqueness = Option.value annot.uniqueness ~default:default.uniqueness in
   let linearity = Option.value annot.linearity ~default:default.linearity in
   {locality; uniqueness; linearity}
 
-let modes_annotation_exp exp =
+let mode_annots_from_exp_attrs exp =
   let locality =
     if has_local_attr_exp exp then Some Locality.Const.Local
     else None
@@ -713,7 +713,7 @@ let modes_annotation_exp exp =
   in
   {locality; uniqueness; linearity}
 
-let apply_modes_annotation ~loc ~env ~ty_expected ann mode =
+let apply_mode_annots ~loc ~env ~ty_expected ann mode =
   let error axis =
     raise (Error(loc, env, Param_mode_mismatch (ty_expected, axis)))
   in
@@ -2665,9 +2665,9 @@ and type_pat_aux
       assert construction_not_used_in_counterexamples;
       (* Pretend separate = true *)
       let cty, ty, expected_ty' =
-        let modes_annot = modes_annotation_pat sp in
+        let mode_annots = mode_annots_from_pat_attrs sp in
         let type_modes =
-          modes_annotation_or_default modes_annot ~default:Alloc.Const.legacy
+          mode_annots_or_default mode_annots ~default:Alloc.Const.legacy
         in
         solve_Ppat_constraint ~refine loc env type_modes sty expected_ty
       in
@@ -3569,9 +3569,9 @@ let type_pattern_approx env spat ty_expected =
   | None      ->
   match spat.ppat_desc with
   | Ppat_constraint(_, ({ptyp_desc=Ptyp_poly _} as sty)) ->
-      let modes_annot = modes_annotation_pat spat in
+      let mode_annots = mode_annots_from_pat_attrs spat in
       let arg_type_mode =
-        modes_annotation_or_default modes_annot ~default:Alloc.Const.legacy
+        mode_annots_or_default mode_annots ~default:Alloc.Const.legacy
       in
       let ty_pat =
         Typetexp.transl_simple_type env ~closed:false arg_type_mode sty
@@ -3582,15 +3582,15 @@ let type_pattern_approx env spat ty_expected =
   | _ -> ()
 
 let rec type_function_approx env loc label spato sexp in_function ty_expected =
-  let modes_annot, has_poly =
+  let mode_annots, has_poly =
     match spato with
     | None -> None, false
     | Some spat ->
-        let modes_annot = modes_annotation_pat spat in
+        let mode_annots = mode_annots_from_pat_attrs spat in
         let has_poly = has_poly_constraint spat in
         if has_poly && is_optional label then
           raise(Error(spat.ppat_loc, env, Optional_poly_param));
-        Some modes_annot, has_poly
+        Some mode_annots, has_poly
   in
   let loc_fun, ty_fun =
     match in_function with
@@ -3615,9 +3615,9 @@ let rec type_function_approx env loc label spato sexp in_function ty_expected =
       raise (Error(loc_fun, env, err))
   in
   Option.iter
-    (fun modes_annot ->
-      apply_modes_annotation ~loc ~env ~ty_expected modes_annot arg_mode)
-    modes_annot;
+    (fun mode_annots ->
+      apply_mode_annots ~loc ~env ~ty_expected mode_annots arg_mode)
+    mode_annots;
   if has_poly then begin
     match spato with
     | None -> ()
@@ -4362,12 +4362,12 @@ and type_expect_
           ~attrs:[Attr.mk (mknoloc "#default") (PStr [])]
           [Vb.mk spat smatch] sbody
       in
-      let modes_annot = modes_annotation_pat spat in
+      let mode_annots = mode_annots_from_pat_attrs spat in
       type_function ?in_function loc sexp.pexp_attributes env
                     expected_mode ty_expected_explained
-                    l ~modes_annot ~has_poly:false [Exp.case pat body]
+                    l ~mode_annots ~has_poly:false [Exp.case pat body]
   | Pexp_fun (l, None, spat, sbody) ->
-      let modes_annot = modes_annotation_pat spat in
+      let mode_annots = mode_annots_from_pat_attrs spat in
       let has_poly = has_poly_constraint spat in
       if has_poly && is_optional l then
         raise(Error(spat.ppat_loc, env, Optional_poly_param));
@@ -4376,13 +4376,13 @@ and type_expect_
         raise (Typetexp.Error (loc, env,
           Unsupported_extension Polymorphic_parameters));
       type_function ?in_function loc sexp.pexp_attributes env
-                    expected_mode ty_expected_explained l ~modes_annot
+                    expected_mode ty_expected_explained l ~mode_annots
                     ~has_poly [Ast_helper.Exp.case spat sbody]
   | Pexp_function caselist ->
-      let modes_annot = modes_annotation_none in
+      let mode_annots = mode_annots_none in
       type_function ?in_function
         loc sexp.pexp_attributes env expected_mode
-        ty_expected_explained Nolabel ~modes_annot ~has_poly:false caselist
+        ty_expected_explained Nolabel ~mode_annots ~has_poly:false caselist
   | Pexp_apply
       ({ pexp_desc = Pexp_extension({
             txt = ("ocaml.unique" | "unique" | "extension.unique" as txt)}, PStr []) },
@@ -5013,9 +5013,9 @@ and type_expect_
   | Pexp_constraint (sarg, sty) ->
      (* Pretend separate = true, 1% slowdown for lablgtk *)
       begin_def ();
-      let modes_annot = modes_annotation_exp sexp in
+      let mode_annots = mode_annots_from_exp_attrs sexp in
       let type_mode =
-        modes_annotation_or_default modes_annot ~default:Alloc.Const.legacy
+        mode_annots_or_default mode_annots ~default:Alloc.Const.legacy
       in
       let cty = Typetexp.transl_simple_type env ~closed:false type_mode sty in
       let ty = cty.ctyp_type in
@@ -5036,9 +5036,9 @@ and type_expect_
       (* Pretend separate = true, 1% slowdown for lablgtk *)
       (* Also see PR#7199 for a problem with the following:
          let separate = !Clflags.principal || Env.has_local_constraints env in*)
-      let modes_annot = modes_annotation_exp sexp in
+      let mode_annots = mode_annots_from_exp_attrs sexp in
       let type_mode =
-        modes_annotation_or_default modes_annot ~default:Alloc.Const.legacy
+        mode_annots_or_default mode_annots ~default:Alloc.Const.legacy
       in
       let (arg, ty',cty,cty') =
         match sty with
@@ -5763,7 +5763,7 @@ and type_binding_op_ident env s =
   path, desc
 
 and type_function ?in_function loc attrs env (expected_mode : expected_mode)
-      ty_expected_explained arg_label ~modes_annot ~has_poly caselist =
+      ty_expected_explained arg_label ~mode_annots ~has_poly caselist =
   let { ty = ty_expected; explanation } = ty_expected_explained in
   let alloc_mode = Value.regional_to_global_alloc expected_mode.mode in
   let alloc_mode =
@@ -5813,7 +5813,7 @@ and type_function ?in_function loc attrs env (expected_mode : expected_mode)
       in
       raise (Error(loc_fun, env, err))
   in
-  apply_modes_annotation ~loc ~env ~ty_expected modes_annot arg_mode;
+  apply_mode_annots ~loc ~env ~ty_expected mode_annots arg_mode;
   if separate then begin
     end_def ();
     generalize_structure ty_arg;
