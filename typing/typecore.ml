@@ -480,11 +480,6 @@ let submode ~loc ~env ?(reason = Other) mode expected_mode =
 let escape ~loc ~env ~reason m =
   submode ~loc ~env ~reason m mode_legacy
 
-let eqmode ~loc ~env m1 m2 ferr =
-  match Alloc.equate m1 m2 with
-  | Ok () -> ()
-  | Error e -> raise (Error(loc, env, ferr e))
-
 type expected_pat_mode =
   { mode : Value.t;
     tuple_modes : Value.t list; }
@@ -683,59 +678,60 @@ let has_once_attr_pat ppat =
 let has_once_attr_exp pexp =
   has_once_attr pexp.pexp_loc pexp.pexp_attributes
 
-let has_modes_attr_pat ppat =
-  { locality = has_local_attr_pat ppat
-  ; uniqueness = has_unique_attr_pat ppat
-  ; linearity = has_once_attr_pat ppat
-  }
+let modes_annotation_none =
+  {locality = None; uniqueness = None; linearity = None}
 
-let type_modes_const_pat sp =
-  let has_mode = has_modes_attr_pat sp in
+let modes_annotation_pat sp =
   let locality =
-    if has_mode.locality then Locality.Const.Local
-    else Locality.Const.Global
-  in
-  let uniqueness =
-    if has_mode.uniqueness then Uniqueness.Const.Unique
-    else Uniqueness.Const.Shared
-  in
-  let linearity =
-    if has_mode.linearity then Linearity.Const.Once
-    else Linearity.Const.Many
+    if has_local_attr_pat sp then Some Locality.Const.Local
+    else None
+  and uniqueness =
+    if has_unique_attr_pat sp then Some Uniqueness.Const.Unique
+    else None
+  and linearity =
+    if has_once_attr_pat sp then Some Linearity.Const.Once
+    else None
   in
   {locality; uniqueness; linearity}
 
-let type_modes_pat sp =
-  (* TODO: the following creates three newvar and is expensive *)
-  let has_mode = has_modes_attr_pat sp in
-  let locality =
-    if has_mode.locality then Locality.local
-    else Locality.newvar ()
-  in
-  let uniqueness =
-    if has_mode.uniqueness then Uniqueness.unique
-    else Uniqueness.newvar ()
-  in
-  let linearity =
-    if has_mode.linearity then Linearity.once
-    else Linearity.newvar ()
-  in
-  Alloc.prod locality uniqueness linearity
+let modes_annotation_or_default annot ~default =
+  let locality = Option.value annot.locality ~default:default.locality in
+  let uniqueness = Option.value annot.uniqueness ~default:default.uniqueness in
+  let linearity = Option.value annot.linearity ~default:default.linearity in
+  {locality; uniqueness; linearity}
 
-let type_mode_exp sp =
-  let locality : Locality.Const.t =
-    if has_local_attr_exp sp then Local
-    else Global
-  in
-  let uniqueness : Uniqueness.Const.t =
-    if has_unique_attr_exp sp then Unique
-    else Shared
-  in
-  let linearity : Linearity.Const.t =
-    if has_once_attr_exp sp then Once
-    else Many
+let modes_annotation_exp exp =
+  let locality =
+    if has_local_attr_exp exp then Some Locality.Const.Local
+    else None
+  and uniqueness =
+    if has_unique_attr_exp exp then Some Uniqueness.Const.Unique
+    else None
+  and linearity =
+    if has_once_attr_exp exp then Some Linearity.Const.Once
+    else None
   in
   {locality; uniqueness; linearity}
+
+let apply_modes_annotation ~loc ~env ~ty_expected ann mode =
+  let error axis =
+    raise (Error(loc, env, Param_mode_mismatch (ty_expected, axis)))
+  in
+  Option.iter (fun locality ->
+    match Locality.equate (Locality.of_const locality) (Alloc.locality mode) with
+    | Ok () -> ()
+    | Error () -> error `Locality
+    ) ann.locality;
+  Option.iter (fun uniqueness ->
+    match Uniqueness.equate (Uniqueness.of_const uniqueness) (Alloc.uniqueness mode) with
+    | Ok () -> ()
+    | Error () -> error `Uniqueness
+    ) ann.uniqueness;
+  Option.iter (fun linearity ->
+    match Linearity.equate (Linearity.of_const linearity) (Alloc.linearity mode) with
+    | Ok () -> ()
+    | Error () -> error `Linearity
+    ) ann.linearity
 
 (* Typing of patterns *)
 
@@ -2669,8 +2665,11 @@ and type_pat_aux
       assert construction_not_used_in_counterexamples;
       (* Pretend separate = true *)
       let cty, ty, expected_ty' =
-        let type_mode = type_modes_const_pat sp in
-        solve_Ppat_constraint ~refine loc env type_mode sty expected_ty
+        let modes_annot = modes_annotation_pat sp in
+        let type_modes =
+          modes_annotation_or_default modes_annot ~default:Alloc.Const.legacy
+        in
+        solve_Ppat_constraint ~refine loc env type_modes sty expected_ty
       in
       type_pat ~alloc_mode category sp' expected_ty' (fun p ->
         (*Format.printf "%a@.%a@."
@@ -3570,7 +3569,10 @@ let type_pattern_approx env spat ty_expected =
   | None      ->
   match spat.ppat_desc with
   | Ppat_constraint(_, ({ptyp_desc=Ptyp_poly _} as sty)) ->
-      let arg_type_mode = type_modes_const_pat spat in
+      let modes_annot = modes_annotation_pat spat in
+      let arg_type_mode =
+        modes_annotation_or_default modes_annot ~default:Alloc.Const.legacy
+      in
       let ty_pat =
         Typetexp.transl_simple_type env ~closed:false arg_type_mode sty
       in
@@ -3580,15 +3582,15 @@ let type_pattern_approx env spat ty_expected =
   | _ -> ()
 
 let rec type_function_approx env loc label spato sexp in_function ty_expected =
-  let modes, has_poly =
+  let modes_annot, has_poly =
     match spato with
     | None -> None, false
     | Some spat ->
-        let modes = type_modes_pat spat in
+        let modes_annot = modes_annotation_pat spat in
         let has_poly = has_poly_constraint spat in
         if has_poly && is_optional label then
           raise(Error(spat.ppat_loc, env, Optional_poly_param));
-        Some modes, has_poly
+        Some modes_annot, has_poly
   in
   let loc_fun, ty_fun =
     match in_function with
@@ -3612,9 +3614,10 @@ let rec type_function_approx env loc label spato sexp in_function ty_expected =
       in
       raise (Error(loc_fun, env, err))
   in
-  Option.iter (fun modes ->
-    eqmode ~loc ~env arg_mode modes
-      (fun e -> Param_mode_mismatch (ty_expected, e))) modes;
+  Option.iter
+    (fun modes_annot ->
+      apply_modes_annotation ~loc ~env ~ty_expected modes_annot arg_mode)
+    modes_annot;
   if has_poly then begin
     match spato with
     | None -> ()
@@ -4359,12 +4362,12 @@ and type_expect_
           ~attrs:[Attr.mk (mknoloc "#default") (PStr [])]
           [Vb.mk spat smatch] sbody
       in
-      let amodes = type_modes_pat spat in
+      let modes_annot = modes_annotation_pat spat in
       type_function ?in_function loc sexp.pexp_attributes env
                     expected_mode ty_expected_explained
-                    l ~amodes ~has_poly:false [Exp.case pat body]
+                    l ~modes_annot ~has_poly:false [Exp.case pat body]
   | Pexp_fun (l, None, spat, sbody) ->
-      let amodes = type_modes_pat spat in
+      let modes_annot = modes_annotation_pat spat in
       let has_poly = has_poly_constraint spat in
       if has_poly && is_optional l then
         raise(Error(spat.ppat_loc, env, Optional_poly_param));
@@ -4373,13 +4376,13 @@ and type_expect_
         raise (Typetexp.Error (loc, env,
           Unsupported_extension Polymorphic_parameters));
       type_function ?in_function loc sexp.pexp_attributes env
-                    expected_mode ty_expected_explained l ~amodes
+                    expected_mode ty_expected_explained l ~modes_annot
                     ~has_poly [Ast_helper.Exp.case spat sbody]
   | Pexp_function caselist ->
-      let amodes = Alloc.newvar () in
+      let modes_annot = modes_annotation_none in
       type_function ?in_function
         loc sexp.pexp_attributes env expected_mode
-        ty_expected_explained Nolabel ~amodes ~has_poly:false caselist
+        ty_expected_explained Nolabel ~modes_annot ~has_poly:false caselist
   | Pexp_apply
       ({ pexp_desc = Pexp_extension({
             txt = ("ocaml.unique" | "unique" | "extension.unique" as txt)}, PStr []) },
@@ -5010,7 +5013,10 @@ and type_expect_
   | Pexp_constraint (sarg, sty) ->
      (* Pretend separate = true, 1% slowdown for lablgtk *)
       begin_def ();
-      let type_mode = type_mode_exp sexp in
+      let modes_annot = modes_annotation_exp sexp in
+      let type_mode =
+        modes_annotation_or_default modes_annot ~default:Alloc.Const.legacy
+      in
       let cty = Typetexp.transl_simple_type env ~closed:false type_mode sty in
       let ty = cty.ctyp_type in
       end_def ();
@@ -5030,7 +5036,10 @@ and type_expect_
       (* Pretend separate = true, 1% slowdown for lablgtk *)
       (* Also see PR#7199 for a problem with the following:
          let separate = !Clflags.principal || Env.has_local_constraints env in*)
-      let type_mode = type_mode_exp sexp in
+      let modes_annot = modes_annotation_exp sexp in
+      let type_mode =
+        modes_annotation_or_default modes_annot ~default:Alloc.Const.legacy
+      in
       let (arg, ty',cty,cty') =
         match sty with
         | None ->
@@ -5754,7 +5763,7 @@ and type_binding_op_ident env s =
   path, desc
 
 and type_function ?in_function loc attrs env (expected_mode : expected_mode)
-      ty_expected_explained arg_label ~amodes ~has_poly caselist =
+      ty_expected_explained arg_label ~modes_annot ~has_poly caselist =
   let { ty = ty_expected; explanation } = ty_expected_explained in
   let alloc_mode = Value.regional_to_global_alloc expected_mode.mode in
   let alloc_mode =
@@ -5804,8 +5813,7 @@ and type_function ?in_function loc attrs env (expected_mode : expected_mode)
       in
       raise (Error(loc_fun, env, err))
   in
-  eqmode ~loc ~env arg_mode amodes
-      (fun e -> Param_mode_mismatch (ty_expected', e));
+  apply_modes_annotation ~loc ~env ~ty_expected modes_annot arg_mode;
   if separate then begin
     end_def ();
     generalize_structure ty_arg;
