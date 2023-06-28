@@ -116,7 +116,7 @@ let f () =
 Line 4, characters 4-5:
 4 |     k
         ^
-Error: The value k is once, so cannot be used inside for loop
+Error: The value k is once, so cannot be used inside a for loop
 |}]
 
 (* The following is bad, because k is used uniquely *)
@@ -227,7 +227,7 @@ Line 1, characters 20-21:
 Error: Found a shared value where a unique value was expected
   Hint: This identifier was defined outside of the current closure.
   Either this closure has to be once, or the identifier can be used only
-  as shared
+  as shared.
 |}]
 
 
@@ -544,8 +544,8 @@ let curry : unique_ box -> (unique_ box -> unique_ box) = fun b1 b2 -> b1
 Line 1, characters 58-73:
 1 | let curry : unique_ box -> (unique_ box -> unique_ box) = fun b1 b2 -> b1
                                                               ^^^^^^^^^^^^^^^
-Error: This function or one of its parameters violates once constraint
-       when it is partially applied
+Error: This function or one of its parameters will be at once but expected to be many
+       when it is partially applied.
 |}]
 
 (* If both type and mode are wrong, complain about type *)

@@ -184,6 +184,8 @@ type shared_context =
   | Comprehension
   | Class
   | Module
+  | Probe
+  | Lazy
 
 type lookup_error =
   | Unbound_value of Longident.t * unbound_value_hint

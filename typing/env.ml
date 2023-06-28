@@ -328,6 +328,8 @@ type shared_context =
   | Comprehension
   | Class
   | Module
+  | Probe
+  | Lazy
 
 type value_lock =
   | Locality_lock of { mode : Mode.Locality.t; escaping_context : escaping_context option }
@@ -3721,13 +3723,15 @@ let extract_instance_variables env =
 
 let print_shared_context =
   function
-  | For_loop -> "for loop"
-  | While_loop -> "while loop"
-  | Letop -> "letop"
-  | Closure -> "closure that is not once"
-  | Comprehension -> "comprehension"
-  | Class -> "class"
-  | Module -> "module"
+  | For_loop -> "a for loop"
+  | While_loop -> "a while loop"
+  | Letop -> "a letop"
+  | Closure -> "a closure that is not once"
+  | Comprehension -> "a comprehension"
+  | Class -> "a class"
+  | Module -> "a module"
+  | Probe -> "a probe"
+  | Lazy -> "a lazy expression"
 
 let report_lookup_error _loc env ppf = function
   | Unbound_value(lid, hint) -> begin

@@ -316,8 +316,9 @@ type expected_mode =
     *)
     exact : bool;
 
-    (* if true, means expecting strictly local; in that case, the field
-       `mode` must be higher than local *)
+    (* Indicates that the expression was directly annotated with [local], which
+    should force any allocations to be on the stack. If [true] the [mode] field
+    must be greater than [local]. *)
     strictly_local : bool;
 
     tuple_modes : Value.t list;
@@ -652,7 +653,10 @@ let mode_cross_to_min env ty mode =
 
 let expect_mode_cross env ty (expected_mode : expected_mode) =
   if mode_cross env ty then
-    {expected_mode with mode = Value.max_mode; exact = false}
+    { expected_mode with
+      mode = Value.max_mode;
+      exact = false;
+      strictly_local = false }
   else expected_mode
 
 let has_unique_attr loc attrs =
@@ -3230,9 +3234,12 @@ let type_omitted_parameters expected_mode env ty_ret mode_ret args =
              in
              let closed_args = new_closed_args @ closed_args in
              let open_args = [] in
-             let m0 = List.map Alloc.close_over closed_args in
-             let m1 = Alloc.partial_apply mode_fun in
-             let mode_closure, _ = Alloc.newvar_above (Alloc.join (m1 :: m0)) in
+             let mode_closed_args = List.map Alloc.close_over closed_args in
+             let mode_partial_fun = Alloc.partial_apply mode_fun in
+             let mode_closure, _ =
+               Alloc.newvar_above (Alloc.join
+                (mode_partial_fun:: mode_closed_args))
+             in
              register_allocation_mode mode_closure;
              let arg = Omitted { mode_closure; mode_arg; mode_ret; ty_arg; ty_env = env } in
              let args = (lbl, arg) :: args in
@@ -3605,11 +3612,9 @@ let rec type_function_approx env loc label spato sexp in_function ty_expected =
       in
       raise (Error(loc_fun, env, err))
   in
-  match modes with
-  | None -> ()
-  | Some modes ->
+  Option.iter (fun modes ->
     eqmode ~loc ~env arg_mode modes
-      (fun e -> Param_mode_mismatch (ty_expected, e));
+      (fun e -> Param_mode_mismatch (ty_expected, e))) modes;
   if has_poly then begin
     match spato with
     | None -> ()
@@ -4099,7 +4104,14 @@ let with_explanation explanation f =
         let err = Expr_type_clash(err', Some explanation, exp') in
         raise (Error (loc', env', err))
 
-let unique_use ~loc ~env mode =
+let relax_for_unique_use mode : Value.t =
+  let uniqueness = Value.uniqueness mode in
+  let linearity = Value.linearity mode in
+  let uniqueness, _ = Uniqueness.newvar_above uniqueness in
+  let linearity, _ = Linearity.newvar_above linearity in
+  Value.with_linearity linearity (Value.with_uniqueness uniqueness mode)
+
+let unique_use ~loc ~env mode : unique_use =
   let uniqueness = Value.uniqueness mode in
   let linearity = Value.linearity mode in
   if not (Language_extension.is_enabled Unique) then begin
@@ -4115,9 +4127,10 @@ let unique_use ~loc ~env mode =
     | Ok () -> ()
     | Error () ->
         raise (Error (loc, env, Submode_failed(`Linearity, Other, None, None)))
-    )
-  end;
-  (uniqueness, linearity)
+    );
+    (Uniqueness.shared, Linearity.many)
+  end
+  else (uniqueness, linearity)
 
 let rec type_exp ?recarg env expected_mode sexp =
   (* We now delegate everything to type_expect *)
@@ -4175,17 +4188,7 @@ and type_expect_
       let path, mode, shared_reason, desc, kind = type_ident env ~recarg lid in
       let mode =
         match path with
-        | Path.Pident _ ->
-            let uniqueness, _ =
-              Uniqueness.newvar_above
-                (Value.uniqueness mode)
-            in
-            let linearity, _ =
-              Linearity.newvar_above
-                (Value.linearity mode)
-            in
-            Value.with_linearity linearity
-              (Value.with_uniqueness uniqueness mode)
+        | Path.Pident _ -> relax_for_unique_use mode
         | _ -> mode
       in
       let exp_desc =
@@ -4203,9 +4206,9 @@ and type_expect_
             let (path, _) =
               Env.find_value_by_name (Longident.Lident ("self-" ^ cl_num)) env
             in
-            Texp_ident(path, lid, desc, kind, unique_use ~env ~loc mode)
+            Texp_ident(path, lid, desc, kind, unique_use ~loc ~env mode)
         | _ ->
-            Texp_ident(path, lid, desc, kind, unique_use ~env ~loc mode)
+            Texp_ident(path, lid, desc, kind, unique_use ~loc ~env mode)
       in
       let expected_mode =
         mode_with_shared_context shared_reason expected_mode
@@ -4417,7 +4420,6 @@ and type_expect_
        [Nolabel, sbody]) ->
       if txt = "extension.local" && not (Language_extension.is_enabled Local) then
         raise (Typetexp.Error (loc, Env.empty, Unsupported_extension Local));
-
       let mode = if mode_cross env ty_expected then
         (* when mode crosses, we check the inner expr with the most relaxed mode *)
         mode_max
@@ -4875,18 +4877,9 @@ and type_expect_
           generalize_structure ty_arg
         end;
       let mode = mode_cross_to_min env ty_arg mode in
-      let uniqueness, _ =
-        Uniqueness.newvar_above (Value.uniqueness mode)
-      in
-      let linearity, _ =
-        Linearity.newvar_above (Value.linearity mode)
-      in
-      let mode =
-        Value.with_linearity linearity (
-        Value.with_uniqueness uniqueness mode)
-      in
+      let mode = relax_for_unique_use mode in
       ruem ~mode ~expected_mode {
-        exp_desc = Texp_field(record, lid, label, unique_use ~env ~loc mode, alloc_mode);
+        exp_desc = Texp_field(record, lid, label, unique_use ~loc ~env mode, alloc_mode);
         exp_loc = loc; exp_extra = [];
         exp_type = ty_arg;
         exp_attributes = sexp.pexp_attributes;
@@ -5387,7 +5380,7 @@ and type_expect_
       with_explanation (fun () ->
         unify_exp_types loc env to_unify (generic_instance ty_expected));
       let env = Env.add_locality_lock Locality.global env in
-      (* the thunk will be called only once, so no linearity lock needed *)
+      let env = Env.add_linearity_lock ~shared_context:Lazy Linearity.many env in
       let arg = type_expect env (mode_lazy expected_mode) e (mk_expected ty) in
       re {
         exp_desc = Texp_lazy arg;
@@ -5661,6 +5654,9 @@ and type_expect_
                   , _)}]) ->
         check_probe_name name name_loc env;
         let env = Env.add_locality_lock Locality.global env in
+        let env =
+          Env.add_linearity_lock ~shared_context:Probe Linearity.many env
+        in
         Env.add_probe name;
         let exp = type_expect env mode_legacy arg
                     (mk_expected Predef.type_unit) in
@@ -5770,7 +5766,6 @@ and type_function ?in_function loc attrs env (expected_mode : expected_mode)
       fst (Alloc.newvar_below alloc_mode)
   in
   if expected_mode.strictly_local then
-    (* this will never raise *)
     Locality.submode_exn Locality.local (Alloc.locality alloc_mode);
   register_allocation_mode alloc_mode;
   let (loc_fun, ty_fun) =
@@ -5862,18 +5857,14 @@ and type_function ?in_function loc attrs env (expected_mode : expected_mode)
       (* because ty_res always a function *)
       let inner_alloc_mode, _ = Alloc.newvar_below ret_mode in
       begin match
-        Alloc.submode
-          (Alloc.close_over arg_mode)
-          inner_alloc_mode
+        Alloc.submode (Alloc.close_over arg_mode) inner_alloc_mode
       with
       | Ok () -> ()
       | Error e ->
         raise (Error(loc_fun, env, Uncurried_function_escapes e))
       end;
       begin match
-        Alloc.submode
-          (Alloc.partial_apply alloc_mode)
-          inner_alloc_mode
+        Alloc.submode (Alloc.partial_apply alloc_mode) inner_alloc_mode
       with
       | Ok () -> ()
       | Error e ->
@@ -5889,9 +5880,7 @@ and type_function ?in_function loc attrs env (expected_mode : expected_mode)
         else begin
           (* if the function has no region, we force the ret_mode to be local *)
           match
-            Locality.submode
-              Locality.local
-              (Alloc.locality ret_mode)
+            Locality.submode Locality.local (Alloc.locality ret_mode)
           with
           | Ok () -> mode_default ret_value_mode
           | Error () -> raise (Error (loc_fun, env, Function_returns_local))
@@ -6296,7 +6285,6 @@ and type_label_exp create env (expected_mode : expected_mode) loc ty_expected
 
 and type_argument ?explanation ?recarg env (mode : expected_mode) sarg
       ty_expected' ty_expected =
-  let loc = sarg.pexp_loc in
   (* ty_expected' may be generic *)
   let no_labels ty =
     let ls, tvar = list_labels env ty in
@@ -6417,7 +6405,7 @@ and type_argument ?explanation ?recarg env (mode : expected_mode) sarg
          exp_extra = []; exp_attributes = [];
          exp_desc =
          Texp_ident(Path.Pident id, mknoloc (Longident.Lident name),
-                    desc, Id_value, unique_use ~env ~loc mode)}
+                    desc, Id_value, unique_use ~loc:sarg.pexp_loc ~env mode)}
       in
       let eta_mode = Value.local_to_regional (Value.of_alloc marg) in
       let eta_pat, eta_var = var_pair ~mode:eta_mode "eta" ty_arg in
@@ -7910,11 +7898,19 @@ let sharedness_hint _fail_reason submode_reason context =
     [Location.msg
         "@[Hint: This identifier was defined outside of the current closure.@ \
           Either this closure has to be once, or the identifier can be used only@ \
-          as shared @]"]
+          as shared.@]"]
   | Some Env.Module ->
     [Location.msg
         "@[Hint: This identifier cannot be used uniquely,@ \
           because it is defined in a module.@]"]
+  | Some Env.Probe ->
+    [Location.msg
+        "@[Hint: This identifier cannot be used uniquely,@ \
+          because it is defined outside of the class.@]"]
+  | Some Env.Lazy ->
+    [Location.msg
+        "@[Hint: This identifier cannot be used uniquely,@ \
+          because it is defined outside of the lazy expression.@]"]
   )
   @
   match submode_reason with
@@ -8404,14 +8400,15 @@ let report_error ~loc env = function
         "@[This function has a %s parameter, but was expected to have type:@ %a@]"
         mkind Printtyp.type_expr ty
   | Uncurried_function_escapes e ->
-      Location.errorf ~loc
-        "This function or one of its parameters %s @ \
-         when it is partially applied"
-        (match e with
+      let reason  =
+        match e with
         | `Locality -> "escape their region"
         | `Uniqueness -> assert false
-        | `Linearity -> "violates once constraint"
-        )
+        | `Linearity -> "will be at once but expected to be many"
+      in
+      Location.errorf ~loc
+        "This function or one of its parameters %s @ \
+         when it is partially applied." reason
   | Local_return_annotation_mismatch _ ->
       Location.errorf ~loc
         "This function return is not annotated with \"local_\"@ \
