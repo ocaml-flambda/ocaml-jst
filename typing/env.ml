@@ -3865,9 +3865,9 @@ let report_lookup_error _loc env ppf = function
         !print_longident lid !print_path p cause
   | Local_value_used_in_closure (path, context) ->
       fprintf ppf
-        "@[The value %a is local, so cannot be used \
+        "@[The value %s is local, so cannot be used \
            inside a closure that might escape@]"
-        !print_path path;
+        (Path.name path);
       begin match context with
       | Some Tailcall_argument ->
          fprintf ppf "@.@[Hint: The closure might escape because it \
@@ -3875,14 +3875,14 @@ let report_lookup_error _loc env ppf = function
       | _ -> ()
       end
   | Local_value_used_in_exclave path ->
-    fprintf ppf "@[The value %a is local, so cannot be used \
+    fprintf ppf "@[The value %s is local, so cannot be used \
                  inside exclave @]"
-      !print_path path
+      (Path.name path)
   | Once_value_used_in (path, context) ->
     fprintf ppf
-      "@[The value %a is once, so cannot be used \
+      "@[The value %s is once, so cannot be used \
           inside %s@]"
-      !print_path path (print_shared_context context)
+      (Path.name path) (print_shared_context context)
 
 let report_error ppf = function
   | Missing_module(_, path1, path2) ->
