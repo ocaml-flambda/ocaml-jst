@@ -67,6 +67,7 @@ type pattern_variable =
     pv_type: type_expr;
     pv_loc: Location.t;
     pv_as_var: bool;
+    pv_uid : Types.Uid.t;
     pv_attributes: Typedtree.attributes;
   }
 
@@ -258,8 +259,8 @@ type error =
   | Missing_type_constraint
   | Wrong_expected_kind of wrong_kind_sort * wrong_kind_context * type_expr
   | Expr_not_a_record_type of type_expr
-  | Submode_failed of 
-      Mode.Value.error * submode_reason * 
+  | Submode_failed of
+      Mode.Value.error * submode_reason *
       Env.escaping_context option * Env.shared_context list
   | Local_application_complete of Asttypes.arg_label * [`Prefix|`Single_arg|`Entire_apply]
   | Param_mode_mismatch of type_expr * Mode.Alloc.error
@@ -270,6 +271,7 @@ type error =
   | Optional_poly_param
   | Exclave_in_nontail_position
   | Layout_not_enabled of Layout.const
+  | Borrow_unbound
 
 
 exception Error of Location.t * Env.t * error

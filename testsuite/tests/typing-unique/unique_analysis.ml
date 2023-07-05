@@ -1,4 +1,4 @@
-(* TEST
+k(* TEST
    flags += "-extension unique"
  * expect *)
 

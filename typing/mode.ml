@@ -993,11 +993,11 @@ module Value = struct
   let min_with_uniqueness u = { min_mode with uniqueness = u }
   let max_with_uniqueness u = { max_mode with uniqueness = u }
 
-  let min_with_locality l =
-    { min_mode with locality = Regionality.of_locality l }
+  let min_with_locality locality =
+    { min_mode with locality }
 
-  let max_with_locality l =
-    { max_mode with locality = Regionality.of_locality l }
+  let max_with_locality locality =
+    { max_mode with locality }
 
   let with_locality locality t = { t with locality }
   let with_uniqueness uniqueness t = { t with uniqueness }

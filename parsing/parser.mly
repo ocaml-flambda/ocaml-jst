@@ -165,6 +165,8 @@ let once_ext_loc loc = mkloc "extension.once" loc
 let local_attr loc =
   mk_attr ~loc (local_ext_loc loc) (PStr [])
 
+let borrow_ext_loc loc = mkloc "extension.borrow" loc
+
 let unique_attr loc =
   mk_attr ~loc (unique_ext_loc loc) (PStr [])
 
@@ -180,6 +182,9 @@ let unique_extension loc =
 
 let once_extension loc =
   Exp.mk ~loc:Location.none (Pexp_extension(once_ext_loc loc, PStr []))
+
+let borrow_extension loc =
+  Exp.mk ~loc:Location.none (Pexp_extension(borrow_ext_loc loc, PStr []))
 
 let mkexp_stack ~loc ~kwd_loc exp =
   ghexp ~loc (Pexp_apply(local_extension (make_loc kwd_loc), [Nolabel, exp]))
@@ -1021,7 +1026,7 @@ The precedences must be listed from low to high.
 %nonassoc FUNCTOR                       /* include functor M */
 %right    MINUSGREATER                  /* function_type (t -> t -> t) */
 %right    OR BARBAR                     /* expr (e || e || e) */
-%right    AMPERSAND AMPERAMPER          /* expr (e && e && e) */
+%right    AMPERAMPER                    /* expr (e && e && e) */
 %nonassoc below_EQUAL
 %left     INFIXOP0 EQUAL LESS GREATER   /* expr (e OP e OP e) */
 %right    INFIXOP1                      /* expr (e OP e OP e) */
@@ -1040,7 +1045,7 @@ The precedences must be listed from low to high.
 %nonassoc below_DOT
 %nonassoc DOT DOTOP
 /* Finally, the first tokens of simple_expr are above everything else. */
-%nonassoc BACKQUOTE BANG BEGIN CHAR FALSE FLOAT INT OBJECT
+%nonassoc AMPERSAND BACKQUOTE BANG BEGIN CHAR FALSE FLOAT INT OBJECT
           LBRACE LBRACELESS LBRACKET LBRACKETBAR LBRACKETCOLON LIDENT LPAREN
           NEW PREFIXOP STRING TRUE UIDENT
           LBRACKETPERCENT QUOTED_STRING_EXPR
@@ -2732,6 +2737,8 @@ comprehension_clause:
       { Pexp_apply($1, [Nolabel,$2]) }
   | op(BANG {"!"}) simple_expr
       { Pexp_apply($1, [Nolabel,$2]) }
+  | AMPERSAND simple_expr
+      { Pexp_apply(borrow_extension (make_loc $loc($1)), [Nolabel, $2]) }
   | LBRACELESS object_expr_content GREATERRBRACE
       { Pexp_override $2 }
   | LBRACELESS object_expr_content error
@@ -4000,7 +4007,6 @@ operator:
   | GREATER        {">"}
   | OR            {"or"}
   | BARBAR        {"||"}
-  | AMPERSAND      {"&"}
   | AMPERAMPER    {"&&"}
   | COLONEQUAL    {":="}
 ;

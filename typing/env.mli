@@ -206,10 +206,9 @@ type lookup_error =
   | Generative_used_as_applicative of Longident.t
   | Illegal_reference_to_recursive_module
   | Cannot_scrape_alias of Longident.t * Path.t
-  | Local_value_used_in_closure of Longident.t * escaping_context option
-  | Local_value_used_in_exclave of Longident.t
-  | Unique_value_used_in of Longident.t * shared_context
-  | Once_value_used_in of Longident.t * shared_context
+  | Local_value_used_in_closure of Path.t * escaping_context option
+  | Local_value_used_in_exclave of Path.t
+  | Once_value_used_in of Path.t * shared_context
 
 val lookup_error: Location.t -> t -> lookup_error -> 'a
 
@@ -235,6 +234,8 @@ val lookup_error: Location.t -> t -> lookup_error -> 'a
 val lookup_value:
   ?use:bool -> loc:Location.t -> Longident.t -> t ->
   Path.t * value_description * Mode.Value.t * shared_context list
+val borrow_value:
+  loc:Location.t -> Longident.t -> t -> Uid.t list
 val lookup_type:
   ?use:bool -> loc:Location.t -> Longident.t -> t ->
   Path.t * type_declaration
@@ -421,6 +422,7 @@ val add_locality_lock : ?escaping_context:escaping_context -> Mode.Locality.t ->
 val add_linearity_lock : shared_context:shared_context -> Mode.Linearity.t -> t -> t
 val add_region_lock : t -> t
 val add_exclave_lock : t -> t
+val add_borrow_lock : (unit -> Uid.t) -> t -> t
 
 (* Initialize the cache of in-core module interfaces. *)
 val reset_cache: preserve_persistent_env:bool -> unit

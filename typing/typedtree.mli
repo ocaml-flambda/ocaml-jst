@@ -181,6 +181,27 @@ and exp_extra =
         (** Used for method bodies. *)
   | Texp_newtype of string
         (** fun (type t) ->  *)
+  | Texp_borrow of Types.Uid.t list
+        (** This means that the tagged expression is borrowed. Note that only
+        the result of the expression is borrowed - the usage during the
+        production of the result is still normally used. [Uid.t] is the
+        corresponding borrow binder.
+
+        [Path.t list] is the
+        extra variables that the expression borrows. The second case happens when
+        closing over borrowing. For example: [let x = ... in let fun () = ... &x
+        ... in ...] in which case the function will be tagged with [Texp_borrow
+        [x]] In addition, the [Texp_ident x] will be tagged with [Texp_borrow
+        []]
+
+        Consider the example
+        [let x = ... in let fun () = ... &(x.a) ... in ...]
+        in the function, [x] is implicitly borrowed, while [x.a] is explicitly
+        borrowed,
+        *)
+  | Texp_borrow_binder of Types.Uid.t
+    (* this means that there is an implicit region around the expression (for
+       borrowing). [Uid.t] is the identifier of the binder. *)
 
 and fun_curry_state =
   | More_args of { partial_mode : Mode.Alloc.t }
@@ -266,7 +287,7 @@ and expression_desc =
   | Texp_tuple of expression list * Mode.Alloc.t
         (** (E1, ..., EN) *)
   | Texp_construct of
-      Longident.t loc * Types.constructor_description * 
+      Longident.t loc * Types.constructor_description *
       expression list * Mode.Alloc.t option
         (** C                []
             C E              [E]
@@ -307,7 +328,7 @@ and expression_desc =
         only when getting a (float) field from a [Record_float] record
       *)
   | Texp_setfield of
-      expression * Mode.Locality.t * Longident.t loc * 
+      expression * Mode.Locality.t * Longident.t loc *
       Types.label_description * expression
     (** [alloc_mode] translates to the [modify_mode] of the record *)
   | Texp_array of mutable_flag * expression list * Mode.Alloc.t

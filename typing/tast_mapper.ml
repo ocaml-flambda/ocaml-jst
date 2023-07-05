@@ -254,6 +254,8 @@ let expr sub x =
         Texp_coerce (Option.map (sub.typ sub) cty1, sub.typ sub cty2)
     | Texp_newtype _ as d -> d
     | Texp_poly cto -> Texp_poly (Option.map (sub.typ sub) cto)
+    | Texp_borrow _ as d -> d
+    | Texp_borrow_binder _ as d -> d
   in
   let exp_extra = List.map (tuple3 extra id id) x.exp_extra in
   let exp_env = sub.env sub x.exp_env in

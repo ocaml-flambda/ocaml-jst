@@ -85,7 +85,6 @@ external ( != ) : ('a[@local_opt]) -> ('a[@local_opt]) -> bool = "%noteq"
 (* Boolean operations *)
 
 external not : (bool[@local_opt]) -> bool = "%boolnot"
-external ( & ) : (bool[@local_opt]) -> (bool[@local_opt]) -> bool = "%sequand"
 external ( && ) : (bool[@local_opt]) -> (bool[@local_opt]) -> bool = "%sequand"
 external ( or ) : (bool[@local_opt]) -> (bool[@local_opt]) -> bool = "%sequor"
 external ( || ) : (bool[@local_opt]) -> (bool[@local_opt]) -> bool = "%sequor"

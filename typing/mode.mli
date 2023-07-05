@@ -238,8 +238,8 @@ module Value : sig
      the 'of_*_max' functions extend the max_mode *)
   val min_with_uniqueness : Uniqueness.t -> t
   val max_with_uniqueness : Uniqueness.t -> t
-  val min_with_locality : Locality.t -> t
-  val max_with_locality : Locality.t -> t
+  val min_with_locality : Regionality.t -> t
+  val max_with_locality : Regionality.t -> t
   val with_locality : Regionality.t -> t -> t
   val with_uniqueness : Uniqueness.t -> t -> t
   val with_linearity : Linearity.t -> t -> t

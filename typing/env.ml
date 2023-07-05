@@ -332,6 +332,7 @@ type shared_context =
 type value_lock =
   | Locality_lock of { mode : Mode.Locality.t; escaping_context : escaping_context option }
   | Linearity_lock of { mode : Mode.Linearity.t; shared_context : shared_context }
+  | Borrow_lock of (unit -> Uid.t)
   | Region_lock
   | Exclave_lock
 
@@ -701,10 +702,9 @@ type lookup_error =
   | Generative_used_as_applicative of Longident.t
   | Illegal_reference_to_recursive_module
   | Cannot_scrape_alias of Longident.t * Path.t
-  | Local_value_used_in_closure of Longident.t * escaping_context option
-  | Local_value_used_in_exclave of Longident.t
-  | Unique_value_used_in of Longident.t * shared_context
-  | Once_value_used_in of Longident.t * shared_context
+  | Local_value_used_in_closure of Path.t * escaping_context option
+  | Local_value_used_in_exclave of Path.t
+  | Once_value_used_in of Path.t * shared_context
 
 type error =
   | Missing_module of Location.t * Path.t * Path.t
@@ -2373,6 +2373,9 @@ let add_region_lock env =
 let add_exclave_lock env =
   { env with values = IdTbl.add_lock Exclave_lock env.values }
 
+let add_borrow_lock r env =
+  { env with values = IdTbl.add_lock (Borrow_lock r) env.values }
+
 (* Insertion of all components of a signature *)
 
 let proj_shape map mod_shape item =
@@ -2915,10 +2918,11 @@ let lookup_ident_module (type a) (load : a load) ~errors ~use ~loc s env =
         end
     end
 
-let lock_mode ~errors ~loc env id vmode locks =
+let lock_mode ~errors ~loc env path vmode locks =
   List.fold_left
     (fun (vmode, reasons) lock ->
       match lock with
+      | Borrow_lock _ -> vmode, reasons
       | Region_lock -> (Mode.Value.local_to_regional vmode, reasons)
       | Locality_lock {mode; escaping_context} -> begin
           match
@@ -2929,24 +2933,24 @@ let lock_mode ~errors ~loc env id vmode locks =
           | Ok () -> (vmode, reasons)
           | Error _ ->
               may_lookup_error errors loc env
-                (Local_value_used_in_closure (id, escaping_context))
+                (Local_value_used_in_closure (path, escaping_context))
         end
       | Linearity_lock {mode;shared_context} -> begin
           (match Mode.Linearity.submode (Mode.Value.linearity vmode) mode with
           | Error _ ->
               may_lookup_error errors loc env
-              (Once_value_used_in (id, shared_context))
+              (Once_value_used_in (path, shared_context))
           | Ok () -> ()
           );
           (* outside unique values can be accessed inside a loop but only at shared *)
-          let min_uniq = 
+          let min_uniq =
             Mode.Uniqueness.join
               [ Mode.Value.uniqueness vmode;
                 Mode.Linearity.to_dual mode ]
           in
           let vmode = Mode.Value.with_uniqueness min_uniq vmode in
           vmode, shared_context :: reasons
-        end        
+        end
       | Exclave_lock -> begin
           match
             Mode.Regionality.submode
@@ -2956,16 +2960,30 @@ let lock_mode ~errors ~loc env id vmode locks =
           | Ok () -> (Mode.Value.regional_to_local vmode, reasons)
           | Error _ ->
               may_lookup_error errors loc env
-                (Local_value_used_in_exclave id)
+                (Local_value_used_in_exclave path)
         end
     ) (vmode, []) locks
 
 let lookup_ident_value ~errors ~use ~loc name env =
   match IdTbl.find_name_and_modes wrap_value ~mark:use name env.values with
   | (path, locks, Val_bound vda) ->
-      let mode, reasons = lock_mode ~errors ~loc env (Lident name) vda.vda_mode locks in
+      (* Passing path instead of name, because the identifier is bound and found *)
+      let mode, reasons = lock_mode ~errors ~loc env path vda.vda_mode locks in
       use_value ~use ~loc path vda;
       path, vda.vda_description, mode, reasons
+  | (_, _, Val_unbound reason) ->
+      report_value_unbound ~errors ~loc env reason (Lident name)
+  | exception Not_found ->
+      may_lookup_error errors loc env (Unbound_value (Lident name, No_hint))
+
+let borrow_ident_value ~errors ~loc name env =
+  match IdTbl.find_name_and_modes wrap_value ~mark:false name env.values with
+  | (_, locks, Val_bound _) ->
+      List.filter_map (
+        function
+        | Borrow_lock cb -> Some (cb ())
+        | _ -> None
+      ) locks
   | (_, _, Val_unbound reason) ->
       report_value_unbound ~errors ~loc env reason (Lident name)
   | exception Not_found ->
@@ -3248,6 +3266,12 @@ let lookup_value_lazy ~errors ~use ~loc lid env =
     path, desc, mode, []
   | Lapply _ -> assert false
 
+let borrow_value ~loc lid env =
+  match lid with
+  | Lident s -> borrow_ident_value ~errors:true ~loc s env
+  | Ldot(_, _) -> []
+  | Lapply _ -> []
+
 let lookup_type_full ~errors ~use ~loc lid env =
   match lid with
   | Lident s -> lookup_ident_type ~errors ~use ~loc s env
@@ -3375,6 +3399,8 @@ let lookup_value ?(use=true) ~loc lid env =
   check_value_name (Longident.last lid) loc;
   let path, desc, mode, reasons = lookup_value_lazy ~errors:true ~use ~loc lid env in
   path, Subst.Lazy.force_value_description desc, mode, reasons
+
+
 
 let lookup_type ?(use=true) ~loc lid env =
   lookup_type ~errors:true ~use ~loc lid env
@@ -3837,31 +3863,26 @@ let report_lookup_error _loc env ppf = function
       fprintf ppf
         "The module %a is an alias for module %a, which %s"
         !print_longident lid !print_path p cause
-  | Local_value_used_in_closure (lid, context) ->
+  | Local_value_used_in_closure (path, context) ->
       fprintf ppf
         "@[The value %a is local, so cannot be used \
            inside a closure that might escape@]"
-        !print_longident lid;
+        !print_path path;
       begin match context with
       | Some Tailcall_argument ->
          fprintf ppf "@.@[Hint: The closure might escape because it \
                           is an argument to a tail call@]"
       | _ -> ()
       end
-  | Local_value_used_in_exclave lid ->
+  | Local_value_used_in_exclave path ->
     fprintf ppf "@[The value %a is local, so cannot be used \
                  inside exclave @]"
-      !print_longident lid
-  | Unique_value_used_in (lid, context) ->
-    fprintf ppf
-      "@[The value %a is unique, so cannot be used \
-          inside %s@]"
-      !print_longident lid (print_shared_context context)
-  | Once_value_used_in (lid, context) ->
+      !print_path path
+  | Once_value_used_in (path, context) ->
     fprintf ppf
       "@[The value %a is once, so cannot be used \
           inside %s@]"
-      !print_longident lid (print_shared_context context)
+      !print_path path (print_shared_context context)
 
 let report_error ppf = function
   | Missing_module(_, path1, path2) ->

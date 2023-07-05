@@ -197,6 +197,8 @@ let expr sub {exp_extra; exp_desc; exp_env; _} =
         sub.typ sub cty2
     | Texp_newtype _ -> ()
     | Texp_poly cto -> Option.iter (sub.typ sub) cto
+    | Texp_borrow _ -> ()
+    | Texp_borrow_binder _ -> ()
   in
   List.iter (fun (e, _, _) -> extra e) exp_extra;
   sub.env sub exp_env;

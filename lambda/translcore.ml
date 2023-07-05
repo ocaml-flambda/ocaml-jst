@@ -1307,7 +1307,9 @@ and transl_function ~scopes e alloc_mode param arg_mode arg_layout cases partial
       (fun attrs (extra_exp, _, extra_attrs) ->
          match extra_exp with
          | Texp_newtype _ -> extra_attrs @ attrs
-         | (Texp_constraint _ | Texp_coerce _ | Texp_poly _) -> attrs)
+         | (Texp_constraint _ | Texp_coerce _ | Texp_poly _ | Texp_borrow _
+         |  Texp_borrow_binder _) ->
+              attrs)
       e.exp_attributes e.exp_extra
   in
   Translattribute.add_function_attributes lam e.exp_loc attrs

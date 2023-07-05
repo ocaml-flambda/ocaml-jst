@@ -338,6 +338,10 @@ and expression_extra i ppf (x,_,attrs) =
   | Texp_newtype s ->
       line i ppf "Texp_newtype \"%s\"\n" s;
       attributes i ppf attrs;
+  | Texp_borrow _ ->
+      line i ppf "Texp_borrow\n"
+  | Texp_borrow_binder _ ->
+      line i ppf "Texp_borrow_binder\n"
 
 and alloc_mode i ppf m =
   line i ppf "alloc_mode %a\n" (Mode.Alloc.print' ~verbose:false) m

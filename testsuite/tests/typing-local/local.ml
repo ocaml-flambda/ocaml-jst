@@ -763,7 +763,7 @@ val baduse : ('a -> 'b -> 'c) -> 'a -> 'b -> 'c lazy_t = <fun>
 Line 2, characters 20-45:
 2 | let result = baduse (fun a b -> local_ (a,b)) 1 2
                         ^^^^^^^^^^^^^^^^^^^^^^^^^
-Error: This function is local returning, but was expected otherwise
+Error: This function is local returning, but was expected otherwise.
 |}]
 
 
@@ -1040,7 +1040,7 @@ let foo (local_ x) =
 Line 3, characters 27-28:
 3 |     let () = print_string !x
                                ^
-Error: The value x is local, so cannot be used inside a closure that might escape
+Error: The value x/2 is local, so cannot be used inside a closure that might escape
 |}]
 
 (* Don't escape through a class method *)
@@ -1055,7 +1055,7 @@ let foo (local_ x) =
 Line 4, characters 18-19:
 4 |       method m = !x
                       ^
-Error: The value x is local, so cannot be used inside a closure that might escape
+Error: The value x/3 is local, so cannot be used inside a closure that might escape
 |}]
 
 (* Don't escape through an object method *)
@@ -1070,7 +1070,7 @@ let foo (local_ x) =
 Line 3, characters 16-17:
 3 |     method m = !x
                     ^
-Error: The value x is local, so cannot be used inside a closure that might escape
+Error: The value x/4 is local, so cannot be used inside a closure that might escape
 |}]
 
 (* Don't escape through a class instance variable *)
@@ -1085,7 +1085,7 @@ let foo (local_ x) =
 Line 4, characters 15-16:
 4 |       val m = !x
                    ^
-Error: The value x is local, so cannot be used inside a closure that might escape
+Error: The value x/5 is local, so cannot be used inside a closure that might escape
 |}]
 
 (* Don't escape through a class instance variable *)
@@ -1098,7 +1098,7 @@ let foo (local_ x) =
 Line 3, characters 13-14:
 3 |     val m = !x
                  ^
-Error: The value x is local, so cannot be used inside a closure that might escape
+Error: The value x/6 is local, so cannot be used inside a closure that might escape
 |}]
 
 (* Don't escape through a class local variable *)
@@ -1195,7 +1195,7 @@ let foo (local_ x) =
 Line 3, characters 31-32:
 3 |     initializer (print_string !x)
                                    ^
-Error: The value x is local, so cannot be used inside a closure that might escape
+Error: The value x/2 is local, so cannot be used inside a closure that might escape
 |}]
 
 (* Don't escape in non-function 'let rec' bindings *)
@@ -1406,7 +1406,7 @@ let foo : unit -> string = fun () -> local_ "hello"
 Line 1, characters 27-51:
 1 | let foo : unit -> string = fun () -> local_ "hello"
                                ^^^^^^^^^^^^^^^^^^^^^^^^
-Error: This function is local returning, but was expected otherwise
+Error: This function is local returning, but was expected otherwise.
 |}]
 
 (* Unboxed type constructors do not affect regionality *)

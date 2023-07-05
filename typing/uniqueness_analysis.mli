@@ -16,7 +16,7 @@
 open Typedtree
 
 (* Check that idents which are used more than once, are not used with mode unique. *)
-val check_uniqueness_exp : expression -> unit
+val check_exp : expression -> unit
 
 (* Check that idents which are used more than once, are not used with mode unique. *)
-val check_uniqueness_value_bindings : value_binding list -> unit
+val check_value_bindings : value_binding list -> unit

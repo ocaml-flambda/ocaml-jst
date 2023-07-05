@@ -101,7 +101,8 @@ and exp_extra =
   | Texp_coerce of core_type option * core_type
   | Texp_poly of core_type option
   | Texp_newtype of string
-
+  | Texp_borrow of Types.Uid.t list
+  | Texp_borrow_binder of Types.Uid.t
 
 and fun_curry_state =
   | More_args of { partial_mode : Mode.Alloc.t }
@@ -118,7 +119,7 @@ and expression_desc =
       warnings : Warnings.state;
       arg_mode : Mode.Alloc.t;
       alloc_mode : Mode.Alloc.t }
-  | Texp_apply of 
+  | Texp_apply of
       expression * (arg_label * apply_arg) list * apply_position * Mode.Alloc.t
   | Texp_match of expression * sort * computation case list * partial
   | Texp_try of expression * value case list
@@ -132,7 +133,7 @@ and expression_desc =
       extended_expression : expression option;
       alloc_mode : Mode.Alloc.t option
     }
-  | Texp_field of 
+  | Texp_field of
       expression * Longident.t loc * label_description * unique_use * Mode.Alloc.t option
   | Texp_setfield of
       expression * Mode.Locality.t * Longident.t loc * label_description * expression

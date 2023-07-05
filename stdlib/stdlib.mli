@@ -222,12 +222,6 @@ external ( && ) : (bool[@local_opt]) -> (bool[@local_opt]) -> bool = "%sequand"
    Right-associative operator,  see {!Ocaml_operators} for more information.
 *)
 
-external ( & ) : (bool[@local_opt]) -> (bool[@local_opt]) -> bool = "%sequand"
-  [@@ocaml.deprecated "Use (&&) instead."]
-(** @deprecated {!Stdlib.( && )} should be used instead.
-    Right-associative operator, see {!Ocaml_operators} for more information.
-*)
-
 external ( || ) : (bool[@local_opt]) -> (bool[@local_opt]) -> bool = "%sequor"
 (** The boolean 'or'. Evaluation is sequential, left-to-right:
    in [e1 || e2], [e1] is evaluated first, and if it returns [true],

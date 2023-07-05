@@ -386,6 +386,8 @@ let exp_extra sub (extra, loc, attrs) sexp =
         Pexp_constraint (sexp, sub.typ sub cty)
     | Texp_poly cto -> Pexp_poly (sexp, Option.map (sub.typ sub) cto)
     | Texp_newtype s -> Pexp_newtype (mkloc s loc, sexp)
+    | Texp_borrow _ -> assert false
+    | Texp_borrow_binder _ -> assert false
   in
   Exp.mk ~loc ~attrs desc
 
