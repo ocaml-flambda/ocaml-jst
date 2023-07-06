@@ -36,26 +36,23 @@ module Occurrence = struct
   type t = { loc : Location.t; reason : reason }
 end
 
-module SharedUnique = struct
-  (** Auxilary module. See module Usage *)
+type error = [ `Uniqueness | `Linearity ]
 
-  (* which axis cannot be forced? *)
-  type error = [ `Uniqueness | `Linearity ]
-
+module Maybe_unique = struct
+  type t = (unique_use * Occurrence.t) list
   exception CannotForce of { occ : Occurrence.t; error : error }
-
   exception
-    MultiUse of {
-      (* the occurrence that's failing forcing *)
-      here : Occurrence.t;
-      (* the other occurrence that triggers the forcing *)
-      there : Occurrence.t;
-      (* which axis failed to force? *)
-      error : error;
-    }
+  MultiUse of {
+    (* the occurrence that's failing forcing *)
+    here : Occurrence.t;
+    (* the other occurrence that triggers the forcing *)
+    there : Occurrence.t;
+    (* which axis failed to force? *)
+    error : error;
+  }
 
-  (* See [report_error] for explanation *)
-  type boundary_reason =
+    (* See [report_error] for explanation *)
+    type boundary_reason =
     | ValueFromModClass (* currently will never trigger *)
     | FreeVariableOfModClass (* currently will never trigger *)
     | OutOfModClass
@@ -66,39 +63,16 @@ module SharedUnique = struct
   exception
     Boundary of { occ : Occurrence.t; error : error; reason : boundary_reason }
 
-  type t =
-    (* if already shared, we only need an occurrence for future error messages
-    *)
-    | Shared of Occurrence.t
-    (* Occurrences with modes to be forced shared and many in the future if
-       needed. This is a list because of multiple control flows. For example, if
-       a value is used shared in one branch but unique in another branch, then
-       overall the value is used uniquely (this is a "stricter" requirement).
-       Therefore, techincally, the mode this list represents is the meet of all
-       modes in the lists. (recall that shared > unique). Therefore, if this
-       virtual mode needs to be forced shared, the whole list needs to be forced
-       shared. *)
-    | MaybeUnique of (unique_use * Occurrence.t) list
-
-  let to_string = function
-    | Shared _ -> "shared"
-    | MaybeUnique _ -> "maybe_unique"
-
-  let force t =
-    match t with
-    | Shared _ -> t
-    | MaybeUnique l ->
-        let force_one ((uni, lin), occ) =
-          (match Mode.Linearity.submode lin Mode.Linearity.many with
-          | Ok () -> ()
-          | Error () -> raise (CannotForce { occ; error = `Linearity }));
-          match Mode.Uniqueness.submode Mode.Uniqueness.shared uni with
-          | Ok () -> ()
-          | Error () -> raise (CannotForce { occ; error = `Uniqueness })
-        in
-        List.iter force_one l;
-        let _, occ = List.hd l in
-        Shared occ
+  let force l =
+    let force_one ((uni, lin), occ) =
+      (match Mode.Linearity.submode lin Mode.Linearity.many with
+      | Ok () -> ()
+      | Error () -> raise (CannotForce { occ; error = `Linearity }));
+      match Mode.Uniqueness.submode Mode.Uniqueness.shared uni with
+      | Ok () -> ()
+      | Error () -> raise (CannotForce { occ; error = `Uniqueness })
+    in
+    List.iter force_one l
 
   let force_multiuse t there =
     try force t
@@ -109,58 +83,17 @@ module SharedUnique = struct
     try force t
     with CannotForce { occ; error } -> raise (Boundary { occ; error; reason })
 
-  let par t0 t1 =
-    match (t0, t1) with
-    | Shared _, t | t, Shared _ -> t
-    | MaybeUnique l0, MaybeUnique l1 -> MaybeUnique (l0 @ l1)
 
   let extract_occurrence = function
-    | Shared occ -> occ
-    | MaybeUnique ((_, occ) :: _) -> occ
-    | MaybeUnique [] -> assert false
-
-  let seq m0 m1 =
-    let m0 = force_multiuse m0 (extract_occurrence m1) in
-    let m1 = force_multiuse m1 (extract_occurrence m0) in
-    m1
+    | [] -> assert false
+    | (_ , occ)::_ -> occ
 end
 
-module BorrowedShared = struct
-  (* auxilary module, see module Usage *)
-  type t =
-    (* if already borrowed, only need one occurrence for future error messages
-    *)
-    (* This constructor currently not used, because we don't have explicit
-       borrowing *)
-    | Borrowed of Occurrence.t
-    (* list of occurences together with modes to be forced as borrowed in the
-       future if needed. It is a list because of multiple control flows. For
-       example, if a value is used borrowed in one branch but shared in another,
-       then the overall usage is shared. Therefore, the mode this list
-       represents is the meet of all modes in the list. (recall that borrowed >
-       shared). Therefore, if this virtual mode needs to be forced borrowed, the
-       whole list needs to be forced borrowed. *)
-    | MaybeShared of (unique_barrier ref * Occurrence.t) list
-
-  let to_string = function
-    | Borrowed _ -> "borrowed"
-    | MaybeShared _ -> "maybe_shared"
-
+module Maybe_shared = struct
+  type t = (unique_barrier ref * Occurrence.t) list
   let extract_occurrence = function
-    | Borrowed occ -> occ
-    | MaybeShared ((_, occ) :: _) -> occ
-    | MaybeShared [] -> assert false
-
-  let par t0 t1 =
-    match (t0, t1) with
-    | Borrowed _, t | t, Borrowed _ -> t
-    | MaybeShared l0, MaybeShared l1 -> MaybeShared (l0 @ l1)
-
-  let seq t0 t1 =
-    match (t0, t1) with
-    | Borrowed _, t -> t
-    | MaybeShared s, Borrowed _ -> MaybeShared s
-    | MaybeShared l0, MaybeShared l1 -> MaybeShared (l0 @ l1)
+    | [] -> assert false
+    | (_ , occ)::_ -> occ
 end
 
 module Usage = struct
@@ -216,102 +149,132 @@ module Usage = struct
      error is represented as exception which is just easier.
   *)
   type t =
-    | Unused
-    (* no good reason to factor out the two, except just to separating the code
-    *)
-    | BorrowedShared of BorrowedShared.t
-    | SharedUnique of SharedUnique.t
+    | Unused (* empty usage *)
+
+    | Borrowed of Occurrence.t
+    (** if already borrowed, only need one occurrence for future error messages.
+       Currently not used, because we don't have explicit borrowing *)
+
+    | MaybeShared of Maybe_shared.t
+    (** list of occurences together with modes to be forced as borrowed in the
+      future if needed. It is a list because of multiple control flows. For
+      example, if a value is used borrowed in one branch but shared in another,
+      then the overall usage is shared. Therefore, the mode this list represents
+      is the meet of all modes in the list. (recall that borrowed > shared).
+      Therefore, if this virtual mode needs to be forced borrowed, the whole list
+      needs to be forced borrowed. *)
+
+    | Shared of Occurrence.t
+    (** if already shared, we only need an occurrence for future error
+    messages *)
+
+    | MaybeUnique of Maybe_unique.t
+      (** Occurrences with modes to be forced shared and many in the future if
+      needed. This is a list because of multiple control flows. For example, if
+      a value is used shared in one branch but unique in another branch, then
+      overall the value is used uniquely (this is a "stricter" requirement).
+      Therefore, techincally, the mode this list represents is the meet of all
+      modes in the lists. (recall that shared > unique). Therefore, if this
+      virtual mode needs to be forced shared, the whole list needs to be forced
+      shared. *)
 
   let to_string = function
     | Unused -> "unused"
-    | BorrowedShared s -> BorrowedShared.to_string s
-    | SharedUnique s -> SharedUnique.to_string s
+    | Borrowed _ -> "borrowed"
+    | MaybeShared _ -> "maybe_shared"
+    | Shared _ -> "shared"
+    | MaybeUnique _ -> "maybe_unique"
 
   let print ppf t = Format.fprintf ppf "%s" (to_string t)
 
   let extract_occurrence = function
     | Unused -> assert false
-    | BorrowedShared t -> BorrowedShared.extract_occurrence t
-    | SharedUnique t -> SharedUnique.extract_occurrence t
+    | Borrowed occ -> occ
+    | MaybeShared l -> Maybe_shared.extract_occurrence l
+    | Shared occ -> occ
+    | MaybeUnique l -> Maybe_unique.extract_occurrence l
 
   (* parallel composition, for composing multiple control flows *)
   let par m0 m1 =
     match (m0, m1) with
     | Unused, m | m, Unused -> m
-    | BorrowedShared m0, BorrowedShared m1 ->
-        BorrowedShared (BorrowedShared.par m0 m1)
-    | BorrowedShared _, m | m, BorrowedShared _ ->
-        m (* m must be sharedunique *)
-    | SharedUnique m0, SharedUnique m1 -> SharedUnique (SharedUnique.par m0 m1)
+    | Borrowed _, t | t, Borrowed _ -> t
+    | MaybeShared l0, MaybeShared l1 -> MaybeShared (l0 @ l1)
+    | MaybeShared _, t | t, MaybeShared _ -> t
+    | Shared _, t | t, Shared _ -> t
+    | MaybeUnique l0, MaybeUnique l1 -> MaybeUnique (l0 @ l1)
 
   (* sequential composition *)
   let seq m0 m1 =
     match (m0, m1) with
     | Unused, m | m, Unused -> m
-    | BorrowedShared m0, BorrowedShared m1 ->
-        BorrowedShared (BorrowedShared.seq m0 m1)
-    | BorrowedShared m0, SharedUnique m1 -> (
-        match (m0, m1) with
-        | Borrowed _, Shared _ -> SharedUnique m1
-        | Borrowed _, MaybeUnique _ -> SharedUnique m1
-        | MaybeShared _, Shared _ -> SharedUnique m1
-        | MaybeShared l0, MaybeUnique l1 ->
-            (* Four cases:
-               B;S = S
-               B;U = U
-               S;S = S
-               S;U /=
+    | Borrowed _, t -> t
+    | MaybeShared s, Borrowed _ -> MaybeShared s
+    | MaybeShared l0, MaybeShared l1 -> MaybeShared (l0 @ l1)
+    | MaybeShared _, Shared _ -> m1
+    | MaybeShared l0, MaybeUnique l1 ->
+        (* Four cases:
+            B;S = S
+            B;U = U
+            S;S = S
+            S;U /=
 
-               We are in a dilemma: recall that B->S allows code motion, and
-               S->U allows unique overwriting. We can't have both. We first note
-               is that the first is a soft optimization, and the second is a
-               hard requirement.
+            We are in a dilemma: recall that B->S allows code motion, and
+            S->U allows unique overwriting. We can't have both. We first note
+            is that the first is a soft optimization, and the second is a
+            hard requirement.
 
-               A reasonable solution is thus to check if the RHS actually needs
-               to use the "unique" capabilities. If not, there is no need to
-               relax it to unique, and we will make it shared, and make LHS
-               shared for code-motion. However, there is no good way to do that,
-               because the "unique_use" in "maybe_unique" is not complete,
-               because the type-checking and uniqueness analysis is performed on
-               a per-top-level-expr basis.
+            A reasonable solution is thus to check if the RHS actually needs
+            to use the "unique" capabilities. If not, there is no need to
+            relax it to unique, and we will make it shared, and make LHS
+            shared for code-motion. However, there is no good way to do that,
+            because the "unique_use" in "maybe_unique" is not complete,
+            because the type-checking and uniqueness analysis is performed on
+            a per-top-level-expr basis.
 
-               Our solution is to record on the l0 that it is constrained by the
-               l1. I.e. if any of l1 is U, then each of l0 cannot be S. After
-               the type checking of the whole file, l1 will correctly tells
-               whether it needs to be unique, and by extension whether l0 can be
-               shared. *)
-            let uniqs = List.map (fun ((uniq, _), _) -> uniq) l1 in
-            (* if any of l1 is unique, then all of l0 must be borrowed *)
-            let uniq = Mode.Uniqueness.meet uniqs in
-            List.iter
-              (fun (barrier, _) ->
-                match !barrier with
-                | Some _ -> assert false
-                | None -> barrier := Some uniq)
-              l0;
-            SharedUnique m1)
-    | SharedUnique m0, BorrowedShared m1 -> (
-        match (m0, m1) with
-        | Shared _, Borrowed _ -> SharedUnique m0
-        | MaybeUnique _, Borrowed _ ->
-            SharedUnique
-              (SharedUnique.force_multiuse m0
-                 (BorrowedShared.extract_occurrence m1))
-        | Shared _, MaybeShared _ -> SharedUnique m0
-        | MaybeUnique _, MaybeShared _ ->
-            (* Four cases:
-               S;B = S
-               S;S = S
-               U;B /=
-               U;S /=
+            Our solution is to record on the l0 that it is constrained by the
+            l1. I.e. if any of l1 is U, then each of l0 cannot be S. After
+            the type checking of the whole file, l1 will correctly tells
+            whether it needs to be unique, and by extension whether l0 can be
+            shared. *)
+        let uniqs = List.map (fun ((uniq, _), _) -> uniq) l1 in
+        (* if any of l1 is unique, then all of l0 must be borrowed *)
+        let uniq = Mode.Uniqueness.meet uniqs in
+        List.iter
+          (fun (barrier, _) ->
+            match !barrier with
+            | Some _ -> assert false
+            | None -> barrier := Some uniq)
+          l0;
+        m1
+    | Shared _, Borrowed _ -> m0
+    | MaybeUnique l, Borrowed occ ->
+          Maybe_unique.force_multiuse l occ;
+          Shared occ
+    | Shared _, MaybeShared _ -> m0
+    | MaybeUnique l0, MaybeShared l1 ->
+        (* Four cases:
+            S;B = S
+            S;S = S
+            U;B /=
+            U;S /=
 
-               As you can see, we need to force the m0 to shared, and m1 needn't
-               be constrained. The result is always S.
-            *)
-            SharedUnique
-              (SharedUnique.force_multiuse m0
-                 (BorrowedShared.extract_occurrence m1)))
-    | SharedUnique m0, SharedUnique m1 -> SharedUnique (SharedUnique.seq m0 m1)
+            As you can see, we need to force the m0 to shared, and m1 needn't
+            be constrained. The result is always S.
+        *)
+        let occ = Maybe_shared.extract_occurrence l1 in
+        Maybe_unique.force_multiuse l0 occ;
+        Shared occ
+    | Shared _, Shared _ -> m0
+    | MaybeUnique l, Shared occ | Shared occ, MaybeUnique l ->
+        Maybe_unique.force_multiuse l occ;
+        Shared occ
+    | MaybeUnique l0, MaybeUnique l1 ->
+        let occ1 = Maybe_unique.extract_occurrence l1 in
+        let occ0 = Maybe_unique.extract_occurrence l0 in
+        Maybe_unique.force_multiuse l0 occ1;
+        Maybe_unique.force_multiuse l1 occ0;
+        Shared (Maybe_unique.extract_occurrence l0)
 end
 
 module UsageTree = struct
@@ -342,25 +305,26 @@ module UsageTree = struct
         | Variant_field l -> Format.fprintf ppf "|%s" l
         | Memory_address -> Format.fprintf ppf ".*"
 
-      let human_readable ppf = function
-        | Tuple_field i ->
-            Format.fprintf ppf "the position-%i element of the tuple" i
-        | Record_field s ->
-            Format.fprintf ppf "the field \"%s\" of the record" s
-        | Construct_field (s, i) ->
-            Format.fprintf ppf
-              "the position-%i element of the constructor \"%s\" in the value" i
-              s
-        | Variant_field l ->
-            Format.fprintf ppf "the field \"%s\" of the variant" l
-        | Memory_address -> Format.fprintf ppf ""
+      let _to_string (t : t) = Format.asprintf "%a" print t
 
-      let to_string (t : t) = Format.asprintf "%a" print t
 
-      (* Yes, compare based on string is bad, but it saves 20 lines of spaghetti
-         code. Also I believe to_string is injective so it might actaully be
-         fine. *)
-      let compare t1 t2 = String.compare (to_string t1) (to_string t2)
+    let compare t1 t2 = match t1, t2 with
+      | Tuple_field i, Tuple_field j -> Int.compare i j
+      | Record_field l1, Record_field l2 -> String.compare l1 l2
+      | Construct_field(l1, i), Construct_field(l2, j) ->
+        begin match String.compare l1 l2 with
+        | 0 -> Int.compare i j
+        | i -> i end
+      | Variant_field l1, Variant_field l2 -> String.compare l1 l2
+      | Memory_address, Memory_address -> 0
+      | Tuple_field _, (Record_field _ | Construct_field _ | Variant_field _ | Memory_address) -> -1
+      | (Record_field _ | Construct_field _ | Variant_field _ | Memory_address), Tuple_field _ -> 1
+      | Record_field _, (Construct_field _ | Variant_field _ | Memory_address) -> -1
+      | (Construct_field _ | Variant_field _ | Memory_address), Record_field _ -> 1
+      | Construct_field _, (Variant_field _ | Memory_address) -> -1
+      | (Variant_field _ | Memory_address), Construct_field _ -> 1
+      | Variant_field _, Memory_address -> -1
+      | Memory_address, Variant_field _ -> 1
     end
 
     include T
@@ -403,11 +367,6 @@ module UsageTree = struct
 
     let root : t = []
     let _print ppf = Format.pp_print_list Projection.print ppf
-
-    let _human_readable ppf t =
-      Format.pp_print_list
-        ~pp_sep:(fun ppf () -> Format.fprintf ppf " which is ")
-        Projection.human_readable ppf t
   end
 
   exception
@@ -417,7 +376,7 @@ module UsageTree = struct
       (* the other occurrence for reference *)
       there : Occurrence.t;
       (* which axis failed to force? *)
-      error : SharedUnique.error;
+      error : error;
       (* descentdant means there is a descendant of here *)
       there_is_of_here : relation;
       (* path from the ancestor to the descendant, reversed *)
@@ -447,7 +406,7 @@ module UsageTree = struct
   let rec seq t0 projs0 t1 projs1 =
     let usage =
       try Usage.seq t0.usage t1.usage
-      with SharedUnique.MultiUse { here; there; error } ->
+      with Maybe_unique.MultiUse { here; there; error } ->
         (* t' is ancestor *)
         let t', path =
           match (projs0, projs1) with
@@ -628,7 +587,7 @@ let mark_implicit_borrow_memory_address_paths paths occ =
       (* Currently we just generate a dummy unique_barrier ref that won't be
          consumed. The distinction between implicit and explicit borrowing is
          still needed because they are handled differently in closures *)
-      (BorrowedShared (MaybeShared [ (ref None, occ) ]))
+      (MaybeShared [ (ref None, occ) ])
   in
   UF.pars (List.map (fun path -> mark_one path) paths)
 
@@ -638,7 +597,7 @@ let _mark_borrow_paths paths occ =
     UF.singleton path
       (* Currently we just generate a dummy unique_barrier ref that won't be
          consumed. *)
-      (BorrowedShared (Borrowed occ))
+      (Borrowed occ)
   in
   UF.pars (List.map (fun path -> mark_one path) paths)
 
@@ -650,12 +609,12 @@ let mark_implicit_borrow_memory_address = function
   | MatchTuple _ -> UF.empty
 
 let _mark_shared paths occ =
-  let mark_one path = UF.singleton path (SharedUnique (Shared occ)) in
+  let mark_one path = UF.singleton path (Shared occ) in
   UF.pars (List.map (fun path -> mark_one path) paths)
 
 let mark_maybe_unique paths maybe_unique =
   let mark_one path =
-    UF.singleton path (SharedUnique (MaybeUnique [ maybe_unique ]))
+    UF.singleton path (MaybeUnique [ maybe_unique ])
   in
   UF.pars (List.map (fun path -> mark_one path) paths)
 
@@ -808,8 +767,8 @@ let comp_pattern_match pat value =
 
 let maybe_paths_of_ident ?maybe_unique ienv path =
   let force reason maybe_unique =
-    let use = SharedUnique.MaybeUnique [ maybe_unique ] in
-    ignore (SharedUnique.force_boundary use reason)
+    let maybe_unique = [ maybe_unique ] in
+    ignore (Maybe_unique.force_boundary maybe_unique reason)
   in
   match path with
   | Path.Pident id -> (
@@ -852,9 +811,7 @@ let open_variables ienv f =
                   let occ =
                     { Occurrence.loc = e.exp_loc; reason = DirectUse }
                   in
-                  let maybe_unique =
-                    SharedUnique.MaybeUnique [ (modes, occ) ]
-                  in
+                  let maybe_unique : Maybe_unique.t = [ (modes, occ) ] in
                   ll := (paths, maybe_unique) :: !ll)
           | _ -> ());
           Tast_iterator.default_iterator.expr self e);
@@ -874,9 +831,9 @@ let mark_shared_open_variables ienv f _loc =
            module/class, maybe_paths_of_ident will force free variables to
            shared, because ienv given to it will not include the outside
            variables. We nevertheless force it here just to be sure *)
+        Maybe_unique.force_boundary maybe_unique FreeVariableOfModClass;
         let shared =
-          Usage.SharedUnique
-            (SharedUnique.force_boundary maybe_unique FreeVariableOfModClass)
+          Usage.Shared (Maybe_unique.extract_occurrence maybe_unique)
         in
         let ufs = List.map (fun path -> UF.singleton path shared) paths in
         UF.seqs ufs)
@@ -923,10 +880,9 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
       let uf' =
         UF.map
           (function
-            | BorrowedShared (MaybeShared _ as u) ->
+            | (MaybeShared l) ->
                 (* only implicit borrowing lifted. *)
-                SharedUnique
-                  (SharedUnique.Shared (BorrowedShared.extract_occurrence u))
+                Shared (Maybe_shared.extract_occurrence l)
             | _ -> Unused)
           uf
       in
@@ -1276,7 +1232,7 @@ let report_error = function
       Location.errorf ~loc:here.loc ~sub
         "@[This is %s so cannot be used twice. %s Another use is @]"
         why_cannot_use_twice here_reason
-  | SharedUnique.Boundary { occ; error; reason } ->
+  | Maybe_unique.Boundary { occ; error; reason } ->
       let reason =
         match reason with
         | ValueFromModClass -> "another module or class"
@@ -1297,6 +1253,6 @@ let report_error err =
 
 let () =
   Location.register_error_of_exn (function
-    | (UsageTree.MultiUse _ | SharedUnique.Boundary _) as e ->
+    | (UsageTree.MultiUse _ | Maybe_unique.Boundary _) as e ->
         Some (report_error e)
     | _ -> None)

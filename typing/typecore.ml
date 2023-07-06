@@ -462,7 +462,9 @@ let mode_lazy expected_mode =
   { (mode_global expected_mode) with
     position = RTail (Regionality.global, Tail) }
 
-let submode ~loc ~env ?(reason = Other) mode expected_mode =
+(* expected_mode.closure_context explains why expected_mode.mode is low;
+   shared_context explains why mode.uniqueness is high *)
+let submode ~loc ~env ?(reason = Other) ?shared_context mode expected_mode =
   let res =
     match expected_mode.tuple_modes with
     | [] -> Value.submode mode expected_mode.mode
@@ -473,7 +475,7 @@ let submode ~loc ~env ?(reason = Other) mode expected_mode =
   | Error failure_reason ->
       let closure_context = expected_mode.closure_context in
       let error =
-        Submode_failed(failure_reason, reason, closure_context, None)
+        Submode_failed(failure_reason, reason, closure_context, shared_context)
       in
       raise (Error(loc, env, error))
 
@@ -4181,7 +4183,7 @@ and type_expect_
         eexp
   | None      -> match sexp.pexp_desc with
   | Pexp_ident lid ->
-      let path, mode, shared_reason, desc, kind = type_ident env ~recarg lid in
+      let path, mode, shared_context, desc, kind = type_ident env ~recarg lid in
       let exp_desc =
         match desc.val_kind with
         | Val_ivar (_, cl_num) ->
@@ -4203,19 +4205,14 @@ and type_expect_
             Texp_ident(path, lid, desc, kind,
               unique_use ~loc ~env mode expected_mode.mode)
       in
-      (match
-        Uniqueness.submode
-          (Value.uniqueness mode)
-          (Value.uniqueness expected_mode.mode)
-      with
-      | Ok () -> ()
-      | Error () -> raise (Error(loc, env, Submode_failed(`Uniqueness, Other, None, shared_reason)))
-      );
-      ruem ~mode ~expected_mode {
+      let exp = rue {
         exp_desc; exp_loc = loc; exp_extra = [];
         exp_type = desc.val_type;
         exp_attributes = sexp.pexp_attributes;
         exp_env = env }
+      in
+      submode ~loc ~env ?shared_context mode expected_mode;
+      exp
   | Pexp_constant(Pconst_string (str, _, _) as cst) ->
       let cst = constant_or_raise env loc cst in
       (* Terrible hack for format strings *)
@@ -7902,7 +7899,7 @@ let sharedness_hint _fail_reason submode_reason context =
   | Some Env.Probe ->
     [Location.msg
         "@[Hint: This identifier cannot be used uniquely,@ \
-          because it is defined outside of the class.@]"]
+          because it is defined outside of the probe.@]"]
   | Some Env.Lazy ->
     [Location.msg
         "@[Hint: This identifier cannot be used uniquely,@ \
@@ -8400,7 +8397,7 @@ let report_error ~loc env = function
         match e with
         | `Locality -> "escape their region"
         | `Uniqueness -> assert false
-        | `Linearity -> "will be at once but expected to be many"
+        | `Linearity -> "will be at once but will be used at many"
       in
       Location.errorf ~loc
         "This function or one of its parameters %s @ \

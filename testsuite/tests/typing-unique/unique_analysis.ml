@@ -217,10 +217,10 @@ Line 3, characters 20-22:
 3 |   let _ = unique_id xs in
                         ^^
 Error: This is used uniquely here so cannot be used twice.  Another use is
-Line 5, characters 15-25:
-5 |   | x :: xx -> unique_ xx
-                   ^^^^^^^^^^
-  The latter is part of the former
+Line 4, characters 8-10:
+4 |   match xs with
+            ^^
+
 |}]
 
 let mark_shared_in_one_branch b x =
