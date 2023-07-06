@@ -170,11 +170,18 @@ type unbound_value_hint =
   | No_hint
   | Missing_rec of Location.t
 
-type escaping_context =
-  | Return
-  | Tailcall_argument
+type closure_context =
   | Tailcall_function
+  | Tailcall_argument
   | Partial_application
+  | Return
+
+type escaping_context =
+  | Letop
+  | Probe
+  | Class
+  | Module
+  | Lazy
 
 type shared_context =
   | For_loop
@@ -208,9 +215,11 @@ type lookup_error =
   | Generative_used_as_applicative of Longident.t
   | Illegal_reference_to_recursive_module
   | Cannot_scrape_alias of Longident.t * Path.t
-  | Local_value_used_in_closure of Longident.t * escaping_context option
-  | Local_value_used_in_exclave of Longident.t
+  | Local_value_escaping of Longident.t * escaping_context
   | Once_value_used_in of Longident.t * shared_context
+  | Value_used_in_closure of Longident.t * Mode.Alloc.error
+      * closure_context option
+  | Local_value_used_in_exclave of Longident.t
 
 val lookup_error: Location.t -> t -> lookup_error -> 'a
 
@@ -413,13 +422,14 @@ val enter_unbound_module : string -> module_unbound_reason -> t -> t
 
 (* Lock the environment *)
 
-val add_locality_lock : ?escaping_context:escaping_context -> Mode.Locality.t -> t -> t
+val add_escape_lock : escaping_context -> t -> t
 
-(** Adding `once` lock is a no-op.
-    Adding a `many` lock to the env has two consequences:
-    - `once` variables beyond the lock cannot be accessed
-    - `unique` variables beyond the lock can still be accessed, but will be relaxed to `shared` *)
-val add_linearity_lock : shared_context:shared_context -> Mode.Linearity.t -> t -> t
+(** `once` variables beyond the share lock cannot be accessed. Moreover,
+    `unique` variables beyond the lock can still be accessed, but will be
+    relaxed to `shared` *)
+val add_share_lock : shared_context -> t -> t
+val add_closure_lock : ?closure_context:closure_context -> Mode.Locality.t
+  -> Mode.Linearity.t -> t -> t
 val add_region_lock : t -> t
 val add_exclave_lock : t -> t
 

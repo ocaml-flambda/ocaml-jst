@@ -225,9 +225,6 @@ Line 1, characters 20-21:
 1 | let foo y = unique_ x
                         ^
 Error: Found a shared value where a unique value was expected
-  Hint: This identifier was defined outside of the current closure.
-  Either this closure has to be once, or the identifier can be used only
-  as shared.
 |}]
 
 

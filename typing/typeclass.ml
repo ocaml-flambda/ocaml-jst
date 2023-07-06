@@ -997,15 +997,15 @@ and class_fields_second_pass cl_num sign met_env fields =
 and class_structure cl_num virt self_scope final val_env met_env loc
   { pcstr_self = spat; pcstr_fields = str } =
   (* Environment for substructures *)
-  (* Classes and objects are treated very conservatively because the implementation 
+  (* Classes and objects are treated very conservatively because the implementation
       is unclear.
      So just to be safe, we add locks here so that class and objects:
      - cannot refer to local or once variables in the environment
      - access to unique variables will be relaxed to shared *)
-  let val_env = Env.add_locality_lock Mode.Locality.global val_env in
-  let val_env = Env.add_linearity_lock ~shared_context:Class Mode.Linearity.many val_env in
-  let met_env = Env.add_locality_lock Mode.Locality.global met_env in
-  let met_env = Env.add_linearity_lock ~shared_context:Class Mode.Linearity.many met_env in
+  let val_env = Env.add_escape_lock Class val_env in
+  let val_env = Env.add_share_lock Class val_env in
+  let met_env = Env.add_escape_lock Class met_env in
+  let met_env = Env.add_share_lock Class met_env in
   let par_env = met_env in
 
   (* Location of self. Used for locations of self arguments *)
@@ -1232,10 +1232,8 @@ and class_expr_aux cl_num val_env met_env virt self_scope scl =
         Typecore.check_partial Modules_rejected val_env pat.pat_type pat.pat_loc
           [{c_lhs = pat; c_guard = None; c_rhs = dummy}]
       in
-      let val_env' = Env.add_locality_lock Mode.Locality.global val_env' in
-      let val_env' = 
-        Env.add_linearity_lock ~shared_context:Class Mode.Linearity.many val_env' 
-      in
+      let val_env' = Env.add_escape_lock Class val_env' in
+      let val_env' = Env.add_share_lock Class val_env' in
       Ctype.raise_nongen_level ();
       let cl = class_expr cl_num val_env' met_env virt self_scope scl' in
       Ctype.end_def ();

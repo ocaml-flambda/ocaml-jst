@@ -20,7 +20,6 @@ open Asttypes
 open Parsetree
 open Layouts
 open Types
-open Mode
 open Format
 
 let () = Includemod_errorprinter.register ()
@@ -2317,8 +2316,8 @@ and type_module_aux ~alias sttn funct_body anchor env smod =
           Named (id, param, mty), Types.Named (id, mty.mty_type), newenv,
           var, true
       in
-      let newenv = Env.add_locality_lock Mode.Locality.global newenv in
-      let newenv = Env.add_linearity_lock ~shared_context:Module Linearity.many newenv in
+      let newenv = Env.add_escape_lock Module newenv in
+      let newenv = Env.add_share_lock Module newenv in
       let body, body_shape = type_module true funct_body None newenv sbody in
       { mod_desc = Tmod_functor(t_arg, body);
         mod_type = Mty_functor(ty_arg, body.mod_type);
