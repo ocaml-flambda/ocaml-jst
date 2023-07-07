@@ -22,11 +22,11 @@ module Uniqueness = Mode.Uniqueness
 module Linearity = Mode.Linearity
 
 module Occurrence = struct
-  (* The occurrence of a potentially unique ident in the expression. *)
+  (** The occurrence of a potentially unique ident in the expression. *)
   type reason =
-    | DirectUse (* it is used directly *)
+    | DirectUse  (** it is used directly *)
     | MatchTupleWithVar of Location.t
-  (* When matching on a tuple, we do not construct a tuple and match on it,
+        (** When matching on a tuple, we do not construct a tuple and match on it,
       but rather match on the individual elements of the tuple -- this preserves
       their uniqueness. But in a pattern an alias to the tuple could be created,
       in which case we have to construct the tuple and retroactively mark the
@@ -37,6 +37,7 @@ module Occurrence = struct
 end
 
 type axis = [ `Uniqueness | `Linearity ]
+
 (* See [report_error] for explanation *)
 type boundary_reason =
   | ValueFromModClass (* currently will never trigger *)
@@ -45,42 +46,42 @@ type boundary_reason =
 
 type error =
   | MultiUse of {
-    (* the occurrence that's failing forcing *)
-    here : Occurrence.t;
-    (* the other occurrence that triggers the forcing *)
-    there : Occurrence.t;
-    (* which axis failed to force? *)
-    axis : axis;
-  }
-  | Boundary of {
-    occ : Occurrence.t;
-    axis : axis;
-    reason : boundary_reason
-  }
-(** at the boundary of modules/classes we conservatively make everything legacy
-(i.e., shared and many). Usage crossing the boundary might fail this
-restriction. *)
+      (* the occurrence that's failing forcing *)
+      here : Occurrence.t;
+      (* the other occurrence that triggers the forcing *)
+      there : Occurrence.t;
+      (* which axis failed to force? *)
+      axis : axis;
+    }  (** Error caused by multiple use *)
+  | Boundary of { occ : Occurrence.t; axis : axis; reason : boundary_reason }
+      (** Error caused by variable crossing the boundary of modules/classes. We
+  conservatively make everything legacy at the boundary (i.e., shared and many).
+  *)
 
 exception Error of error
 
-
 module Maybe_unique : sig
   type t
+
   val extract_occurrence : t -> Occurrence.t
   val singleton : unique_use -> Occurrence.t -> t
   val par : t -> t -> t
   val force_shared_multiuse : t -> Occurrence.t -> unit
   val force_shared_boundary : t -> boundary_reason -> unit
-  val represented : t -> (Mode.Uniqueness.t * Mode.Linearity.t)
-
+  val represented : t -> Mode.Uniqueness.t * Mode.Linearity.t
 end = struct
   type t = (unique_use * Occurrence.t) list
 
-  let singleton unique_use occ : t = [unique_use, occ]
+  let singleton unique_use occ : t = [ (unique_use, occ) ]
+
   let represented l =
     (* if any branch uses the value uniquely, then it is unique as a whole *)
-    let uniqueness = Mode.Uniqueness.meet (List.map (fun ((uniq, _), _) -> uniq) l) in
-    let linearity = Mode.Linearity.join (List.map (fun ((_, lin), _) -> lin) l) in
+    let uniqueness =
+      Mode.Uniqueness.meet (List.map (fun ((uniq, _), _) -> uniq) l)
+    in
+    let linearity =
+      Mode.Linearity.join (List.map (fun ((_, lin), _) -> lin) l)
+    in
     (uniqueness, linearity)
 
   exception CannotForce of { occ : Occurrence.t; axis : axis }
@@ -103,28 +104,34 @@ end = struct
 
   let force_shared_boundary t reason =
     try force_shared t
-    with CannotForce { occ; axis } -> raise (Error(Boundary { occ; axis; reason }))
+    with CannotForce { occ; axis } ->
+      raise (Error (Boundary { occ; axis; reason }))
 
-  let extract_occurrence = function
-    | [] -> assert false
-    | (_ , occ)::_ -> occ
-
+  let extract_occurrence = function [] -> assert false | (_, occ) :: _ -> occ
   let par l0 l1 = l0 @ l1
 end
 
-module Maybe_shared = struct
+module Maybe_shared : sig
+  type t
+  val extract_occurrence : t -> Occurrence.t
+  val set_barrier : t -> Uniqueness.t -> unit
+  val par : t -> t -> t
+  val singleton : unique_barrier ref -> Occurrence.t -> t
+end = struct
   type t = (unique_barrier ref * Occurrence.t) list
-  let extract_occurrence = function
-    | [] -> assert false
-    | (_ , occ)::_ -> occ
+
+  let par l0 l1 = l0 @ l1
+  let singleton r occ = [r, occ]
+
+  let extract_occurrence = function [] -> assert false | (_, occ) :: _ -> occ
 
   let set_barrier t uniq =
     List.iter
-    (fun (barrier, _) ->
-      match !barrier with
-      | Some _ -> assert false
-      | None -> barrier := Some uniq)
-    t
+      (fun (barrier, _) ->
+        match !barrier with
+        | Some _ -> assert false
+        | None -> barrier := Some uniq)
+      t
 end
 
 module Usage = struct
@@ -181,26 +188,22 @@ module Usage = struct
   *)
   type t =
     | Unused (* empty usage *)
-
     | Borrowed of Occurrence.t
-    (** if already borrowed, only need one occurrence for future error messages.
+        (** if already borrowed, only need one occurrence for future error messages.
        Currently not used, because we don't have explicit borrowing *)
-
     | MaybeShared of Maybe_shared.t
-    (** list of occurences together with modes to be forced as borrowed in the
+        (** list of occurences together with modes to be forced as borrowed in the
       future if needed. It is a list because of multiple control flows. For
       example, if a value is used borrowed in one branch but shared in another,
       then the overall usage is shared. Therefore, the mode this list represents
       is the meet of all modes in the list. (recall that borrowed > shared).
       Therefore, if this virtual mode needs to be forced borrowed, the whole list
       needs to be forced borrowed. *)
-
     | Shared of Occurrence.t
-    (** if already shared, we only need an occurrence for future error
+        (** if already shared, we only need an occurrence for future error
     messages *)
-
     | MaybeUnique of Maybe_unique.t
-      (** Occurrences with modes to be forced shared and many in the future if
+        (** Occurrences with modes to be forced shared and many in the future if
       needed. This is a list because of multiple control flows. For example, if
       a value is used shared in one branch but unique in another branch, then
       overall the value is used uniquely (this is a "stricter" requirement).
@@ -227,21 +230,21 @@ module Usage = struct
 
   (* parallel composition, for composing multiple control flows *)
   let par m0 m1 =
-    match m0, m1 with
+    match (m0, m1) with
     | Unused, m | m, Unused -> m
     | Borrowed _, t | t, Borrowed _ -> t
-    | MaybeShared l0, MaybeShared l1 -> MaybeShared (l0 @ l1)
+    | MaybeShared l0, MaybeShared l1 -> MaybeShared (Maybe_shared.par l0 l1)
     | MaybeShared _, t | t, MaybeShared _ -> t
     | Shared _, t | t, Shared _ -> t
     | MaybeUnique l0, MaybeUnique l1 -> MaybeUnique (Maybe_unique.par l0 l1)
 
   (* sequential composition *)
   let seq m0 m1 =
-    match m0, m1 with
+    match (m0, m1) with
     | Unused, m | m, Unused -> m
     | Borrowed _, t -> t
     | MaybeShared _, Borrowed _ -> m0
-    | MaybeShared l0, MaybeShared l1 -> MaybeShared (l0 @ l1)
+    | MaybeShared l0, MaybeShared l1 -> MaybeShared (Maybe_shared.par l0 l1)
     | MaybeShared _, Shared _ -> m1
     | MaybeShared l0, MaybeUnique l1 ->
         (* Four cases:
@@ -274,8 +277,8 @@ module Usage = struct
         m1
     | Shared _, Borrowed _ -> m0
     | MaybeUnique l, Borrowed occ ->
-          Maybe_unique.force_shared_multiuse l occ;
-          Shared occ
+        Maybe_unique.force_shared_multiuse l occ;
+        Shared occ
     | Shared _, MaybeShared _ -> m0
     | MaybeUnique l0, MaybeShared l1 ->
         (* Four cases:
@@ -332,24 +335,32 @@ module UsageTree = struct
 
       let _to_string (t : t) = Format.asprintf "%a" print t
 
-
-    let compare t1 t2 = match t1, t2 with
-      | Tuple_field i, Tuple_field j -> Int.compare i j
-      | Record_field l1, Record_field l2 -> String.compare l1 l2
-      | Construct_field(l1, i), Construct_field(l2, j) ->
-        begin match String.compare l1 l2 with
-        | 0 -> Int.compare i j
-        | i -> i end
-      | Variant_field l1, Variant_field l2 -> String.compare l1 l2
-      | Memory_address, Memory_address -> 0
-      | Tuple_field _, (Record_field _ | Construct_field _ | Variant_field _ | Memory_address) -> -1
-      | (Record_field _ | Construct_field _ | Variant_field _ | Memory_address), Tuple_field _ -> 1
-      | Record_field _, (Construct_field _ | Variant_field _ | Memory_address) -> -1
-      | (Construct_field _ | Variant_field _ | Memory_address), Record_field _ -> 1
-      | Construct_field _, (Variant_field _ | Memory_address) -> -1
-      | (Variant_field _ | Memory_address), Construct_field _ -> 1
-      | Variant_field _, Memory_address -> -1
-      | Memory_address, Variant_field _ -> 1
+      let compare t1 t2 =
+        match (t1, t2) with
+        | Tuple_field i, Tuple_field j -> Int.compare i j
+        | Record_field l1, Record_field l2 -> String.compare l1 l2
+        | Construct_field (l1, i), Construct_field (l2, j) -> (
+            match String.compare l1 l2 with 0 -> Int.compare i j | i -> i)
+        | Variant_field l1, Variant_field l2 -> String.compare l1 l2
+        | Memory_address, Memory_address -> 0
+        | ( Tuple_field _,
+            ( Record_field _ | Construct_field _ | Variant_field _
+            | Memory_address ) ) ->
+            -1
+        | ( ( Record_field _ | Construct_field _ | Variant_field _
+            | Memory_address ),
+            Tuple_field _ ) ->
+            1
+        | Record_field _, (Construct_field _ | Variant_field _ | Memory_address)
+          ->
+            -1
+        | (Construct_field _ | Variant_field _ | Memory_address), Record_field _
+          ->
+            1
+        | Construct_field _, (Variant_field _ | Memory_address) -> -1
+        | (Variant_field _ | Memory_address), Construct_field _ -> 1
+        | Variant_field _, Memory_address -> -1
+        | Memory_address, Variant_field _ -> 1
     end
 
     include T
@@ -386,27 +397,27 @@ module UsageTree = struct
 
     (** length of path ignoring memory_address *)
     (* let rec _real_length = function
-      | [] -> 0
-      | Projection.Memory_address :: xs -> real_length xs
-      | _ :: xs -> real_length xs + 1 *)
+       | [] -> 0
+       | Projection.Memory_address :: xs -> real_length xs
+       | _ :: xs -> real_length xs + 1 *)
 
     let root : t = []
     let _print ppf = Format.pp_print_list Projection.print ppf
   end
 
   (* exception
-    MultiUse of {
-      (* the occurrence that's failing forcing *)
-      here : Occurrence.t;
-      (* the other occurrence for reference *)
-      there : Occurrence.t;
-      (* which axis failed to force? *)
-      axis : axis;
-      (* descentdant means there is a descendant of here *)
-      there_is_of_here : relation;
-      (* path from the ancestor to the descendant, reversed *)
-      path : Path.t;
-    } *)
+     MultiUse of {
+       (* the occurrence that's failing forcing *)
+       here : Occurrence.t;
+       (* the other occurrence for reference *)
+       there : Occurrence.t;
+       (* which axis failed to force? *)
+       axis : axis;
+       (* descentdant means there is a descendant of here *)
+       there_is_of_here : relation;
+       (* path from the ancestor to the descendant, reversed *)
+       path : Path.t;
+     } *)
 
   let leaf usage = { usage; children = Projection.Map.empty }
   let empty = leaf Usage.Unused
@@ -432,18 +443,18 @@ module UsageTree = struct
     let usage =
       Usage.seq t0.usage t1.usage
       (* with Maybe_unique.MultiUse { here; there; error } ->
-        (* t' is ancestor *)
-        let t', path =
-          match projs0, projs1 with
-          | [], _ -> (t1.usage, projs1)
-          | _, [] -> (t0.usage, projs0)
-          | _, _ -> assert false
-        in
-        let there_is_of_here =
-          if (Usage.extract_occurrence t').loc = here.loc then Descendant
-          else Ancestor
-        in
-        raise (MultiUse { here; there; error; there_is_of_here; path }) *)
+         (* t' is ancestor *)
+         let t', path =
+           match projs0, projs1 with
+           | [], _ -> (t1.usage, projs1)
+           | _, [] -> (t0.usage, projs0)
+           | _, _ -> assert false
+         in
+         let there_is_of_here =
+           if (Usage.extract_occurrence t').loc = here.loc then Descendant
+           else Ancestor
+         in
+         raise (MultiUse { here; there; error; there_is_of_here; path }) *)
     in
     {
       usage;
@@ -570,7 +581,7 @@ module Ienv = struct
   let par ienv0 ienv1 =
     Ident.Map.merge
       (fun _id locs0 locs1 ->
-        match locs0, locs1 with
+        match (locs0, locs1) with
         | None, None -> assert false
         | None, Some t | Some t, None -> Some t
         | Some locs0, Some locs1 -> Some (locs0 @ locs1))
@@ -581,7 +592,7 @@ module Ienv = struct
   let seq ienv0 ienv1 =
     Ident.Map.merge
       (fun _id locs0 locs1 ->
-        match locs0, locs1 with
+        match (locs0, locs1) with
         | None, None -> assert false
         | Some t, None -> Some t
         | _, Some t -> Some t)
@@ -612,7 +623,7 @@ let mark_implicit_borrow_memory_address_paths paths occ =
       (* Currently we just generate a dummy unique_barrier ref that won't be
          consumed. The distinction between implicit and explicit borrowing is
          still needed because they are handled differently in closures *)
-      (MaybeShared [ (ref None, occ) ])
+      (MaybeShared (Maybe_shared.singleton (ref None) occ))
   in
   UF.pars (List.map (fun path -> mark_one path) paths)
 
@@ -639,7 +650,7 @@ let _mark_shared paths occ =
 
 let mark_maybe_unique paths unique_use occ =
   let mark_one path =
-    UF.singleton path (MaybeUnique(Maybe_unique.singleton unique_use occ))
+    UF.singleton path (MaybeUnique (Maybe_unique.singleton unique_use occ))
   in
   UF.pars (List.map (fun path -> mark_one path) paths)
 
@@ -903,7 +914,7 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
       let uf' =
         UF.map
           (function
-            | (MaybeShared l) ->
+            | MaybeShared l ->
                 (* only implicit borrowing lifted. *)
                 Shared (Maybe_shared.extract_occurrence l)
             | _ -> Unused)
@@ -1089,7 +1100,7 @@ and check_uniqueness_exp' exp ienv : (UF.Path.t list * unique_use) option * UF.t
     =
   match exp.exp_desc with
   | Texp_ident (p, _, _, _, unique_use) -> (
-      let occ = {Occurrence.loc = exp.exp_loc; reason = DirectUse} in
+      let occ = { Occurrence.loc = exp.exp_loc; reason = DirectUse } in
       let maybe_unique = (unique_use, occ) in
       match maybe_paths_of_ident ~maybe_unique ienv p with
       | None -> (None, UF.empty)
@@ -1224,46 +1235,45 @@ let check_uniqueness_value_bindings vbs =
 
 let report_error = function
   | MultiUse { here; there; axis } ->
-    let why_cannot_use_twice =
-      match axis with
-      | `Uniqueness -> "used uniquely here"
-      | `Linearity -> "defined as once"
-    in
-    let there_reason =
-      match there.reason with
-      | DirectUse -> Format.dprintf ""
-      | MatchTupleWithVar _loc' ->
-          Format.dprintf "which is in a tuple matched against a variable"
-    in
-    let sub = [ Location.msg ~loc:there.loc "%t" there_reason ] in
-    let here_reason =
-      match here.reason with
-      | DirectUse -> ""
-      | MatchTupleWithVar _ -> "It is in a tuple matched against a variable."
-    in
-    Location.errorf ~loc:here.loc ~sub
-      "@[This is %s so cannot be used twice. %s Another use is @]"
-      why_cannot_use_twice here_reason
-| Boundary { occ; axis; reason } ->
-    let reason =
-      match reason with
-      | ValueFromModClass -> "another module or class"
-      | FreeVariableOfModClass -> "outside the current module or class"
-      | OutOfModClass -> "outside the current module or class"
-    in
-    let error =
-      match axis with
-      | `Uniqueness -> "This value is shared but used as unique"
-      | `Linearity -> "This value is once but used as many"
-    in
-    Location.errorf ~loc:occ.loc "@[%s.\nHint: This value comes from %s.@]"
-      error reason
+      let why_cannot_use_twice =
+        match axis with
+        | `Uniqueness -> "used uniquely here"
+        | `Linearity -> "defined as once"
+      in
+      let there_reason =
+        match there.reason with
+        | DirectUse -> Format.dprintf ""
+        | MatchTupleWithVar _loc' ->
+            Format.dprintf "which is in a tuple matched against a variable"
+      in
+      let sub = [ Location.msg ~loc:there.loc "%t" there_reason ] in
+      let here_reason =
+        match here.reason with
+        | DirectUse -> ""
+        | MatchTupleWithVar _ -> "It is in a tuple matched against a variable."
+      in
+      Location.errorf ~loc:here.loc ~sub
+        "@[This is %s so cannot be used twice. %s Another use is @]"
+        why_cannot_use_twice here_reason
+  | Boundary { occ; axis; reason } ->
+      let reason =
+        match reason with
+        | ValueFromModClass -> "another module or class"
+        | FreeVariableOfModClass -> "outside the current module or class"
+        | OutOfModClass -> "outside the current module or class"
+      in
+      let error =
+        match axis with
+        | `Uniqueness -> "This value is shared but used as unique"
+        | `Linearity -> "This value is once but used as many"
+      in
+      Location.errorf ~loc:occ.loc "@[%s.\nHint: This value comes from %s.@]"
+        error reason
 
 let report_error err =
   Printtyp.wrap_printing_env ~error:true Env.empty (fun () -> report_error err)
 
 let () =
   Location.register_error_of_exn (function
-    | Error e ->
-        Some (report_error e)
+    | Error e -> Some (report_error e)
     | _ -> None)
