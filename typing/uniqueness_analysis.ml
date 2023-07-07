@@ -38,22 +38,23 @@ end
 
 type axis = [ `Uniqueness | `Linearity ]
 
-(* See [report_error] for explanation *)
 type boundary_reason =
   | Value_from_mod_class (* currently will never trigger *)
   | Free_var_of_mod_class (* currently will never trigger *)
-  | Out_of_mod_class
+  | Out_of_mod_class  (** See [report_error] for explanation *)
 
 type error =
   | MultiUse of {
-      (* the occurrence that's failing forcing *)
-      here : Occurrence.t;
-      (* the other occurrence that triggers the forcing *)
+      here : Occurrence.t;  (** the occurrence that's failing forcing *)
       there : Occurrence.t;
-      (* which axis failed to force? *)
-      axis : axis;
+          (** the other occurrence that triggers the forcing *)
+      axis : axis;  (** which axis failed to force? *)
     }  (** Error caused by multiple use *)
-  | Boundary of { occ : Occurrence.t; axis : axis; reason : boundary_reason }
+  | Boundary of {
+      occ : Occurrence.t;  (** The occurrence that's failing forcing*)
+      axis : axis;  (** which axis failed to force? *)
+      reason : boundary_reason;  (** which kind of boundary is being crossed? *)
+    }
       (** Error caused by variable crossing the boundary of modules/classes. We
   conservatively make everything legacy at the boundary (i.e., shared and many).
   *)
@@ -84,6 +85,14 @@ module Maybe_unique : sig
   (** returns the modes represented by this usage. *)
 end = struct
   type t = (unique_use * Occurrence.t) list
+  (** Occurrences with modes to be forced shared and many in the future if
+      needed. This is a list because of multiple control flows. For example, if
+      a value is used shared in one branch but unique in another branch, then
+      overall the value is used uniquely (this is a "stricter" requirement).
+      Therefore, techincally, the mode this list represents is the meet of all
+      modes in the lists. (recall that shared > unique). Therefore, if this
+      virtual mode needs to be forced shared, the whole list needs to be forced
+      shared. *)
 
   let singleton unique_use occ : t = [ (unique_use, occ) ]
 
@@ -139,10 +148,16 @@ module Maybe_shared : sig
   val singleton : unique_barrier ref -> Occurrence.t -> t
 end = struct
   type t = (unique_barrier ref * Occurrence.t) list
+  (** list of occurences together with modes to be forced as borrowed in the
+  future if needed. It is a list because of multiple control flows. For
+  example, if a value is used borrowed in one branch but shared in another,
+  then the overall usage is shared. Therefore, the mode this list represents
+  is the meet of all modes in the list. (recall that borrowed > shared).
+  Therefore, if this virtual mode needs to be forced borrowed, the whole list
+  needs to be forced borrowed. *)
 
   let par l0 l1 = l0 @ l1
-  let singleton r occ = [r, occ]
-
+  let singleton r occ = [ (r, occ) ]
   let extract_occurrence = function [] -> assert false | (_, occ) :: _ -> occ
 
   let set_barrier t uniq =
@@ -207,30 +222,18 @@ module Usage = struct
      error is represented as exception which is just easier.
   *)
   type t =
-    | Unused (* empty usage *)
+    | Unused  (** empty usage *)
     | Borrowed of Occurrence.t
-        (** if already borrowed, only need one occurrence for future error messages.
-       Currently not used, because we don't have explicit borrowing *)
+        (** A borrowed usage with an arbitrary occurrence. The occurrence is
+        only for future error messages. Currently not used, because we don't
+        have explicit borrowing *)
     | Maybe_shared of Maybe_shared.t
-        (** list of occurences together with modes to be forced as borrowed in the
-      future if needed. It is a list because of multiple control flows. For
-      example, if a value is used borrowed in one branch but shared in another,
-      then the overall usage is shared. Therefore, the mode this list represents
-      is the meet of all modes in the list. (recall that borrowed > shared).
-      Therefore, if this virtual mode needs to be forced borrowed, the whole list
-      needs to be forced borrowed. *)
+        (** A usage that could be either borrowed or shared. *)
     | Shared of Occurrence.t
-        (** if already shared, we only need an occurrence for future error
-    messages *)
+        (** A shared usage with an arbitrary occurrence. The occurrence is only
+        for future error messages. *)
     | Maybe_unique of Maybe_unique.t
-        (** Occurrences with modes to be forced shared and many in the future if
-      needed. This is a list because of multiple control flows. For example, if
-      a value is used shared in one branch but unique in another branch, then
-      overall the value is used uniquely (this is a "stricter" requirement).
-      Therefore, techincally, the mode this list represents is the meet of all
-      modes in the lists. (recall that shared > unique). Therefore, if this
-      virtual mode needs to be forced shared, the whole list needs to be forced
-      shared. *)
+        (** A usage that could be either unique or shared. *)
 
   let to_string = function
     | Unused -> "unused"
@@ -322,11 +325,11 @@ module Usage = struct
         Shared (Maybe_unique.extract_occurrence l0)
 end
 
+(** lifting module Usage to trees *)
 module Usage_tree = struct
-  (** lifting module Usage to trees *)
   module Projection = struct
-    (** Projections from parent to child. *)
     module T = struct
+      (** Projections from parent to child. *)
       type t =
         | Tuple_field of int
         | Record_field of string
@@ -409,7 +412,6 @@ module Usage_tree = struct
     type t = Projection.t list
 
     let child (p : t) (a : Projection.t) : t = p @ [ a ]
-
     let root : t = []
     let _print ppf = Format.pp_print_list Projection.print ppf
   end
@@ -434,9 +436,7 @@ module Usage_tree = struct
      It is from the ancestor that t0.usage actually comes from,
      to t0.*)
   let rec seq t0 projs0 t1 projs1 =
-    let usage =
-      Usage.seq t0.usage t1.usage
-    in
+    let usage = Usage.seq t0.usage t1.usage in
     {
       usage;
       children =
@@ -475,6 +475,7 @@ module Usage_tree = struct
     loop Usage.Unused t
 end
 
+(** Lift Usage_tree to forest *)
 module Usage_forest = struct
   module Root_id = struct
     module T = struct
@@ -504,7 +505,8 @@ module Usage_forest = struct
   let _print ppf t =
     Root_id.Map.iter
       (fun rootid tree ->
-        Format.fprintf ppf "%a = %a, " Root_id.print rootid Usage_tree.print tree)
+        Format.fprintf ppf "%a = %a, " Root_id.print rootid Usage_tree.print
+          tree)
       t
 
   module Path = struct
@@ -553,7 +555,7 @@ module UF = Usage_forest
 
 module Ienv = struct
   type t = UF.Path.t list Ident.Map.t
-  (* Each identifier is mapped to a list of possible nodes, each represented by
+  (** Each identifier is mapped to a list of possible nodes, each represented by
      a path into the forest, instead of directly ponting to the node. *)
 
   (* used for [OR] patterns. This operation is commutative  *)
@@ -592,11 +594,10 @@ type single_value_to_match = UF.Path.t list * Location.t * unique_use option
 
 type value_to_match =
   | Match_tuple of single_value_to_match list
-  (** The value being matched is a tuple; we treat it specially so matching
+      (** The value being matched is a tuple; we treat it specially so matching
   tuples against tuples merely create alias instead of uses *)
-
   | Match_single of single_value_to_match
-  (** The value being matched is not a tuple *)
+      (** The value being matched is not a tuple *)
 
 let mark_implicit_borrow_memory_address_paths paths occ =
   let mark_one path =
@@ -660,7 +661,10 @@ let pattern_match_var ~loc id value =
                | None -> UF.empty
                | Some unique_use ->
                    let occ =
-                     { Occurrence.loc = loc'; reason = Match_tuple_with_var loc }
+                     {
+                       Occurrence.loc = loc';
+                       reason = Match_tuple_with_var loc;
+                     }
                    in
                    mark_maybe_unique paths unique_use occ)
              values) )
@@ -1234,7 +1238,8 @@ let report_error = function
       let here_reason =
         match here.reason with
         | Direct_use -> ""
-        | Match_tuple_with_var _ -> "It is in a tuple matched against a variable."
+        | Match_tuple_with_var _ ->
+            "It is in a tuple matched against a variable."
       in
       Location.errorf ~loc:here.loc ~sub
         "@[This is %s so cannot be used twice. %s Another use is @]"
