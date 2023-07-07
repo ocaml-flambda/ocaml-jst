@@ -62,13 +62,26 @@ exception Error of error
 
 module Maybe_unique : sig
   type t
+  (** The type representing a usage that could be either unique or shared *)
 
   val extract_occurrence : t -> Occurrence.t
+  (** extract an arbitrary occurrence from this usage *)
+
   val singleton : unique_use -> Occurrence.t -> t
+  (** construct a single usage *)
+
   val par : t -> t -> t
-  val force_shared_multiuse : t -> Occurrence.t -> unit
-  val force_shared_boundary : t -> boundary_reason -> unit
+
+  val force_shared_multiuse : t -> there:Occurrence.t -> unit
+  (** force this usage to be shared, due to multiple uses. [there] is the
+      occurrence of the other usage. *)
+
+  val force_shared_boundary : t -> reason:boundary_reason -> unit
+  (** force this usage to be shared, due to boundary crossing. [reason] is,
+      well, the reason *)
+
   val represented : t -> Mode.Uniqueness.t * Mode.Linearity.t
+  (** returns the modes represented by this usage. *)
 end = struct
   type t = (unique_use * Occurrence.t) list
 
@@ -97,12 +110,12 @@ end = struct
     in
     List.iter force_one l
 
-  let force_shared_multiuse t there =
+  let force_shared_multiuse t ~there =
     try force_shared t
     with CannotForce { occ; axis } ->
       raise (Error (MultiUse { here = occ; there; axis }))
 
-  let force_shared_boundary t reason =
+  let force_shared_boundary t ~reason =
     try force_shared t
     with CannotForce { occ; axis } ->
       raise (Error (Boundary { occ; axis; reason }))
@@ -113,8 +126,15 @@ end
 
 module Maybe_shared : sig
   type t
+  (** The type representing a usage that could be either shared or borrowed *)
+
   val extract_occurrence : t -> Occurrence.t
+  (** extract an arbitrary occurrence from the usage *)
+
   val set_barrier : t -> Uniqueness.t -> unit
+  (** set the barrier. The uniqueness represents usage immediately following the
+      current usage *)
+
   val par : t -> t -> t
   val singleton : unique_barrier ref -> Occurrence.t -> t
 end = struct
@@ -228,7 +248,6 @@ module Usage = struct
     | Shared occ -> occ
     | Maybe_unique l -> Maybe_unique.extract_occurrence l
 
-  (* parallel composition, for composing multiple control flows *)
   let par m0 m1 =
     match (m0, m1) with
     | Unused, m | m, Unused -> m
@@ -238,7 +257,6 @@ module Usage = struct
     | Shared _, t | t, Shared _ -> t
     | Maybe_unique l0, Maybe_unique l1 -> Maybe_unique (Maybe_unique.par l0 l1)
 
-  (* sequential composition *)
   let seq m0 m1 =
     match (m0, m1) with
     | Unused, m | m, Unused -> m
@@ -271,13 +289,12 @@ module Usage = struct
             the type checking of the whole file, l1 will correctly tells
             whether it needs to be unique, and by extension whether l0 can be
             shared. *)
-        (* if any of l1 is unique, then all of l0 must be borrowed *)
         let uniq, _ = Maybe_unique.represented l1 in
         Maybe_shared.set_barrier l0 uniq;
         m1
     | Shared _, Borrowed _ -> m0
     | Maybe_unique l, Borrowed occ ->
-        Maybe_unique.force_shared_multiuse l occ;
+        Maybe_unique.force_shared_multiuse l ~there:occ;
         Shared occ
     | Shared _, Maybe_shared _ -> m0
     | Maybe_unique l0, Maybe_shared l1 ->
@@ -291,24 +308,24 @@ module Usage = struct
             be constrained. The result is always S.
         *)
         let occ = Maybe_shared.extract_occurrence l1 in
-        Maybe_unique.force_shared_multiuse l0 occ;
+        Maybe_unique.force_shared_multiuse l0 ~there:occ;
         Shared occ
     | Shared _, Shared _ -> m0
     | Maybe_unique l, Shared occ | Shared occ, Maybe_unique l ->
-        Maybe_unique.force_shared_multiuse l occ;
+        Maybe_unique.force_shared_multiuse l ~there:occ;
         Shared occ
     | Maybe_unique l0, Maybe_unique l1 ->
         let occ1 = Maybe_unique.extract_occurrence l1 in
         let occ0 = Maybe_unique.extract_occurrence l0 in
-        Maybe_unique.force_shared_multiuse l0 occ1;
-        Maybe_unique.force_shared_multiuse l1 occ0;
+        Maybe_unique.force_shared_multiuse l0 ~there:occ1;
+        Maybe_unique.force_shared_multiuse l1 ~there:occ0;
         Shared (Maybe_unique.extract_occurrence l0)
 end
 
 module Usage_tree = struct
-  (* lifting module Usage to trees *)
+  (** lifting module Usage to trees *)
   module Projection = struct
-    (* Projections from parent to child. *)
+    (** Projections from parent to child. *)
     module T = struct
       type t =
         | Tuple_field of int
@@ -367,19 +384,17 @@ module Usage_tree = struct
     module Map = Map.Make (T)
   end
 
-  (* type relation = Ancestor | Descendant *)
+  type t = { children : t Projection.Map.t; usage : Usage.t }
+  (** Represents a tree of usage. Each node records the par on all possible
+     execution paths. As a result, trees such as `S -> U` is valid, even though
+     it would be invalid if it was the result of a single path: using a parent
+     shared and a child uniquely is obviously bad. Howerver, it might be the
+     result of "par"ing multiple path: `S` par `N -> U`, which is valid.
 
-  (* Tree: Each node records the par on all possible execution paths. As a
-     result, trees such as `S -> U` is valid, even though it would be invalid if
-     it was the result of a single path: using a parent shared and a child
-     uniquely is obviously bad. Howerver, it might be the result of "par"ing
-     multiple path: `S` par `N -> U`, which is valid. *)
-
-  (* INVARIANT: children >= parent. For example, having a shared child under a
+     INVARIANT: children >= parent. For example, having a shared child under a
      unique parent is nonsense. The invariant is preserved because Usage.par and
      Usage.seq above is monotone, and Usage_tree.par and Usage_tree.seq here is
      node-wise. *)
-  type t = { children : t Projection.Map.t; usage : Usage.t }
 
   let rec print_children ppf children =
     Projection.Map.iter
@@ -395,35 +410,14 @@ module Usage_tree = struct
 
     let child (p : t) (a : Projection.t) : t = p @ [ a ]
 
-    (** length of path ignoring memory_address *)
-    (* let rec _real_length = function
-       | [] -> 0
-       | Projection.Memory_address :: xs -> real_length xs
-       | _ :: xs -> real_length xs + 1 *)
-
     let root : t = []
     let _print ppf = Format.pp_print_list Projection.print ppf
   end
-
-  (* exception
-     MultiUse of {
-       (* the occurrence that's failing forcing *)
-       here : Occurrence.t;
-       (* the other occurrence for reference *)
-       there : Occurrence.t;
-       (* which axis failed to force? *)
-       axis : axis;
-       (* descentdant means there is a descendant of here *)
-       there_is_of_here : relation;
-       (* path from the ancestor to the descendant, reversed *)
-       path : Path.t;
-     } *)
 
   let leaf usage = { usage; children = Projection.Map.empty }
   let empty = leaf Usage.Unused
 
   (* lift par and seq to trees *)
-
   let rec par t0 t1 =
     {
       usage = Usage.par t0.usage t1.usage;
@@ -442,19 +436,6 @@ module Usage_tree = struct
   let rec seq t0 projs0 t1 projs1 =
     let usage =
       Usage.seq t0.usage t1.usage
-      (* with Maybe_unique.MultiUse { here; there; error } ->
-         (* t' is ancestor *)
-         let t', path =
-           match projs0, projs1 with
-           | [], _ -> (t1.usage, projs1)
-           | _, [] -> (t0.usage, projs0)
-           | _, _ -> assert false
-         in
-         let there_is_of_here =
-           if (Usage.extract_occurrence t').loc = here.loc then Descendant
-           else Ancestor
-         in
-         raise (MultiUse { here; there; error; there_is_of_here; path }) *)
     in
     {
       usage;
@@ -517,8 +498,8 @@ module Usage_forest = struct
     let print ppf t = Format.fprintf ppf "%s" (name t)
   end
 
-  (* maps rootid to trees; contains only the roots *)
   type t = Usage_tree.t Root_id.Map.t
+  (** Represents a forest of usage. *)
 
   let _print ppf t =
     Root_id.Map.iter
@@ -568,16 +549,14 @@ module Usage_forest = struct
   let map f t = Root_id.Map.map (Usage_tree.map f) t
 end
 
-(* easier spelling *)
 module UF = Usage_forest
 
 module Ienv = struct
-  (* idents are mapped to multiple possible nodes, each represented by
+  type t = UF.Path.t list Ident.Map.t
+  (* Each identifier is mapped to a list of possible nodes, each represented by
      a path into the forest, instead of directly ponting to the node. *)
 
-  type t = UF.Path.t list Ident.Map.t
-
-  (* used for or patterns. This operation is commutative  *)
+  (* used for [OR] patterns. This operation is commutative  *)
   let par ienv0 ienv1 =
     Ident.Map.merge
       (fun _id locs0 locs1 ->
@@ -604,16 +583,20 @@ module Ienv = struct
   let singleton id locs = Ident.Map.singleton id locs
 end
 
-(* A tuple of: First is the value's all possible paths. Second is the location
-   where it's defined. Third is the modes, if it's actually an alias *)
 type single_value_to_match = UF.Path.t list * Location.t * unique_use option
+(** A triple of:
+   - the value's all possible paths.
+   - the location where it's defined
+   - the modes, if it's actually an alias
+*)
 
-(* represent value to be match *)
 type value_to_match =
-  (* first is the special case of tuples; we treat it specially so matching
-     tuples against tuples merely create alias instead of uses *)
   | Match_tuple of single_value_to_match list
+  (** The value being matched is a tuple; we treat it specially so matching
+  tuples against tuples merely create alias instead of uses *)
+
   | Match_single of single_value_to_match
+  (** The value being matched is not a tuple *)
 
 let mark_implicit_borrow_memory_address_paths paths occ =
   let mark_one path =
@@ -803,7 +786,7 @@ let comp_pattern_match pat value =
 let maybe_paths_of_ident ?maybe_unique ienv path =
   let force reason (unique_use, occ) =
     let maybe_unique = Maybe_unique.singleton unique_use occ in
-    Maybe_unique.force_shared_boundary maybe_unique reason
+    Maybe_unique.force_shared_boundary maybe_unique ~reason
   in
   match path with
   | Path.Pident id -> (
@@ -866,7 +849,8 @@ let mark_shared_open_variables ienv f _loc =
            module/class, maybe_paths_of_ident will force free variables to
            shared, because ienv given to it will not include the outside
            variables. We nevertheless force it here just to be sure *)
-        Maybe_unique.force_shared_boundary maybe_unique Free_var_of_mod_class;
+        Maybe_unique.force_shared_boundary maybe_unique
+          ~reason:Free_var_of_mod_class;
         let shared =
           Usage.Shared (Maybe_unique.extract_occurrence maybe_unique)
         in
