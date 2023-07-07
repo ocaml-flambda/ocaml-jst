@@ -24,8 +24,8 @@ module Linearity = Mode.Linearity
 module Occurrence = struct
   (** The occurrence of a potentially unique ident in the expression. *)
   type reason =
-    | DirectUse  (** it is used directly *)
-    | MatchTupleWithVar of Location.t
+    | Direct_use  (** it is used directly *)
+    | Match_tuple_with_var of Location.t
         (** When matching on a tuple, we do not construct a tuple and match on it,
       but rather match on the individual elements of the tuple -- this preserves
       their uniqueness. But in a pattern an alias to the tuple could be created,
@@ -40,9 +40,9 @@ type axis = [ `Uniqueness | `Linearity ]
 
 (* See [report_error] for explanation *)
 type boundary_reason =
-  | ValueFromModClass (* currently will never trigger *)
-  | FreeVariableOfModClass (* currently will never trigger *)
-  | OutOfModClass
+  | Value_from_mod_class (* currently will never trigger *)
+  | Free_var_of_mod_class (* currently will never trigger *)
+  | Out_of_mod_class
 
 type error =
   | MultiUse of {
@@ -191,7 +191,7 @@ module Usage = struct
     | Borrowed of Occurrence.t
         (** if already borrowed, only need one occurrence for future error messages.
        Currently not used, because we don't have explicit borrowing *)
-    | MaybeShared of Maybe_shared.t
+    | Maybe_shared of Maybe_shared.t
         (** list of occurences together with modes to be forced as borrowed in the
       future if needed. It is a list because of multiple control flows. For
       example, if a value is used borrowed in one branch but shared in another,
@@ -202,7 +202,7 @@ module Usage = struct
     | Shared of Occurrence.t
         (** if already shared, we only need an occurrence for future error
     messages *)
-    | MaybeUnique of Maybe_unique.t
+    | Maybe_unique of Maybe_unique.t
         (** Occurrences with modes to be forced shared and many in the future if
       needed. This is a list because of multiple control flows. For example, if
       a value is used shared in one branch but unique in another branch, then
@@ -215,38 +215,38 @@ module Usage = struct
   let to_string = function
     | Unused -> "unused"
     | Borrowed _ -> "borrowed"
-    | MaybeShared _ -> "maybe_shared"
+    | Maybe_shared _ -> "maybe_shared"
     | Shared _ -> "shared"
-    | MaybeUnique _ -> "maybe_unique"
+    | Maybe_unique _ -> "maybe_unique"
 
   let print ppf t = Format.fprintf ppf "%s" (to_string t)
 
   let _extract_occurrence = function
     | Unused -> assert false
     | Borrowed occ -> occ
-    | MaybeShared l -> Maybe_shared.extract_occurrence l
+    | Maybe_shared l -> Maybe_shared.extract_occurrence l
     | Shared occ -> occ
-    | MaybeUnique l -> Maybe_unique.extract_occurrence l
+    | Maybe_unique l -> Maybe_unique.extract_occurrence l
 
   (* parallel composition, for composing multiple control flows *)
   let par m0 m1 =
     match (m0, m1) with
     | Unused, m | m, Unused -> m
     | Borrowed _, t | t, Borrowed _ -> t
-    | MaybeShared l0, MaybeShared l1 -> MaybeShared (Maybe_shared.par l0 l1)
-    | MaybeShared _, t | t, MaybeShared _ -> t
+    | Maybe_shared l0, Maybe_shared l1 -> Maybe_shared (Maybe_shared.par l0 l1)
+    | Maybe_shared _, t | t, Maybe_shared _ -> t
     | Shared _, t | t, Shared _ -> t
-    | MaybeUnique l0, MaybeUnique l1 -> MaybeUnique (Maybe_unique.par l0 l1)
+    | Maybe_unique l0, Maybe_unique l1 -> Maybe_unique (Maybe_unique.par l0 l1)
 
   (* sequential composition *)
   let seq m0 m1 =
     match (m0, m1) with
     | Unused, m | m, Unused -> m
     | Borrowed _, t -> t
-    | MaybeShared _, Borrowed _ -> m0
-    | MaybeShared l0, MaybeShared l1 -> MaybeShared (Maybe_shared.par l0 l1)
-    | MaybeShared _, Shared _ -> m1
-    | MaybeShared l0, MaybeUnique l1 ->
+    | Maybe_shared _, Borrowed _ -> m0
+    | Maybe_shared l0, Maybe_shared l1 -> Maybe_shared (Maybe_shared.par l0 l1)
+    | Maybe_shared _, Shared _ -> m1
+    | Maybe_shared l0, Maybe_unique l1 ->
         (* Four cases:
             B;S = S
             B;U = U
@@ -276,11 +276,11 @@ module Usage = struct
         Maybe_shared.set_barrier l0 uniq;
         m1
     | Shared _, Borrowed _ -> m0
-    | MaybeUnique l, Borrowed occ ->
+    | Maybe_unique l, Borrowed occ ->
         Maybe_unique.force_shared_multiuse l occ;
         Shared occ
-    | Shared _, MaybeShared _ -> m0
-    | MaybeUnique l0, MaybeShared l1 ->
+    | Shared _, Maybe_shared _ -> m0
+    | Maybe_unique l0, Maybe_shared l1 ->
         (* Four cases:
             S;B = S
             S;S = S
@@ -294,10 +294,10 @@ module Usage = struct
         Maybe_unique.force_shared_multiuse l0 occ;
         Shared occ
     | Shared _, Shared _ -> m0
-    | MaybeUnique l, Shared occ | Shared occ, MaybeUnique l ->
+    | Maybe_unique l, Shared occ | Shared occ, Maybe_unique l ->
         Maybe_unique.force_shared_multiuse l occ;
         Shared occ
-    | MaybeUnique l0, MaybeUnique l1 ->
+    | Maybe_unique l0, Maybe_unique l1 ->
         let occ1 = Maybe_unique.extract_occurrence l1 in
         let occ0 = Maybe_unique.extract_occurrence l0 in
         Maybe_unique.force_shared_multiuse l0 occ1;
@@ -305,7 +305,7 @@ module Usage = struct
         Shared (Maybe_unique.extract_occurrence l0)
 end
 
-module UsageTree = struct
+module Usage_tree = struct
   (* lifting module Usage to trees *)
   module Projection = struct
     (* Projections from parent to child. *)
@@ -377,7 +377,7 @@ module UsageTree = struct
 
   (* INVARIANT: children >= parent. For example, having a shared child under a
      unique parent is nonsense. The invariant is preserved because Usage.par and
-     Usage.seq above is monotone, and UsageTree.par and UsageTree.seq here is
+     Usage.seq above is monotone, and Usage_tree.par and Usage_tree.seq here is
      node-wise. *)
   type t = { children : t Projection.Map.t; usage : Usage.t }
 
@@ -494,7 +494,7 @@ module UsageTree = struct
     loop Usage.Unused t
 end
 
-module UsageForest = struct
+module Usage_forest = struct
   module Root_id = struct
     module T = struct
       type t = { id : int; name : string }
@@ -518,25 +518,25 @@ module UsageForest = struct
   end
 
   (* maps rootid to trees; contains only the roots *)
-  type t = UsageTree.t Root_id.Map.t
+  type t = Usage_tree.t Root_id.Map.t
 
   let _print ppf t =
     Root_id.Map.iter
       (fun rootid tree ->
-        Format.fprintf ppf "%a = %a, " Root_id.print rootid UsageTree.print tree)
+        Format.fprintf ppf "%a = %a, " Root_id.print rootid Usage_tree.print tree)
       t
 
   module Path = struct
-    type t = Root_id.t * UsageTree.Path.t
+    type t = Root_id.t * Usage_tree.Path.t
 
     let child ((rootid, path) : t) proj : t =
-      (rootid, UsageTree.Path.child path proj)
+      (rootid, Usage_tree.Path.child path proj)
 
     let child_of_many paths proj = List.map (fun path -> child path proj) paths
-    let fresh_root name : t = (Root_id.fresh name, UsageTree.Path.root)
+    let fresh_root name : t = (Root_id.fresh name, Usage_tree.Path.root)
 
     let fresh_root_of_ident ident =
-      (Root_id.fresh_of_ident ident, UsageTree.Path.root)
+      (Root_id.fresh_of_ident ident, Usage_tree.Path.root)
   end
 
   let empty = Root_id.Map.empty
@@ -545,31 +545,31 @@ module UsageForest = struct
    fun t0 t1 ->
     Root_id.Map.merge
       (fun _rootid t0 t1 ->
-        let t0 = Option.value t0 ~default:UsageTree.empty in
-        let t1 = Option.value t1 ~default:UsageTree.empty in
-        Some (UsageTree.par t0 t1))
+        let t0 = Option.value t0 ~default:Usage_tree.empty in
+        let t1 = Option.value t1 ~default:Usage_tree.empty in
+        Some (Usage_tree.par t0 t1))
       t0 t1
 
   let seq : t -> t -> t =
    fun t0 t1 ->
     Root_id.Map.merge
       (fun _rootid t0 t1 ->
-        let t0 = Option.value t0 ~default:UsageTree.empty in
-        let t1 = Option.value t1 ~default:UsageTree.empty in
-        Some (UsageTree.seq t0 [] t1 []))
+        let t0 = Option.value t0 ~default:Usage_tree.empty in
+        let t1 = Option.value t1 ~default:Usage_tree.empty in
+        Some (Usage_tree.seq t0 [] t1 []))
       t0 t1
 
   let pars l = List.fold_left par empty l
   let seqs l = List.fold_left seq empty l
 
   let singleton ((rootid, path') : Path.t) leaf =
-    Root_id.Map.singleton rootid (UsageTree.singleton path' leaf)
+    Root_id.Map.singleton rootid (Usage_tree.singleton path' leaf)
 
-  let map f t = Root_id.Map.map (UsageTree.map f) t
+  let map f t = Root_id.Map.map (Usage_tree.map f) t
 end
 
 (* easier spelling *)
-module UF = UsageForest
+module UF = Usage_forest
 
 module Ienv = struct
   (* idents are mapped to multiple possible nodes, each represented by
@@ -612,18 +612,18 @@ type single_value_to_match = UF.Path.t list * Location.t * unique_use option
 type value_to_match =
   (* first is the special case of tuples; we treat it specially so matching
      tuples against tuples merely create alias instead of uses *)
-  | MatchTuple of single_value_to_match list
-  | MatchSingle of single_value_to_match
+  | Match_tuple of single_value_to_match list
+  | Match_single of single_value_to_match
 
 let mark_implicit_borrow_memory_address_paths paths occ =
   let mark_one path =
     (* borrow the memory address of the parent *)
     UF.singleton
-      (UF.Path.child path UsageTree.Projection.Memory_address)
+      (UF.Path.child path Usage_tree.Projection.Memory_address)
       (* Currently we just generate a dummy unique_barrier ref that won't be
          consumed. The distinction between implicit and explicit borrowing is
          still needed because they are handled differently in closures *)
-      (MaybeShared (Maybe_shared.singleton (ref None) occ))
+      (Maybe_shared (Maybe_shared.singleton (ref None) occ))
   in
   UF.pars (List.map (fun path -> mark_one path) paths)
 
@@ -638,11 +638,11 @@ let _mark_borrow_paths paths occ =
   UF.pars (List.map (fun path -> mark_one path) paths)
 
 let mark_implicit_borrow_memory_address = function
-  | MatchSingle (paths, loc, _) ->
+  | Match_single (paths, loc, _) ->
       mark_implicit_borrow_memory_address_paths paths
-        { loc; reason = DirectUse }
+        { loc; reason = Direct_use }
   (* it's still a tuple - we own it and nothing to do here *)
-  | MatchTuple _ -> UF.empty
+  | Match_tuple _ -> UF.empty
 
 let _mark_shared paths occ =
   let mark_one path = UF.singleton path (Shared occ) in
@@ -650,7 +650,7 @@ let _mark_shared paths occ =
 
 let mark_maybe_unique paths unique_use occ =
   let mark_one path =
-    UF.singleton path (MaybeUnique (Maybe_unique.singleton unique_use occ))
+    UF.singleton path (Maybe_unique (Maybe_unique.singleton unique_use occ))
   in
   UF.pars (List.map (fun path -> mark_one path) paths)
 
@@ -661,14 +661,14 @@ let mark_maybe_unique paths unique_use occ =
 *)
 let pattern_match_var ~loc id value =
   match value with
-  | MatchSingle (paths, _, _) -> (value, Ienv.singleton id paths, UF.empty)
-  | MatchTuple values ->
+  | Match_single (paths, _, _) -> (value, Ienv.singleton id paths, UF.empty)
+  | Match_tuple values ->
       let path = UF.Path.fresh_root_of_ident id in
       let ienv = Ienv.singleton id [ path ] in
       (* Mark all ps as seen, as we bind the tuple to a variable. *)
       (* Can we make it aliases instead of used? Hard to do if we want
          to preserve the tree-ness *)
-      ( MatchSingle ([ path ], loc, None),
+      ( Match_single ([ path ], loc, None),
         ienv,
         UF.seqs
           (List.map
@@ -677,7 +677,7 @@ let pattern_match_var ~loc id value =
                | None -> UF.empty
                | Some unique_use ->
                    let occ =
-                     { Occurrence.loc = loc'; reason = MatchTupleWithVar loc }
+                     { Occurrence.loc = loc'; reason = Match_tuple_with_var loc }
                    in
                    mark_maybe_unique paths unique_use occ)
              values) )
@@ -706,34 +706,34 @@ let rec pattern_match pat value =
           let ienvs, ufs =
             List.split
               (List.map2
-                 (fun pat value -> pattern_match pat (MatchSingle value))
+                 (fun pat value -> pattern_match pat (Match_single value))
                  pats values)
           in
           (Ienv.seqs ienvs, UF.seqs ufs))
         ~extract_pat:Fun.id
-        ~mk_proj:(fun i _ -> UsageTree.Projection.Tuple_field i)
+        ~mk_proj:(fun i _ -> Usage_tree.Projection.Tuple_field i)
         value pats
   | Tpat_construct (lbl, _, pats, _) ->
       pat_proj ~extract_pat:Fun.id
         ~mk_proj:(fun i _ ->
-          UsageTree.Projection.Construct_field (Longident.last lbl.txt, i))
+          Usage_tree.Projection.Construct_field (Longident.last lbl.txt, i))
         value pats
   | Tpat_variant (lbl, mpat, _) ->
       let uf = mark_implicit_borrow_memory_address value in
       let t =
         match value with
-        | MatchSingle (paths, _, modes) ->
+        | Match_single (paths, _, modes) ->
             ( UF.Path.child_of_many paths
-                (UsageTree.Projection.Variant_field lbl),
+                (Usage_tree.Projection.Variant_field lbl),
               pat.pat_loc,
               modes )
-        | MatchTuple _ ->
+        | Match_tuple _ ->
             (* matching a tuple against variant can't pass type checking *)
             assert false
       in
       let ienv, uf' =
         match mpat with
-        | Some pat' -> pattern_match pat' (MatchSingle t)
+        | Some pat' -> pattern_match pat' (Match_single t)
         | None -> (Ienv.empty, UF.empty)
       in
       (ienv, UF.seq uf uf')
@@ -741,20 +741,20 @@ let rec pattern_match pat value =
       pat_proj
         ~extract_pat:(fun (_, _, pat) -> pat)
         ~mk_proj:(fun _ (_, l, _) ->
-          UsageTree.Projection.Record_field l.lbl_name)
+          Usage_tree.Projection.Record_field l.lbl_name)
         value pats
   | Tpat_array (_, pats) -> (
       match value with
-      | MatchTuple _ -> assert false
-      | MatchSingle (paths, loc, _) ->
-          let occ = { Occurrence.loc; reason = DirectUse } in
+      | Match_tuple _ -> assert false
+      | Match_single (paths, loc, _) ->
+          let occ = { Occurrence.loc; reason = Direct_use } in
           let uf = mark_implicit_borrow_memory_address_paths paths occ in
           let ienvs, ufs =
             List.split
               (List.map
                  (fun pat ->
                    let value =
-                     MatchSingle
+                     Match_single
                        ([ UF.Path.fresh_root "array_field" ], loc, None)
                    in
                    pattern_match pat value)
@@ -778,8 +778,8 @@ and pat_proj :
       _ =
  fun ?(handle_tuple = fun _ -> assert false) ~extract_pat ~mk_proj value pats ->
   match value with
-  | MatchSingle (paths, loc, _) ->
-      let occ = { Occurrence.loc; reason = DirectUse } in
+  | Match_single (paths, loc, _) ->
+      let occ = { Occurrence.loc; reason = Direct_use } in
       let uf = mark_implicit_borrow_memory_address_paths paths occ in
       let ienvs, ufs =
         List.split
@@ -788,11 +788,11 @@ and pat_proj :
                let proj = mk_proj i patlike in
                let paths = UF.Path.child_of_many paths proj in
                let t = (paths, loc, None) in
-               pattern_match (extract_pat patlike) (MatchSingle t))
+               pattern_match (extract_pat patlike) (Match_single t))
              pats)
       in
       (Ienv.seqs ienvs, UF.seqs (uf :: ufs))
-  | MatchTuple values -> handle_tuple values
+  | Match_tuple values -> handle_tuple values
 
 (* We ignore exceptions in uniqueness analysis. *)
 let comp_pattern_match pat value =
@@ -811,13 +811,13 @@ let maybe_paths_of_ident ?maybe_unique ienv path =
       (* TODO: for better error message, we should record in ienv why some
          variables are not in it. *)
       | None ->
-          Option.iter (force OutOfModClass) maybe_unique;
+          Option.iter (force Out_of_mod_class) maybe_unique;
           None
       | Some paths -> Some paths)
   (* accessing a module, which is forced by typemod to be shared and many.
      Here we force it again just to be sure *)
   | Path.Pdot _ ->
-      Option.iter (force ValueFromModClass) maybe_unique;
+      Option.iter (force Value_from_mod_class) maybe_unique;
       None
   | Path.Papply _ -> assert false
 
@@ -826,7 +826,7 @@ let maybe_paths_of_ident ?maybe_unique ienv path =
    modules/classes and their surrounding environment coarsely. To be specific,
    all references in the modules/classes pointing to the environment are treated
    as many and shared. This translates to enforcement on both ends: - inside the
-   module, those uses needs to be forced as many and shared - need a UsageForest
+   module, those uses needs to be forced as many and shared - need a Usage_forest
    which marks those uses as many and shared, so that the parent expression can
    detect conflict if any.
 
@@ -844,7 +844,7 @@ let open_variables ienv f =
               | None -> ()
               | Some paths ->
                   let occ =
-                    { Occurrence.loc = e.exp_loc; reason = DirectUse }
+                    { Occurrence.loc = e.exp_loc; reason = Direct_use }
                   in
                   let maybe_unique = Maybe_unique.singleton unique_use occ in
                   ll := (paths, maybe_unique) :: !ll)
@@ -866,7 +866,7 @@ let mark_shared_open_variables ienv f _loc =
            module/class, maybe_paths_of_ident will force free variables to
            shared, because ienv given to it will not include the outside
            variables. We nevertheless force it here just to be sure *)
-        Maybe_unique.force_shared_boundary maybe_unique FreeVariableOfModClass;
+        Maybe_unique.force_shared_boundary maybe_unique Free_var_of_mod_class;
         let shared =
           Usage.Shared (Maybe_unique.extract_occurrence maybe_unique)
         in
@@ -894,7 +894,7 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
   | Texp_ident _ -> (
       match check_uniqueness_exp' exp ienv with
       | Some (paths, unique_use), uf ->
-          let occ = { Occurrence.loc; reason = DirectUse } in
+          let occ = { Occurrence.loc; reason = Direct_use } in
           UF.seq uf (mark_maybe_unique paths unique_use occ)
       | None, uf -> uf)
   | Texp_constant _ -> UF.empty
@@ -906,7 +906,7 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
       (* `param` is only a hint not a binder;
          actual binding done in cases by Tpat_var and Tpat_alias *)
       let value =
-        MatchSingle ([ UF.Path.fresh_root_of_ident param ], loc, None)
+        Match_single ([ UF.Path.fresh_root_of_ident param ], loc, None)
       in
       let uf = check_uniqueness_cases value cases ienv in
       (* we are constructing a closure here, and therefore any borrowing of free
@@ -914,7 +914,7 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
       let uf' =
         UF.map
           (function
-            | MaybeShared l ->
+            | Maybe_shared l ->
                 (* only implicit borrowing lifted. *)
                 Shared (Maybe_shared.extract_occurrence l)
             | _ -> Unused)
@@ -976,9 +976,9 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
                     | l, Kept _ ->
                         let ps =
                           UF.Path.child_of_many ps
-                            (UsageTree.Projection.Record_field l.lbl_name)
+                            (Usage_tree.Projection.Record_field l.lbl_name)
                         in
-                        let occ = { Occurrence.loc; reason = DirectUse } in
+                        let occ = { Occurrence.loc; reason = Direct_use } in
                         mark_maybe_unique ps unique_use occ
                     | _, Overridden (_, e) -> check_uniqueness_exp_ e ienv)
                   fields
@@ -988,7 +988,7 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
   | Texp_field _ -> (
       match check_uniqueness_exp' exp ienv with
       | Some (ps, unique_use), uf ->
-          let occ = { Occurrence.loc; reason = DirectUse } in
+          let occ = { Occurrence.loc; reason = Direct_use } in
           UF.seq uf (mark_maybe_unique ps unique_use occ)
       | None, uf -> uf)
   | Texp_setfield (exp', _, _, _, e) -> (
@@ -998,7 +998,7 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
       match check_uniqueness_exp' exp' ienv with
       | None, uf' -> UF.seq uf uf'
       | Some (ps, _), uf' ->
-          let occ = { Occurrence.loc; reason = DirectUse } in
+          let occ = { Occurrence.loc; reason = Direct_use } in
           UF.seqs [ uf; uf'; mark_implicit_borrow_memory_address_paths ps occ ])
   | Texp_array (_, es, _) ->
       UF.seqs (List.map (fun e -> check_uniqueness_exp_ e ienv) es)
@@ -1072,7 +1072,7 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
       in
       let uf2 =
         check_uniqueness_cases
-          (MatchSingle ([ UF.Path.fresh_root "letop" ], loc, None))
+          (Match_single ([ UF.Path.fresh_root "letop" ], loc, None))
           [ body ] ienv
       in
       UF.seqs ((uf0 :: ufs1) @ [ uf2 ])
@@ -1100,7 +1100,7 @@ and check_uniqueness_exp' exp ienv : (UF.Path.t list * unique_use) option * UF.t
     =
   match exp.exp_desc with
   | Texp_ident (p, _, _, _, unique_use) -> (
-      let occ = { Occurrence.loc = exp.exp_loc; reason = DirectUse } in
+      let occ = { Occurrence.loc = exp.exp_loc; reason = Direct_use } in
       let maybe_unique = (unique_use, occ) in
       match maybe_paths_of_ident ~maybe_unique ienv p with
       | None -> (None, UF.empty)
@@ -1110,11 +1110,11 @@ and check_uniqueness_exp' exp ienv : (UF.Path.t list * unique_use) option * UF.t
       | Some (paths, _), uf ->
           (* accessing the field meaning borrowing the parent record's mem
              block. Note that the field itself is not borrowed or used *)
-          let occ = { Occurrence.loc = e.exp_loc; reason = DirectUse } in
+          let occ = { Occurrence.loc = e.exp_loc; reason = Direct_use } in
           let uf' = mark_implicit_borrow_memory_address_paths paths occ in
           let paths' =
             UF.Path.child_of_many paths
-              (UsageTree.Projection.Record_field l.lbl_name)
+              (Usage_tree.Projection.Record_field l.lbl_name)
           in
           (Some (paths', modes), UF.seq uf uf')
       | None, uf -> (None, uf))
@@ -1133,10 +1133,10 @@ and init_value_to_match exp ienv =
       let ps, ufs =
         List.split (List.map (fun e -> init_single_value_to_match e ienv) es)
       in
-      (MatchTuple ps, UF.seqs ufs)
+      (Match_tuple ps, UF.seqs ufs)
   | _ ->
       let s, uf = init_single_value_to_match exp ienv in
-      (MatchSingle s, uf)
+      (Match_single s, uf)
 
 (* returns ienv and uf
    ienv is the new bindings introduced;
@@ -1217,7 +1217,7 @@ and check_uniqueness_binding_op bo exp ienv =
   let uf0 =
     match maybe_paths_of_ident ienv bo.bop_op_path with
     | Some paths ->
-        let occ = { Occurrence.loc = exp.exp_loc; reason = DirectUse } in
+        let occ = { Occurrence.loc = exp.exp_loc; reason = Direct_use } in
         let unique_use = (Uniqueness.shared, Linearity.many) in
         mark_maybe_unique paths unique_use occ
     | None -> UF.empty
@@ -1242,15 +1242,15 @@ let report_error = function
       in
       let there_reason =
         match there.reason with
-        | DirectUse -> Format.dprintf ""
-        | MatchTupleWithVar _loc' ->
+        | Direct_use -> Format.dprintf ""
+        | Match_tuple_with_var _loc' ->
             Format.dprintf "which is in a tuple matched against a variable"
       in
       let sub = [ Location.msg ~loc:there.loc "%t" there_reason ] in
       let here_reason =
         match here.reason with
-        | DirectUse -> ""
-        | MatchTupleWithVar _ -> "It is in a tuple matched against a variable."
+        | Direct_use -> ""
+        | Match_tuple_with_var _ -> "It is in a tuple matched against a variable."
       in
       Location.errorf ~loc:here.loc ~sub
         "@[This is %s so cannot be used twice. %s Another use is @]"
@@ -1258,9 +1258,9 @@ let report_error = function
   | Boundary { occ; axis; reason } ->
       let reason =
         match reason with
-        | ValueFromModClass -> "another module or class"
-        | FreeVariableOfModClass -> "outside the current module or class"
-        | OutOfModClass -> "outside the current module or class"
+        | Value_from_mod_class -> "another module or class"
+        | Free_var_of_mod_class -> "outside the current module or class"
+        | Out_of_mod_class -> "outside the current module or class"
       in
       let error =
         match axis with
