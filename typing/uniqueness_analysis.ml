@@ -240,6 +240,22 @@ module Usage = struct
     | Shared occ -> occ
     | Maybe_unique l -> Maybe_unique.extract_occurrence l
 
+  (** Whether m0 can be subsumed by m1. It is conservative and could return
+   false when it should return true, but that is fine as it's only used for
+   optimization *)
+  let sub m0 m1 =
+    match m0, m1 with
+    | Unused, _ -> true
+    | _, Unused -> false
+    | Borrowed _, _ -> true
+    | _, Borrowed _ -> false
+    | Maybe_shared _, Maybe_shared _ -> false
+    | Maybe_shared _, _ -> true
+    | _, Maybe_shared _ -> false
+    | Shared _, _ -> true
+    | _, Shared _ -> false
+    | Maybe_unique _, Maybe_unique _ -> false
+
   let par m0 m1 =
     match (m0, m1) with
     | Unused, m | m, Unused -> m
@@ -323,14 +339,6 @@ module Usage_tree = struct
         | Record_field of string
         | Construct_field of string * int
         | Variant_field of label
-        (* TODO: it would be nicer to remove this memory_address thing for the
-           following reason: Memory_address having Memory_address as child is
-           non-sense and yet representable. Another reason: awkward in error
-           message printing. The root cause of both reasons is that
-           foo.Memory_address is not a child of foo, but foo itself.
-
-           Instead we should represent Memory_address as a property on the value
-           itself (instead of as its child). *)
         | Memory_address
 
       let print ppf = function
@@ -402,33 +410,36 @@ module Usage_tree = struct
   end
 
   let leaf usage = { usage; children = Projection.Map.empty }
-  let empty = leaf Usage.Unused
 
-  (* lift par and seq to trees *)
-  let rec par t0 t1 =
+  let _unused = leaf Usage.Unused
+
+  let rec map2 f t0 t1 =
     {
-      usage = Usage.par t0.usage t1.usage;
+      usage = f t0.usage t1.usage;
       children =
-        Projection.Map.merge
+        let dumb_merge ()=
+          Projection.Map.merge
           (fun _proj c0 c1 ->
-            let c0 = Option.value c0 ~default:t0 in
-            let c1 = Option.value c1 ~default:t1 in
-            Some (par c0 c1))
+            let c0 = Option.value c0 ~default:(leaf t0.usage) in
+            let c1 = Option.value c1 ~default:(leaf t1.usage) in
+            Some (map2 f c0 c1))
           t0.children t1.children;
+        in
+        match Projection.Map.is_empty t0.children,
+              Projection.Map.is_empty t1.children
+        with
+        | true, true -> Projection.Map.empty
+        | true, false ->
+          if Usage.sub t0.usage t1.usage then t1.children
+          else dumb_merge ()
+        | false, true ->
+          if Usage.sub t1.usage t0.usage then t0.children
+          else dumb_merge ()
+        | false, false -> dumb_merge ()
     }
 
-  let rec seq t0 t1 =
-    let usage = Usage.seq t0.usage t1.usage in
-    {
-      usage;
-      children =
-        Projection.Map.merge
-          (fun _proj c0 c1 ->
-            let c0 = match c0 with None -> leaf t0.usage | Some c -> c in
-            let c1 = match c1 with None -> leaf t1.usage | Some c -> c in
-            Some (seq c0 c1))
-          t0.children t1.children;
-    }
+  let _par t0 t1 = map2 Usage.par t0 t1
+  let _seq t0 t1 = map2 Usage.seq t0 t1
 
   let rec singleton path leaf =
     match path with
@@ -493,28 +504,24 @@ module Usage_forest = struct
       (Root_id.fresh_of_ident ident, Usage_tree.Path.root)
   end
 
-  let empty = Root_id.Map.empty
+  let unused = Root_id.Map.empty
 
-  let par : t -> t -> t =
-   fun t0 t1 ->
+  let map2 f t0 t1 =
     Root_id.Map.merge
       (fun _rootid t0 t1 ->
-        let t0 = Option.value t0 ~default:Usage_tree.empty in
-        let t1 = Option.value t1 ~default:Usage_tree.empty in
-        Some (Usage_tree.par t0 t1))
-      t0 t1
+        match t0, t1 with
+        | None, None -> assert false
+        | None, Some t1 -> Some t1
+        | Some t0, None -> Some t0
+        | Some t0, Some t1 -> Some (Usage_tree.map2 f t0 t1)
+        ) t0 t1
 
-  let seq : t -> t -> t =
-   fun t0 t1 ->
-    Root_id.Map.merge
-      (fun _rootid t0 t1 ->
-        let t0 = Option.value t0 ~default:Usage_tree.empty in
-        let t1 = Option.value t1 ~default:Usage_tree.empty in
-        Some (Usage_tree.seq t0 t1))
-      t0 t1
+  let par t0 t1 = map2 Usage.par t0 t1
 
-  let pars l = List.fold_left par empty l
-  let seqs l = List.fold_left seq empty l
+  let seq t0 t1 = map2 Usage.seq t0 t1
+
+  let pars l = List.fold_left par unused l
+  let seqs l = List.fold_left seq unused l
 
   let singleton ((rootid, path') : Path.t) leaf =
     Root_id.Map.singleton rootid (Usage_tree.singleton path' leaf)
@@ -597,7 +604,7 @@ let mark_implicit_borrow_memory_address = function
   | Match_single (paths, loc, _) ->
       mark_implicit_borrow_memory_address_paths paths { Occurrence.loc }
   (* it's still a tuple - we own it and nothing to do here *)
-  | Match_tuple _ -> UF.empty
+  | Match_tuple _ -> UF.unused
 
 let _mark_shared paths occ =
   let mark_one path = UF.singleton path (Shared occ) in
@@ -616,7 +623,7 @@ let mark_maybe_unique paths unique_use occ =
 *)
 let pattern_match_var ~loc id value =
   match value with
-  | Match_single (paths, _, _) -> (value, Ienv.singleton id paths, UF.empty)
+  | Match_single (paths, _, _) -> (value, Ienv.singleton id paths, UF.unused)
   | Match_tuple values ->
       let path = UF.Path.fresh_root_of_ident id in
       let ienv = Ienv.singleton id [ path ] in
@@ -629,7 +636,7 @@ let pattern_match_var ~loc id value =
           (List.map
              (fun (paths, loc', modes) ->
                match modes with
-               | None -> UF.empty
+               | None -> UF.unused
                | Some unique_use ->
                    let occ = { Occurrence.loc = loc' } in
                    mark_maybe_unique paths unique_use occ)
@@ -641,7 +648,7 @@ ienv is the new bindings introduced;
 uf is the usage caused by the pattern matching *)
 let rec pattern_match pat value =
   match pat.pat_desc with
-  | Tpat_any -> (Ienv.empty, UF.empty)
+  | Tpat_any -> (Ienv.empty, UF.unused)
   | Tpat_var (id, _, _) ->
       let _, ienv, uf = pattern_match_var ~loc:pat.pat_loc id value in
       (ienv, uf)
@@ -687,7 +694,7 @@ let rec pattern_match pat value =
       let ienv, uf' =
         match mpat with
         | Some pat' -> pattern_match pat' (Match_single t)
-        | None -> (Ienv.empty, UF.empty)
+        | None -> (Ienv.empty, UF.unused)
       in
       (ienv, UF.seq uf uf')
   | Tpat_record (pats, _) ->
@@ -751,7 +758,7 @@ and pat_proj :
 let comp_pattern_match pat value =
   match split_pattern pat with
   | Some pat', _ -> pattern_match pat' value
-  | None, _ -> (Ienv.empty, UF.empty)
+  | None, _ -> (Ienv.empty, UF.unused)
 
 let maybe_paths_of_ident ?maybe_unique ienv path =
   let force reason (unique_use, occ) =
@@ -849,7 +856,7 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
           let occ = { Occurrence.loc } in
           UF.seq uf (mark_maybe_unique paths unique_use occ)
       | None, uf -> uf)
-  | Texp_constant _ -> UF.empty
+  | Texp_constant _ -> UF.unused
   | Texp_let (_, vbs, exp') ->
       let ienv', uf = check_uniqueness_value_bindings_ vbs ienv in
       let uf' = check_uniqueness_exp_ exp' (Ienv.seq ienv ienv') in
@@ -878,7 +885,7 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
           (fun (_, arg) ->
             match arg with
             | Arg e -> check_uniqueness_exp_ e ienv
-            | Omitted _ -> UF.empty)
+            | Omitted _ -> UF.unused)
           xs
       in
       UF.seqs (uf :: ufs)
@@ -895,7 +902,7 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
       UF.seqs (List.map (fun e -> check_uniqueness_exp_ e ienv) es)
   | Texp_construct (_, _, es, _) ->
       UF.seqs (List.map (fun e -> check_uniqueness_exp_ e ienv) es)
-  | Texp_variant (_, None) -> UF.empty
+  | Texp_variant (_, None) -> UF.unused
   | Texp_variant (_, Some (e, _)) -> check_uniqueness_exp_ e ienv
   | Texp_record { fields; extended_expression } -> (
       let check_fields =
@@ -904,7 +911,7 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
              (Array.map
                 (fun field ->
                   match field with
-                  | _, Kept _ -> UF.empty
+                  | _, Kept _ -> UF.unused
                   | _, Overridden (_, e) -> check_uniqueness_exp_ e ienv)
                 fields))
       in
@@ -988,8 +995,8 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
       let uf2 = check_uniqueness_exp_ for_body ienv in
       UF.seqs [ uf0; uf1; uf2 ]
   | Texp_send (e, _, _, _) -> check_uniqueness_exp_ e ienv
-  | Texp_new _ -> UF.empty
-  | Texp_instvar _ -> UF.empty
+  | Texp_new _ -> UF.unused
+  | Texp_instvar _ -> UF.unused
   | Texp_setinstvar (_, _, _, e) -> check_uniqueness_exp_ e ienv
   | Texp_override (_, ls) ->
       UF.seqs (List.map (fun (_, _, e) -> check_uniqueness_exp_ e ienv) ls)
@@ -1026,8 +1033,8 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
           [ body ] ienv
       in
       UF.seqs ((uf0 :: ufs1) @ [ uf2 ])
-  | Texp_unreachable -> UF.empty
-  | Texp_extension_constructor _ -> UF.empty
+  | Texp_unreachable -> UF.unused
+  | Texp_extension_constructor _ -> UF.unused
   | Texp_open (open_decl, e) ->
       let uf =
         mark_shared_open_variables ienv
@@ -1036,7 +1043,7 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
       in
       UF.seq uf (check_uniqueness_exp_ e ienv)
   | Texp_probe { handler } -> check_uniqueness_exp_ handler ienv
-  | Texp_probe_is_enabled _ -> UF.empty
+  | Texp_probe_is_enabled _ -> UF.unused
   | Texp_exclave e -> check_uniqueness_exp_ e ienv
 
 (*
@@ -1053,8 +1060,8 @@ and check_uniqueness_exp' exp ienv : (UF.Path.t list * unique_use) option * UF.t
       let occ = { Occurrence.loc = exp.exp_loc } in
       let maybe_unique = (unique_use, occ) in
       match maybe_paths_of_ident ~maybe_unique ienv p with
-      | None -> (None, UF.empty)
-      | Some ps -> (Some (ps, unique_use), UF.empty))
+      | None -> (None, UF.unused)
+      | Some ps -> (Some (ps, unique_use), UF.unused))
   | Texp_field (e, _, l, modes, _) -> (
       match check_uniqueness_exp' e ienv with
       | Some (paths, _), uf ->
@@ -1123,7 +1130,7 @@ and check_uniqueness_cases_ :
            let ienv', uf = ptm case.c_lhs value in
            let uf' =
              match case.c_guard with
-             | None -> UF.empty
+             | None -> UF.unused
              | Some g -> check_uniqueness_exp_ g (Ienv.seq ienv ienv')
            in
            (ienv', UF.seq uf uf'))
@@ -1170,7 +1177,7 @@ and check_uniqueness_binding_op bo exp ienv =
         let occ = { Occurrence.loc = exp.exp_loc } in
         let unique_use = (Uniqueness.shared, Linearity.many) in
         mark_maybe_unique paths unique_use occ
-    | None -> UF.empty
+    | None -> UF.unused
   in
   let uf1 = check_uniqueness_exp_ bo.bop_exp ienv in
   UF.seq uf0 uf1
