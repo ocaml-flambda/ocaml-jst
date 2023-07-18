@@ -8397,7 +8397,7 @@ let report_error ~loc env = function
         match e with
         | `Locality -> "escape their region"
         | `Uniqueness -> assert false
-        | `Linearity -> "will be at once but will be used at many"
+        | `Linearity -> "will be once but will be used many"
       in
       Location.errorf ~loc
         "This function or one of its parameters %s @ \

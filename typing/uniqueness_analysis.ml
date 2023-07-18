@@ -72,8 +72,10 @@ module Maybe_unique : sig
   (** force this usage to be shared, due to boundary crossing. [reason] is,
       well, the reason *)
 
-  val represented : t -> Mode.Uniqueness.t * Mode.Linearity.t
-  (** returns the modes represented by this usage. *)
+  val uniqueness : t -> Mode.Uniqueness.t
+  (** Returns the uniqueness represented by this usage. If this identifier is
+      expected to be unique in any branch, it will return unique. If the current
+      usage is forced, it will return shared. *)
 end = struct
   type t = (unique_use * Occurrence.t) list
   (** Occurrences with modes to be forced shared and many in the future if
@@ -87,15 +89,8 @@ end = struct
 
   let singleton unique_use occ : t = [ (unique_use, occ) ]
 
-  let represented l =
-    (* if any branch uses the value uniquely, then it is unique as a whole *)
-    let uniqueness =
-      Mode.Uniqueness.meet (List.map (fun ((uniq, _), _) -> uniq) l)
-    in
-    let linearity =
-      Mode.Linearity.join (List.map (fun ((_, lin), _) -> lin) l)
-    in
-    (uniqueness, linearity)
+  let uniqueness l =
+    Mode.Uniqueness.meet (List.map (fun ((uniq, _), _) -> uniq) l)
 
   exception CannotForce of { occ : Occurrence.t; axis : axis }
 
@@ -129,11 +124,14 @@ module Maybe_shared : sig
   (** The type representing a usage that could be either shared or borrowed *)
 
   val extract_occurrence : t -> Occurrence.t
-  (** extract an arbitrary occurrence from the usage *)
+  (** Extract an arbitrary occurrence from the usage *)
 
   val set_barrier : t -> Uniqueness.t -> unit
-  (** set the barrier. The uniqueness represents usage immediately following the
-      current usage *)
+  (** Set the barrier. The uniqueness mode represents the usage immediately
+      following the current usage. If that mode is Unique, the current usage
+       must be Borrowed (hence no code motion); if that mode is not restricted
+       to Unique, this usage can be Borrowed or Shared (prefered). Can be called
+       only once; raises if set multiple times *)
 
   val par : t -> t -> t
   val singleton : unique_barrier ref -> Occurrence.t -> t
@@ -282,7 +280,7 @@ module Usage = struct
             m1. I.e. if m1 is Unique, then m0 cannot be Shared. After the type
             checking of the whole file, m1 will correctly tells whether it needs
             to be Unique, and by extension whether m0 can be Shared. *)
-        let uniq, _ = Maybe_unique.represented l1 in
+        let uniq = Maybe_unique.uniqueness l1 in
         Maybe_shared.set_barrier l0 uniq;
         m1
     | Shared _, Borrowed _ -> m0

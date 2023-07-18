@@ -2935,8 +2935,8 @@ let lock_mode ~errors ~loc env id vmode locks =
     (fun (vmode, reason) lock ->
       match lock with
       | Region_lock -> (Mode.Value.local_to_regional vmode, reason)
-      | Escape_lock escaping_context -> begin
-          match
+      | Escape_lock escaping_context ->
+          (match
             Mode.Regionality.submode
               (Mode.Value.locality vmode)
               (Mode.Regionality.global)
@@ -2944,10 +2944,9 @@ let lock_mode ~errors ~loc env id vmode locks =
           | Ok () -> (vmode, reason)
           | Error _ ->
               may_lookup_error errors loc env
-                (Local_value_escaping (id, escaping_context))
-        end
-      | Share_lock shared_context -> begin
-          ( match
+                (Local_value_escaping (id, escaping_context)))
+      | Share_lock shared_context ->
+          (match
               Mode.Linearity.submode
                 (Mode.Value.linearity vmode)
                 Mode.Linearity.many
@@ -2959,8 +2958,7 @@ let lock_mode ~errors ~loc env id vmode locks =
           );
           let vmode = Mode.Value.with_uniqueness Mode.Uniqueness.shared vmode in
           vmode, Some shared_context
-        end
-      | Closure_lock (closure_context, locality, linearity) -> begin
+      | Closure_lock (closure_context, locality, linearity) ->
           (match
             Mode.Regionality.submode
               (Mode.Value.locality vmode)
@@ -2984,9 +2982,8 @@ let lock_mode ~errors ~loc env id vmode locks =
           in
           let vmode = Mode.Value.with_uniqueness uniqueness vmode in
           vmode, reason
-        end
-      | Exclave_lock -> begin
-          match
+      | Exclave_lock ->
+          (match
             Mode.Regionality.submode
               (Mode.Value.locality vmode)
               Mode.Regionality.regional
@@ -2994,8 +2991,7 @@ let lock_mode ~errors ~loc env id vmode locks =
           | Ok () -> (Mode.Value.regional_to_local vmode, reason)
           | Error _ ->
               may_lookup_error errors loc env
-                (Local_value_used_in_exclave id)
-        end
+                (Local_value_used_in_exclave id))
     ) (vmode, None) locks
 
 let lookup_ident_value ~errors ~use ~loc name env =
