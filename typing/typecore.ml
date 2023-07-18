@@ -2736,7 +2736,7 @@ let partial_pred ~lev ~splitting_mode ~allow_modules ?(explode=0)
       } in
   try
     reset_pattern allow_modules;
-    let alloc_mode = simple_pat_mode Value.legacy in
+    let alloc_mode = simple_pat_mode Value.min_mode in
     let typed_p = type_pat Value ~lev ~mode ~alloc_mode env p expected_ty in
     set_state state env;
     (* types are invalidated but we don't need them here *)
@@ -4381,13 +4381,8 @@ and type_expect_
        [Nolabel, sbody]) ->
       if txt = "extension.unique" && not (Language_extension.is_enabled Unique) then
         raise (Typetexp.Error (loc, Env.empty, Unsupported_extension Unique));
-      let mode = if mode_cross env ty_expected then mode_max
-      else begin
-        let mode = mode_unique expected_mode in
-        submode ~loc ~env ~reason:Other mode.mode expected_mode;
-        mode
-      end
-      in
+      let mode = mode_unique expected_mode in
+      let mode = expect_mode_cross env ty_expected mode in
       let exp =
         type_expect ?in_function ~recarg env mode sbody ty_expected_explained
       in
@@ -4398,13 +4393,9 @@ and type_expect_
       [Nolabel, sbody]) ->
       if txt = "extension.once" && not (Language_extension.is_enabled Unique) then
         raise (Typetexp.Error (loc, Env.empty, Unsupported_extension Unique));
-      let mode = if mode_cross env ty_expected then mode_max
-      else begin
-        let mode = mode_once expected_mode in
-        submode ~loc ~env ~reason:Other mode.mode expected_mode;
-        mode
-      end
-      in
+      let expected_mode = expect_mode_cross env ty_expected expected_mode in
+      let mode = mode_once expected_mode in
+      submode ~loc ~env ~reason:Other mode.mode expected_mode;
       let exp =
         type_expect ?in_function ~recarg env mode sbody ty_expected_explained
       in
@@ -4415,18 +4406,9 @@ and type_expect_
        [Nolabel, sbody]) ->
       if txt = "extension.local" && not (Language_extension.is_enabled Local) then
         raise (Typetexp.Error (loc, Env.empty, Unsupported_extension Local));
-      let mode = if mode_cross env ty_expected then
-        (* when mode crosses, we check the inner expr with the most relaxed mode *)
-        mode_max
-        (* moreover, because mode crosses, expected_mode is completely useless *)
-      else begin
-        (* if mode does not cross, we require the inner expr to be exact local *)
-        let mode = mode_strictly_local expected_mode in
-        (* expected.mode must be local *)
-        submode ~loc ~env ~reason:Other mode.mode expected_mode;
-        mode
-      end
-      in
+      let expected_mode = expect_mode_cross env ty_expected expected_mode in
+      let mode = mode_strictly_local expected_mode in
+      submode ~loc ~env ~reason:Other mode.mode expected_mode;
       let exp =
         type_expect ?in_function ~recarg env mode sbody ty_expected_explained
       in

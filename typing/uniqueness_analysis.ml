@@ -417,7 +417,7 @@ module Usage_tree = struct
     {
       usage = f t0.usage t1.usage;
       children =
-        let dumb_merge ()=
+        let merge ()=
           Projection.Map.merge
           (fun _proj c0 c1 ->
             let c0 = Option.value c0 ~default:(leaf t0.usage) in
@@ -431,11 +431,11 @@ module Usage_tree = struct
         | true, true -> Projection.Map.empty
         | true, false ->
           if Usage.sub t0.usage t1.usage then t1.children
-          else dumb_merge ()
+          else merge ()
         | false, true ->
           if Usage.sub t1.usage t0.usage then t0.children
-          else dumb_merge ()
-        | false, false -> dumb_merge ()
+          else merge ()
+        | false, false -> merge ()
     }
 
   let _par t0 t1 = map2 Usage.par t0 t1
