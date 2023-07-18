@@ -22,18 +22,9 @@ module Uniqueness = Mode.Uniqueness
 module Linearity = Mode.Linearity
 
 module Occurrence = struct
-  (** The occurrence of a potentially unique ident in the expression. *)
-  type reason =
-    | Direct_use  (** it is used directly *)
-    | Match_tuple_with_var of Location.t
-        (** When matching on a tuple, we do not construct a tuple and match on it,
-      but rather match on the individual elements of the tuple -- this preserves
-      their uniqueness. But in a pattern an alias to the tuple could be created,
-      in which case we have to construct the tuple and retroactively mark the
-      elements as seen.
-      Location points to the Tpat_var or Tpat_alias *)
-
-  type t = { loc : Location.t; reason : reason }
+  (** The occurrence of a potentially unique ident in the expression. Currently
+  it's just the location; might add more things in the future *)
+  type t = {loc : Location.t}
 end
 
 type axis = [ `Uniqueness | `Linearity ]
@@ -624,7 +615,7 @@ let _mark_borrow_paths paths occ =
 let mark_implicit_borrow_memory_address = function
   | Match_single (paths, loc, _) ->
       mark_implicit_borrow_memory_address_paths paths
-        { loc; reason = Direct_use }
+        {Occurrence.loc}
   (* it's still a tuple - we own it and nothing to do here *)
   | Match_tuple _ -> UF.empty
 
@@ -661,10 +652,7 @@ let pattern_match_var ~loc id value =
                | None -> UF.empty
                | Some unique_use ->
                    let occ =
-                     {
-                       Occurrence.loc = loc';
-                       reason = Match_tuple_with_var loc;
-                     }
+                  {Occurrence.loc = loc'}
                    in
                    mark_maybe_unique paths unique_use occ)
              values) )
@@ -734,7 +722,7 @@ let rec pattern_match pat value =
       match value with
       | Match_tuple _ -> assert false
       | Match_single (paths, loc, _) ->
-          let occ = { Occurrence.loc; reason = Direct_use } in
+          let occ = {Occurrence.loc} in
           let uf = mark_implicit_borrow_memory_address_paths paths occ in
           let ienvs, ufs =
             List.split
@@ -766,7 +754,7 @@ and pat_proj :
  fun ?(handle_tuple = fun _ -> assert false) ~extract_pat ~mk_proj value pats ->
   match value with
   | Match_single (paths, loc, _) ->
-      let occ = { Occurrence.loc; reason = Direct_use } in
+      let occ = {Occurrence.loc} in
       let uf = mark_implicit_borrow_memory_address_paths paths occ in
       let ienvs, ufs =
         List.split
@@ -831,7 +819,7 @@ let open_variables ienv f =
               | None -> ()
               | Some paths ->
                   let occ =
-                    { Occurrence.loc = e.exp_loc; reason = Direct_use }
+                    {Occurrence.loc = e.exp_loc}
                   in
                   let maybe_unique = Maybe_unique.singleton unique_use occ in
                   ll := (paths, maybe_unique) :: !ll)
@@ -882,7 +870,7 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
   | Texp_ident _ -> (
       match check_uniqueness_exp' exp ienv with
       | Some (paths, unique_use), uf ->
-          let occ = { Occurrence.loc; reason = Direct_use } in
+          let occ = {Occurrence.loc} in
           UF.seq uf (mark_maybe_unique paths unique_use occ)
       | None, uf -> uf)
   | Texp_constant _ -> UF.empty
@@ -966,7 +954,7 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
                           UF.Path.child_of_many ps
                             (Usage_tree.Projection.Record_field l.lbl_name)
                         in
-                        let occ = { Occurrence.loc; reason = Direct_use } in
+                        let occ = {Occurrence.loc} in
                         mark_maybe_unique ps unique_use occ
                     | _, Overridden (_, e) -> check_uniqueness_exp_ e ienv)
                   fields
@@ -976,7 +964,7 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
   | Texp_field _ -> (
       match check_uniqueness_exp' exp ienv with
       | Some (ps, unique_use), uf ->
-          let occ = { Occurrence.loc; reason = Direct_use } in
+          let occ = {Occurrence.loc} in
           UF.seq uf (mark_maybe_unique ps unique_use occ)
       | None, uf -> uf)
   | Texp_setfield (exp', _, _, _, e) -> (
@@ -986,7 +974,7 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
       match check_uniqueness_exp' exp' ienv with
       | None, uf' -> UF.seq uf uf'
       | Some (ps, _), uf' ->
-          let occ = { Occurrence.loc; reason = Direct_use } in
+          let occ = {Occurrence.loc} in
           UF.seqs [ uf; uf'; mark_implicit_borrow_memory_address_paths ps occ ])
   | Texp_array (_, es, _) ->
       UF.seqs (List.map (fun e -> check_uniqueness_exp_ e ienv) es)
@@ -1088,7 +1076,7 @@ and check_uniqueness_exp' exp ienv : (UF.Path.t list * unique_use) option * UF.t
     =
   match exp.exp_desc with
   | Texp_ident (p, _, _, _, unique_use) -> (
-      let occ = { Occurrence.loc = exp.exp_loc; reason = Direct_use } in
+      let occ = {Occurrence.loc = exp.exp_loc} in
       let maybe_unique = (unique_use, occ) in
       match maybe_paths_of_ident ~maybe_unique ienv p with
       | None -> (None, UF.empty)
@@ -1098,7 +1086,7 @@ and check_uniqueness_exp' exp ienv : (UF.Path.t list * unique_use) option * UF.t
       | Some (paths, _), uf ->
           (* accessing the field meaning borrowing the parent record's mem
              block. Note that the field itself is not borrowed or used *)
-          let occ = { Occurrence.loc = e.exp_loc; reason = Direct_use } in
+          let occ = {Occurrence.loc = e.exp_loc} in
           let uf' = mark_implicit_borrow_memory_address_paths paths occ in
           let paths' =
             UF.Path.child_of_many paths
@@ -1205,7 +1193,7 @@ and check_uniqueness_binding_op bo exp ienv =
   let uf0 =
     match maybe_paths_of_ident ienv bo.bop_op_path with
     | Some paths ->
-        let occ = { Occurrence.loc = exp.exp_loc; reason = Direct_use } in
+        let occ = {Occurrence.loc = exp.exp_loc} in
         let unique_use = (Uniqueness.shared, Linearity.many) in
         mark_maybe_unique paths unique_use occ
     | None -> UF.empty
@@ -1228,22 +1216,10 @@ let report_error = function
         | `Uniqueness -> "used uniquely here"
         | `Linearity -> "defined as once"
       in
-      let there_reason =
-        match there.reason with
-        | Direct_use -> Format.dprintf ""
-        | Match_tuple_with_var _loc' ->
-            Format.dprintf "which is in a tuple matched against a variable"
-      in
-      let sub = [ Location.msg ~loc:there.loc "%t" there_reason ] in
-      let here_reason =
-        match here.reason with
-        | Direct_use -> ""
-        | Match_tuple_with_var _ ->
-            "It is in a tuple matched against a variable."
-      in
+      let sub = [ Location.msg ~loc:there.loc "" ] in
       Location.errorf ~loc:here.loc ~sub
-        "@[This is %s so cannot be used twice. %s Another use is @]"
-        why_cannot_use_twice here_reason
+        "@[This is %s so cannot be used twice. Another use is @]"
+        why_cannot_use_twice
   | Boundary { occ; axis; reason } ->
       let reason =
         match reason with

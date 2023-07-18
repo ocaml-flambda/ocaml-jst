@@ -35,7 +35,7 @@ let texp_object () =
 Line 3, characters 12-13:
 3 |   unique_id x;
                 ^
-Error: This is used uniquely here so cannot be used twice.  Another use is
+Error: This is used uniquely here so cannot be used twice. Another use is
 Line 5, characters 12-13:
 5 |   val bar = x
                 ^
@@ -71,7 +71,7 @@ let texp_letmodule () =
 Line 3, characters 12-13:
 3 |   unique_id x;
                 ^
-Error: This is used uniquely here so cannot be used twice.  Another use is
+Error: This is used uniquely here so cannot be used twice. Another use is
 Line 5, characters 12-13:
 5 |     let y = x
                 ^
@@ -99,7 +99,7 @@ let texp_open () =
 Line 3, characters 12-13:
 3 |   unique_id x;
                 ^
-Error: This is used uniquely here so cannot be used twice.  Another use is
+Error: This is used uniquely here so cannot be used twice. Another use is
 Line 4, characters 27-28:
 4 |   let open (struct let y = x end) in
                                ^
@@ -130,7 +130,7 @@ let texp_pack () =
 Line 3, characters 12-13:
 3 |   unique_id x;
                 ^
-Error: This is used uniquely here so cannot be used twice.  Another use is
+Error: This is used uniquely here so cannot be used twice. Another use is
 Line 4, characters 33-34:
 4 |   let z = (module struct let y = x end : bar) in
                                      ^
