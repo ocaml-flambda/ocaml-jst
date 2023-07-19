@@ -27,7 +27,7 @@ module Occurrence = struct
   it's just the location; might add more things in the future *)
 end
 
-type axis = [ `Uniqueness | `Linearity ]
+type axis = Uniqueness | Linearity
 
 type boundary_reason =
   | Value_from_mod_class (* currently will never trigger *)
@@ -98,10 +98,10 @@ end = struct
     let force_one ((uni, lin), occ) =
       (match Mode.Linearity.submode lin Mode.Linearity.many with
       | Ok () -> ()
-      | Error () -> raise (CannotForce { occ; axis = `Linearity }));
+      | Error () -> raise (CannotForce { occ; axis = Linearity }));
       match Mode.Uniqueness.submode Mode.Uniqueness.shared uni with
       | Ok () -> ()
-      | Error () -> raise (CannotForce { occ; axis = `Uniqueness })
+      | Error () -> raise (CannotForce { occ; axis = Uniqueness })
     in
     List.iter force_one l
 
@@ -506,6 +506,7 @@ module Usage_forest = struct
 
   let unused = Root_id.Map.empty
 
+  (** [f] must be monotone  *)
   let map2 f t0 t1 =
     Root_id.Map.merge
       (fun _rootid t0 t1 ->
@@ -1194,13 +1195,19 @@ let report_error = function
   | MultiUse { here; there; axis } ->
       let why_cannot_use_twice =
         match axis with
-        | `Uniqueness -> "used uniquely here"
-        | `Linearity -> "defined as once"
+        | Uniqueness -> "used as unique"
+        | Linearity -> "defined as once and used"
       in
-      let sub = [ Location.msg ~loc:there.loc "" ] in
-      Location.errorf ~loc:here.loc ~sub
-        "@[This is %s so cannot be used twice. Another use is @]"
-        why_cannot_use_twice
+      let error, first, second =
+        if here < there then
+          Format.dprintf "Cannot use the value, because it has already been %s here: " why_cannot_use_twice,
+          here, there
+        else
+          Format.dprintf "The value is %s, but it has already been used here:" why_cannot_use_twice,
+          there, here
+      in
+      let sub = [ Location.msg ~loc:first.loc "" ] in
+      Location.errorf ~loc:second.loc ~sub "@[%t@]" error
   | Boundary { occ; axis; reason } ->
       let reason =
         match reason with
@@ -1210,8 +1217,8 @@ let report_error = function
       in
       let error =
         match axis with
-        | `Uniqueness -> "This value is shared but used as unique"
-        | `Linearity -> "This value is once but used as many"
+        | Uniqueness -> "This value is shared but used as unique"
+        | Linearity -> "This value is once but used as many"
       in
       Location.errorf ~loc:occ.loc "@[%s.\nHint: This value comes from %s.@]"
         error reason

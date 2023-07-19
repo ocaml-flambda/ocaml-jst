@@ -51,13 +51,13 @@ val branching : bool -> box = <fun>
 
 let sequence (unique_ x : float) = unique_ let y = x in (x, y)
 [%%expect{|
-Line 1, characters 57-58:
-1 | let sequence (unique_ x : float) = unique_ let y = x in (x, y)
-                                                             ^
-Error: This is used uniquely here so cannot be used twice. Another use is
 Line 1, characters 60-61:
 1 | let sequence (unique_ x : float) = unique_ let y = x in (x, y)
                                                                 ^
+Error: Cannot use the value, because it has already been used as unique here:
+Line 1, characters 57-58:
+1 | let sequence (unique_ x : float) = unique_ let y = x in (x, y)
+                                                             ^
 
 |}]
 
@@ -76,13 +76,13 @@ let sequence =
   let t = update r in
   t
 [%%expect{|
-Line 3, characters 18-19:
-3 |   let _s = update r in
-                      ^
-Error: This is used uniquely here so cannot be used twice. Another use is
 Line 4, characters 17-18:
 4 |   let t = update r in
                      ^
+Error: Cannot use the value, because it has already been used as unique here:
+Line 3, characters 18-19:
+3 |   let _s = update r in
+                      ^
 
 |}]
 
@@ -115,13 +115,13 @@ let dup_child (unique_ fs : 'a list) =
   | [] -> ([], [])
   | x :: xs as gs -> unique_ (gs, xs)
 [%%expect{|
-Line 4, characters 30-32:
-4 |   | x :: xs as gs -> unique_ (gs, xs)
-                                  ^^
-Error: This is used uniquely here so cannot be used twice. Another use is
 Line 4, characters 34-36:
 4 |   | x :: xs as gs -> unique_ (gs, xs)
                                       ^^
+Error: Cannot use the value, because it has already been used as unique here:
+Line 4, characters 30-32:
+4 |   | x :: xs as gs -> unique_ (gs, xs)
+                                  ^^
 
 |}]
 
@@ -153,13 +153,13 @@ let or_patterns3 p =
   match p, x, y with
   | true, z, _ | false, _, z -> let _ = unique_id z in unique_id y
 [%%expect{|
-Line 4, characters 50-51:
-4 |   | true, z, _ | false, _, z -> let _ = unique_id z in unique_id y
-                                                      ^
-Error: This is used uniquely here so cannot be used twice. Another use is
 Line 4, characters 65-66:
 4 |   | true, z, _ | false, _, z -> let _ = unique_id z in unique_id y
                                                                      ^
+Error: Cannot use the value, because it has already been used as unique here:
+Line 4, characters 50-51:
+4 |   | true, z, _ | false, _, z -> let _ = unique_id z in unique_id y
+                                                      ^
 
 |}]
 
@@ -176,13 +176,13 @@ let or_patterns5 p =
   match p, x, y with
   | true, z, _ | false, _, z -> let _ = unique_id z in unique_id x
 [%%expect{|
-Line 4, characters 50-51:
-4 |   | true, z, _ | false, _, z -> let _ = unique_id z in unique_id x
-                                                      ^
-Error: This is used uniquely here so cannot be used twice. Another use is
 Line 4, characters 65-66:
 4 |   | true, z, _ | false, _, z -> let _ = unique_id z in unique_id x
                                                                      ^
+Error: Cannot use the value, because it has already been used as unique here:
+Line 4, characters 50-51:
+4 |   | true, z, _ | false, _, z -> let _ = unique_id z in unique_id x
+                                                      ^
 
 |}]
 
@@ -196,13 +196,13 @@ let mark_top_shared =
       unique_ xx
   | [] -> []
 [%%expect{|
-Line 5, characters 24-26:
-5 |       let _ = unique_id xs in
-                            ^^
-Error: This is used uniquely here so cannot be used twice. Another use is
 Line 6, characters 6-16:
 6 |       unique_ xx
           ^^^^^^^^^^
+Error: Cannot use the value, because it has already been used as unique here:
+Line 5, characters 24-26:
+5 |       let _ = unique_id xs in
+                            ^^
 
 |}]
 
@@ -213,13 +213,13 @@ let mark_top_shared =
   | x :: xx -> unique_ xx
   | [] -> []
 [%%expect{|
-Line 3, characters 20-22:
-3 |   let _ = unique_id xs in
-                        ^^
-Error: This is used uniquely here so cannot be used twice. Another use is
 Line 4, characters 8-10:
 4 |   match xs with
             ^^
+Error: Cannot use the value, because it has already been used as unique here:
+Line 3, characters 20-22:
+3 |   let _ = unique_id xs in
+                        ^^
 
 |}]
 
@@ -259,13 +259,13 @@ let expr_tuple_match f x y =
   match f x, y with
   | (a, b) as t, c -> let d = unique_id t in unique_ (a, d)
 [%%expect{|
-Line 3, characters 40-41:
-3 |   | (a, b) as t, c -> let d = unique_id t in unique_ (a, d)
-                                            ^
-Error: This is used uniquely here so cannot be used twice. Another use is
 Line 3, characters 54-55:
 3 |   | (a, b) as t, c -> let d = unique_id t in unique_ (a, d)
                                                           ^
+Error: Cannot use the value, because it has already been used as unique here:
+Line 3, characters 40-41:
+3 |   | (a, b) as t, c -> let d = unique_id t in unique_ (a, d)
+                                            ^
 
 |}]
 
@@ -285,13 +285,13 @@ let tuple_parent_marked a b =
   | (true, b') -> unique_id b'
   | (false, b') as _t -> shared_id b'
 [%%expect{|
-Line 2, characters 12-13:
-2 |   match (a, b) with
-                ^
-Error: This is used uniquely here so cannot be used twice. Another use is
 Line 3, characters 28-30:
 3 |   | (true, b') -> unique_id b'
                                 ^^
+Error: Cannot use the value, because it has already been used as unique here:
+Line 2, characters 12-13:
+2 |   match (a, b) with
+                ^
 
 |}]
 
@@ -300,13 +300,13 @@ let tuple_parent_marked a b =
   | (false, b) as _t -> shared_id b
   | (true, b) -> unique_id b
 [%%expect{|
-Line 2, characters 12-13:
-2 |   match (a, b) with
-                ^
-Error: This is used uniquely here so cannot be used twice. Another use is
 Line 4, characters 27-28:
 4 |   | (true, b) -> unique_id b
                                ^
+Error: Cannot use the value, because it has already been used as unique here:
+Line 2, characters 12-13:
+2 |   match (a, b) with
+                ^
 
 |}]
 
@@ -325,13 +325,13 @@ let match_function : unique_ 'a * 'b -> 'a * ('a * 'b) =
   function
   | (a, b) as t -> unique_ (a, t)
 [%%expect{|
-Line 3, characters 28-29:
-3 |   | (a, b) as t -> unique_ (a, t)
-                                ^
-Error: This is used uniquely here so cannot be used twice. Another use is
 Line 3, characters 31-32:
 3 |   | (a, b) as t -> unique_ (a, t)
                                    ^
+Error: Cannot use the value, because it has already been used as unique here:
+Line 3, characters 28-29:
+3 |   | (a, b) as t -> unique_ (a, t)
+                                ^
 
 |}]
 
@@ -339,13 +339,13 @@ let tuple_parent_marked a b =
   match (a, b) with
   | ((_, a), b) as t -> unique_ (a, t)
 [%%expect{|
-Line 3, characters 33-34:
-3 |   | ((_, a), b) as t -> unique_ (a, t)
-                                     ^
-Error: This is used uniquely here so cannot be used twice. Another use is
 Line 3, characters 36-37:
 3 |   | ((_, a), b) as t -> unique_ (a, t)
                                         ^
+Error: Cannot use the value, because it has already been used as unique here:
+Line 3, characters 33-34:
+3 |   | ((_, a), b) as t -> unique_ (a, t)
+                                     ^
 
 |}]
 
@@ -354,13 +354,13 @@ let or_patterns6 flag f x y =
   match flag, f x, y with
   | true, a, (_, b) | false, b, (_, a) -> (unique_id a, unique_id b)
 [%%expect{|
-Line 3, characters 53-54:
-3 |   | true, a, (_, b) | false, b, (_, a) -> (unique_id a, unique_id b)
-                                                         ^
-Error: This is used uniquely here so cannot be used twice. Another use is
 Line 3, characters 66-67:
 3 |   | true, a, (_, b) | false, b, (_, a) -> (unique_id a, unique_id b)
                                                                       ^
+Error: Cannot use the value, because it has already been used as unique here:
+Line 3, characters 53-54:
+3 |   | true, a, (_, b) | false, b, (_, a) -> (unique_id a, unique_id b)
+                                                         ^
 
 |}]
 
@@ -384,13 +384,13 @@ let record_mode_vars (p : point) =
   let y = (p.x, p.y) in
   (x, y, unique_ p.z)
 [%%expect{|
-Line 2, characters 20-23:
-2 |   let x = unique_id p.x in
-                        ^^^
-Error: This is used uniquely here so cannot be used twice. Another use is
 Line 3, characters 11-14:
 3 |   let y = (p.x, p.y) in
                ^^^
+Error: Cannot use the value, because it has already been used as unique here:
+Line 2, characters 20-23:
+2 |   let x = unique_id p.x in
+                        ^^^
 
 |}]
 
@@ -402,7 +402,7 @@ let record_mode_vars (p : point) =
 Line 3, characters 20-23:
 3 |   let x = unique_id p.x in
                         ^^^
-Error: This is used uniquely here so cannot be used twice. Another use is
+Error: The value is used as unique, but it has already been used here:
 Line 2, characters 11-14:
 2 |   let y = (p.x, p.y) in
                ^^^
@@ -420,7 +420,7 @@ let foo () =
 Line 6, characters 12-13:
 6 |   unique_id r
                 ^
-Error: This is used uniquely here so cannot be used twice. Another use is
+Error: The value is used as unique, but it has already been used here:
 Line 3, characters 22-23:
 3 |   let _bar () = match r with
                           ^
@@ -452,13 +452,13 @@ let foo () =
   x.a <- "olleh"
 [%%expect{|
 type mfoo = { mutable a : string; b : string; }
-Line 11, characters 20-21:
-11 |   ignore (unique_id x);
-                         ^
-Error: This is used uniquely here so cannot be used twice. Another use is
 Line 12, characters 2-16:
 12 |   x.a <- "olleh"
        ^^^^^^^^^^^^^^
+Error: Cannot use the value, because it has already been used as unique here:
+Line 11, characters 20-21:
+11 |   ignore (unique_id x);
+                         ^
 
 |}]
 
