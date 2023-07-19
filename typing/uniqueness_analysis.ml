@@ -29,17 +29,24 @@ end
 
 type axis = Uniqueness | Linearity
 
+(** See [report_error] for explanation *)
 type boundary_reason =
   | Value_from_mod_class (* currently will never trigger *)
   | Free_var_of_mod_class (* currently will never trigger *)
-  | Out_of_mod_class  (** See [report_error] for explanation *)
+  | Out_of_mod_class
+
+type relation = Self | Ancestor | Descendant
+type first_or_second = First | Second
 
 type error =
   | MultiUse of {
-      here : Occurrence.t;  (** the occurrence that's failing forcing *)
-      there : Occurrence.t;
-          (** the other occurrence that triggers the forcing *)
+      first : Occurrence.t;  (** the first occurrence in seq  *)
+      second : Occurrence.t;  (** the second occurrence in seq *)
       axis : axis;  (** which axis failed to force? *)
+      first_or_second : first_or_second;
+          (** which one of the two is failing? *)
+      first_is_of_second : relation option;
+          (** relation of first in relation to second *)
     }  (** Error caused by multiple use *)
   | Boundary of {
       occ : Occurrence.t;  (** The occurrence that's failing forcing*)
@@ -64,7 +71,8 @@ module Maybe_unique : sig
 
   val par : t -> t -> t
 
-  val force_shared_multiuse : t -> there:Occurrence.t -> unit
+  val force_shared_multiuse :
+    t -> there:Occurrence.t -> first_or_second:first_or_second -> unit
   (** force this usage to be shared, due to multiple uses. [there] is the
       occurrence of the other usage. *)
 
@@ -105,10 +113,32 @@ end = struct
     in
     List.iter force_one l
 
-  let force_shared_multiuse t ~there =
+  let force_shared_multiuse t ~there ~first_or_second =
     try force_shared t
-    with CannotForce { occ; axis } ->
-      raise (Error (MultiUse { here = occ; there; axis }))
+    with CannotForce { occ; axis } -> (
+      match first_or_second with
+      | First ->
+          raise
+            (Error
+               (MultiUse
+                  {
+                    first = occ;
+                    second = there;
+                    axis;
+                    first_or_second;
+                    first_is_of_second = None;
+                  }))
+      | Second ->
+          raise
+            (Error
+               (MultiUse
+                  {
+                    first = there;
+                    second = occ;
+                    axis;
+                    first_or_second;
+                    first_is_of_second = None;
+                  })))
 
   let force_shared_boundary t ~reason =
     try force_shared t
@@ -301,7 +331,7 @@ module Usage = struct
         m1
     | Shared _, Borrowed _ -> m0
     | Maybe_unique l, Borrowed occ ->
-        Maybe_unique.force_shared_multiuse l ~there:occ;
+        Maybe_unique.force_shared_multiuse l ~there:occ ~first_or_second:First;
         Shared occ
     | Shared _, Maybe_shared _ -> m0
     | Maybe_unique l0, Maybe_shared l1 ->
@@ -315,17 +345,21 @@ module Usage = struct
             be constrained. The result is always Shard.
         *)
         let occ = Maybe_shared.extract_occurrence l1 in
-        Maybe_unique.force_shared_multiuse l0 ~there:occ;
+        Maybe_unique.force_shared_multiuse l0 ~there:occ ~first_or_second:First;
         Shared occ
     | Shared _, Shared _ -> m0
-    | Maybe_unique l, Shared occ | Shared occ, Maybe_unique l ->
-        Maybe_unique.force_shared_multiuse l ~there:occ;
+    | Maybe_unique l, Shared occ ->
+        Maybe_unique.force_shared_multiuse l ~there:occ ~first_or_second:First;
+        Shared occ
+    | Shared occ, Maybe_unique l ->
+        Maybe_unique.force_shared_multiuse l ~there:occ ~first_or_second:Second;
         Shared occ
     | Maybe_unique l0, Maybe_unique l1 ->
         let occ1 = Maybe_unique.extract_occurrence l1 in
         let occ0 = Maybe_unique.extract_occurrence l0 in
-        Maybe_unique.force_shared_multiuse l0 ~there:occ1;
-        Maybe_unique.force_shared_multiuse l1 ~there:occ0;
+        Maybe_unique.force_shared_multiuse l0 ~there:occ1 ~first_or_second:First;
+        Maybe_unique.force_shared_multiuse l1 ~there:occ0
+          ~first_or_second:Second;
         Shared (Maybe_unique.extract_occurrence l0)
 end
 
@@ -413,27 +447,58 @@ module Usage_tree = struct
   let _unused = leaf Usage.Unused
 
   (** f must be monotone *)
-  let rec map f t =
-    let usage = f t.usage in
-    let children = Projection.Map.map (map f) t.children in
-    { usage; children }
+  let map ?(on_exception = fun _exn -> assert false) f t =
+    let rec loop projs t =
+      let usage = try f t.usage with exn -> on_exception exn in
+      let children =
+        Projection.Map.mapi (fun proj t -> loop (proj :: projs) t) t.children
+      in
+      { usage; children }
+    in
+    loop [] t
 
-  let rec map2 f t0 t1 =
+  let rec map2 ?(on_exception = fun _exn _rel -> assert false) f t0 t1 =
     {
-      usage = f t0.usage t1.usage;
+      usage = (try f t0.usage t1.usage with exn -> on_exception exn Self);
       children =
         Projection.Map.merge
           (fun _proj c0 c1 ->
             match (c0, c1) with
             | None, None -> assert false
-            | None, Some c1 -> Some (map (fun r -> f t0.usage r) c1)
-            | Some c0, None -> Some (map (fun l -> f l t1.usage) c0)
-            | Some c0, Some c1 -> Some (map2 f c0 c1))
+            | None, Some c1 ->
+                Some
+                  (map
+                     ~on_exception:(fun exn -> on_exception exn Ancestor)
+                     (fun r -> f t0.usage r)
+                     c1)
+            | Some c0, None ->
+                Some
+                  (map
+                     ~on_exception:(fun exn -> on_exception exn Descendant)
+                     (fun l -> f l t1.usage)
+                     c0)
+            | Some c0, Some c1 -> Some (map2 ~on_exception f c0 c1))
           t0.children t1.children;
     }
 
-  let _par t0 t1 = map2 Usage.par t0 t1
-  let _seq t0 t1 = map2 Usage.seq t0 t1
+  let par t0 t1 = map2 Usage.par t0 t1
+
+  let on_multiuse = function
+    | Error (MultiUse { first; second; axis; first_or_second; _ }) ->
+        fun rel ->
+          raise
+            (Error
+               (MultiUse
+                  {
+                    first;
+                    second;
+                    axis;
+                    first_or_second;
+                    first_is_of_second = Some rel;
+                  }))
+    | e -> fun _ -> raise e
+
+  let seq t0 t1 = map2 ~on_exception:on_multiuse Usage.seq t0 t1
 
   let rec singleton path leaf =
     match path with
@@ -502,11 +567,11 @@ module Usage_forest = struct
         | None, None -> assert false
         | None, Some t1 -> Some t1
         | Some t0, None -> Some t0
-        | Some t0, Some t1 -> Some (Usage_tree.map2 f t0 t1))
+        | Some t0, Some t1 -> Some (f t0 t1))
       t0 t1
 
-  let par t0 t1 = map2 Usage.par t0 t1
-  let seq t0 t1 = map2 Usage.seq t0 t1
+  let par t0 t1 = map2 Usage_tree.par t0 t1
+  let seq t0 t1 = map2 Usage_tree.seq t0 t1
   let pars l = List.fold_left par unused l
   let seqs l = List.fold_left seq unused l
 
@@ -1178,24 +1243,28 @@ let check_uniqueness_value_bindings vbs =
   ()
 
 let report_error = function
-  | MultiUse { here; there; axis } ->
+  | MultiUse { first; second; first_or_second; axis; first_is_of_second } ->
       let why_cannot_use_twice =
         match axis with
         | Uniqueness -> "used as unique"
         | Linearity -> "defined as once and used"
       in
-      let error, first, second =
-        if here < there then
-          ( Format.dprintf
-              "Cannot use the value, because it has already been %s here: "
-              why_cannot_use_twice,
-            here,
-            there )
-        else
-          ( Format.dprintf "The value is %s, but it has already been used here:"
-              why_cannot_use_twice,
-            there,
-            here )
+      let first_is_of_second =
+        match Option.get first_is_of_second with
+        | Descendant -> "part of it"
+        | Ancestor -> "it is part of a value that"
+        | Self -> "it"
+      in
+      let error =
+        match first_or_second with
+        | First ->
+            (* the first occ is failing *)
+            Format.dprintf
+              "Cannot use the value, because %s has already been %s here: "
+              first_is_of_second why_cannot_use_twice
+        | Second ->
+            Format.dprintf "The value is %s, but %s has already been used here:"
+              why_cannot_use_twice first_is_of_second
       in
       let sub = [ Location.msg ~loc:first.loc "" ] in
       Location.errorf ~loc:second.loc ~sub "@[%t@]" error

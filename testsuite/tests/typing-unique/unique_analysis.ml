@@ -118,7 +118,7 @@ let dup_child (unique_ fs : 'a list) =
 Line 4, characters 34-36:
 4 |   | x :: xs as gs -> unique_ (gs, xs)
                                       ^^
-Error: Cannot use the value, because it has already been used as unique here:
+Error: Cannot use the value, because it is part of a value that has already been used as unique here:
 Line 4, characters 30-32:
 4 |   | x :: xs as gs -> unique_ (gs, xs)
                                   ^^
@@ -199,7 +199,7 @@ let mark_top_shared =
 Line 6, characters 6-16:
 6 |       unique_ xx
           ^^^^^^^^^^
-Error: Cannot use the value, because it has already been used as unique here:
+Error: Cannot use the value, because it is part of a value that has already been used as unique here:
 Line 5, characters 24-26:
 5 |       let _ = unique_id xs in
                             ^^
@@ -216,7 +216,7 @@ let mark_top_shared =
 Line 4, characters 8-10:
 4 |   match xs with
             ^^
-Error: Cannot use the value, because it has already been used as unique here:
+Error: Cannot use the value, because it is part of a value that has already been used as unique here:
 Line 3, characters 20-22:
 3 |   let _ = unique_id xs in
                         ^^
@@ -262,7 +262,7 @@ let expr_tuple_match f x y =
 Line 3, characters 54-55:
 3 |   | (a, b) as t, c -> let d = unique_id t in unique_ (a, d)
                                                           ^
-Error: Cannot use the value, because it has already been used as unique here:
+Error: Cannot use the value, because it is part of a value that has already been used as unique here:
 Line 3, characters 40-41:
 3 |   | (a, b) as t, c -> let d = unique_id t in unique_ (a, d)
                                             ^
@@ -328,7 +328,7 @@ let match_function : unique_ 'a * 'b -> 'a * ('a * 'b) =
 Line 3, characters 31-32:
 3 |   | (a, b) as t -> unique_ (a, t)
                                    ^
-Error: Cannot use the value, because it has already been used as unique here:
+Error: Cannot use the value, because part of it has already been used as unique here:
 Line 3, characters 28-29:
 3 |   | (a, b) as t -> unique_ (a, t)
                                 ^
@@ -342,7 +342,7 @@ let tuple_parent_marked a b =
 Line 3, characters 36-37:
 3 |   | ((_, a), b) as t -> unique_ (a, t)
                                         ^
-Error: Cannot use the value, because it has already been used as unique here:
+Error: Cannot use the value, because part of it has already been used as unique here:
 Line 3, characters 33-34:
 3 |   | ((_, a), b) as t -> unique_ (a, t)
                                      ^
@@ -409,7 +409,9 @@ Line 2, characters 11-14:
 
 |}]
 
-(* testing Texp_function; closure over implicit borrowing *)
+(* testing Texp_function; closure over implicit borrowing
+   NOTE: the following output is saying "part of it" because matching on r only
+   uses its memory_address, so I think printing "part of it" is appropriate. *)
 let foo () =
   let unique_ r = {dim=1; x=2.0; y=3.0; z=4.0} in
   let _bar () = match r with
@@ -420,7 +422,7 @@ let foo () =
 Line 6, characters 12-13:
 6 |   unique_id r
                 ^
-Error: The value is used as unique, but it has already been used here:
+Error: The value is used as unique, but part of it has already been used here:
 Line 3, characters 22-23:
 3 |   let _bar () = match r with
                           ^
@@ -455,7 +457,7 @@ type mfoo = { mutable a : string; b : string; }
 Line 12, characters 2-16:
 12 |   x.a <- "olleh"
        ^^^^^^^^^^^^^^
-Error: Cannot use the value, because it has already been used as unique here:
+Error: Cannot use the value, because it is part of a value that has already been used as unique here:
 Line 11, characters 20-21:
 11 |   ignore (unique_id x);
                          ^
