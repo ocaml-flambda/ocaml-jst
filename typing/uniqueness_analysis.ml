@@ -243,7 +243,7 @@ module Usage = struct
   (** Whether m0 can be subsumed by m1. It is conservative and could return
    false when it should return true, but that is fine as it's only used for
    optimization *)
-  let sub m0 m1 =
+  let _sub m0 m1 =
     match (m0, m1) with
     | Unused, _ -> true
     | _, Unused -> false
@@ -412,28 +412,24 @@ module Usage_tree = struct
   let leaf usage = { usage; children = Projection.Map.empty }
   let _unused = leaf Usage.Unused
 
+  (** f must be monotone *)
+  let rec map f t =
+    let usage = f t.usage in
+    let children = Projection.Map.map (map f) t.children in
+    { usage; children }
+
   let rec map2 f t0 t1 =
     {
       usage = f t0.usage t1.usage;
       children =
-        (let merge () =
-           Projection.Map.merge
-             (fun _proj c0 c1 ->
-               let c0 = Option.value c0 ~default:(leaf t0.usage) in
-               let c1 = Option.value c1 ~default:(leaf t1.usage) in
-               Some (map2 f c0 c1))
-             t0.children t1.children
-         in
-         match
-           ( Projection.Map.is_empty t0.children,
-             Projection.Map.is_empty t1.children )
-         with
-         | true, true -> Projection.Map.empty
-         | true, false ->
-             if Usage.sub t0.usage t1.usage then t1.children else merge ()
-         | false, true ->
-             if Usage.sub t1.usage t0.usage then t0.children else merge ()
-         | false, false -> merge ());
+        Projection.Map.merge
+          (fun _proj c0 c1 ->
+            match (c0, c1) with
+            | None, None -> assert false
+            | None, Some c1 -> Some (map (fun r -> f t0.usage r) c1)
+            | Some c0, None -> Some (map (fun l -> f l t1.usage) c0)
+            | Some c0, Some c1 -> Some (map2 f c0 c1))
+          t0.children t1.children;
     }
 
   let _par t0 t1 = map2 Usage.par t0 t1
@@ -447,12 +443,6 @@ module Usage_tree = struct
           usage = Unused;
           children = Projection.Map.singleton proj (singleton path leaf);
         }
-
-  (** f must be monotone *)
-  let rec map f t =
-    let usage = f t.usage in
-    let children = Projection.Map.map (map f) t.children in
-    { usage; children }
 end
 
 (** Lift Usage_tree to forest *)
