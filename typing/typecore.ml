@@ -406,6 +406,10 @@ let mode_strictly_local expected_mode =
     with strictly_local = true
   }
 
+(** regionality is about the parent region *)
+let mode_exclave regionality expected_mode =
+  mode_default (Value.with_locality regionality expected_mode.mode)
+
 let mode_unique expected_mode =
   { expected_mode with
     mode = Value.to_unique expected_mode.mode }
@@ -4435,10 +4439,7 @@ and type_expect_
         | RTail (regionality, _) ->
           (* mode' is RNontail, because currently our language cannot construct
              region in the tail of another region.*)
-          let mode' =
-            mode_default
-              (Value.with_locality regionality expected_mode.mode)
-          in
+          let mode' = mode_exclave regionality expected_mode in
           (* The middle-end relies on all functions which allocate into their
              parent's region having a return mode of local. *)
           submode ~loc ~env ~reason:Other

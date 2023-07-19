@@ -244,7 +244,7 @@ module Usage = struct
    false when it should return true, but that is fine as it's only used for
    optimization *)
   let sub m0 m1 =
-    match m0, m1 with
+    match (m0, m1) with
     | Unused, _ -> true
     | _, Unused -> false
     | Borrowed _, _ -> true
@@ -410,32 +410,30 @@ module Usage_tree = struct
   end
 
   let leaf usage = { usage; children = Projection.Map.empty }
-
   let _unused = leaf Usage.Unused
 
   let rec map2 f t0 t1 =
     {
       usage = f t0.usage t1.usage;
       children =
-        let merge ()=
-          Projection.Map.merge
-          (fun _proj c0 c1 ->
-            let c0 = Option.value c0 ~default:(leaf t0.usage) in
-            let c1 = Option.value c1 ~default:(leaf t1.usage) in
-            Some (map2 f c0 c1))
-          t0.children t1.children;
-        in
-        match Projection.Map.is_empty t0.children,
-              Projection.Map.is_empty t1.children
-        with
-        | true, true -> Projection.Map.empty
-        | true, false ->
-          if Usage.sub t0.usage t1.usage then t1.children
-          else merge ()
-        | false, true ->
-          if Usage.sub t1.usage t0.usage then t0.children
-          else merge ()
-        | false, false -> merge ()
+        (let merge () =
+           Projection.Map.merge
+             (fun _proj c0 c1 ->
+               let c0 = Option.value c0 ~default:(leaf t0.usage) in
+               let c1 = Option.value c1 ~default:(leaf t1.usage) in
+               Some (map2 f c0 c1))
+             t0.children t1.children
+         in
+         match
+           ( Projection.Map.is_empty t0.children,
+             Projection.Map.is_empty t1.children )
+         with
+         | true, true -> Projection.Map.empty
+         | true, false ->
+             if Usage.sub t0.usage t1.usage then t1.children else merge ()
+         | false, true ->
+             if Usage.sub t1.usage t0.usage then t0.children else merge ()
+         | false, false -> merge ());
     }
 
   let _par t0 t1 = map2 Usage.par t0 t1
@@ -510,17 +508,15 @@ module Usage_forest = struct
   let map2 f t0 t1 =
     Root_id.Map.merge
       (fun _rootid t0 t1 ->
-        match t0, t1 with
+        match (t0, t1) with
         | None, None -> assert false
         | None, Some t1 -> Some t1
         | Some t0, None -> Some t0
-        | Some t0, Some t1 -> Some (Usage_tree.map2 f t0 t1)
-        ) t0 t1
+        | Some t0, Some t1 -> Some (Usage_tree.map2 f t0 t1))
+      t0 t1
 
   let par t0 t1 = map2 Usage.par t0 t1
-
   let seq t0 t1 = map2 Usage.seq t0 t1
-
   let pars l = List.fold_left par unused l
   let seqs l = List.fold_left seq unused l
 
@@ -1200,11 +1196,16 @@ let report_error = function
       in
       let error, first, second =
         if here < there then
-          Format.dprintf "Cannot use the value, because it has already been %s here: " why_cannot_use_twice,
-          here, there
+          ( Format.dprintf
+              "Cannot use the value, because it has already been %s here: "
+              why_cannot_use_twice,
+            here,
+            there )
         else
-          Format.dprintf "The value is %s, but it has already been used here:" why_cannot_use_twice,
-          there, here
+          ( Format.dprintf "The value is %s, but it has already been used here:"
+              why_cannot_use_twice,
+            there,
+            here )
       in
       let sub = [ Location.msg ~loc:first.loc "" ] in
       Location.errorf ~loc:second.loc ~sub "@[%t@]" error
