@@ -579,7 +579,7 @@ module Usage_forest = struct
     Root_id.Map.singleton rootid (Usage_tree.singleton path' leaf)
 
   (** f must be monotone *)
-  let map f = Root_id.Map.map (Usage_tree.map f)
+  let map f = Root_id.Map.map f
 end
 
 module UF = Usage_forest
@@ -923,12 +923,12 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
       (* we are constructing a closure here, and therefore any borrowing of free
          variables in the closure is in fact using shared. *)
       UF.map
-        (function
+        (Usage_tree.map (function
           | Maybe_shared l ->
               (* implicit borrowing lifted. *)
               Shared (Maybe_shared.extract_occurrence l)
               (* other usage stays the same *)
-          | m -> m)
+          | m -> m))
         uf
   | Texp_apply (f, xs, _, _) ->
       let uf = check_uniqueness_exp_ f ienv in
