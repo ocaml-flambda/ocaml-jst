@@ -182,12 +182,15 @@ let once_extension loc =
   Exp.mk ~loc:Location.none (Pexp_extension(once_ext_loc loc, PStr []))
 
 let mkexp_stack ~loc ~kwd_loc exp =
+  let loc = make_loc loc in
   Exp.mk ~loc (Pexp_apply(local_extension (make_loc kwd_loc), [Nolabel, exp]))
 
 let mkexp_unique ~loc ~kwd_loc exp =
+  let loc = make_loc loc in
   Exp.mk ~loc (Pexp_apply(unique_extension (make_loc kwd_loc), [Nolabel, exp]))
 
 let mkexp_once ~loc ~kwd_loc exp =
+  let loc = make_loc loc in
   Exp.mk ~loc (Pexp_apply(once_extension (make_loc kwd_loc), [Nolabel, exp]))
 
 let mkpat_stack pat loc =

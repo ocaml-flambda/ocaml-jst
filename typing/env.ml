@@ -2933,68 +2933,85 @@ let lookup_ident_module (type a) (load : a load) ~errors ~use ~loc s env =
         end
     end
 
+let escape_mode ~errors ~env ~loc id vmode escaping_context =
+  match
+  Mode.Regionality.submode
+    (Mode.Value.locality vmode)
+    (Mode.Regionality.global)
+  with
+  | Ok () -> ()
+  | Error _ ->
+      may_lookup_error errors loc env
+        (Local_value_escaping (id, escaping_context))
+
+let share_mode ~errors ~env ~loc id vmode shared_context =
+  match
+    Mode.Linearity.submode
+      (Mode.Value.linearity vmode)
+      Mode.Linearity.many
+  with
+  | Error _ ->
+      may_lookup_error errors loc env
+        (Once_value_used_in (id, shared_context))
+  | Ok () -> Mode.Value.with_uniqueness Mode.Uniqueness.shared vmode
+
+let closure_mode ~errors ~env ~loc id vmode closure_context locality linearity =
+  begin
+    match
+      Mode.Regionality.submode
+        (Mode.Value.locality vmode)
+        (Mode.Regionality.of_locality locality)
+      with
+    | Error _ ->
+        may_lookup_error errors loc env
+          (Value_used_in_closure (id, Locality closure_context))
+    | Ok () -> ()
+  end;
+  begin
+    match Mode.Linearity.submode (Mode.Value.linearity vmode) linearity with
+    | Error _ ->
+        may_lookup_error errors loc env
+          (Value_used_in_closure (id, Linearity))
+    | Ok () -> ()
+  end;
+  let uniqueness =
+    Mode.Uniqueness.join
+      [ Mode.Value.uniqueness vmode;
+        Mode.Linearity.to_dual linearity]
+  in
+  Mode.Value.with_uniqueness uniqueness vmode
+
+let exclave_mode ~errors ~env ~loc id vmode =
+  match
+  Mode.Regionality.submode
+    (Mode.Value.locality vmode)
+    Mode.Regionality.regional
+with
+| Ok () -> Mode.Value.regional_to_local vmode
+| Error _ ->
+    may_lookup_error errors loc env
+      (Local_value_used_in_exclave id)
+
 let lock_mode ~errors ~loc env id vmode locks =
   List.fold_left
     (fun (vmode, reason) lock ->
       match lock with
       | Region_lock -> (Mode.Value.local_to_regional vmode, reason)
       | Escape_lock escaping_context ->
-          (match
-            Mode.Regionality.submode
-              (Mode.Value.locality vmode)
-              (Mode.Regionality.global)
-          with
-          | Ok () -> (vmode, reason)
-          | Error _ ->
-              may_lookup_error errors loc env
-                (Local_value_escaping (id, escaping_context)))
+          escape_mode ~errors ~env ~loc id vmode escaping_context;
+          (vmode, reason)
       | Share_lock shared_context ->
-          (match
-              Mode.Linearity.submode
-                (Mode.Value.linearity vmode)
-                Mode.Linearity.many
-            with
-            | Error _ ->
-                may_lookup_error errors loc env
-                  (Once_value_used_in (id, shared_context))
-            | Ok () -> ()
-          );
-          let vmode = Mode.Value.with_uniqueness Mode.Uniqueness.shared vmode in
+          let vmode = share_mode ~errors ~env ~loc id vmode shared_context in
           vmode, Some shared_context
       | Closure_lock (closure_context, locality, linearity) ->
-          (match
-            Mode.Regionality.submode
-              (Mode.Value.locality vmode)
-              (Mode.Regionality.of_locality locality)
-            with
-          | Error _ ->
-              may_lookup_error errors loc env
-                (Value_used_in_closure (id, Locality closure_context))
-          | Ok () -> ()
-          );
-          (match Mode.Linearity.submode (Mode.Value.linearity vmode) linearity with
-          | Error _ ->
-              may_lookup_error errors loc env
-                (Value_used_in_closure (id, Linearity))
-          | Ok () -> ()
-          );
-          let uniqueness =
-            Mode.Uniqueness.join
-              [ Mode.Value.uniqueness vmode;
-                Mode.Linearity.to_dual linearity]
+          let vmode =
+            closure_mode ~errors ~env ~loc id vmode closure_context
+              locality linearity
           in
-          let vmode = Mode.Value.with_uniqueness uniqueness vmode in
           vmode, reason
       | Exclave_lock ->
-          (match
-            Mode.Regionality.submode
-              (Mode.Value.locality vmode)
-              Mode.Regionality.regional
-          with
-          | Ok () -> (Mode.Value.regional_to_local vmode, reason)
-          | Error _ ->
-              may_lookup_error errors loc env
-                (Local_value_used_in_exclave id))
+          let vmode = exclave_mode ~errors ~env ~loc id vmode in
+          vmode, reason
     ) (vmode, None) locks
 
 let lookup_ident_value ~errors ~use ~loc name env =
