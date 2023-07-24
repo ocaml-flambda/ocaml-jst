@@ -1006,6 +1006,9 @@ module Value = struct
   let max_with_locality locality =
     { max_mode with locality }
 
+  let min_with_linearity linearity =
+    { min_mode with linearity }
+
   let with_locality locality t = { t with locality }
   let with_uniqueness uniqueness t = { t with uniqueness }
   let with_linearity linearity t = { t with linearity }

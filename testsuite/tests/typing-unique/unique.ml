@@ -35,8 +35,6 @@ Line 1, characters 21-22:
 
 |}]
 
-(* CR zqian: the precedence of unique_ needs to be higher without the
-    parenthesis it binds lower than comma which is counter-intuitive *)
 let dup (unique_ x) = (unique_ x, x, x)
 [%%expect{|
 Line 1, characters 34-35:
@@ -48,6 +46,19 @@ Line 1, characters 31-32:
                                    ^
 
 |}]
+
+let dup (unique_ x) = (x, (unique_ x), x)
+[%%expect{|
+Line 1, characters 26-37:
+1 | let dup (unique_ x) = (x, (unique_ x), x)
+                              ^^^^^^^^^^^
+Error: The value is used as unique, but it has already been used here:
+Line 1, characters 23-24:
+1 | let dup (unique_ x) = (x, (unique_ x), x)
+                           ^
+
+|}]
+
 
 let dup (unique_ x) = ((unique_ x), x)
 [%%expect{|
@@ -353,7 +364,7 @@ let inf4 (b : bool) (y : float) (unique_ x : float) =
 Line 2, characters 58-59:
 2 |   let _ = shared_id y in let unique_ z = if b then x else y in z
                                                               ^
-Error: The value is has already been used as unique, but it has already been used here:
+Error: The value is used as unique, but it has already been used here:
 Line 2, characters 20-21:
 2 |   let _ = shared_id y in let unique_ z = if b then x else y in z
                         ^

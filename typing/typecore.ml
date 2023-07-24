@@ -4385,10 +4385,11 @@ and type_expect_
        [Nolabel, sbody]) ->
       if txt = "extension.unique" && not (Language_extension.is_enabled Unique) then
         raise (Typetexp.Error (loc, Env.empty, Unsupported_extension Unique));
-      let mode = mode_unique expected_mode in
-      let mode = expect_mode_cross env ty_expected mode in
+      let expected_mode = mode_unique expected_mode in
+      let expected_mode = expect_mode_cross env ty_expected expected_mode in
       let exp =
-        type_expect ?in_function ~recarg env mode sbody ty_expected_explained
+        type_expect ?in_function ~recarg env expected_mode sbody
+          ty_expected_explained
       in
       {exp with exp_loc = loc}
   | Pexp_apply
@@ -4398,10 +4399,12 @@ and type_expect_
       if txt = "extension.once" && not (Language_extension.is_enabled Unique) then
         raise (Typetexp.Error (loc, Env.empty, Unsupported_extension Unique));
       let expected_mode = expect_mode_cross env ty_expected expected_mode in
-      let mode = mode_once expected_mode in
-      submode ~loc ~env ~reason:Other mode.mode expected_mode;
+      submode ~loc ~env ~reason:Other
+        (Value.min_with_linearity Linearity.once) expected_mode;
+      let expected_mode = mode_once expected_mode in
       let exp =
-        type_expect ?in_function ~recarg env mode sbody ty_expected_explained
+        type_expect ?in_function ~recarg env expected_mode sbody
+          ty_expected_explained
       in
       {exp with exp_loc = loc}
   | Pexp_apply
@@ -4411,10 +4414,11 @@ and type_expect_
       if txt = "extension.local" && not (Language_extension.is_enabled Local) then
         raise (Typetexp.Error (loc, Env.empty, Unsupported_extension Local));
       let expected_mode = expect_mode_cross env ty_expected expected_mode in
-      let mode = mode_strictly_local expected_mode in
-      submode ~loc ~env ~reason:Other mode.mode expected_mode;
+      submode ~loc ~env ~reason:Other
+        (Value.min_with_locality Regionality.local) expected_mode;
+      let expected_mode = mode_strictly_local expected_mode in
       let exp =
-        type_expect ?in_function ~recarg env mode sbody ty_expected_explained
+        type_expect ?in_function ~recarg env expected_mode sbody ty_expected_explained
       in
       {exp with exp_loc = loc}
   | Pexp_apply
