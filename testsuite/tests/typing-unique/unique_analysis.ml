@@ -402,7 +402,7 @@ let record_mode_vars (p : point) =
 Line 3, characters 20-23:
 3 |   let x = unique_id p.x in
                         ^^^
-Error: The value is used as unique, but it has already been used here:
+Error: The value is has already been used as unique, but it has already been used here:
 Line 2, characters 11-14:
 2 |   let y = (p.x, p.y) in
                ^^^
@@ -422,7 +422,7 @@ let foo () =
 Line 6, characters 12-13:
 6 |   unique_id r
                 ^
-Error: The value is used as unique, but part of it has already been used here:
+Error: The value is has already been used as unique, but part of it has already been used here:
 Line 3, characters 22-23:
 3 |   let _bar () = match r with
                           ^

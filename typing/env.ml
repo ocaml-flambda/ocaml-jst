@@ -690,6 +690,10 @@ type unbound_value_hint =
   | No_hint
   | Missing_rec of Location.t
 
+type closure_error =
+  | Locality of closure_context option
+  | Linearity
+
 type lookup_error =
   | Unbound_value of Longident.t * unbound_value_hint
   | Unbound_type of Longident.t
@@ -713,8 +717,7 @@ type lookup_error =
   | Cannot_scrape_alias of Longident.t * Path.t
   | Local_value_escaping of Longident.t * escaping_context
   | Once_value_used_in of Longident.t * shared_context
-  | Value_used_in_closure of Longident.t * Mode.Alloc.error *
-      closure_context option
+  | Value_used_in_closure of Longident.t * closure_error
   | Local_value_used_in_exclave of Longident.t
 
 type error =
@@ -2966,13 +2969,13 @@ let lock_mode ~errors ~loc env id vmode locks =
             with
           | Error _ ->
               may_lookup_error errors loc env
-                (Value_used_in_closure (id, `Locality, closure_context))
+                (Value_used_in_closure (id, Locality closure_context))
           | Ok () -> ()
           );
           (match Mode.Linearity.submode (Mode.Value.linearity vmode) linearity with
           | Error _ ->
               may_lookup_error errors loc env
-                (Value_used_in_closure (id, `Linearity, closure_context))
+                (Value_used_in_closure (id, Linearity))
           | Ok () -> ()
           );
           let uniqueness =
@@ -3754,7 +3757,7 @@ let extract_instance_variables env =
        | Val_ivar _ -> name :: acc
        | _ -> acc) None env []
 
-let print_escaping_context : escaping_context -> string =
+let string_of_escaping_context : escaping_context -> string =
   function
   | Letop -> "a letop"
   | Probe -> "a probe"
@@ -3762,7 +3765,7 @@ let print_escaping_context : escaping_context -> string =
   | Module -> "a module"
   | Lazy -> "a lazy expression"
 
-let print_shared_context =
+let string_of_shared_context =
   function
   | For_loop -> "a for loop"
   | While_loop -> "a while loop"
@@ -3885,25 +3888,25 @@ let report_lookup_error _loc env ppf = function
       fprintf ppf
         "@[The value %a is local, so cannot be used \
           inside %s.@]"
-        !print_longident lid (print_escaping_context context);
+        !print_longident lid (string_of_escaping_context context);
   | Once_value_used_in (lid, context) ->
-        fprintf ppf
-          "@[The value %a is once, so cannot be used \
-              inside %s@]"
-          !print_longident lid (print_shared_context context)
-  | Value_used_in_closure (lid, error, context) ->
-        let e0, e1 =
-          match error with
-          | `Locality -> "local", "might escape"
-          | `Linearity -> "shared", "is unique"
-          | _ -> assert false
-        in
-        fprintf ppf
-        "@[The value %a is %s, so cannot be used \
-             inside a closure that %s.@]"
-        !print_longident lid e0 e1;
-      begin match context with
-      | Some Tailcall_argument ->
+      fprintf ppf
+        "@[The value %a is once, so cannot be used \
+            inside %s@]"
+        !print_longident lid (string_of_shared_context context)
+  | Value_used_in_closure (lid, error) ->
+      let e0, e1 =
+        match error with
+        | Locality _ -> "local", "might escape"
+        | Linearity -> "once", "is many"
+
+      in
+      fprintf ppf
+      "@[The value %a is %s, so cannot be used \
+            inside a closure that %s.@]"
+      !print_longident lid e0 e1;
+      begin match error with
+      | Locality (Some Tailcall_argument) ->
          fprintf ppf "@.@[Hint: The closure might escape because it \
                           is an argument to a tail call@]"
       | _ -> ()

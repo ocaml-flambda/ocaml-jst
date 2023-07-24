@@ -194,6 +194,10 @@ type shared_context =
   | Probe
   | Lazy
 
+type closure_error =
+  | Locality of closure_context option
+  | Linearity
+
 type lookup_error =
   | Unbound_value of Longident.t * unbound_value_hint
   | Unbound_type of Longident.t
@@ -217,8 +221,7 @@ type lookup_error =
   | Cannot_scrape_alias of Longident.t * Path.t
   | Local_value_escaping of Longident.t * escaping_context
   | Once_value_used_in of Longident.t * shared_context
-  | Value_used_in_closure of Longident.t * Mode.Alloc.error
-      * closure_context option
+  | Value_used_in_closure of Longident.t * closure_error
   | Local_value_used_in_exclave of Longident.t
 
 val lookup_error: Location.t -> t -> lookup_error -> 'a

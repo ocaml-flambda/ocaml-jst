@@ -484,6 +484,7 @@ module Usage_tree = struct
   let par t0 t1 = map2 Usage.par t0 t1
 
   let on_multiuse = function
+    (* intercept exception and insert [first_is_of_second] info *)
     | Error (MultiUse { first; second; axis; first_or_second; _ }) ->
         fun rel ->
           raise
@@ -1246,8 +1247,8 @@ let report_error = function
   | MultiUse { first; second; first_or_second; axis; first_is_of_second } ->
       let why_cannot_use_twice =
         match axis with
-        | Uniqueness -> "used as unique"
-        | Linearity -> "defined as once and used"
+        | Uniqueness -> "has already been used as unique"
+        | Linearity -> "is defined as once and has already been used"
       in
       let first_is_of_second =
         match Option.get first_is_of_second with
@@ -1260,7 +1261,7 @@ let report_error = function
         | First ->
             (* the first occ is failing *)
             Format.dprintf
-              "Cannot use the value, because %s has already been %s here: "
+              "Cannot use the value, because %s %s here: "
               first_is_of_second why_cannot_use_twice
         | Second ->
             Format.dprintf "The value is %s, but %s has already been used here:"

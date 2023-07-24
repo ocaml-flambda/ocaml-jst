@@ -28,7 +28,7 @@ let dup (once_ x) = (x, x)
 Line 1, characters 24-25:
 1 | let dup (once_ x) = (x, x)
                             ^
-Error: Cannot use the value, because it has already been defined as once and used here:
+Error: Cannot use the value, because it is defined as once and has already been used here:
 Line 1, characters 21-22:
 1 | let dup (once_ x) = (x, x)
                          ^
@@ -184,7 +184,7 @@ let f () =
 Line 4, characters 9-10:
 4 |   (g (), g () )
              ^
-Error: Cannot use the value, because it has already been defined as once and used here:
+Error: Cannot use the value, because it is defined as once and has already been used here:
 Line 4, characters 3-4:
 4 |   (g (), g () )
        ^
@@ -353,7 +353,7 @@ let inf4 (b : bool) (y : float) (unique_ x : float) =
 Line 2, characters 58-59:
 2 |   let _ = shared_id y in let unique_ z = if b then x else y in z
                                                               ^
-Error: The value is used as unique, but it has already been used here:
+Error: The value is has already been used as unique, but it has already been used here:
 Line 2, characters 20-21:
 2 |   let _ = shared_id y in let unique_ z = if b then x else y in z
                         ^
@@ -484,7 +484,7 @@ let curry =
 Line 4, characters 13-16:
 4 |   (bar ~d:3, bar ~d:5)
                  ^^^
-Error: Cannot use the value, because it has already been defined as once and used here:
+Error: Cannot use the value, because it is defined as once and has already been used here:
 Line 4, characters 3-6:
 4 |   (bar ~d:3, bar ~d:5)
        ^^^
@@ -499,7 +499,7 @@ let curry =
 Line 4, characters 35-38:
 4 |   let baz = bar ~b:4 in (baz ~d:3, baz ~d:5)
                                        ^^^
-Error: Cannot use the value, because it has already been defined as once and used here:
+Error: Cannot use the value, because it is defined as once and has already been used here:
 Line 4, characters 25-28:
 4 |   let baz = bar ~b:4 in (baz ~d:3, baz ~d:5)
                              ^^^
@@ -514,7 +514,7 @@ let curry =
 Line 4, characters 10-13:
 4 |   (foo 1, foo 2)
               ^^^
-Error: Cannot use the value, because it has already been defined as once and used here:
+Error: Cannot use the value, because it is defined as once and has already been used here:
 Line 4, characters 3-6:
 4 |   (foo 1, foo 2)
        ^^^
