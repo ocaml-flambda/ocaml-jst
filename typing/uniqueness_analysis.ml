@@ -21,6 +21,55 @@ open Typedtree
 module Uniqueness = Mode.Uniqueness
 module Linearity = Mode.Linearity
 
+module Projection = struct
+  module T = struct
+    (** Projections from parent to child. *)
+    type t =
+      | Tuple_field of int
+      | Record_field of string
+      | Construct_field of string * int
+      | Variant_field of label
+      | Memory_address
+
+    let print ppf = function
+      | Tuple_field i -> Format.fprintf ppf ".%i" i
+      | Record_field s -> Format.fprintf ppf ".%s" s
+      | Construct_field (s, i) -> Format.fprintf ppf "|%s.%i" s i
+      | Variant_field l -> Format.fprintf ppf "|%s" l
+      | Memory_address -> Format.fprintf ppf ".*"
+
+    let compare t1 t2 =
+      match (t1, t2) with
+      | Tuple_field i, Tuple_field j -> Int.compare i j
+      | Record_field l1, Record_field l2 -> String.compare l1 l2
+      | Construct_field (l1, i), Construct_field (l2, j) -> (
+          match String.compare l1 l2 with 0 -> Int.compare i j | i -> i)
+      | Variant_field l1, Variant_field l2 -> String.compare l1 l2
+      | Memory_address, Memory_address -> 0
+      | ( Tuple_field _,
+          ( Record_field _ | Construct_field _ | Variant_field _
+          | Memory_address ) ) ->
+          -1
+      | ( ( Record_field _ | Construct_field _ | Variant_field _
+          | Memory_address ),
+          Tuple_field _ ) ->
+          1
+      | Record_field _, (Construct_field _ | Variant_field _ | Memory_address)
+        ->
+          -1
+      | (Construct_field _ | Variant_field _ | Memory_address), Record_field _
+        ->
+          1
+      | Construct_field _, (Variant_field _ | Memory_address) -> -1
+      | (Variant_field _ | Memory_address), Construct_field _ -> 1
+      | Variant_field _, Memory_address -> -1
+      | Memory_address, Variant_field _ -> 1
+  end
+
+  include T
+  module Map = Map.Make (T)
+end
+
 module Occurrence = struct
   type t = { loc : Location.t }
   (** The occurrence of a potentially unique ident in the expression. Currently
@@ -35,7 +84,11 @@ type boundary_reason =
   | Free_var_of_mod_class (* currently will never trigger *)
   | Out_of_mod_class
 
-type relation = Self | Ancestor | Descendant
+type relation =
+  | Self
+  | Ancestor of Projection.t list
+  | Descendant of Projection.t list
+
 type first_or_second = First | Second
 
 type error =
@@ -46,7 +99,8 @@ type error =
       first_or_second : first_or_second;
           (** which one of the two is failing? *)
       first_is_of_second : relation option;
-          (** relation of first in relation to second *)
+          (** relation of first in relation to second; List of projections
+              represents the path from the descendent to the ancestor *)
     }  (** Error caused by multiple use *)
   | Boundary of {
       occ : Occurrence.t;  (** The occurrence that's failing forcing*)
@@ -365,54 +419,7 @@ end
 
 (** lifting module Usage to trees *)
 module Usage_tree = struct
-  module Projection = struct
-    module T = struct
-      (** Projections from parent to child. *)
-      type t =
-        | Tuple_field of int
-        | Record_field of string
-        | Construct_field of string * int
-        | Variant_field of label
-        | Memory_address
 
-      let print ppf = function
-        | Tuple_field i -> Format.fprintf ppf ".%i" i
-        | Record_field s -> Format.fprintf ppf ".%s" s
-        | Construct_field (s, i) -> Format.fprintf ppf "|%s.%i" s i
-        | Variant_field l -> Format.fprintf ppf "|%s" l
-        | Memory_address -> Format.fprintf ppf ".*"
-
-      let compare t1 t2 =
-        match (t1, t2) with
-        | Tuple_field i, Tuple_field j -> Int.compare i j
-        | Record_field l1, Record_field l2 -> String.compare l1 l2
-        | Construct_field (l1, i), Construct_field (l2, j) -> (
-            match String.compare l1 l2 with 0 -> Int.compare i j | i -> i)
-        | Variant_field l1, Variant_field l2 -> String.compare l1 l2
-        | Memory_address, Memory_address -> 0
-        | ( Tuple_field _,
-            ( Record_field _ | Construct_field _ | Variant_field _
-            | Memory_address ) ) ->
-            -1
-        | ( ( Record_field _ | Construct_field _ | Variant_field _
-            | Memory_address ),
-            Tuple_field _ ) ->
-            1
-        | Record_field _, (Construct_field _ | Variant_field _ | Memory_address)
-          ->
-            -1
-        | (Construct_field _ | Variant_field _ | Memory_address), Record_field _
-          ->
-            1
-        | Construct_field _, (Variant_field _ | Memory_address) -> -1
-        | (Variant_field _ | Memory_address), Construct_field _ -> 1
-        | Variant_field _, Memory_address -> -1
-        | Memory_address, Variant_field _ -> 1
-    end
-
-    include T
-    module Map = Map.Make (T)
-  end
 
   type t = { children : t Projection.Map.t; usage : Usage.t }
   (** Represents a tree of usage. Each node records the par on all possible
@@ -447,34 +454,36 @@ module Usage_tree = struct
   let _unused = leaf Usage.Unused
 
   (** f must be monotone *)
-  let map ?(on_exception = fun _exn -> assert false) f t =
+  let map ?(on_exception = fun _exn _projs -> assert false) ?(projs=[]) f t =
     let rec loop projs t =
-      let usage = try f t.usage with exn -> on_exception exn in
+      let usage = try f t.usage with exn -> on_exception exn projs in
       let children =
         Projection.Map.mapi (fun proj t -> loop (proj :: projs) t) t.children
       in
       { usage; children }
     in
-    loop [] t
+    loop projs t
 
   let rec map2 ?(on_exception = fun _exn _rel -> assert false) f t0 t1 =
     {
       usage = (try f t0.usage t1.usage with exn -> on_exception exn Self);
       children =
         Projection.Map.merge
-          (fun _proj c0 c1 ->
+          (fun proj c0 c1 ->
             match (c0, c1) with
             | None, None -> assert false
             | None, Some c1 ->
                 Some
                   (map
-                     ~on_exception:(fun exn -> on_exception exn Ancestor)
+                     ~on_exception:(fun exn projs -> on_exception exn (Ancestor projs))
+                     ~projs:[proj]
                      (fun r -> f t0.usage r)
                      c1)
             | Some c0, None ->
                 Some
                   (map
-                     ~on_exception:(fun exn -> on_exception exn Descendant)
+                     ~on_exception:(fun exn projs -> on_exception exn (Descendant projs))
+                     ~projs:[proj]
                      (fun l -> f l t1.usage)
                      c0)
             | Some c0, Some c1 -> Some (map2 ~on_exception f c0 c1))
@@ -635,7 +644,7 @@ let mark_implicit_borrow_memory_address_paths paths occ =
   let mark_one path =
     (* borrow the memory address of the parent *)
     UF.singleton
-      (UF.Path.child path Usage_tree.Projection.Memory_address)
+      (UF.Path.child path Projection.Memory_address)
       (* Currently we just generate a dummy unique_barrier ref that won't be
          consumed. The distinction between implicit and explicit borrowing is
          still needed because they are handled differently in closures *)
@@ -724,12 +733,12 @@ let rec pattern_match pat value =
           in
           (Ienv.seqs ienvs, UF.seqs ufs))
         ~extract_pat:Fun.id
-        ~mk_proj:(fun i _ -> Usage_tree.Projection.Tuple_field i)
+        ~mk_proj:(fun i _ -> Projection.Tuple_field i)
         value pats
   | Tpat_construct (lbl, _, pats, _) ->
       pat_proj ~extract_pat:Fun.id
         ~mk_proj:(fun i _ ->
-          Usage_tree.Projection.Construct_field (Longident.last lbl.txt, i))
+          Projection.Construct_field (Longident.last lbl.txt, i))
         value pats
   | Tpat_variant (lbl, mpat, _) ->
       let uf = mark_implicit_borrow_memory_address value in
@@ -737,7 +746,7 @@ let rec pattern_match pat value =
         match value with
         | Match_single (paths, _, modes) ->
             ( UF.Path.child_of_many paths
-                (Usage_tree.Projection.Variant_field lbl),
+                (Projection.Variant_field lbl),
               pat.pat_loc,
               modes )
         | Match_tuple _ ->
@@ -754,7 +763,7 @@ let rec pattern_match pat value =
       pat_proj
         ~extract_pat:(fun (_, _, pat) -> pat)
         ~mk_proj:(fun _ (_, l, _) ->
-          Usage_tree.Projection.Record_field l.lbl_name)
+          Projection.Record_field l.lbl_name)
         value pats
   | Tpat_array (_, pats) -> (
       match value with
@@ -986,7 +995,7 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
                     | l, Kept _ ->
                         let ps =
                           UF.Path.child_of_many ps
-                            (Usage_tree.Projection.Record_field l.lbl_name)
+                            (Projection.Record_field l.lbl_name)
                         in
                         let occ = { Occurrence.loc } in
                         mark_maybe_unique ps unique_use occ
@@ -1008,6 +1017,7 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
       match check_uniqueness_exp' exp' ienv with
       | None, uf' -> UF.seq uf uf'
       | Some (ps, _), uf' ->
+          let loc = exp'.exp_loc in
           let occ = { Occurrence.loc } in
           UF.seqs [ uf; uf'; mark_implicit_borrow_memory_address_paths ps occ ])
   | Texp_array (_, es, _) ->
@@ -1124,7 +1134,7 @@ and check_uniqueness_exp' exp ienv : (UF.Path.t list * unique_use) option * UF.t
           let uf' = mark_implicit_borrow_memory_address_paths paths occ in
           let paths' =
             UF.Path.child_of_many paths
-              (Usage_tree.Projection.Record_field l.lbl_name)
+              (Projection.Record_field l.lbl_name)
           in
           (Some (paths', modes), UF.seq uf uf')
       | None, uf -> (None, uf))
@@ -1245,11 +1255,19 @@ let check_uniqueness_value_bindings vbs =
 
 let report_error = function
   | MultiUse { first; second; first_or_second; axis; first_is_of_second } ->
-      let first_is_of_second =
+      let first_usage, second_usage, first_is_of_second =
         match Option.get first_is_of_second with
-        | Descendant -> "part of it"
-        | Ancestor -> "it is part of a value that"
-        | Self -> "it"
+        | Self -> "used", "used", "it"
+        | Descendant [Projection.Memory_address] ->
+          (* first is memory address of the second *)
+          "accessed", "used", "it"
+        | Descendant _ ->
+          (* first is a real child of the second *)
+          "used", "used", "part of it"
+        | Ancestor [Projection.Memory_address] ->
+          "used", "accessed", "it"
+        | Ancestor _ ->
+          "used", "used", "it is part of a value that"
       in
       (* English is sadly not very composible, we write out all four cases
          manually *)
@@ -1257,20 +1275,20 @@ let report_error = function
         match first_or_second, axis with
         | First, Uniqueness ->
           Format.dprintf
-            "Cannot use the value, because %s has already been used as unique here:"
-            first_is_of_second
+            "The value is %s here, but %s has already been %s as unique here:"
+            second_usage first_is_of_second first_usage
         | First, Linearity ->
           Format.dprintf
-            "Cannot use the value, because %s is defined as once and has already been used here:"
-            first_is_of_second
+            "The value is %s here, but %s is defined as once and has already been %s here:"
+            second_usage first_is_of_second first_usage
         | Second, Uniqueness ->
           Format.dprintf
-            "The value is used as unique, but %s has already been used here:"
-            first_is_of_second
+            "The value is %s as unique, but %s has already been %s here:"
+            second_usage first_is_of_second first_usage
         | Second, Linearity ->
           Format.dprintf
-            "The value is defined as once, but %s has already been used here:"
-            first_is_of_second
+            "The value is defined as once and %s, but %s has already been %s here:"
+            second_usage first_is_of_second first_usage
       in
       let sub = [ Location.msg ~loc:first.loc "" ] in
       Location.errorf ~loc:second.loc ~sub "@[%t@]" error

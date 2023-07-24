@@ -9,7 +9,7 @@ let dup x = unique_ (x, x)
 Line 1, characters 24-25:
 1 | let dup x = unique_ (x, x)
                             ^
-Error: Cannot use the value, because it has already been used as unique here:
+Error: The value is used here, but it has already been used as unique here:
 Line 1, characters 21-22:
 1 | let dup x = unique_ (x, x)
                          ^
@@ -28,7 +28,7 @@ let dup (once_ x) = (x, x)
 Line 1, characters 24-25:
 1 | let dup (once_ x) = (x, x)
                             ^
-Error: Cannot use the value, because it is defined as once and has already been used here:
+Error: The value is used here, but it is defined as once and has already been used here:
 Line 1, characters 21-22:
 1 | let dup (once_ x) = (x, x)
                          ^
@@ -40,7 +40,7 @@ let dup (unique_ x) = (unique_ x, x, x)
 Line 1, characters 34-35:
 1 | let dup (unique_ x) = (unique_ x, x, x)
                                       ^
-Error: Cannot use the value, because it has already been used as unique here:
+Error: The value is used here, but it has already been used as unique here:
 Line 1, characters 31-32:
 1 | let dup (unique_ x) = (unique_ x, x, x)
                                    ^
@@ -65,7 +65,7 @@ let dup (unique_ x) = ((unique_ x), x)
 Line 1, characters 36-37:
 1 | let dup (unique_ x) = ((unique_ x), x)
                                         ^
-Error: Cannot use the value, because it has already been used as unique here:
+Error: The value is used here, but it has already been used as unique here:
 Line 1, characters 23-34:
 1 | let dup (unique_ x) = ((unique_ x), x)
                            ^^^^^^^^^^^
@@ -88,7 +88,7 @@ let f () =
 Line 3, characters 27-38:
 3 |   let g () = (unique_ k) ^ (unique_ k) in
                                ^^^^^^^^^^^
-Error: Cannot use the value, because it has already been used as unique here:
+Error: The value is used here, but it has already been used as unique here:
 Line 3, characters 13-24:
 3 |   let g () = (unique_ k) ^ (unique_ k) in
                  ^^^^^^^^^^^
@@ -195,7 +195,7 @@ let f () =
 Line 4, characters 9-10:
 4 |   (g (), g () )
              ^
-Error: Cannot use the value, because it is defined as once and has already been used here:
+Error: The value is used here, but it is defined as once and has already been used here:
 Line 4, characters 3-4:
 4 |   (g (), g () )
        ^
@@ -495,7 +495,7 @@ let curry =
 Line 4, characters 13-16:
 4 |   (bar ~d:3, bar ~d:5)
                  ^^^
-Error: Cannot use the value, because it is defined as once and has already been used here:
+Error: The value is used here, but it is defined as once and has already been used here:
 Line 4, characters 3-6:
 4 |   (bar ~d:3, bar ~d:5)
        ^^^
@@ -510,7 +510,7 @@ let curry =
 Line 4, characters 35-38:
 4 |   let baz = bar ~b:4 in (baz ~d:3, baz ~d:5)
                                        ^^^
-Error: Cannot use the value, because it is defined as once and has already been used here:
+Error: The value is used here, but it is defined as once and has already been used here:
 Line 4, characters 25-28:
 4 |   let baz = bar ~b:4 in (baz ~d:3, baz ~d:5)
                              ^^^
@@ -525,7 +525,7 @@ let curry =
 Line 4, characters 10-13:
 4 |   (foo 1, foo 2)
               ^^^
-Error: Cannot use the value, because it is defined as once and has already been used here:
+Error: The value is used here, but it is defined as once and has already been used here:
 Line 4, characters 3-6:
 4 |   (foo 1, foo 2)
        ^^^
@@ -605,7 +605,7 @@ type tree = Leaf | Node of tree * tree
 Line 5, characters 19-20:
 5 |        in Node (x, x)
                        ^
-Error: Cannot use the value, because it has already been used as unique here:
+Error: The value is used here, but it has already been used as unique here:
 Line 5, characters 16-17:
 5 |        in Node (x, x)
                     ^
