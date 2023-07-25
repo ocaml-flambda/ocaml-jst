@@ -485,26 +485,26 @@ end = struct
   let map f t = map_with_projs [] f t
 
   let rec map2 f t0 t1 =
-    {
-      usage = f Self t0.usage t1.usage;
-      children =
-        Projection.Map.merge
-          (fun proj c0 c1 ->
-            match (c0, c1) with
-            | None, None -> assert false
-            | None, Some c1 ->
-                Some
-                  (map_with_projs [ proj ]
-                     (fun projs r -> f (Ancestor projs) t0.usage r)
-                     c1)
-            | Some c0, None ->
-                Some
-                  (map_with_projs [ proj ]
-                     (fun projs l -> f (Descendant projs) l t1.usage)
-                     c0)
-            | Some c0, Some c1 -> Some (map2 f c0 c1))
-          t0.children t1.children;
-    }
+    let usage = f Self t0.usage t1.usage in
+    let children =
+      Projection.Map.merge
+        (fun proj c0 c1 ->
+          match (c0, c1) with
+          | None, None -> assert false
+          | None, Some c1 ->
+              Some
+                (map_with_projs [ proj ]
+                   (fun projs r -> f (Ancestor projs) t0.usage r)
+                   c1)
+          | Some c0, None ->
+              Some
+                (map_with_projs [ proj ]
+                   (fun projs l -> f (Descendant projs) l t1.usage)
+                   c0)
+          | Some c0, Some c1 -> Some (map2 f c0 c1))
+        t0.children t1.children
+    in
+    { usage; children }
 
   let par t0 t1 = map2 (fun _ -> Usage.par) t0 t1
 
