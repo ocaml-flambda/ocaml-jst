@@ -47,11 +47,10 @@ module Projection = struct
       | Variant_field l1, Variant_field l2 -> String.compare l1 l2
       | Memory_address, Memory_address -> 0
       | ( Tuple_field _,
-          ( Record_field _ | Construct_field _ | Variant_field _
-          | Memory_address ) ) ->
+          (Record_field _ | Construct_field _ | Variant_field _ | Memory_address)
+        ) ->
           -1
-      | ( ( Record_field _ | Construct_field _ | Variant_field _
-          | Memory_address ),
+      | ( (Record_field _ | Construct_field _ | Variant_field _ | Memory_address),
           Tuple_field _ ) ->
           1
       | Record_field _, (Construct_field _ | Variant_field _ | Memory_address)
@@ -242,7 +241,30 @@ end = struct
       t
 end
 
-module Usage = struct
+module Usage : sig
+  type t =
+    | Unused  (** empty usage *)
+    | Borrowed of Occurrence.t
+        (** A borrowed usage with an arbitrary occurrence. The occurrence is
+        only for future error messages. Currently not used, because we don't
+        have explicit borrowing *)
+    | Maybe_shared of Maybe_shared.t
+        (** A usage that could be either borrowed or shared. *)
+    | Shared of Occurrence.t
+        (** A shared usage with an arbitrary occurrence. The occurrence is only
+        for future error messages. *)
+    | Maybe_unique of Maybe_unique.t
+        (** A usage that could be either unique or shared. *)
+
+  val seq : t -> t -> t
+  (** Sequential composition *)
+
+  val par : t -> t -> t
+  (** Parallel composition  *)
+
+  val print : Format.formatter -> t -> unit
+  (** Printing  *)
+end = struct
   (* We have Unused (top) > Borrowed > Shared > Unique > Error (bot).
 
      - Unused means unused
@@ -294,19 +316,13 @@ module Usage = struct
 
      error is represented as exception which is just easier.
   *)
+
   type t =
-    | Unused  (** empty usage *)
+    | Unused
     | Borrowed of Occurrence.t
-        (** A borrowed usage with an arbitrary occurrence. The occurrence is
-        only for future error messages. Currently not used, because we don't
-        have explicit borrowing *)
     | Maybe_shared of Maybe_shared.t
-        (** A usage that could be either borrowed or shared. *)
     | Shared of Occurrence.t
-        (** A shared usage with an arbitrary occurrence. The occurrence is only
-        for future error messages. *)
     | Maybe_unique of Maybe_unique.t
-        (** A usage that could be either unique or shared. *)
 
   let to_string = function
     | Unused -> "unused"
@@ -316,29 +332,6 @@ module Usage = struct
     | Maybe_unique _ -> "maybe_unique"
 
   let print ppf t = Format.fprintf ppf "%s" (to_string t)
-
-  let _extract_occurrence = function
-    | Unused -> assert false
-    | Borrowed occ -> occ
-    | Maybe_shared l -> Maybe_shared.extract_occurrence l
-    | Shared occ -> occ
-    | Maybe_unique l -> Maybe_unique.extract_occurrence l
-
-  (** Whether m0 can be subsumed by m1. It is conservative and could return
-   false when it should return true, but that is fine as it's only used for
-   optimization *)
-  let _sub m0 m1 =
-    match (m0, m1) with
-    | Unused, _ -> true
-    | _, Unused -> false
-    | Borrowed _, _ -> true
-    | _, Borrowed _ -> false
-    | Maybe_shared _, Maybe_shared _ -> false
-    | Maybe_shared _, _ -> true
-    | _, Maybe_shared _ -> false
-    | Shared _, _ -> true
-    | _, Shared _ -> false
-    | Maybe_unique _, Maybe_unique _ -> false
 
   let par m0 m1 =
     match (m0, m1) with
@@ -396,7 +389,7 @@ module Usage = struct
             Unique;Shared = Error
 
             As you can see, we need to force the m0 to Shared, and m1 needn't
-            be constrained. The result is always Shard.
+            be constrained. The result is always Shared.
         *)
         let occ = Maybe_shared.extract_occurrence l1 in
         Maybe_unique.force_shared_multiuse l0 ~there:occ ~first_or_second:First;
@@ -418,9 +411,34 @@ module Usage = struct
 end
 
 (** lifting module Usage to trees *)
-module Usage_tree = struct
+module Usage_tree : sig
+  module Path : sig
+    type t
+    (** Represents a path from the root to a node in a tree *)
 
+    val child : t -> Projection.t -> t
+    (** Constructing a child path *)
 
+    val root : t
+    (** The path representing the root node *)
+  end
+
+  type t
+  (** Usage tree, lifted from [Usage.t] *)
+
+  val print : Format.formatter -> t -> unit
+
+  val seq : t -> t -> t
+  (** Sequential composition lifted from [Usage.seq] *)
+
+  val par : t -> t -> t
+  (** Parallel composition lifted from [Usage.par]  *)
+
+  val singleton : Path.t -> Usage.t -> t
+  (** A singleton tree containing only one leaf *)
+
+  val map : (Path.t -> Usage.t -> Usage.t) -> t -> t
+end = struct
   type t = { children : t Projection.Map.t; usage : Usage.t }
   (** Represents a tree of usage. Each node records the par on all possible
      execution paths. As a result, trees such as `S -> U` is valid, even though
@@ -454,9 +472,9 @@ module Usage_tree = struct
   let _unused = leaf Usage.Unused
 
   (** f must be monotone *)
-  let map ?(on_exception = fun _exn _projs -> assert false) ?(projs=[]) f t =
+  let map_with_projs projs f t =
     let rec loop projs t =
-      let usage = try f t.usage with exn -> on_exception exn projs in
+      let usage = f projs t.usage in
       let children =
         Projection.Map.mapi (fun proj t -> loop (proj :: projs) t) t.children
       in
@@ -464,9 +482,11 @@ module Usage_tree = struct
     in
     loop projs t
 
-  let rec map2 ?(on_exception = fun _exn _rel -> assert false) f t0 t1 =
+  let map f t = map_with_projs [] f t
+
+  let rec map2 f t0 t1 =
     {
-      usage = (try f t0.usage t1.usage with exn -> on_exception exn Self);
+      usage = f Self t0.usage t1.usage;
       children =
         Projection.Map.merge
           (fun proj c0 c1 ->
@@ -474,28 +494,25 @@ module Usage_tree = struct
             | None, None -> assert false
             | None, Some c1 ->
                 Some
-                  (map
-                     ~on_exception:(fun exn projs -> on_exception exn (Ancestor projs))
-                     ~projs:[proj]
-                     (fun r -> f t0.usage r)
+                  (map_with_projs [ proj ]
+                     (fun projs r -> f (Ancestor projs) t0.usage r)
                      c1)
             | Some c0, None ->
                 Some
-                  (map
-                     ~on_exception:(fun exn projs -> on_exception exn (Descendant projs))
-                     ~projs:[proj]
-                     (fun l -> f l t1.usage)
+                  (map_with_projs [ proj ]
+                     (fun projs l -> f (Descendant projs) l t1.usage)
                      c0)
-            | Some c0, Some c1 -> Some (map2 ~on_exception f c0 c1))
+            | Some c0, Some c1 -> Some (map2 f c0 c1))
           t0.children t1.children;
     }
 
-  let par t0 t1 = map2 Usage.par t0 t1
+  let par t0 t1 = map2 (fun _ -> Usage.par) t0 t1
 
-  let on_multiuse = function
-    (* intercept exception and insert [first_is_of_second] info *)
-    | Error (MultiUse { first; second; axis; first_or_second; _ }) ->
-        fun rel ->
+  let seq t0 t1 =
+    map2
+      (fun rel t0 t1 ->
+        try Usage.seq t0 t1
+        with Error (MultiUse { first; second; axis; first_or_second; _ }) ->
           raise
             (Error
                (MultiUse
@@ -505,10 +522,8 @@ module Usage_tree = struct
                     axis;
                     first_or_second;
                     first_is_of_second = Some rel;
-                  }))
-    | e -> fun _ -> raise e
-
-  let seq t0 t1 = map2 ~on_exception:on_multiuse Usage.seq t0 t1
+                  })))
+      t0 t1
 
   let rec singleton path leaf =
     match path with
@@ -521,7 +536,26 @@ module Usage_tree = struct
 end
 
 (** Lift Usage_tree to forest *)
-module Usage_forest = struct
+module Usage_forest : sig
+  module Path : sig
+    type t
+
+    val child : t -> Projection.t -> t
+    val child_of_many : t list -> Projection.t -> t list
+    val fresh_root_of_ident : Ident.t -> t
+    val fresh_root : string -> t
+  end
+
+  type t
+
+  val seq : t -> t -> t
+  val par : t -> t -> t
+  val seqs : t list -> t
+  val pars : t list -> t
+  val unused : t
+  val singleton : Path.t -> Usage.t -> t
+  val map : (Path.t -> Usage.t -> Usage.t) -> t -> t
+end = struct
   module Root_id = struct
     module T = struct
       type t = { id : int; name : string }
@@ -589,12 +623,24 @@ module Usage_forest = struct
     Root_id.Map.singleton rootid (Usage_tree.singleton path' leaf)
 
   (** f must be monotone *)
-  let map f = Root_id.Map.map f
+  let map f =
+    Root_id.Map.mapi (fun root tree ->
+        Usage_tree.map (fun projs usage -> f (root, projs) usage) tree)
 end
 
 module UF = Usage_forest
 
-module Ienv = struct
+module Ienv : sig
+  type t
+
+  val par : t -> t -> t
+  val seq : t -> t -> t
+  val pars : t list -> t
+  val seqs : t list -> t
+  val empty : t
+  val singleton : Ident.t -> UF.Path.t list -> t
+  val find_opt : Ident.t -> t -> UF.Path.t list option
+end = struct
   type t = UF.Path.t list Ident.Map.t
   (** Each identifier is mapped to a list of possible nodes, each represented by
      a path into the forest, instead of directly ponting to the node. *)
@@ -622,8 +668,9 @@ module Ienv = struct
 
   let empty = Ident.Map.empty
   let seqs ienvs = List.fold_left seq empty ienvs
-  let _pars ienvs = List.fold_left par empty ienvs
+  let pars ienvs = List.fold_left par empty ienvs
   let singleton id locs = Ident.Map.singleton id locs
+  let find_opt = Ident.Map.find_opt
 end
 
 type single_value_to_match = UF.Path.t list * Location.t * unique_use option
@@ -745,8 +792,7 @@ let rec pattern_match pat value =
       let t =
         match value with
         | Match_single (paths, _, modes) ->
-            ( UF.Path.child_of_many paths
-                (Projection.Variant_field lbl),
+            ( UF.Path.child_of_many paths (Projection.Variant_field lbl),
               pat.pat_loc,
               modes )
         | Match_tuple _ ->
@@ -762,8 +808,7 @@ let rec pattern_match pat value =
   | Tpat_record (pats, _) ->
       pat_proj
         ~extract_pat:(fun (_, _, pat) -> pat)
-        ~mk_proj:(fun _ (_, l, _) ->
-          Projection.Record_field l.lbl_name)
+        ~mk_proj:(fun _ (_, l, _) -> Projection.Record_field l.lbl_name)
         value pats
   | Tpat_array (_, pats) -> (
       match value with
@@ -829,7 +874,7 @@ let maybe_paths_of_ident ?maybe_unique ienv path =
   in
   match path with
   | Path.Pident id -> (
-      match Ident.Map.find_opt id ienv with
+      match Ienv.find_opt id ienv with
       (* TODO: for better error message, we should record in ienv why some
          variables are not in it. *)
       | None ->
@@ -933,12 +978,12 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
       (* we are constructing a closure here, and therefore any borrowing of free
          variables in the closure is in fact using shared. *)
       UF.map
-        (Usage_tree.map (function
+        (fun _ -> function
           | Maybe_shared l ->
               (* implicit borrowing lifted. *)
               Shared (Maybe_shared.extract_occurrence l)
               (* other usage stays the same *)
-          | m -> m))
+          | m -> m)
         uf
   | Texp_apply (f, xs, _, _) ->
       let uf = check_uniqueness_exp_ f ienv in
@@ -1133,8 +1178,7 @@ and check_uniqueness_exp' exp ienv : (UF.Path.t list * unique_use) option * UF.t
           let occ = { Occurrence.loc = e.exp_loc } in
           let uf' = mark_implicit_borrow_memory_address_paths paths occ in
           let paths' =
-            UF.Path.child_of_many paths
-              (Projection.Record_field l.lbl_name)
+            UF.Path.child_of_many paths (Projection.Record_field l.lbl_name)
           in
           (Some (paths', modes), UF.seq uf uf')
       | None, uf -> (None, uf))
@@ -1257,38 +1301,39 @@ let report_error = function
   | MultiUse { first; second; first_or_second; axis; first_is_of_second } ->
       let first_usage, second_usage, first_is_of_second =
         match Option.get first_is_of_second with
-        | Self -> "used", "used", "it"
-        | Descendant [Projection.Memory_address] ->
-          (* first is memory address of the second *)
-          "accessed", "used", "it"
+        | Self -> ("used", "used", "it")
+        | Descendant [ Projection.Memory_address ] ->
+            (* first is memory address of the second *)
+            ("accessed", "used", "it")
         | Descendant _ ->
-          (* first is a real child of the second *)
-          "used", "used", "part of it"
-        | Ancestor [Projection.Memory_address] ->
-          "used", "accessed", "it"
-        | Ancestor _ ->
-          "used", "used", "it is part of a value that"
+            (* first is a real child of the second *)
+            ("used", "used", "part of it")
+        | Ancestor [ Projection.Memory_address ] -> ("used", "accessed", "it")
+        | Ancestor _ -> ("used", "used", "it is part of a value that")
       in
       (* English is sadly not very composible, we write out all four cases
          manually *)
       let error =
-        match first_or_second, axis with
+        match (first_or_second, axis) with
         | First, Uniqueness ->
-          Format.dprintf
-            "The value is %s here, but %s has already been %s as unique here:"
-            second_usage first_is_of_second first_usage
+            Format.dprintf
+              "This value is %s here, but %s has already been %s as unique \
+               here:"
+              second_usage first_is_of_second first_usage
         | First, Linearity ->
-          Format.dprintf
-            "The value is %s here, but %s is defined as once and has already been %s here:"
-            second_usage first_is_of_second first_usage
+            Format.dprintf
+              "This value is %s here, but %s is defined as once and has \
+               already been %s here:"
+              second_usage first_is_of_second first_usage
         | Second, Uniqueness ->
-          Format.dprintf
-            "The value is %s as unique, but %s has already been %s here:"
-            second_usage first_is_of_second first_usage
+            Format.dprintf
+              "This value is %s as unique, but %s has already been %s here:"
+              second_usage first_is_of_second first_usage
         | Second, Linearity ->
-          Format.dprintf
-            "The value is defined as once and %s, but %s has already been %s here:"
-            second_usage first_is_of_second first_usage
+            Format.dprintf
+              "This value is defined as once and %s, but %s has already been \
+               %s here:"
+              second_usage first_is_of_second first_usage
       in
       let sub = [ Location.msg ~loc:first.loc "" ] in
       Location.errorf ~loc:second.loc ~sub "@[%t@]" error
