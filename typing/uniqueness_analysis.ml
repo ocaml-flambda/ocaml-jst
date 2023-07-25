@@ -792,12 +792,12 @@ let pattern_match_var ~loc id value =
       (value, Ienv.Extension.singleton id paths, UF.unused)
   | Match_tuple values ->
       let path = UF.Path.fresh_root_of_ident id in
-      let ienv = Ienv.Extension.singleton id [ path ] in
+      let ext = Ienv.Extension.singleton id [ path ] in
       (* Mark all ps as seen, as we bind the tuple to a variable. *)
       (* Can we make it aliases instead of used? Hard to do if we want
          to preserve the tree-ness *)
       ( Match_single ([ path ], loc, None),
-        ienv,
+        ext,
         UF.seqs
           (List.map
              (fun (paths, loc', modes) ->
@@ -819,9 +819,9 @@ let rec pattern_match pat value =
       let _, ienv, uf = pattern_match_var ~loc:pat.pat_loc id value in
       (ienv, uf)
   | Tpat_alias (pat', id, _, _) ->
-      let value, ienv0, uf0 = pattern_match_var ~loc:pat.pat_loc id value in
-      let ienv1, uf1 = pattern_match pat' value in
-      (Ienv.Extension.conjunct ienv0 ienv1, UF.seq uf0 uf1)
+      let value, ext0, uf0 = pattern_match_var ~loc:pat.pat_loc id value in
+      let ext1, uf1 = pattern_match pat' value in
+      (Ienv.Extension.conjunct ext0 ext1, UF.seq uf0 uf1)
   | Tpat_constant _ ->
       (Ienv.Extension.empty, mark_implicit_borrow_memory_address value)
   | Tpat_tuple pats ->
@@ -830,13 +830,13 @@ let rec pattern_match pat value =
           (* We matched a tuple against a tuple parent and descend into each
              case *)
           (* no borrowing needed - we own the tuple! *)
-          let ienvs, ufs =
+          let exts, ufs =
             List.split
               (List.map2
                  (fun pat value -> pattern_match pat (Match_single value))
                  pats values)
           in
-          (Ienv.Extension.conjuncts ienvs, UF.seqs ufs))
+          (Ienv.Extension.conjuncts exts, UF.seqs ufs))
         ~extract_pat:Fun.id
         ~mk_proj:(fun i _ -> Projection.Tuple_field i)
         value pats
@@ -857,12 +857,12 @@ let rec pattern_match pat value =
             (* matching a tuple against variant can't pass type checking *)
             assert false
       in
-      let ienv, uf' =
+      let ext, uf' =
         match mpat with
         | Some pat' -> pattern_match pat' (Match_single t)
         | None -> (Ienv.Extension.empty, UF.unused)
       in
-      (ienv, UF.seq uf uf')
+      (ext, UF.seq uf uf')
   | Tpat_record (pats, _) ->
       pat_proj
         ~extract_pat:(fun (_, _, pat) -> pat)
@@ -874,7 +874,7 @@ let rec pattern_match pat value =
       | Match_single (paths, loc, _) ->
           let occ = { Occurrence.loc } in
           let uf = mark_implicit_borrow_memory_address_paths paths occ in
-          let ienvs, ufs =
+          let exts, ufs =
             List.split
               (List.map
                  (fun pat ->
@@ -885,13 +885,13 @@ let rec pattern_match pat value =
                    pattern_match pat value)
                  pats)
           in
-          (Ienv.Extension.conjuncts ienvs, UF.seqs (uf :: ufs)))
+          (Ienv.Extension.conjuncts exts, UF.seqs (uf :: ufs)))
   | Tpat_lazy pat' -> pattern_match pat' value
   | Tpat_or (a, b, _) ->
-      let ienv0, uf0 = pattern_match a value in
-      let ienv1, uf1 = pattern_match b value in
+      let ext0, uf0 = pattern_match a value in
+      let ext1, uf1 = pattern_match b value in
       (* note that we use Ienv.par *)
-      (Ienv.Extension.disjunct ienv0 ienv1, UF.seq uf0 uf1)
+      (Ienv.Extension.disjunct ext0 ext1, UF.seq uf0 uf1)
 
 and pat_proj :
       'a.
