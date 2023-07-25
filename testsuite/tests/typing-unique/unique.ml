@@ -28,7 +28,8 @@ let dup (once_ x) = (x, x)
 Line 1, characters 24-25:
 1 | let dup (once_ x) = (x, x)
                             ^
-Error: This value is used here, but it is defined as once and has already been used here:
+Error: This value is used here,
+       but it is defined as once and has already been used here:
 Line 1, characters 21-22:
 1 | let dup (once_ x) = (x, x)
                          ^
@@ -195,7 +196,8 @@ let f () =
 Line 4, characters 9-10:
 4 |   (g (), g () )
              ^
-Error: This value is used here, but it is defined as once and has already been used here:
+Error: This value is used here,
+       but it is defined as once and has already been used here:
 Line 4, characters 3-4:
 4 |   (g (), g () )
        ^
@@ -495,7 +497,8 @@ let curry =
 Line 4, characters 13-16:
 4 |   (bar ~d:3, bar ~d:5)
                  ^^^
-Error: This value is used here, but it is defined as once and has already been used here:
+Error: This value is used here,
+       but it is defined as once and has already been used here:
 Line 4, characters 3-6:
 4 |   (bar ~d:3, bar ~d:5)
        ^^^
@@ -510,7 +513,8 @@ let curry =
 Line 4, characters 35-38:
 4 |   let baz = bar ~b:4 in (baz ~d:3, baz ~d:5)
                                        ^^^
-Error: This value is used here, but it is defined as once and has already been used here:
+Error: This value is used here,
+       but it is defined as once and has already been used here:
 Line 4, characters 25-28:
 4 |   let baz = bar ~b:4 in (baz ~d:3, baz ~d:5)
                              ^^^
@@ -525,7 +529,8 @@ let curry =
 Line 4, characters 10-13:
 4 |   (foo 1, foo 2)
               ^^^
-Error: This value is used here, but it is defined as once and has already been used here:
+Error: This value is used here,
+       but it is defined as once and has already been used here:
 Line 4, characters 3-6:
 4 |   (foo 1, foo 2)
        ^^^

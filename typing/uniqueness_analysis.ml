@@ -541,15 +541,27 @@ module Usage_forest : sig
     type t
 
     val child : t -> Projection.t -> t
+    (** Construct a child path from a parent  *)
+
     val child_of_many : t list -> Projection.t -> t list
-    val fresh_root_of_ident : Ident.t -> t
+    (** Similar to [child] but lifted to lists *)
+
     val fresh_root : string -> t
+    (** Create a fresh tree in the forest, using the string as a hint name *)
+
+    val fresh_root_of_ident : Ident.t -> t
+    (** Similar to [fresh_root] but uses the identifier as the hint *)
   end
 
   type t
+  (** Represents a forest of usage. *)
 
   val seq : t -> t -> t
+  (** Similar to [Usage_tree.seq] but lifted to forests *)
+
   val par : t -> t -> t
+  (** Similar to [Usage_tree.par] but lifted to forests  *)
+
   val seqs : t list -> t
   val pars : t list -> t
   val unused : t
@@ -579,7 +591,6 @@ end = struct
   end
 
   type t = Usage_tree.t Root_id.Map.t
-  (** Represents a forest of usage. *)
 
   let _print ppf t =
     Root_id.Map.iter
@@ -632,20 +643,30 @@ module UF = Usage_forest
 
 module Ienv : sig
   type t
+  (** A mapping from identifiers to all possible paths *)
 
   val par : t -> t -> t
+  (** Composition for [OR] patterns. This operation is commutative *)
+
   val seq : t -> t -> t
-  val pars : t list -> t
+  (** [seq ienv0 ienv1] adds [ienv1] to [ienv0], overwriting if overlapped *)
+
   val seqs : t list -> t
+  (** Similar to [seq] but lifted to lists *)
+
   val empty : t
+  (** The empty mapping  *)
+
   val singleton : Ident.t -> UF.Path.t list -> t
+  (* Constructing a mapping with only one mapping  *)
+
   val find_opt : Ident.t -> t -> UF.Path.t list option
+  (** Find the list of paths corresponding to an identifier  *)
 end = struct
   type t = UF.Path.t list Ident.Map.t
   (** Each identifier is mapped to a list of possible nodes, each represented by
      a path into the forest, instead of directly ponting to the node. *)
 
-  (* used for [OR] patterns. This operation is commutative  *)
   let par ienv0 ienv1 =
     Ident.Map.merge
       (fun _id locs0 locs1 ->
@@ -655,8 +676,6 @@ end = struct
         | Some locs0, Some locs1 -> Some (locs0 @ locs1))
       ienv0 ienv1
 
-  (* ienv0 is the old env; ienv1 is probably the new bindings to be added after
-     pattern matching. ienv1 simply overwrite ienv0 *)
   let seq ienv0 ienv1 =
     Ident.Map.merge
       (fun _id locs0 locs1 ->
@@ -668,7 +687,6 @@ end = struct
 
   let empty = Ident.Map.empty
   let seqs ienvs = List.fold_left seq empty ienvs
-  let pars ienvs = List.fold_left par empty ienvs
   let singleton id locs = Ident.Map.singleton id locs
   let find_opt = Ident.Map.find_opt
 end
@@ -1317,23 +1335,23 @@ let report_error = function
         match (first_or_second, axis) with
         | First, Uniqueness ->
             Format.dprintf
-              "This value is %s here, but %s has already been %s as unique \
-               here:"
-              second_usage first_is_of_second first_usage
+              "This value is %s here,@;\
+               but %s has already been %s as unique here:" second_usage
+              first_is_of_second first_usage
         | First, Linearity ->
             Format.dprintf
-              "This value is %s here, but %s is defined as once and has \
-               already been %s here:"
+              "This value is %s here,@;\
+               but %s is defined as once and has already been %s here:"
               second_usage first_is_of_second first_usage
         | Second, Uniqueness ->
             Format.dprintf
-              "This value is %s as unique, but %s has already been %s here:"
+              "This value is %s as unique,@;but %s has already been %s here:"
               second_usage first_is_of_second first_usage
         | Second, Linearity ->
             Format.dprintf
-              "This value is defined as once and %s, but %s has already been \
-               %s here:"
-              second_usage first_is_of_second first_usage
+              "This value is defined as once and %s,@;\
+               but %s has already been %s here:" second_usage first_is_of_second
+              first_usage
       in
       let sub = [ Location.msg ~loc:first.loc "" ] in
       Location.errorf ~loc:second.loc ~sub "@[%t@]" error
