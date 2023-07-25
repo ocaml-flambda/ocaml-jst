@@ -23,20 +23,26 @@ module Linearity = Mode.Linearity
 
 module Projection = struct
   module T = struct
+    type read_or_write = Read | Write
+
+    let string_of_read_or_write = function
+      | Read -> "read from"
+      | Write -> "written to"
+
     (** Projections from parent to child. *)
     type t =
       | Tuple_field of int
       | Record_field of string
       | Construct_field of string * int
       | Variant_field of label
-      | Memory_address
+      | Memory_address of read_or_write
 
     let print ppf = function
       | Tuple_field i -> Format.fprintf ppf ".%i" i
       | Record_field s -> Format.fprintf ppf ".%s" s
       | Construct_field (s, i) -> Format.fprintf ppf "|%s.%i" s i
       | Variant_field l -> Format.fprintf ppf "|%s" l
-      | Memory_address -> Format.fprintf ppf ".*"
+      | Memory_address _ -> Format.fprintf ppf ".*"
 
     let compare t1 t2 =
       match (t1, t2) with
@@ -45,24 +51,25 @@ module Projection = struct
       | Construct_field (l1, i), Construct_field (l2, j) -> (
           match String.compare l1 l2 with 0 -> Int.compare i j | i -> i)
       | Variant_field l1, Variant_field l2 -> String.compare l1 l2
-      | Memory_address, Memory_address -> 0
+      | Memory_address _, Memory_address _ -> 0
       | ( Tuple_field _,
-          (Record_field _ | Construct_field _ | Variant_field _ | Memory_address)
-        ) ->
+          ( Record_field _ | Construct_field _ | Variant_field _
+          | Memory_address _ ) ) ->
           -1
-      | ( (Record_field _ | Construct_field _ | Variant_field _ | Memory_address),
+      | ( ( Record_field _ | Construct_field _ | Variant_field _
+          | Memory_address _ ),
           Tuple_field _ ) ->
           1
-      | Record_field _, (Construct_field _ | Variant_field _ | Memory_address)
+      | Record_field _, (Construct_field _ | Variant_field _ | Memory_address _)
         ->
           -1
-      | (Construct_field _ | Variant_field _ | Memory_address), Record_field _
+      | (Construct_field _ | Variant_field _ | Memory_address _), Record_field _
         ->
           1
-      | Construct_field _, (Variant_field _ | Memory_address) -> -1
-      | (Variant_field _ | Memory_address), Construct_field _ -> 1
-      | Variant_field _, Memory_address -> -1
-      | Memory_address, Variant_field _ -> 1
+      | Construct_field _, (Variant_field _ | Memory_address _) -> -1
+      | (Variant_field _ | Memory_address _), Construct_field _ -> 1
+      | Variant_field _, Memory_address _ -> -1
+      | Memory_address _, Variant_field _ -> 1
   end
 
   include T
@@ -743,11 +750,12 @@ type value_to_match =
   | Match_single of single_value_to_match
       (** The value being matched is not a tuple *)
 
-let mark_implicit_borrow_memory_address_paths paths occ =
+let mark_implicit_borrow_memory_address_paths ?(read_or_write = Projection.Read)
+    paths occ =
   let mark_one path =
     (* borrow the memory address of the parent *)
     UF.singleton
-      (UF.Path.child path Projection.Memory_address)
+      (UF.Path.child path (Projection.Memory_address read_or_write))
       (* Currently we just generate a dummy unique_barrier ref that won't be
          consumed. The distinction between implicit and explicit borrowing is
          still needed because they are handled differently in closures *)
@@ -1122,7 +1130,13 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
       | Some (ps, _), uf' ->
           let loc = exp'.exp_loc in
           let occ = { Occurrence.loc } in
-          UF.seqs [ uf; uf'; mark_implicit_borrow_memory_address_paths ps occ ])
+          UF.seqs
+            [
+              uf;
+              uf';
+              mark_implicit_borrow_memory_address_paths
+                ~read_or_write:Projection.Write ps occ;
+            ])
   | Texp_array (_, es, _) ->
       UF.seqs (List.map (fun e -> check_uniqueness_exp_ e ienv) es)
   | Texp_ifthenelse (if', then', else_opt) ->
@@ -1362,13 +1376,14 @@ let report_error = function
       let first_usage, second_usage, first_is_of_second =
         match Option.get first_is_of_second with
         | Self -> ("used", "used", "it")
-        | Descendant [ Projection.Memory_address ] ->
+        | Descendant [ Projection.Memory_address rw ] ->
             (* first is memory address of the second *)
-            ("accessed", "used", "it")
+            (Projection.string_of_read_or_write rw, "used", "it")
         | Descendant _ ->
             (* first is a real child of the second *)
             ("used", "used", "part of it")
-        | Ancestor [ Projection.Memory_address ] -> ("used", "accessed", "it")
+        | Ancestor [ Projection.Memory_address rw ] ->
+            ("used", Projection.string_of_read_or_write rw, "it")
         | Ancestor _ -> ("used", "used", "it is part of a value that")
       in
       (* English is sadly not very composible, we write out all four cases

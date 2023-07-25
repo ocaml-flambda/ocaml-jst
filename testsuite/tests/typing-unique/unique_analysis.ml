@@ -265,7 +265,7 @@ let mark_top_shared =
 Line 4, characters 8-10:
 4 |   match xs with
             ^^
-Error: This value is accessed here,
+Error: This value is read from here,
        but it has already been used as unique here:
 Line 3, characters 20-22:
 3 |   let _ = unique_id xs in
@@ -475,7 +475,7 @@ let foo () =
 Line 6, characters 12-13:
 6 |   unique_id r
                 ^
-Error: This value is used as unique, but it has already been accessed here:
+Error: This value is used as unique, but it has already been read from here:
 Line 3, characters 22-23:
 3 |   let _bar () = match r with
                           ^
@@ -510,7 +510,7 @@ type mfoo = { mutable a : string; b : string; }
 Line 12, characters 2-3:
 12 |   x.a <- "olleh"
        ^
-Error: This value is accessed here,
+Error: This value is written to here,
        but it has already been used as unique here:
 Line 11, characters 20-21:
 11 |   ignore (unique_id x);
