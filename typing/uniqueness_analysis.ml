@@ -1133,15 +1133,13 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
           UF.seq uf (mark_maybe_unique ps unique_use occ)
       | None, uf -> uf)
   | Texp_setfield (exp', _, _, _, e) -> (
-      (* Setfield is trakced as implicit borrowing instead of unique, because
-        we still want to allow setfield on non-unique values for backward
-        compatibility.
-
-         We still track it instead of no tracking at all, because a unique use
-         (strong update) followed by setfield could cause segfault, which would
-         be less safe than the original language. Unique use followed by
-         implicit borrowing is properly rejected.
-         *)
+      (* Setfield allows mutations outside of our uniqueness extension. We still
+         need to track it, because a unique use (strong update) followed by
+         setfield could cause segfault. Tracking it as unique is too strong,
+         because that would reject the existing usages of mutable fields.
+         Tracking it as shared is also too strong, because setfield followed by
+         unique use should be allowed. Tracking it as borrow_or_shared (which is
+         how we track `getfield`) sounds about right. *)
       let uf = check_uniqueness_exp_ e ienv in
       match check_uniqueness_exp' exp' ienv with
       | None, uf' -> UF.seq uf uf'
