@@ -251,6 +251,13 @@ end = struct
 end
 
 module Usage : sig
+  type shared_reason =
+    | Shared_forced
+    (** shared because of forced *)
+
+    | Shared_lifted
+    (** shared because lifted from implicit borrowing *)
+
   type t =
     | Unused  (** empty usage *)
     | Borrowed of Occurrence.t
@@ -259,7 +266,7 @@ module Usage : sig
         have explicit borrowing *)
     | Maybe_shared of Maybe_shared.t
         (** A usage that could be either borrowed or shared. *)
-    | Shared of Occurrence.t
+    | Shared of Occurrence.t * shared_reason
         (** A shared usage with an arbitrary occurrence. The occurrence is only
         for future error messages. *)
     | Maybe_unique of Maybe_unique.t
@@ -326,11 +333,15 @@ end = struct
      error is represented as exception which is just easier.
   *)
 
+  type shared_reason =
+    | Shared_forced
+    | Shared_lifted
+
   type t =
     | Unused
     | Borrowed of Occurrence.t
     | Maybe_shared of Maybe_shared.t
-    | Shared of Occurrence.t
+    | Shared of Occurrence.t* shared_reason
     | Maybe_unique of Maybe_unique.t
 
   let to_string = function
@@ -388,7 +399,7 @@ end = struct
     | Shared _, Borrowed _ -> m0
     | Maybe_unique l, Borrowed occ ->
         Maybe_unique.force_shared_multiuse l ~there:occ ~first_or_second:First;
-        Shared occ
+        Shared (occ, Shared_forced)
     | Shared _, Maybe_shared _ -> m0
     | Maybe_unique l0, Maybe_shared l1 ->
         (* Four cases:
@@ -402,9 +413,9 @@ end = struct
         *)
         let occ = Maybe_shared.extract_occurrence l1 in
         Maybe_unique.force_shared_multiuse l0 ~there:occ ~first_or_second:First;
-        Shared occ
+        Shared (occ, Shared_forced)
     | Shared _, Shared _ -> m0
-    | Maybe_unique l, Shared occ ->
+    | Maybe_unique l, Shared (occ, ->
         Maybe_unique.force_shared_multiuse l ~there:occ ~first_or_second:First;
         Shared occ
     | Shared occ, Maybe_unique l ->
@@ -1122,8 +1133,15 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
           UF.seq uf (mark_maybe_unique ps unique_use occ)
       | None, uf -> uf)
   | Texp_setfield (exp', _, _, _, e) -> (
-      (* setfield is understood as an opaque function which borrows the memory
-         address of the record *)
+      (* Setfield is trakced as implicit borrowing instead of unique, because
+        we still want to allow setfield on non-unique values for backward
+        compatibility.
+
+         We still track it instead of no tracking at all, because a unique use
+         (strong update) followed by setfield could cause segfault, which would
+         be less safe than the original language. Unique use followed by
+         implicit borrowing is properly rejected.
+         *)
       let uf = check_uniqueness_exp_ e ienv in
       match check_uniqueness_exp' exp' ienv with
       | None, uf' -> UF.seq uf uf'
