@@ -22,9 +22,13 @@ module Uniqueness = Mode.Uniqueness
 module Linearity = Mode.Linearity
 
 module Occurrence = struct
-  type t = { loc : Location.t }
+  type read_or_write = Read | Write
+
+  type t = { access : read_or_write option; loc : Location.t }
   (** The occurrence of a potentially unique ident in the expression. Currently
   it's just the location; might add more things in the future *)
+
+  let mk ?access loc = { loc; access }
 end
 
 let rec list_find_error f = function
@@ -130,6 +134,25 @@ end = struct
       t
 end
 
+module Shared : sig
+  type t
+
+  type reason =
+    | Forced  (** shared because forced  *)
+    | Lifted  (** shared because lifted from implicit borrowing *)
+
+  val singleton : Occurrence.t -> reason -> t
+  val extract_occurrence : t -> Occurrence.t
+  val reason : t -> reason
+end = struct
+  type reason = Forced | Lifted
+  type t = Occurrence.t * reason
+
+  let singleton occ reason = (occ, reason)
+  let extract_occurrence (occ, _) = occ
+  let reason (_, reason) = reason
+end
+
 module Usage : sig
   type t =
     | Unused  (** empty usage *)
@@ -139,9 +162,10 @@ module Usage : sig
         have explicit borrowing *)
     | Maybe_shared of Maybe_shared.t
         (** A usage that could be either borrowed or shared. *)
-    | Shared of Occurrence.t
+    | Shared of Shared.t
         (** A shared usage with an arbitrary occurrence. The occurrence is only
-        for future error messages. *)
+        for future error messages. The share_reason must corresponds to the
+        occurrence *)
     | Maybe_unique of Maybe_unique.t
         (** A usage that could be either unique or shared. *)
 
@@ -219,18 +243,19 @@ end = struct
 
      error is represented as exception which is just easier.
   *)
+
   type t =
     | Unused
     | Borrowed of Occurrence.t
     | Maybe_shared of Maybe_shared.t
-    | Shared of Occurrence.t
+    | Shared of Shared.t
     | Maybe_unique of Maybe_unique.t
 
   let extract_occurrence = function
     | Unused -> None
     | Borrowed occ -> Some occ
     | Maybe_shared t -> Some (Maybe_shared.extract_occurrence t)
-    | Shared occ -> Some occ
+    | Shared t -> Some (Shared.extract_occurrence t)
     | Maybe_unique t -> Some (Maybe_unique.extract_occurrence t)
 
   let to_string = function
@@ -304,7 +329,7 @@ end = struct
     | Shared _, Borrowed _ -> m0
     | Maybe_unique l, Borrowed occ ->
         force_shared_multiuse l m1 First;
-        Shared occ
+        Shared (Shared.singleton occ Shared.Forced)
     | Shared _, Maybe_shared _ -> m0
     | Maybe_unique l0, Maybe_shared l1 ->
         (* Four cases:
@@ -318,34 +343,31 @@ end = struct
         *)
         let occ = Maybe_shared.extract_occurrence l1 in
         force_shared_multiuse l0 m1 First;
-        Shared occ
+        Shared (Shared.singleton occ Shared.Forced)
     | Shared _, Shared _ -> m0
-    | Maybe_unique l, Shared occ ->
+    | Maybe_unique l, Shared _ ->
         force_shared_multiuse l m1 First;
-        Shared occ
-    | Shared occ, Maybe_unique l ->
+        m1
+    | Shared _, Maybe_unique l ->
         force_shared_multiuse l m0 Second;
-        Shared occ
+        m0
     | Maybe_unique l0, Maybe_unique l1 ->
         force_shared_multiuse l0 m1 First;
         force_shared_multiuse l1 m0 Second;
-        Shared (Maybe_unique.extract_occurrence l0)
+        Shared
+          (Shared.singleton (Maybe_unique.extract_occurrence l0) Shared.Forced)
 end
 
 (** lifting module Usage to trees *)
 module Usage_tree : sig
   module Projection : sig
-    type read_or_write = Read | Write
-
-    val string_of_read_or_write : read_or_write -> string
-
     (** Projections from parent to child. *)
     type t =
       | Tuple_field of int
       | Record_field of string
       | Construct_field of string * int
       | Variant_field of label
-      | Memory_address of read_or_write
+      | Memory_address
   end
 
   module Path : sig
@@ -393,25 +415,19 @@ non-empty *)
 end = struct
   module Projection = struct
     module T = struct
-      type read_or_write = Read | Write
-
-      let string_of_read_or_write = function
-        | Read -> "read from"
-        | Write -> "written to"
-
       type t =
         | Tuple_field of int
         | Record_field of string
         | Construct_field of string * int
         | Variant_field of label
-        | Memory_address of read_or_write
+        | Memory_address
 
       let print ppf = function
         | Tuple_field i -> Format.fprintf ppf ".%i" i
         | Record_field s -> Format.fprintf ppf ".%s" s
         | Construct_field (s, i) -> Format.fprintf ppf "|%s.%i" s i
         | Variant_field l -> Format.fprintf ppf "|%s" l
-        | Memory_address _ -> Format.fprintf ppf ".*"
+        | Memory_address -> Format.fprintf ppf ".*"
 
       let compare t1 t2 =
         match (t1, t2) with
@@ -420,25 +436,25 @@ end = struct
         | Construct_field (l1, i), Construct_field (l2, j) -> (
             match String.compare l1 l2 with 0 -> Int.compare i j | i -> i)
         | Variant_field l1, Variant_field l2 -> String.compare l1 l2
-        | Memory_address _, Memory_address _ -> 0
+        | Memory_address, Memory_address -> 0
         | ( Tuple_field _,
             ( Record_field _ | Construct_field _ | Variant_field _
-            | Memory_address _ ) ) ->
+            | Memory_address ) ) ->
             -1
         | ( ( Record_field _ | Construct_field _ | Variant_field _
-            | Memory_address _ ),
+            | Memory_address ),
             Tuple_field _ ) ->
             1
-        | ( Record_field _,
-            (Construct_field _ | Variant_field _ | Memory_address _) ) ->
+        | Record_field _, (Construct_field _ | Variant_field _ | Memory_address)
+          ->
             -1
-        | ( (Construct_field _ | Variant_field _ | Memory_address _),
-            Record_field _ ) ->
+        | (Construct_field _ | Variant_field _ | Memory_address), Record_field _
+          ->
             1
-        | Construct_field _, (Variant_field _ | Memory_address _) -> -1
-        | (Variant_field _ | Memory_address _), Construct_field _ -> 1
-        | Variant_field _, Memory_address _ -> -1
-        | Memory_address _, Variant_field _ -> 1
+        | Construct_field _, (Variant_field _ | Memory_address) -> -1
+        | (Variant_field _ | Memory_address), Construct_field _ -> 1
+        | Variant_field _, Memory_address -> -1
+        | Memory_address, Variant_field _ -> 1
     end
 
     include T
@@ -769,12 +785,13 @@ type value_to_match =
   | Match_single of single_value_to_match
       (** The value being matched is not a tuple *)
 
-let mark_implicit_borrow_memory_address_paths
-    ?(read_or_write = Usage_tree.Projection.Read) paths occ =
+let mark_implicit_borrow_memory_address_paths paths ?(access = Occurrence.Read)
+    loc =
+  let occ = Occurrence.mk ~access loc in
   let mark_one path =
     (* borrow the memory address of the parent *)
     UF.singleton
-      (UF.Path.child path (Usage_tree.Projection.Memory_address read_or_write))
+      (UF.Path.child path Usage_tree.Projection.Memory_address)
       (* Currently we just generate a dummy unique_barrier ref that won't be
          consumed. The distinction between implicit and explicit borrowing is
          still needed because they are handled differently in closures *)
@@ -782,25 +799,11 @@ let mark_implicit_borrow_memory_address_paths
   in
   UF.pars (List.map (fun path -> mark_one path) paths)
 
-let _mark_borrow_paths paths occ =
-  let mark_one path =
-    (* borrow the memory address of the parent *)
-    UF.singleton path
-      (* Currently we just generate a dummy unique_barrier ref that won't be
-         consumed. *)
-      (Borrowed occ)
-  in
-  UF.pars (List.map (fun path -> mark_one path) paths)
-
 let mark_implicit_borrow_memory_address = function
   | Match_single (paths, loc, _) ->
-      mark_implicit_borrow_memory_address_paths paths { Occurrence.loc }
+      mark_implicit_borrow_memory_address_paths paths loc
   (* it's still a tuple - we own it and nothing to do here *)
   | Match_tuple _ -> UF.unused
-
-let _mark_shared paths occ =
-  let mark_one path = UF.singleton path (Shared occ) in
-  UF.pars (List.map (fun path -> mark_one path) paths)
 
 let mark_maybe_unique paths unique_use occ =
   let mark_one path =
@@ -831,7 +834,7 @@ let pattern_match_var ~loc id value =
                match modes with
                | None -> UF.unused
                | Some unique_use ->
-                   let occ = { Occurrence.loc = loc' } in
+                   let occ = Occurrence.mk loc' in
                    mark_maybe_unique paths unique_use occ)
              values) )
 
@@ -901,8 +904,7 @@ let rec pattern_match pat value =
       match value with
       | Match_tuple _ -> assert false
       | Match_single (paths, loc, _) ->
-          let occ = { Occurrence.loc } in
-          let uf = mark_implicit_borrow_memory_address_paths paths occ in
+          let uf = mark_implicit_borrow_memory_address_paths paths loc in
           let exts, ufs =
             List.split
               (List.map
@@ -933,8 +935,7 @@ and pat_proj :
  fun ?(handle_tuple = fun _ -> assert false) ~extract_pat ~mk_proj value pats ->
   match value with
   | Match_single (paths, loc, _) ->
-      let occ = { Occurrence.loc } in
-      let uf = mark_implicit_borrow_memory_address_paths paths occ in
+      let uf = mark_implicit_borrow_memory_address_paths paths loc in
       let ienvs, ufs =
         List.split
           (List.mapi
@@ -997,7 +998,7 @@ let open_variables ienv f =
               match maybe_paths_of_ident ienv path with
               | None -> ()
               | Some paths ->
-                  let occ = { Occurrence.loc = e.exp_loc } in
+                  let occ = Occurrence.mk e.exp_loc in
                   let maybe_unique = Maybe_unique.singleton unique_use occ in
                   ll := (paths, maybe_unique) :: !ll)
           | _ -> ());
@@ -1020,7 +1021,10 @@ let mark_shared_open_variables ienv f _loc =
            variables. We nevertheless force it here just to be sure *)
         force_shared_boundary maybe_unique ~reason:Free_var_of_mod_class;
         let shared =
-          Usage.Shared (Maybe_unique.extract_occurrence maybe_unique)
+          Usage.Shared
+            (Shared.singleton
+               (Maybe_unique.extract_occurrence maybe_unique)
+               Shared.Forced)
         in
         let ufs = List.map (fun path -> UF.singleton path shared) paths in
         UF.seqs ufs)
@@ -1046,7 +1050,7 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
   | Texp_ident _ -> (
       match check_uniqueness_exp' exp ienv with
       | Some (paths, unique_use), uf ->
-          let occ = { Occurrence.loc } in
+          let occ = Occurrence.mk loc in
           UF.seq uf (mark_maybe_unique paths unique_use occ)
       | None, uf -> uf)
   | Texp_constant _ -> UF.unused
@@ -1067,7 +1071,10 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
         (fun _ -> function
           | Maybe_shared l ->
               (* implicit borrowing lifted. *)
-              Shared (Maybe_shared.extract_occurrence l)
+              Shared
+                (Shared.singleton
+                   (Maybe_shared.extract_occurrence l)
+                   Shared.Lifted)
               (* other usage stays the same *)
           | m -> m)
         uf
@@ -1128,7 +1135,7 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
                           UF.Path.child_of_many ps
                             (Usage_tree.Projection.Record_field l.lbl_name)
                         in
-                        let occ = { Occurrence.loc } in
+                        let occ = Occurrence.mk loc in
                         mark_maybe_unique ps unique_use occ
                     | _, Overridden (_, e) -> check_uniqueness_exp_ e ienv)
                   fields
@@ -1138,7 +1145,7 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
   | Texp_field _ -> (
       match check_uniqueness_exp' exp ienv with
       | Some (ps, unique_use), uf ->
-          let occ = { Occurrence.loc } in
+          let occ = Occurrence.mk loc in
           UF.seq uf (mark_maybe_unique ps unique_use occ)
       | None, uf -> uf)
   | Texp_setfield (exp', _, _, _, e) -> (
@@ -1154,13 +1161,12 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
       | None, uf' -> UF.seq uf uf'
       | Some (ps, _), uf' ->
           let loc = exp'.exp_loc in
-          let occ = { Occurrence.loc } in
           UF.seqs
             [
               uf;
               uf';
-              mark_implicit_borrow_memory_address_paths
-                ~read_or_write:Usage_tree.Projection.Write ps occ;
+              mark_implicit_borrow_memory_address_paths ~access:Occurrence.Write
+                ps loc;
             ])
   | Texp_array (_, es, _) ->
       UF.seqs (List.map (fun e -> check_uniqueness_exp_ e ienv) es)
@@ -1262,7 +1268,7 @@ and check_uniqueness_exp' exp ienv : (UF.Path.t list * unique_use) option * UF.t
     =
   match exp.exp_desc with
   | Texp_ident (p, _, _, _, unique_use) -> (
-      let occ = { Occurrence.loc = exp.exp_loc } in
+      let occ = Occurrence.mk exp.exp_loc in
       let maybe_unique = (unique_use, occ) in
       match maybe_paths_of_ident ~maybe_unique ienv p with
       | None -> (None, UF.unused)
@@ -1272,8 +1278,7 @@ and check_uniqueness_exp' exp ienv : (UF.Path.t list * unique_use) option * UF.t
       | Some (paths, _), uf ->
           (* accessing the field meaning borrowing the parent record's mem
              block. Note that the field itself is not borrowed or used *)
-          let occ = { Occurrence.loc = e.exp_loc } in
-          let uf' = mark_implicit_borrow_memory_address_paths paths occ in
+          let uf' = mark_implicit_borrow_memory_address_paths paths e.exp_loc in
           let paths' =
             UF.Path.child_of_many paths
               (Usage_tree.Projection.Record_field l.lbl_name)
@@ -1381,7 +1386,7 @@ and check_uniqueness_binding_op bo exp ienv =
   let uf0 =
     match maybe_paths_of_ident ienv bo.bop_op_path with
     | Some paths ->
-        let occ = { Occurrence.loc = exp.exp_loc } in
+        let occ = Occurrence.mk exp.exp_loc in
         let unique_use = (Uniqueness.shared, Linearity.many) in
         mark_maybe_unique paths unique_use occ
     | None -> UF.unused
@@ -1403,46 +1408,65 @@ let report_multi_use
         { cannot_force = { occ; axis }; there; first_or_second };
       first_is_of_second;
     } =
-  let first, second =
+  let here_usage = "used here" in
+  let there_usage =
+    match there with
+    | Usage.Maybe_shared t -> (
+        let { Occurrence.access; _ } = Maybe_shared.extract_occurrence t in
+        match access with
+        | None -> "used here"
+        | Some Read -> "read from here"
+        | Some Write -> "written to here")
+    | Usage.Shared t -> (
+        match Shared.reason t with
+        | Forced -> "used here"
+        | Lifted -> "captured in a closure here that might be called later")
+    | _ -> "used here"
+  in
+  let first, first_usage, second, second_usage =
     match first_or_second with
-    | Usage.First -> (occ, Option.get (Usage.extract_occurrence there))
-    | Usage.Second -> (Option.get (Usage.extract_occurrence there), occ)
+    | Usage.First ->
+        ( occ,
+          here_usage,
+          Option.get (Usage.extract_occurrence there),
+          there_usage )
+    | Usage.Second ->
+        ( Option.get (Usage.extract_occurrence there),
+          there_usage,
+          occ,
+          here_usage )
   in
-  let first_usage, second_usage, first_is_of_second =
+  let first_is_of_second =
     match first_is_of_second with
-    | Self -> ("used", "used", "it")
-    | Descendant [ Usage_tree.Projection.Memory_address rw ] ->
-        (* first is memory address of the second *)
-        (Usage_tree.Projection.string_of_read_or_write rw, "used", "it")
-    | Descendant _ ->
-        (* first is a real child of the second *)
-        ("used", "used", "part of it")
-    | Ancestor [ Usage_tree.Projection.Memory_address rw ] ->
-        ("used", Usage_tree.Projection.string_of_read_or_write rw, "it")
-    | Ancestor _ -> ("used", "used", "it is part of a value that")
+    | Self
+    | Ancestor [ Usage_tree.Projection.Memory_address ]
+    | Descendant [ Usage_tree.Projection.Memory_address ] ->
+        "it"
+    | Descendant _ -> "part of it"
+    | Ancestor _ -> "it is part of a value that"
   in
+
   (* English is sadly not very composible, we write out all four cases
      manually *)
   let error =
     match (first_or_second, axis) with
     | First, Uniqueness ->
         Format.dprintf
-          "This value is %s here,@;but %s has already been %s as unique here:"
+          "This value is %s,@;but %s has already been %s as unique:"
           second_usage first_is_of_second first_usage
     | First, Linearity ->
         Format.dprintf
-          "This value is %s here,@;\
-           but %s is defined as once and has already been %s here:" second_usage
+          "This value is %s,@;\
+           but %s is defined as once and has already been %s:" second_usage
           first_is_of_second first_usage
     | Second, Uniqueness ->
         Format.dprintf
-          "This value is %s as unique,@;but %s has already been %s here:"
+          "This value is %s as unique,@;but %s has already been %s:"
           second_usage first_is_of_second first_usage
     | Second, Linearity ->
         Format.dprintf
-          "This value is defined as once and %s,@;\
-           but %s has already been %s here:" second_usage first_is_of_second
-          first_usage
+          "This value is defined as once and %s,@;but %s has already been %s:"
+          second_usage first_is_of_second first_usage
   in
   let sub = [ Location.msg ~loc:first.loc "" ] in
   Location.errorf ~loc:second.loc ~sub "@[%t@]" error

@@ -54,7 +54,7 @@ let sequence (unique_ x : float) = unique_ let y = x in (x, y)
 Line 1, characters 60-61:
 1 | let sequence (unique_ x : float) = unique_ let y = x in (x, y)
                                                                 ^
-Error: This value is used here, but it has already been used as unique here:
+Error: This value is used here, but it has already been used here as unique:
 Line 1, characters 57-58:
 1 | let sequence (unique_ x : float) = unique_ let y = x in (x, y)
                                                              ^
@@ -79,7 +79,7 @@ let sequence =
 Line 4, characters 17-18:
 4 |   let t = update r in
                      ^
-Error: This value is used here, but it has already been used as unique here:
+Error: This value is used here, but it has already been used here as unique:
 Line 3, characters 18-19:
 3 |   let _s = update r in
                       ^
@@ -119,7 +119,7 @@ Line 4, characters 35-37:
 4 |   | x :: xs as gs -> (unique_ gs), xs
                                        ^^
 Error: This value is used here,
-       but it is part of a value that has already been used as unique here:
+       but it is part of a value that has already been used here as unique:
 Line 4, characters 21-33:
 4 |   | x :: xs as gs -> (unique_ gs), xs
                          ^^^^^^^^^^^^
@@ -134,7 +134,7 @@ let dup_child (unique_ fs : 'a list) =
 Line 4, characters 25-35:
 4 |   | x :: xs as gs -> gs, unique_ xs
                              ^^^^^^^^^^
-Error: This value is used as unique,
+Error: This value is used here as unique,
        but it is part of a value that has already been used here:
 Line 4, characters 21-23:
 4 |   | x :: xs as gs -> gs, unique_ xs
@@ -150,7 +150,7 @@ Line 4, characters 35-37:
 4 |   | x :: xs as gs -> (unique_ xs), gs
                                        ^^
 Error: This value is used here,
-       but part of it has already been used as unique here:
+       but part of it has already been used here as unique:
 Line 4, characters 21-33:
 4 |   | x :: xs as gs -> (unique_ xs), gs
                          ^^^^^^^^^^^^
@@ -164,7 +164,7 @@ let dup_child (unique_ fs : 'a list) =
 Line 4, characters 25-35:
 4 |   | x :: xs as gs -> xs, unique_ gs
                              ^^^^^^^^^^
-Error: This value is used as unique,
+Error: This value is used here as unique,
        but part of it has already been used here:
 Line 4, characters 21-23:
 4 |   | x :: xs as gs -> xs, unique_ gs
@@ -204,7 +204,7 @@ let or_patterns3 p =
 Line 4, characters 65-66:
 4 |   | true, z, _ | false, _, z -> let _ = unique_id z in unique_id y
                                                                      ^
-Error: This value is used here, but it has already been used as unique here:
+Error: This value is used here, but it has already been used here as unique:
 Line 4, characters 50-51:
 4 |   | true, z, _ | false, _, z -> let _ = unique_id z in unique_id y
                                                       ^
@@ -227,7 +227,7 @@ let or_patterns5 p =
 Line 4, characters 65-66:
 4 |   | true, z, _ | false, _, z -> let _ = unique_id z in unique_id x
                                                                      ^
-Error: This value is used here, but it has already been used as unique here:
+Error: This value is used here, but it has already been used here as unique:
 Line 4, characters 50-51:
 4 |   | true, z, _ | false, _, z -> let _ = unique_id z in unique_id x
                                                       ^
@@ -248,7 +248,7 @@ Line 6, characters 6-16:
 6 |       unique_ xx
           ^^^^^^^^^^
 Error: This value is used here,
-       but it is part of a value that has already been used as unique here:
+       but it is part of a value that has already been used here as unique:
 Line 5, characters 24-26:
 5 |       let _ = unique_id xs in
                             ^^
@@ -266,7 +266,7 @@ Line 4, characters 8-10:
 4 |   match xs with
             ^^
 Error: This value is read from here,
-       but it has already been used as unique here:
+       but it has already been used here as unique:
 Line 3, characters 20-22:
 3 |   let _ = unique_id xs in
                         ^^
@@ -313,7 +313,7 @@ Line 3, characters 54-55:
 3 |   | (a, b) as t, c -> let d = unique_id t in unique_ (a, d)
                                                           ^
 Error: This value is used here,
-       but it is part of a value that has already been used as unique here:
+       but it is part of a value that has already been used here as unique:
 Line 3, characters 40-41:
 3 |   | (a, b) as t, c -> let d = unique_id t in unique_ (a, d)
                                             ^
@@ -339,7 +339,7 @@ let tuple_parent_marked a b =
 Line 3, characters 28-30:
 3 |   | (true, b') -> unique_id b'
                                 ^^
-Error: This value is used here, but it has already been used as unique here:
+Error: This value is used here, but it has already been used here as unique:
 Line 2, characters 12-13:
 2 |   match (a, b) with
                 ^
@@ -354,7 +354,7 @@ let tuple_parent_marked a b =
 Line 4, characters 27-28:
 4 |   | (true, b) -> unique_id b
                                ^
-Error: This value is used here, but it has already been used as unique here:
+Error: This value is used here, but it has already been used here as unique:
 Line 2, characters 12-13:
 2 |   match (a, b) with
                 ^
@@ -380,7 +380,7 @@ Line 3, characters 31-32:
 3 |   | (a, b) as t -> unique_ (a, t)
                                    ^
 Error: This value is used here,
-       but part of it has already been used as unique here:
+       but part of it has already been used here as unique:
 Line 3, characters 28-29:
 3 |   | (a, b) as t -> unique_ (a, t)
                                 ^
@@ -395,7 +395,7 @@ Line 3, characters 36-37:
 3 |   | ((_, a), b) as t -> unique_ (a, t)
                                         ^
 Error: This value is used here,
-       but part of it has already been used as unique here:
+       but part of it has already been used here as unique:
 Line 3, characters 33-34:
 3 |   | ((_, a), b) as t -> unique_ (a, t)
                                      ^
@@ -410,7 +410,7 @@ let or_patterns6 flag f x y =
 Line 3, characters 66-67:
 3 |   | true, a, (_, b) | false, b, (_, a) -> (unique_id a, unique_id b)
                                                                       ^
-Error: This value is used here, but it has already been used as unique here:
+Error: This value is used here, but it has already been used here as unique:
 Line 3, characters 53-54:
 3 |   | true, a, (_, b) | false, b, (_, a) -> (unique_id a, unique_id b)
                                                          ^
@@ -440,7 +440,7 @@ let record_mode_vars (p : point) =
 Line 3, characters 11-14:
 3 |   let y = (p.x, p.y) in
                ^^^
-Error: This value is used here, but it has already been used as unique here:
+Error: This value is used here, but it has already been used here as unique:
 Line 2, characters 20-23:
 2 |   let x = unique_id p.x in
                         ^^^
@@ -455,7 +455,7 @@ let record_mode_vars (p : point) =
 Line 3, characters 20-23:
 3 |   let x = unique_id p.x in
                         ^^^
-Error: This value is used as unique, but it has already been used here:
+Error: This value is used here as unique, but it has already been used here:
 Line 2, characters 11-14:
 2 |   let y = (p.x, p.y) in
                ^^^
@@ -475,7 +475,8 @@ let foo () =
 Line 6, characters 12-13:
 6 |   unique_id r
                 ^
-Error: This value is used as unique, but it has already been read from here:
+Error: This value is used here as unique,
+       but it has already been captured in a closure here that might be called later:
 Line 3, characters 22-23:
 3 |   let _bar () = match r with
                           ^
@@ -511,7 +512,7 @@ Line 12, characters 2-3:
 12 |   x.a <- "olleh"
        ^
 Error: This value is written to here,
-       but it has already been used as unique here:
+       but it has already been used here as unique:
 Line 11, characters 20-21:
 11 |   ignore (unique_id x);
                          ^
