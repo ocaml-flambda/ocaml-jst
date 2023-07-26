@@ -251,13 +251,6 @@ end = struct
 end
 
 module Usage : sig
-  type shared_reason =
-    | Shared_forced
-    (** shared because of forced *)
-
-    | Shared_lifted
-    (** shared because lifted from implicit borrowing *)
-
   type t =
     | Unused  (** empty usage *)
     | Borrowed of Occurrence.t
@@ -266,7 +259,7 @@ module Usage : sig
         have explicit borrowing *)
     | Maybe_shared of Maybe_shared.t
         (** A usage that could be either borrowed or shared. *)
-    | Shared of Occurrence.t * shared_reason
+    | Shared of Occurrence.t
         (** A shared usage with an arbitrary occurrence. The occurrence is only
         for future error messages. *)
     | Maybe_unique of Maybe_unique.t
@@ -332,16 +325,11 @@ end = struct
 
      error is represented as exception which is just easier.
   *)
-
-  type shared_reason =
-    | Shared_forced
-    | Shared_lifted
-
   type t =
     | Unused
     | Borrowed of Occurrence.t
     | Maybe_shared of Maybe_shared.t
-    | Shared of Occurrence.t* shared_reason
+    | Shared of Occurrence.t
     | Maybe_unique of Maybe_unique.t
 
   let to_string = function
@@ -399,7 +387,7 @@ end = struct
     | Shared _, Borrowed _ -> m0
     | Maybe_unique l, Borrowed occ ->
         Maybe_unique.force_shared_multiuse l ~there:occ ~first_or_second:First;
-        Shared (occ, Shared_forced)
+        Shared occ
     | Shared _, Maybe_shared _ -> m0
     | Maybe_unique l0, Maybe_shared l1 ->
         (* Four cases:
@@ -413,9 +401,9 @@ end = struct
         *)
         let occ = Maybe_shared.extract_occurrence l1 in
         Maybe_unique.force_shared_multiuse l0 ~there:occ ~first_or_second:First;
-        Shared (occ, Shared_forced)
+        Shared occ
     | Shared _, Shared _ -> m0
-    | Maybe_unique l, Shared (occ, ->
+    | Maybe_unique l, Shared occ ->
         Maybe_unique.force_shared_multiuse l ~there:occ ~first_or_second:First;
         Shared occ
     | Shared occ, Maybe_unique l ->
