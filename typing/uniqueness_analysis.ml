@@ -45,9 +45,13 @@ module Maybe_unique : sig
   val par : t -> t -> t
 
   type axis = Uniqueness | Linearity
+
   type cannot_force = { occ : Occurrence.t; axis : axis }
+  (** Describes why cannot force shared - including the failing occurrence, and
+      the failing axis *)
 
   val force_shared : t -> (unit, cannot_force) result
+  (** Force something to shared *)
 
   val uniqueness : t -> Mode.Uniqueness.t
   (** Returns the uniqueness represented by this usage. If this identifier is
@@ -142,6 +146,7 @@ module Usage : sig
         (** A usage that could be either unique or shared. *)
 
   val extract_occurrence : t -> Occurrence.t option
+  (** Extract an arbitrary occurrence from a usage *)
 
   type first_or_second = First | Second
 
@@ -364,7 +369,11 @@ non-empty *)
     | Ancestor of Projection.t list
     | Descendant of Projection.t list
 
-  type error = { inner : Usage.error; first_is_of_second : relation }
+  type error = {
+    inner : Usage.error;  (** Describes the error concerning the two usages  *)
+    first_is_of_second : relation;
+        (** The relation between the two usages in the tree  *)
+  }
 
   exception Error of error
 
@@ -436,8 +445,6 @@ end = struct
     module Map = Map.Make (T)
   end
 
-  (** The relation between two nodes in a tree. Obviously the list must be
-non-empty *)
   type relation =
     | Self
     | Ancestor of Projection.t list
@@ -742,7 +749,6 @@ type boundary = {
 }
 
 exception Boundary of boundary
-(** The top-level exception - the real exception that will be caught *)
 
 let force_shared_boundary t ~reason =
   match Maybe_unique.force_shared t with
