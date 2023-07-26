@@ -1408,20 +1408,20 @@ let report_multi_use
         { cannot_force = { occ; axis }; there; first_or_second };
       first_is_of_second;
     } =
-  let here_usage = "used here" in
+  let here_usage = "used" in
   let there_usage =
     match there with
     | Usage.Maybe_shared t -> (
         let { Occurrence.access; _ } = Maybe_shared.extract_occurrence t in
         match access with
-        | None -> "used here"
-        | Some Read -> "read from here"
-        | Some Write -> "written to here")
+        | None -> "used"
+        | Some Read -> "read from"
+        | Some Write -> "written to")
     | Usage.Shared t -> (
         match Shared.reason t with
-        | Forced -> "used here"
-        | Lifted -> "captured in a closure here that might be called later")
-    | _ -> "used here"
+        | Forced -> "used"
+        | Lifted -> "captured in a closure that might be called later")
+    | _ -> "used"
   in
   let first, first_usage, second, second_usage =
     match first_or_second with
@@ -1452,21 +1452,22 @@ let report_multi_use
     match (first_or_second, axis) with
     | First, Uniqueness ->
         Format.dprintf
-          "This value is %s,@;but %s has already been %s as unique:"
+          "This value is %s here,@;but %s has already been %s as unique:"
           second_usage first_is_of_second first_usage
     | First, Linearity ->
         Format.dprintf
-          "This value is %s,@;\
+          "This value is %s here,@;\
            but %s is defined as once and has already been %s:" second_usage
           first_is_of_second first_usage
     | Second, Uniqueness ->
         Format.dprintf
-          "This value is %s as unique,@;but %s has already been %s:"
+          "This value is %s here as unique,@;but %s has already been %s:"
           second_usage first_is_of_second first_usage
     | Second, Linearity ->
         Format.dprintf
-          "This value is defined as once and %s,@;but %s has already been %s:"
-          second_usage first_is_of_second first_usage
+          "This value is defined as once and %s here,@;\
+           but %s has already been %s:" second_usage first_is_of_second
+          first_usage
   in
   let sub = [ Location.msg ~loc:first.loc "" ] in
   Location.errorf ~loc:second.loc ~sub "@[%t@]" error

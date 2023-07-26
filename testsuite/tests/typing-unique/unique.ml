@@ -9,7 +9,7 @@ let dup x = unique_ (x, x)
 Line 1, characters 24-25:
 1 | let dup x = unique_ (x, x)
                             ^
-Error: This value is used here, but it has already been used here as unique:
+Error: This value is used here, but it has already been used as unique:
 Line 1, characters 21-22:
 1 | let dup x = unique_ (x, x)
                          ^
@@ -29,7 +29,7 @@ Line 1, characters 24-25:
 1 | let dup (once_ x) = (x, x)
                             ^
 Error: This value is used here,
-       but it is defined as once and has already been used here:
+       but it is defined as once and has already been used:
 Line 1, characters 21-22:
 1 | let dup (once_ x) = (x, x)
                          ^
@@ -41,7 +41,7 @@ let dup (unique_ x) = (unique_ x, x, x)
 Line 1, characters 34-35:
 1 | let dup (unique_ x) = (unique_ x, x, x)
                                       ^
-Error: This value is used here, but it has already been used here as unique:
+Error: This value is used here, but it has already been used as unique:
 Line 1, characters 31-32:
 1 | let dup (unique_ x) = (unique_ x, x, x)
                                    ^
@@ -53,7 +53,7 @@ let dup (unique_ x) = (x, (unique_ x), x)
 Line 1, characters 26-37:
 1 | let dup (unique_ x) = (x, (unique_ x), x)
                               ^^^^^^^^^^^
-Error: This value is used here as unique, but it has already been used here:
+Error: This value is used here as unique, but it has already been used:
 Line 1, characters 23-24:
 1 | let dup (unique_ x) = (x, (unique_ x), x)
                            ^
@@ -66,7 +66,7 @@ let dup (unique_ x) = ((unique_ x), x)
 Line 1, characters 36-37:
 1 | let dup (unique_ x) = ((unique_ x), x)
                                         ^
-Error: This value is used here, but it has already been used here as unique:
+Error: This value is used here, but it has already been used as unique:
 Line 1, characters 23-34:
 1 | let dup (unique_ x) = ((unique_ x), x)
                            ^^^^^^^^^^^
@@ -89,7 +89,7 @@ let f () =
 Line 3, characters 27-38:
 3 |   let g () = (unique_ k) ^ (unique_ k) in
                                ^^^^^^^^^^^
-Error: This value is used here, but it has already been used here as unique:
+Error: This value is used here, but it has already been used as unique:
 Line 3, characters 13-24:
 3 |   let g () = (unique_ k) ^ (unique_ k) in
                  ^^^^^^^^^^^
@@ -197,7 +197,7 @@ Line 4, characters 9-10:
 4 |   (g (), g () )
              ^
 Error: This value is used here,
-       but it is defined as once and has already been used here:
+       but it is defined as once and has already been used:
 Line 4, characters 3-4:
 4 |   (g (), g () )
        ^
@@ -366,7 +366,7 @@ let inf4 (b : bool) (y : float) (unique_ x : float) =
 Line 2, characters 58-59:
 2 |   let _ = shared_id y in let unique_ z = if b then x else y in z
                                                               ^
-Error: This value is used here as unique, but it has already been used here:
+Error: This value is used here as unique, but it has already been used:
 Line 2, characters 20-21:
 2 |   let _ = shared_id y in let unique_ z = if b then x else y in z
                         ^
@@ -498,7 +498,7 @@ Line 4, characters 13-16:
 4 |   (bar ~d:3, bar ~d:5)
                  ^^^
 Error: This value is used here,
-       but it is defined as once and has already been used here:
+       but it is defined as once and has already been used:
 Line 4, characters 3-6:
 4 |   (bar ~d:3, bar ~d:5)
        ^^^
@@ -514,7 +514,7 @@ Line 4, characters 35-38:
 4 |   let baz = bar ~b:4 in (baz ~d:3, baz ~d:5)
                                        ^^^
 Error: This value is used here,
-       but it is defined as once and has already been used here:
+       but it is defined as once and has already been used:
 Line 4, characters 25-28:
 4 |   let baz = bar ~b:4 in (baz ~d:3, baz ~d:5)
                              ^^^
@@ -530,7 +530,7 @@ Line 4, characters 10-13:
 4 |   (foo 1, foo 2)
               ^^^
 Error: This value is used here,
-       but it is defined as once and has already been used here:
+       but it is defined as once and has already been used:
 Line 4, characters 3-6:
 4 |   (foo 1, foo 2)
        ^^^
@@ -610,7 +610,7 @@ type tree = Leaf | Node of tree * tree
 Line 5, characters 19-20:
 5 |        in Node (x, x)
                        ^
-Error: This value is used here, but it has already been used here as unique:
+Error: This value is used here, but it has already been used as unique:
 Line 5, characters 16-17:
 5 |        in Node (x, x)
                     ^
