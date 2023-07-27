@@ -793,6 +793,7 @@ type value_to_match =
 
 let mark_implicit_borrow_memory_address_paths access paths loc =
   let occ = Occurrence.mk loc in
+  let barrier = ref None in
   let mark_one path =
     (* borrow the memory address of the parent *)
     UF.singleton
@@ -800,9 +801,9 @@ let mark_implicit_borrow_memory_address_paths access paths loc =
       (* Currently we just generate a dummy unique_barrier ref that won't be
          consumed. The distinction between implicit and explicit borrowing is
          still needed because they are handled differently in closures *)
-      (Maybe_shared (Maybe_shared.singleton (ref None) occ access))
+      (Maybe_shared (Maybe_shared.singleton barrier occ access))
   in
-  UF.pars (List.map (fun path -> mark_one path) paths)
+  UF.pars (List.map mark_one paths)
 
 let mark_implicit_borrow_memory_address access = function
   | Match_single { paths; loc; _ } ->
@@ -816,7 +817,7 @@ let mark_maybe_unique paths unique_use occ =
   in
   UF.pars (List.map (fun path -> mark_one path) paths)
 
-(* returns:
+(** returns:
    the updated value.
    the new introduced bindings.
    usage during the process
@@ -843,7 +844,7 @@ let pattern_match_var ~loc id value =
                    mark_maybe_unique paths unique_use occ)
              values) )
 
-(*
+(**
 handling pattern match of value against pat, returns ienv and uf.
 ienv is the new bindings introduced;
 uf is the usage caused by the pattern matching *)
@@ -1020,7 +1021,7 @@ let open_variables ienv f =
   f iter;
   !ll
 
-(* The following function marks all open variables in a class/module as shared,
+(** Marks all open variables in a class/module as shared,
    as well as returning a UF reflecting all those shared usage. *)
 let mark_shared_open_variables ienv f _loc =
   let ll = open_variables ienv f in
@@ -1055,7 +1056,7 @@ let mark_shared_open_variables ienv f _loc =
    as alias. Checking a.x.y will return the usage of borrowing a and a.x, and
    using a.x.y. This mode is used in most occasions. *)
 
-(* the following function corresponds to the second mode *)
+(** Corresponds to the second mode *)
 let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
   let loc = exp.exp_loc in
   match exp.exp_desc with
@@ -1268,8 +1269,8 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
   | Texp_probe_is_enabled _ -> UF.unused
   | Texp_exclave e -> check_uniqueness_exp_ e ienv
 
-(*
-This function corresponds to the first mode.
+(**
+Corresponds to the first mode.
 
 Look at exp and see if it can be treated as alias currently only texp_ident and
 texp_field (and recursively so) are treated so. return paths and modes. paths is
@@ -1313,7 +1314,7 @@ and init_single_value_to_match exp ienv : single_value_to_match * UF.t =
         },
         uf )
 
-(* take typed expression, do some parsing and give init_value_to_match *)
+(** take typed expression, do some parsing and give init_value_to_match *)
 and init_value_to_match exp ienv =
   match exp.exp_desc with
   | Texp_tuple (es, _) ->
@@ -1325,7 +1326,7 @@ and init_value_to_match exp ienv =
       let s, uf = init_single_value_to_match exp ienv in
       (Match_single s, uf)
 
-(* returns ienv and uf
+(** returns ienv and uf
    ienv is the new bindings introduced;
    uf is the usage forest caused by the binding
 *)
