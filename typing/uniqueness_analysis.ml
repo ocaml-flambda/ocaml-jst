@@ -421,7 +421,7 @@ non-empty *)
   val singleton : Path.t -> Usage.t -> t
   (** A singleton tree containing only one leaf *)
 
-  val map : (Path.t -> Usage.t -> Usage.t) -> t -> t
+  val mapi : (Path.t -> Usage.t -> Usage.t) -> t -> t
   (** Runs a function through the tree; the function must be monotone *)
 end = struct
   module Projection = struct
@@ -513,7 +513,7 @@ end = struct
   let leaf usage = { usage; children = Projection.Map.empty }
   let _unused = leaf Usage.Unused
 
-  let map_with_projs projs f t =
+  let mapi' projs f t =
     let rec loop projs t =
       let usage = f projs t.usage in
       let children =
@@ -523,9 +523,9 @@ end = struct
     in
     loop projs t
 
-  let map f t = map_with_projs [] f t
+  let mapi f t = mapi' [] f t
 
-  let rec map2 f t0 t1 =
+  let rec mapi2 f t0 t1 =
     let usage = f Self t0.usage t1.usage in
     let children =
       Projection.Map.merge
@@ -534,23 +534,23 @@ end = struct
           | None, None -> assert false
           | None, Some c1 ->
               Some
-                (map_with_projs [ proj ]
+                (mapi' [ proj ]
                    (fun projs r -> f (Ancestor projs) t0.usage r)
                    c1)
           | Some c0, None ->
               Some
-                (map_with_projs [ proj ]
+                (mapi' [ proj ]
                    (fun projs l -> f (Descendant projs) l t1.usage)
                    c0)
-          | Some c0, Some c1 -> Some (map2 f c0 c1))
+          | Some c0, Some c1 -> Some (mapi2 f c0 c1))
         t0.children t1.children
     in
     { usage; children }
 
-  let par t0 t1 = map2 (fun _ -> Usage.par) t0 t1
+  let par t0 t1 = mapi2 (fun _ -> Usage.par) t0 t1
 
   let seq t0 t1 =
-    map2
+    mapi2
       (fun first_is_of_second t0 t1 ->
         try Usage.seq t0 t1
         with Usage.Error error ->
@@ -603,7 +603,7 @@ module Usage_forest : sig
   val singleton : Path.t -> Usage.t -> t
   (** The forest with only one usage, given by the path and the usage *)
 
-  val map : (Path.t -> Usage.t -> Usage.t) -> t -> t
+  val map : (Usage.t -> Usage.t) -> t -> t
   (** Run a function through a forest. The function must be monotone *)
 end = struct
   module Root_id = struct
@@ -672,9 +672,11 @@ end = struct
     Root_id.Map.singleton rootid (Usage_tree.singleton path' leaf)
 
   (** f must be monotone *)
-  let map f =
+  let mapi f =
     Root_id.Map.mapi (fun root tree ->
-        Usage_tree.map (fun projs usage -> f (root, projs) usage) tree)
+        Usage_tree.mapi (fun projs usage -> f (root, projs) usage) tree)
+
+  let map f = mapi (fun _ -> f)
 end
 
 module UF = Usage_forest
@@ -789,8 +791,7 @@ type value_to_match =
   | Match_single of single_value_to_match
       (** The value being matched is not a tuple *)
 
-let mark_implicit_borrow_memory_address_paths paths
-    ?(access = Maybe_shared.Read) loc =
+let mark_implicit_borrow_memory_address_paths access paths loc =
   let occ = Occurrence.mk loc in
   let mark_one path =
     (* borrow the memory address of the parent *)
@@ -803,9 +804,9 @@ let mark_implicit_borrow_memory_address_paths paths
   in
   UF.pars (List.map (fun path -> mark_one path) paths)
 
-let mark_implicit_borrow_memory_address = function
+let mark_implicit_borrow_memory_address access = function
   | Match_single { paths; loc; _ } ->
-      mark_implicit_borrow_memory_address_paths paths loc
+      mark_implicit_borrow_memory_address_paths access paths loc
   (* it's still a tuple - we own it and nothing to do here *)
   | Match_tuple _ -> UF.unused
 
@@ -857,7 +858,7 @@ let rec pattern_match pat value =
       let ext1, uf1 = pattern_match pat' value in
       (Ienv.Extension.conjunct ext0 ext1, UF.seq uf0 uf1)
   | Tpat_constant _ ->
-      (Ienv.Extension.empty, mark_implicit_borrow_memory_address value)
+      (Ienv.Extension.empty, mark_implicit_borrow_memory_address Read value)
   | Tpat_tuple pats ->
       pat_proj
         ~handle_tuple:(fun values ->
@@ -880,7 +881,7 @@ let rec pattern_match pat value =
           Usage_tree.Projection.Construct_field (Longident.last lbl.txt, i))
         value pats
   | Tpat_variant (lbl, mpat, _) ->
-      let uf = mark_implicit_borrow_memory_address value in
+      let uf = mark_implicit_borrow_memory_address Read value in
       let t =
         match value with
         | Match_single { paths; unique_use; _ } ->
@@ -911,7 +912,7 @@ let rec pattern_match pat value =
       match value with
       | Match_tuple _ -> assert false
       | Match_single { paths; loc; _ } ->
-          let uf = mark_implicit_borrow_memory_address_paths paths loc in
+          let uf = mark_implicit_borrow_memory_address_paths Read paths loc in
           let exts, ufs =
             List.split
               (List.map
@@ -946,7 +947,7 @@ and pat_proj :
  fun ?(handle_tuple = fun _ -> assert false) ~extract_pat ~mk_proj value pats ->
   match value with
   | Match_single { paths; loc; _ } ->
-      let uf = mark_implicit_borrow_memory_address_paths paths loc in
+      let uf = mark_implicit_borrow_memory_address_paths Read paths loc in
       let ienvs, ufs =
         List.split
           (List.mapi
@@ -1084,7 +1085,7 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
       (* we are constructing a closure here, and therefore any borrowing of free
          variables in the closure is in fact using shared. *)
       UF.map
-        (fun _ -> function
+        (function
           | Maybe_shared t ->
               (* implicit borrowing lifted. *)
               let occ, access = Maybe_shared.extract_occurrence_access t in
@@ -1176,12 +1177,7 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
       | Some (ps, _), uf' ->
           let loc = exp'.exp_loc in
           UF.seqs
-            [
-              uf;
-              uf';
-              mark_implicit_borrow_memory_address_paths
-                ~access:Maybe_shared.Write ps loc;
-            ])
+            [ uf; uf'; mark_implicit_borrow_memory_address_paths Write ps loc ])
   | Texp_array (_, es, _) ->
       UF.seqs (List.map (fun e -> check_uniqueness_exp_ e ienv) es)
   | Texp_ifthenelse (if', then', else_opt) ->
@@ -1293,7 +1289,9 @@ and check_uniqueness_exp' exp ienv : (UF.Path.t list * unique_use) option * UF.t
       | Some (paths, _), uf ->
           (* accessing the field meaning borrowing the parent record's mem
              block. Note that the field itself is not borrowed or used *)
-          let uf' = mark_implicit_borrow_memory_address_paths paths e.exp_loc in
+          let uf' =
+            mark_implicit_borrow_memory_address_paths Read paths e.exp_loc
+          in
           let paths' =
             UF.Path.child_of_many paths
               (Usage_tree.Projection.Record_field l.lbl_name)
