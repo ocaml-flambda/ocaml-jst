@@ -688,7 +688,7 @@ module Ienv : sig
     (** Composition for [OR] patterns. This operation is commutative *)
 
     val conjunct : t -> t -> t
-    (** Composition for conjunctive patterns. The two extensions be disjoint. *)
+    (** Composition for conjunctive patterns. The two extensions must be disjoint. *)
 
     val conjuncts : t list -> t
     (** Similar to [conjunct] but lifted to lists *)
@@ -720,7 +720,7 @@ end = struct
       Ident.Map.merge
         (fun _id locs0 locs1 ->
           match (locs0, locs1) with
-          | None, None -> assert false
+          | None, None -> None
           | Some locs0, Some locs1 -> Some (locs0 @ locs1)
           (* cannot bind variable only in one of the OR-patterns *)
           | _, _ -> assert false)
@@ -729,14 +729,10 @@ end = struct
     let empty = Ident.Map.empty
 
     let conjunct ienv0 ienv1 =
-      Ident.Map.merge
-        (fun _id locs0 locs1 ->
-          match (locs0, locs1) with
-          | None, None -> assert false
-          | Some t, None -> Some t
-          | None, Some t -> Some t
+      Ident.Map.union
+        (fun _id _ _ ->
           (* cannot bind variable twice in a single pattern *)
-          | Some _, Some _ -> assert false)
+          assert false)
         ienv0 ienv1
 
     let conjuncts = List.fold_left conjunct empty
@@ -748,18 +744,15 @@ end = struct
   let empty = Ident.Map.empty
 
   let extend t ex =
-    Ident.Map.merge
-      (fun _id paths0 paths1 ->
-        match (paths0, paths1) with
-        | None, None -> assert false
-        | _, Some paths1 -> Some paths1
-        | Some paths0, None -> Some paths0)
+    Ident.Map.union
+      (* the extension shadows the original *)
+        (fun _id _paths0 paths1 -> Some paths1)
       t ex
 
   let find_opt = Ident.Map.find_opt
 end
 
-(** The fun algebraic stuff ends. Here comes the concrete mess *)
+(* The fun algebraic stuff ends. Here comes the concrete mess *)
 
 (* Forcing due to boundary is more about OCaml than the algebra, hence defined
    here (as opposed to earlier) *)
@@ -782,12 +775,12 @@ let force_shared_boundary t ~reason =
   | Ok () -> ()
   | Error cannot_force -> raise (Boundary { cannot_force; reason })
 
-type single_value_to_match = UF.Path.t list * Location.t * unique_use option
-(** A triple of:
-   - the value's all possible paths.
-   - the location where it's defined
-   - the modes, if it's actually an alias
-*)
+type single_value_to_match = {
+  paths : UF.Path.t list;  (** the value's all possible paths. *)
+  loc : Location.t;  (** the location where it's defined *)
+  unique_use : unique_use option;  (** the modes, if it's actually an alias   *)
+}
+(** Represent a single value that will be pattern-matched upon *)
 
 type value_to_match =
   | Match_tuple of single_value_to_match list
@@ -811,7 +804,7 @@ let mark_implicit_borrow_memory_address_paths paths
   UF.pars (List.map (fun path -> mark_one path) paths)
 
 let mark_implicit_borrow_memory_address = function
-  | Match_single (paths, loc, _) ->
+  | Match_single { paths; loc; _ } ->
       mark_implicit_borrow_memory_address_paths paths loc
   (* it's still a tuple - we own it and nothing to do here *)
   | Match_tuple _ -> UF.unused
@@ -829,7 +822,7 @@ let mark_maybe_unique paths unique_use occ =
 *)
 let pattern_match_var ~loc id value =
   match value with
-  | Match_single (paths, _, _) ->
+  | Match_single { paths; _ } ->
       (value, Ienv.Extension.singleton id paths, UF.unused)
   | Match_tuple values ->
       let path = UF.Path.fresh_root_of_ident id in
@@ -837,15 +830,15 @@ let pattern_match_var ~loc id value =
       (* Mark all ps as seen, as we bind the tuple to a variable. *)
       (* Can we make it aliases instead of used? Hard to do if we want
          to preserve the tree-ness *)
-      ( Match_single ([ path ], loc, None),
+      ( Match_single { paths = [ path ]; loc; unique_use = None },
         ext,
         UF.seqs
           (List.map
-             (fun (paths, loc', modes) ->
-               match modes with
+             (fun { paths; loc; unique_use } ->
+               match unique_use with
                | None -> UF.unused
                | Some unique_use ->
-                   let occ = Occurrence.mk loc' in
+                   let occ = Occurrence.mk loc in
                    mark_maybe_unique paths unique_use occ)
              values) )
 
@@ -890,11 +883,14 @@ let rec pattern_match pat value =
       let uf = mark_implicit_borrow_memory_address value in
       let t =
         match value with
-        | Match_single (paths, _, modes) ->
-            ( UF.Path.child_of_many paths
-                (Usage_tree.Projection.Variant_field lbl),
-              pat.pat_loc,
-              modes )
+        | Match_single { paths; unique_use; _ } ->
+            {
+              paths =
+                UF.Path.child_of_many paths
+                  (Usage_tree.Projection.Variant_field lbl);
+              loc = pat.pat_loc;
+              unique_use;
+            }
         | Match_tuple _ ->
             (* matching a tuple against variant can't pass type checking *)
             assert false
@@ -914,7 +910,7 @@ let rec pattern_match pat value =
   | Tpat_array (_, pats) -> (
       match value with
       | Match_tuple _ -> assert false
-      | Match_single (paths, loc, _) ->
+      | Match_single { paths; loc; _ } ->
           let uf = mark_implicit_borrow_memory_address_paths paths loc in
           let exts, ufs =
             List.split
@@ -922,7 +918,11 @@ let rec pattern_match pat value =
                  (fun pat ->
                    let value =
                      Match_single
-                       ([ UF.Path.fresh_root "array_field" ], loc, None)
+                       {
+                         paths = [ UF.Path.fresh_root "array_field" ];
+                         loc;
+                         unique_use = None;
+                       }
                    in
                    pattern_match pat value)
                  pats)
@@ -945,7 +945,7 @@ and pat_proj :
       _ =
  fun ?(handle_tuple = fun _ -> assert false) ~extract_pat ~mk_proj value pats ->
   match value with
-  | Match_single (paths, loc, _) ->
+  | Match_single { paths; loc; _ } ->
       let uf = mark_implicit_borrow_memory_address_paths paths loc in
       let ienvs, ufs =
         List.split
@@ -953,7 +953,7 @@ and pat_proj :
              (fun i patlike ->
                let proj = mk_proj i patlike in
                let paths = UF.Path.child_of_many paths proj in
-               let t = (paths, loc, None) in
+               let t = { paths; loc; unique_use = None } in
                pattern_match (extract_pat patlike) (Match_single t))
              pats)
       in
@@ -1073,7 +1073,12 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
       (* `param` is only a hint not a binder;
          actual binding done in cases by Tpat_var and Tpat_alias *)
       let value =
-        Match_single ([ UF.Path.fresh_root_of_ident param ], loc, None)
+        Match_single
+          {
+            paths = [ UF.Path.fresh_root_of_ident param ];
+            loc;
+            unique_use = None;
+          }
       in
       let uf = check_uniqueness_cases value cases ienv in
       (* we are constructing a closure here, and therefore any borrowing of free
@@ -1249,7 +1254,8 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
       in
       let uf2 =
         check_uniqueness_cases
-          (Match_single ([ UF.Path.fresh_root "letop" ], loc, None))
+          (Match_single
+             { paths = [ UF.Path.fresh_root "letop" ]; loc; unique_use = None })
           [ body ] ienv
       in
       UF.seqs ((uf0 :: ufs1) @ [ uf2 ])
@@ -1299,8 +1305,15 @@ and check_uniqueness_exp' exp ienv : (UF.Path.t list * unique_use) option * UF.t
 
 and init_single_value_to_match exp ienv : single_value_to_match * UF.t =
   match check_uniqueness_exp' exp ienv with
-  | Some (ps, pp), uf -> ((ps, exp.exp_loc, Some pp), uf)
-  | None, uf -> (([ UF.Path.fresh_root "match" ], exp.exp_loc, None), uf)
+  | Some (paths, uu), uf ->
+      ({ paths; loc = exp.exp_loc; unique_use = Some uu }, uf)
+  | None, uf ->
+      ( {
+          paths = [ UF.Path.fresh_root "match" ];
+          loc = exp.exp_loc;
+          unique_use = None;
+        },
+        uf )
 
 (* take typed expression, do some parsing and give init_value_to_match *)
 and init_value_to_match exp ienv =
@@ -1460,22 +1473,22 @@ let report_multi_use
     match (first_or_second, axis) with
     | First, Uniqueness ->
         Format.dprintf
-          "This value is %s here,@;but %s has already been %s as unique:"
+          "This value is %s here,@ but %s has already been %s as unique:"
           second_usage first_is_of_second first_usage
     | First, Linearity ->
         Format.dprintf
-          "This value is %s here,@;\
-           but %s is defined as once and has already been %s:" second_usage
-          first_is_of_second first_usage
+          "This value is %s here,@ but %s is defined as once and has already \
+           been %s:"
+          second_usage first_is_of_second first_usage
     | Second, Uniqueness ->
         Format.dprintf
-          "This value is %s here as unique,@;but %s has already been %s:"
+          "This value is %s here as unique,@ but %s has already been %s:"
           second_usage first_is_of_second first_usage
     | Second, Linearity ->
         Format.dprintf
-          "This value is defined as once and %s here,@;\
-           but %s has already been %s:" second_usage first_is_of_second
-          first_usage
+          "This value is defined as once and %s here,@ but %s has already been \
+           %s:"
+          second_usage first_is_of_second first_usage
   in
   let sub = [ Location.msg ~loc:first.loc "" ] in
   Location.errorf ~loc:second.loc ~sub "@[%t@]" error
