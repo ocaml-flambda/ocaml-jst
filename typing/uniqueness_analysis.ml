@@ -819,9 +819,9 @@ let mark_maybe_unique paths unique_use occ =
   UF.pars (List.map (fun path -> mark_one path) paths)
 
 (** returns:
-   the updated value.
-   the new introduced bindings.
-   usage during the process
+   the updated value, and
+   the new introduced bindings, and
+   the usage during the process
 *)
 let pattern_match_var ~loc id value =
   match value with
@@ -846,9 +846,9 @@ let pattern_match_var ~loc id value =
              values) )
 
 (**
-handling pattern match of value against pat, returns ienv and uf.
-ienv is the new bindings introduced;
-uf is the usage caused by the pattern matching *)
+handling pattern match of [value] against [pat], returns [ext] and [uf].
+[ext] is the new bindings introduced;
+[uf] is the usage caused by the pattern matching *)
 let rec pattern_match pat value =
   match pat.pat_desc with
   | Tpat_any -> (Ienv.Extension.empty, UF.unused)
@@ -992,9 +992,9 @@ let maybe_paths_of_ident ?maybe_unique ienv path =
    as many and shared. This translates to enforcement on both ends: - inside the
    module, those uses needs to be forced as many and shared - need a Usage_forest
    which marks those uses as many and shared, so that the parent expression can
-   detect conflict if any.
+   detect conflict if any. *)
 
-   The following function returns all open variables inside a module. *)
+(** Returns all open variables inside a module. *)
 let open_variables ienv f =
   let ll = ref [] in
   let iter =
@@ -1262,10 +1262,10 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
 (**
 Corresponds to the first mode.
 
-Look at exp and see if it can be treated as alias currently only texp_ident and
-texp_field (and recursively so) are treated so. return paths and modes. paths is
-the list of possible memory locations. returns None if exp is not alias, which
-also implies that the usage of exp is included in the returned uf. *)
+Look at exp and see if it can be treated as alias. Currently only [Texp_ident] and
+[Texp_field] (and recursively so) are treated so. return [paths] and [unique_use]. [paths] is
+the list of possible memory locations. returns [None] if exp is not alias, which
+also implies that the usage of [exp] is included in the returned [uf]. *)
 and check_uniqueness_exp' exp ienv : (UF.Path.t list * unique_use) option * UF.t
     =
   match exp.exp_desc with
@@ -1299,7 +1299,7 @@ and init_single_value_to_match exp ienv :
   | None, uf ->
       (({ paths = [ UF.Path.fresh_root "match" ]; loc = exp.exp_loc }, None), uf)
 
-(** take typed expression, do some parsing and give init_value_to_match *)
+(** take typed expression, do some parsing and returns [init_value_to_match] *)
 and init_value_to_match exp ienv =
   match exp.exp_desc with
   | Texp_tuple (es, _) ->
@@ -1311,9 +1311,9 @@ and init_value_to_match exp ienv =
       let (s, _), uf = init_single_value_to_match exp ienv in
       (Match_single s, uf)
 
-(** returns ienv and uf
-   ienv is the new bindings introduced;
-   uf is the usage forest caused by the binding
+(** Returns [ienv] and [uf].
+   [ienv] is the new bindings introduced;
+   [uf] is the usage forest caused by the binding
 *)
 and check_uniqueness_value_bindings_ vbs ienv =
   (* we imitate how data are accessed at runtime *)
