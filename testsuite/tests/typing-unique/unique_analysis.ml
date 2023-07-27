@@ -473,7 +473,7 @@ Line 6, characters 12-13:
 6 |   unique_id r
                 ^
 Error: This value is used here as unique,
-       but it has already been captured in a closure that might be called later:
+       but it has already been read from in a closure that might be called later:
 Line 3, characters 22-23:
 3 |   let _bar () = match r with
                           ^

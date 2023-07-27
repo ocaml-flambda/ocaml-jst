@@ -22,13 +22,11 @@ module Uniqueness = Mode.Uniqueness
 module Linearity = Mode.Linearity
 
 module Occurrence = struct
-  type read_or_write = Read | Write
-
-  type t = { access : read_or_write option; loc : Location.t }
+  type t = { loc : Location.t }
   (** The occurrence of a potentially unique ident in the expression. Currently
   it's just the location; might add more things in the future *)
 
-  let mk ?access loc = { loc; access }
+  let mk loc = { loc }
 end
 
 let rec list_find_error f = function
@@ -97,9 +95,13 @@ end
 
 module Maybe_shared : sig
   type t
+  type access = Read | Write
+
+  val string_of_access : access -> string
+
   (** The type representing a usage that could be either shared or borrowed *)
 
-  val extract_occurrence : t -> Occurrence.t
+  val extract_occurrence_access : t -> Occurrence.t * access
   (** Extract an arbitrary occurrence from the usage *)
 
   val set_barrier : t -> Uniqueness.t -> unit
@@ -110,9 +112,13 @@ module Maybe_shared : sig
        only once; raises if set multiple times *)
 
   val par : t -> t -> t
-  val singleton : unique_barrier ref -> Occurrence.t -> t
+  val singleton : unique_barrier ref -> Occurrence.t -> access -> t
 end = struct
-  type t = (unique_barrier ref * Occurrence.t) list
+  type access = Read | Write
+
+  let string_of_access = function Read -> "read from" | Write -> "written to"
+
+  type t = (unique_barrier ref * Occurrence.t * access) list
   (** list of occurences together with modes to be forced as borrowed in the
   future if needed. It is a list because of multiple control flows. For
   example, if a value is used borrowed in one branch but shared in another,
@@ -122,12 +128,15 @@ end = struct
   needs to be forced borrowed. *)
 
   let par l0 l1 = l0 @ l1
-  let singleton r occ = [ (r, occ) ]
-  let extract_occurrence = function [] -> assert false | (_, occ) :: _ -> occ
+  let singleton r occ access = [ (r, occ, access) ]
+
+  let extract_occurrence_access = function
+    | [] -> assert false
+    | (_, occ, access) :: _ -> (occ, access)
 
   let set_barrier t uniq =
     List.iter
-      (fun (barrier, _) ->
+      (fun (barrier, _, _) ->
         match !barrier with
         | Some _ -> assert false
         | None -> barrier := Some uniq)
@@ -139,13 +148,15 @@ module Shared : sig
 
   type reason =
     | Forced  (** shared because forced  *)
-    | Lifted  (** shared because lifted from implicit borrowing *)
+    | Lifted of Maybe_shared.access
+        (** shared because lifted from implicit borrowing, carries the original
+          access *)
 
   val singleton : Occurrence.t -> reason -> t
   val extract_occurrence : t -> Occurrence.t
   val reason : t -> reason
 end = struct
-  type reason = Forced | Lifted
+  type reason = Forced | Lifted of Maybe_shared.access
   type t = Occurrence.t * reason
 
   let singleton occ reason = (occ, reason)
@@ -254,7 +265,7 @@ end = struct
   let extract_occurrence = function
     | Unused -> None
     | Borrowed occ -> Some occ
-    | Maybe_shared t -> Some (Maybe_shared.extract_occurrence t)
+    | Maybe_shared t -> Some (Maybe_shared.extract_occurrence_access t |> fst)
     | Shared t -> Some (Shared.extract_occurrence t)
     | Maybe_unique t -> Some (Maybe_unique.extract_occurrence t)
 
@@ -341,7 +352,7 @@ end = struct
             As you can see, we need to force the m0 to Shared, and m1 needn't
             be constrained. The result is always Shared.
         *)
-        let occ = Maybe_shared.extract_occurrence l1 in
+        let occ, _ = Maybe_shared.extract_occurrence_access l1 in
         force_shared_multiuse l0 m1 First;
         Shared (Shared.singleton occ Shared.Forced)
     | Shared _, Shared _ -> m0
@@ -785,9 +796,9 @@ type value_to_match =
   | Match_single of single_value_to_match
       (** The value being matched is not a tuple *)
 
-let mark_implicit_borrow_memory_address_paths paths ?(access = Occurrence.Read)
-    loc =
-  let occ = Occurrence.mk ~access loc in
+let mark_implicit_borrow_memory_address_paths paths
+    ?(access = Maybe_shared.Read) loc =
+  let occ = Occurrence.mk loc in
   let mark_one path =
     (* borrow the memory address of the parent *)
     UF.singleton
@@ -795,7 +806,7 @@ let mark_implicit_borrow_memory_address_paths paths ?(access = Occurrence.Read)
       (* Currently we just generate a dummy unique_barrier ref that won't be
          consumed. The distinction between implicit and explicit borrowing is
          still needed because they are handled differently in closures *)
-      (Maybe_shared (Maybe_shared.singleton (ref None) occ))
+      (Maybe_shared (Maybe_shared.singleton (ref None) occ access))
   in
   UF.pars (List.map (fun path -> mark_one path) paths)
 
@@ -1069,12 +1080,10 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
          variables in the closure is in fact using shared. *)
       UF.map
         (fun _ -> function
-          | Maybe_shared l ->
+          | Maybe_shared t ->
               (* implicit borrowing lifted. *)
-              Shared
-                (Shared.singleton
-                   (Maybe_shared.extract_occurrence l)
-                   Shared.Lifted)
+              let occ, access = Maybe_shared.extract_occurrence_access t in
+              Shared (Shared.singleton occ (Shared.Lifted access))
               (* other usage stays the same *)
           | m -> m)
         uf
@@ -1165,8 +1174,8 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
             [
               uf;
               uf';
-              mark_implicit_borrow_memory_address_paths ~access:Occurrence.Write
-                ps loc;
+              mark_implicit_borrow_memory_address_paths
+                ~access:Maybe_shared.Write ps loc;
             ])
   | Texp_array (_, es, _) ->
       UF.seqs (List.map (fun e -> check_uniqueness_exp_ e ienv) es)
@@ -1412,15 +1421,14 @@ let report_multi_use
   let there_usage =
     match there with
     | Usage.Maybe_shared t -> (
-        let { Occurrence.access; _ } = Maybe_shared.extract_occurrence t in
-        match access with
-        | None -> "used"
-        | Some Read -> "read from"
-        | Some Write -> "written to")
+        let _, access = Maybe_shared.extract_occurrence_access t in
+        match access with Read -> "read from" | Write -> "written to")
     | Usage.Shared t -> (
         match Shared.reason t with
         | Forced -> "used"
-        | Lifted -> "captured in a closure that might be called later")
+        | Lifted access ->
+            Maybe_shared.string_of_access access
+            ^ " in a closure that might be called later")
     | _ -> "used"
   in
   let first, first_usage, second, second_usage =
