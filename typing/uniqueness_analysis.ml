@@ -667,44 +667,77 @@ end
 
 module UF = Usage_forest
 
-module Paths = struct
+module Paths : sig
+  type t
+  (** Represents a list of [UF.Path.t]  *)
+
+  val child : Usage_tree.Projection.t -> t -> t
+  (** Returns the element-wise child *)
+
+  val legacy : t
+  (** Representing legacy values *)
+
+  val mark : Usage.t -> t -> UF.t
+  val fresh : string -> t
+  val par : t -> t -> t
+
+  val mark_implicit_borrow_memory_address :
+    Maybe_shared.access -> Occurrence.t -> t -> UF.t
+end = struct
   type t = UF.Path.t list
 
-  let empty = []
+  let par a b = a @ b
+  let legacy = []
   let child proj t = List.map (UF.Path.child proj) t
   let mark usage t = UF.pars (List.map (UF.singleton usage) t)
   let fresh name = [ UF.Path.fresh_root name ]
-  let fresh_of_ident ident = fresh (Ident.name ident)
 
   let mark_implicit_borrow_memory_address access occ paths =
     (* Currently we just generate a dummy unique_barrier ref that won't be
         consumed. The distinction between implicit and explicit borrowing is
         still needed because they are handled differently in closures *)
     let barrier = ref None in
-    (* borrow the memory address of the parent *)
     mark
       (Maybe_shared (Maybe_shared.singleton barrier occ access))
       (child Usage_tree.Projection.Memory_address paths)
 end
 
-module Value = struct
+module Value : sig
+  type t
+  (** See [mk] for its meaning *)
+
+  val mk : Paths.t -> ?unique_use:unique_use -> Occurrence.t -> t
+  (** A value contains the list of paths it could points to, the unique_use if
+      it's a variable (as opposed to an expression), and its occurrence in the
+      source code *)
+
+  val legacy : ?unique_use:unique_use -> Occurrence.t -> t
+  (** The legacy value, lifted from [Paths.legacy] *)
+
+  val paths : t -> Paths.t
+  (** Returns the paths *)
+
+  val unique_use : t -> unique_use option
+  (** Returns the unique_use *)
+
+  val occ : t -> Occurrence.t
+  (** Returns the occurrence  *)
+
+  val mark_maybe_unique : t -> UF.t
+  (** Mark the value as shared_or_unique   *)
+
+  val mark_implicit_borrow_memory_address : Maybe_shared.access -> t -> UF.t
+  (** Mark the memory_address of the value as implicitly borrowed
+      (borrow_or_shared) *)
+end = struct
   type t = {
     paths : Paths.t;
     unique_use : unique_use option;
     occ : Occurrence.t;
   }
-  (** A value is known as the list of paths it represents, as well as
-    as its unique_use in case we really want to use it. The latter is only None
-    for legacy values such as values from other modules, and it is only for
-    performance reasons. *)
 
-  let legacy ?unique_use occ = { paths = Paths.empty; unique_use; occ }
   let mk paths ?unique_use occ = { paths; unique_use; occ }
-
-  let child proj ?unique_use occ { paths; _ } =
-    (* note that child of legacy is still legacy *)
-    let paths = Paths.child proj paths in
-    { paths; unique_use; occ }
+  let legacy = mk Paths.legacy
 
   let mark_implicit_borrow_memory_address access { paths; occ } =
     Paths.mark_implicit_borrow_memory_address access occ paths
@@ -717,7 +750,6 @@ module Value = struct
     | Some unique_use ->
         Paths.mark (Maybe_unique (Maybe_unique.singleton unique_use occ)) paths
 
-  let fresh name ?unique_use occ = { unique_use; paths = Paths.fresh name; occ }
   let paths { paths; _ } = paths
   let unique_use { unique_use; _ } = unique_use
   let occ { occ; _ } = occ
@@ -765,7 +797,7 @@ end = struct
         (fun _id locs0 locs1 ->
           match (locs0, locs1) with
           | None, None -> None
-          | Some locs0, Some locs1 -> Some (locs0 @ locs1)
+          | Some paths0, Some paths1 -> Some (Paths.par paths0 paths1)
           (* cannot bind variable only in one of the OR-patterns *)
           | _, _ -> assert false)
         ienv0 ienv1
@@ -822,9 +854,9 @@ let force_shared_boundary t ~reason =
 type value_to_match =
   | Match_tuple of Value.t list
       (** The value being matched is a tuple; we treat it specially so matching
-  tuples against tuples merely create alias instead of uses; the [unique_use]
-  and [location] is used if the tuple is bound to a variable, in which case all
-    values in the tuple is considered used *)
+  tuples against tuples merely create alias instead of uses; We need [Value.t]
+  instead of [Paths.t] because the tuple could be bound to a variable, in which
+    case all values in the tuple is considered used *)
   | Match_single of Paths.t  (** The value being matched is not a tuple *)
 
 let conjuncts_pattern_match ?uf l =
@@ -991,8 +1023,7 @@ let mark_shared_open_variables ienv f _loc =
                (Maybe_unique.extract_occurrence maybe_unique)
                Shared.Forced)
         in
-        let ufs = List.map (UF.singleton shared) paths in
-        UF.seqs ufs)
+        Paths.mark shared paths)
       ll
   in
   UF.seqs ufs
@@ -1023,7 +1054,7 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
   | Texp_function { param; cases } ->
       (* `param` is only a hint not a binder;
          actual binding done in cases by Tpat_var and Tpat_alias *)
-      let value = Match_single (Paths.fresh_of_ident param) in
+      let value = Match_single (Paths.fresh (Ident.name param)) in
       let uf = check_uniqueness_cases value cases ienv in
       (* we are constructing a closure here, and therefore any borrowing of free
          variables in the closure is in fact using shared. *)
@@ -1089,10 +1120,15 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
                     match field with
                     | l, Kept _ ->
                         let value =
-                          Value.child
-                            (Usage_tree.Projection.Record_field l.lbl_name)
-                            ?unique_use:(Value.unique_use value)
-                            (Value.occ value) value
+                          let unique_use = Value.unique_use value in
+                          let occ = Value.occ value in
+                          let paths = Value.paths value in
+                          let paths =
+                            Paths.child
+                              (Usage_tree.Projection.Record_field l.lbl_name)
+                              paths
+                          in
+                          Value.mk paths ?unique_use occ
                         in
                         Value.mark_maybe_unique value
                     | _, Overridden (_, e) -> check_uniqueness_exp_ e ienv)
@@ -1239,10 +1275,11 @@ and check_uniqueness_exp' exp ienv : Value.t option * UF.t =
              block. Note that the field itself is not borrowed or used *)
           let uf' = Value.mark_implicit_borrow_memory_address Read value in
           let occ = Occurrence.mk loc in
-          let value =
-            Value.child (Usage_tree.Projection.Record_field l.lbl_name)
-              ~unique_use occ value
+          let paths =
+            Paths.child (Usage_tree.Projection.Record_field l.lbl_name)
+              (Value.paths value)
           in
+          let value = Value.mk paths ~unique_use occ in
           (Some value, UF.seq uf uf'))
   (* CR-someday anlorenzen: This could also support let-bindings. *)
   | _ -> (None, check_uniqueness_exp_ exp ienv)
@@ -1253,11 +1290,12 @@ and init_single_value_to_match exp ienv : Value.t * UF.t =
       let occ = Occurrence.mk exp.exp_loc in
       (* When matching on an expression, we create fresh value, who will have
          children by being matched *)
-      (Value.fresh "match" occ, uf)
+      let paths = Paths.fresh "match" in
+      (Value.mk paths occ, uf)
   | Some value, uf -> (value, uf)
 
 (** take typed expression, do some parsing and returns [init_value_to_match] *)
-and init_value_to_match exp ienv =
+and init_value_to_match exp ienv : value_to_match * UF.t =
   match exp.exp_desc with
   | Texp_tuple (es, _) ->
       let values, ufs =
