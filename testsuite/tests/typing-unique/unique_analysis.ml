@@ -262,9 +262,9 @@ let mark_top_shared =
   | x :: xx -> unique_ xx
   | [] -> []
 [%%expect{|
-Line 4, characters 8-10:
-4 |   match xs with
-            ^^
+Line 5, characters 4-11:
+5 |   | x :: xx -> unique_ xx
+        ^^^^^^^
 Error: This value is read from here, but it has already been used as unique:
 Line 3, characters 20-22:
 3 |   let _ = unique_id xs in
@@ -474,9 +474,9 @@ Line 6, characters 12-13:
                 ^
 Error: This value is used here as unique,
        but it has already been read from in a closure that might be called later:
-Line 3, characters 22-23:
-3 |   let _bar () = match r with
-                          ^
+Line 4, characters 6-20:
+4 |     | {dim; x; y; z} -> ()
+          ^^^^^^^^^^^^^^
 
 |}]
 
