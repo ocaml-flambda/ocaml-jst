@@ -860,9 +860,9 @@ type value_to_match =
     case all values in the tuple is considered used *)
   | Match_single of Paths.t  (** The value being matched is not a tuple *)
 
-let conjuncts_pattern_match ?uf l =
+let conjuncts_pattern_match ?prologue l =
   let exts, ufs = List.split l in
-  let ufs = match uf with None -> ufs | Some uf -> uf :: ufs in
+  let ufs = match prologue with None -> ufs | Some uf -> uf :: ufs in
   (Ienv.Extension.conjuncts exts, UF.seqs ufs)
 
 let rec pattern_match pat vtm =
@@ -898,7 +898,7 @@ and pattern_match_single pat paths : Ienv.Extension.t * UF.t =
       ( Ienv.Extension.empty,
         Paths.mark_implicit_borrow_memory_address Read occ paths )
   | Tpat_construct (lbl, _, pats, _) ->
-      let uf = Paths.mark_implicit_borrow_memory_address Read occ paths in
+      let prologue = Paths.mark_implicit_borrow_memory_address Read occ paths in
       List.mapi
         (fun i pat ->
           let paths =
@@ -908,18 +908,18 @@ and pattern_match_single pat paths : Ienv.Extension.t * UF.t =
           in
           pattern_match_single pat paths)
         pats
-      |> conjuncts_pattern_match ~uf
+      |> conjuncts_pattern_match ~prologue
   | Tpat_variant (lbl, mpat, _) ->
-      let uf = Paths.mark_implicit_borrow_memory_address Read occ paths in
+      let prologue = Paths.mark_implicit_borrow_memory_address Read occ paths in
       let paths = Paths.child (Usage_tree.Projection.Variant_field lbl) paths in
-      let ext, uf' =
+      let ext, uf =
         match mpat with
         | Some pat' -> pattern_match_single pat' paths
         | None -> (Ienv.Extension.empty, UF.unused)
       in
-      (ext, UF.seq uf uf')
+      (ext, UF.seq prologue uf)
   | Tpat_record (pats, _) ->
-      let uf = Paths.mark_implicit_borrow_memory_address Read occ paths in
+      let prologue = Paths.mark_implicit_borrow_memory_address Read occ paths in
       List.map
         (fun (_, l, pat) ->
           let paths =
@@ -927,25 +927,25 @@ and pattern_match_single pat paths : Ienv.Extension.t * UF.t =
           in
           pattern_match_single pat paths)
         pats
-      |> conjuncts_pattern_match ~uf
+      |> conjuncts_pattern_match ~prologue
   | Tpat_array (_, pats) ->
-      let uf = Paths.mark_implicit_borrow_memory_address Read occ paths in
+      let prologue = Paths.mark_implicit_borrow_memory_address Read occ paths in
       List.map
         (fun pat ->
           let paths = Paths.fresh "array_field" in
           pattern_match_single pat paths)
         pats
-      |> conjuncts_pattern_match ~uf
+      |> conjuncts_pattern_match ~prologue
   | Tpat_lazy _ -> assert false (* handled by [pattern_match] *)
   | Tpat_or _ -> assert false (* handled by [pattern_match] *)
   | Tpat_tuple pats ->
-      let uf = Paths.mark_implicit_borrow_memory_address Read occ paths in
+      let prologue = Paths.mark_implicit_borrow_memory_address Read occ paths in
       List.mapi
         (fun i pat ->
           let paths = Paths.child (Usage_tree.Projection.Tuple_field i) paths in
           pattern_match_single pat paths)
         pats
-      |> conjuncts_pattern_match ~uf
+      |> conjuncts_pattern_match ~prologue
 
 (* We ignore exceptions in uniqueness analysis. *)
 let comp_pattern_match pat value =
