@@ -764,7 +764,8 @@ module Ienv : sig
     (** Composition for [OR] patterns. This operation is commutative *)
 
     val conjunct : t -> t -> t
-    (** Composition for conjunctive patterns. The two extensions must be disjoint. *)
+    (** Composition for conjunctive patterns. The two extensions must be
+    disjoint. *)
 
     val conjuncts : t list -> t
     (** Similar to [conjunct] but lifted to lists *)
@@ -978,9 +979,9 @@ let maybe_paths_of_ident ?maybe_unique ienv path =
    modules/classes and their surrounding environment coarsely. To be specific,
    all references in the modules/classes pointing to the environment are treated
    as many and shared. This translates to enforcement on both ends: - inside the
-   module, those uses needs to be forced as many and shared - need a Usage_forest
-   which marks those uses as many and shared, so that the parent expression can
-   detect conflict if any. *)
+   module, those uses needs to be forced as many and shared - need a
+   Usage_forest which marks those uses as many and shared, so that the parent
+   expression can detect conflict if any. *)
 
 (** Returns all open variables inside a module. *)
 let open_variables ienv f =
@@ -1246,10 +1247,9 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
 (**
 Corresponds to the first mode.
 
-Look at exp and see if it can be treated as alias. Currently only [Texp_ident] and
-[Texp_field] (and recursively so) are treated so. return [paths] and [unique_use]. [paths] is
-the list of possible memory locations. returns [None] if exp is not alias, which
-also implies that the usage of [exp] is included in the returned [uf]. *)
+Look at exp and see if it can be treated as an alias. Currently only
+[Texp_ident] and [Texp_field] (and recursively so) are treated so. If it returns
+[Some Value.t], the caller is responsible to mark it as used as needed *)
 and check_uniqueness_exp' exp ienv : Value.t option * UF.t =
   let loc = exp.exp_loc in
   match exp.exp_desc with
