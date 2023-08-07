@@ -675,7 +675,8 @@ module Paths : sig
   (** Returns the element-wise child *)
 
   val legacy : t
-  (** Representing legacy values *)
+  (** Representing legacy values whose modes are managed by the type checker.
+      They are ignored by uniqueness analysis and represented as empty lists *)
 
   val mark : Usage.t -> t -> UF.t
   val fresh : string -> t
@@ -708,8 +709,8 @@ module Value : sig
 
   val mk : Paths.t -> ?unique_use:unique_use -> Occurrence.t -> t
   (** A value contains the list of paths it could points to, the unique_use if
-      it's a variable (as opposed to an expression), and its occurrence in the
-      source code *)
+      it's a variable, and its occurrence in the source code. [unique_use] could
+      be None if it's not a variable (e.g. result of an application) *)
 
   val legacy : ?unique_use:unique_use -> Occurrence.t -> t
   (** The legacy value, lifted from [Paths.legacy] *)
@@ -745,7 +746,7 @@ end = struct
   let mark_maybe_unique { paths; unique_use; occ } =
     match unique_use with
     | None ->
-        (* the thing is the result of some application.   *)
+        (* the value is the result of some application *)
         UF.unused
     | Some unique_use ->
         Paths.mark (Maybe_unique (Maybe_unique.singleton unique_use occ)) paths
@@ -880,6 +881,8 @@ let rec pattern_match pat vtm =
   | Match_single paths, _ -> pattern_match_single pat paths
   | Match_tuple values, _ ->
       let paths = Paths.fresh "tuple_as_single" in
+      (* Mark all values in the tuple as used, because we are binding the tuple
+         to a variable *)
       let uf = UF.seqs (List.map Value.mark_maybe_unique values) in
       let ext, uf' = pattern_match_single pat paths in
       (ext, UF.seq uf uf')
