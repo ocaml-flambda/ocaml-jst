@@ -480,7 +480,7 @@ end = struct
   let leaf usage = { usage; children = Projection.Map.empty }
   let _unused = leaf Usage.Unused
 
-  let mapi' projs f t =
+  let mapi_aux projs f t =
     let rec loop projs t =
       let usage = f projs t.usage in
       let children =
@@ -490,7 +490,7 @@ end = struct
     in
     loop projs t
 
-  let mapi f t = mapi' [] f t
+  let mapi f t = mapi_aux [] f t
 
   let rec mapi2 f t0 t1 =
     let usage = f Self t0.usage t1.usage in
@@ -501,12 +501,12 @@ end = struct
           | None, None -> assert false
           | None, Some c1 ->
               Some
-                (mapi' [ proj ]
+                (mapi_aux [ proj ]
                    (fun projs r -> f (Ancestor projs) t0.usage r)
                    c1)
           | Some c0, None ->
               Some
-                (mapi' [ proj ]
+                (mapi_aux [ proj ]
                    (fun projs l -> f (Descendant projs) l t1.usage)
                    c0)
           | Some c0, Some c1 -> Some (mapi2 f c0 c1))
