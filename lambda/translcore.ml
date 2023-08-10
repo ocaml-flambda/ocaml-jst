@@ -1402,7 +1402,7 @@ and transl_record ~scopes loc env mode fields repres opt_init_expr =
       Array.mapi
         (fun i (lbl, definition) ->
            match definition with
-           | Kept typ ->
+           | Kept (typ, _) ->
                let field_kind = must_be_value (layout env lbl.lbl_loc typ) in
                let sem =
                  match lbl.lbl_mut with
@@ -1483,7 +1483,7 @@ and transl_record ~scopes loc env mode fields repres opt_init_expr =
          the init record, we must have already checked for void. *)
       layout_must_be_value lbl.lbl_loc lbl.lbl_layout;
       match definition with
-      | Kept _type -> cont
+      | Kept (_type, _uu) -> cont
       | Overridden (_lid, expr) ->
           let upd =
             match repres with

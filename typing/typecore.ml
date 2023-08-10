@@ -343,6 +343,11 @@ let apply_position env (expected_mode : expected_mode) sexp : apply_position =
   | Ok (Some `Tail), false -> fail `Not_a_tailcall
   | Error `Conflict, _ -> fail `Conflict
 
+let modality_l = function
+  | Global -> fun mode -> mode |> Value.to_global |> Value.to_shared
+  | Nonlocal -> fun mode -> mode |> Value.to_shared |> Value.local_to_regional
+  | Unrestricted -> Fun.id
+
 let mode_default mode =
   { position = RNontail;
     closure_context = None;
@@ -392,6 +397,11 @@ let mode_nonlocal_field expected_mode =
     (* nonlocal modality entails shared modality *)
   in
   mode_default mode
+
+let mode_modality = function
+  | Global -> mode_global_field
+  | Nonlocal -> mode_nonlocal_field
+  | Unrestricted -> Fun.id
 
 let mode_global expected_mode =
   { expected_mode with
@@ -2487,12 +2497,7 @@ and type_pat_aux
 
       map_fold_cont
         (fun (p,(ty, gf)) ->
-           let alloc_mode =
-             match gf with
-             | Global -> Value.to_shared (Value.to_global alloc_mode.mode)
-             | Nonlocal -> Value.to_shared (Value.local_to_regional alloc_mode.mode)
-             | Unrestricted -> alloc_mode.mode
-           in
+           let alloc_mode = modality_l gf alloc_mode.mode in
            let alloc_mode = simple_pat_mode alloc_mode in
            type_pat ~alloc_mode Value p ty)
         (List.combine sargs (List.combine ty_args_ty ty_args_gf))
@@ -2537,12 +2542,7 @@ and type_pat_aux
       let type_label_pat (label_lid, label, sarg) k =
         let ty_arg =
           solve_Ppat_record_field ~refine loc env label label_lid record_ty in
-        let alloc_mode =
-          match label.lbl_global with
-          | Global -> Value.to_shared (Value.to_global alloc_mode.mode)
-          | Nonlocal -> Value.to_shared (Value.local_to_regional alloc_mode.mode)
-          | Unrestricted -> alloc_mode.mode
-        in
+        let alloc_mode = modality_l label.lbl_global alloc_mode.mode in
         let alloc_mode = simple_pat_mode alloc_mode in
         type_pat Value ~alloc_mode sarg ty_arg (fun arg ->
           k (label_lid, label, arg))
@@ -4678,12 +4678,14 @@ and type_expect_
         | Some sexp ->
             if !Clflags.principal then begin_def ();
             (* TODO: mode can be more relaxed than this if fields are nonlocal *)
-            let exp = type_exp ~recarg env (mode_subcomponent expected_mode) sexp in
+            let mode = Value.newvar () in
+            submode ~loc ~env mode (mode_subcomponent expected_mode);
+            let exp = type_exp ~recarg env (mode_default mode) sexp in
             if !Clflags.principal then begin
               end_def ();
               generalize_structure exp.exp_type
             end;
-            Some exp
+            Some (exp, mode)
       in
       let ty_record, expected_type =
         let expected_opath =
@@ -4699,7 +4701,7 @@ and type_expect_
         let opt_exp_opath =
           match opt_exp with
           | None -> None
-          | Some exp ->
+          | Some (exp, _) ->
             match extract_concrete_record env exp.exp_type with
             | Record_type (p0, p, _, _) -> Some (p0, p, is_principal exp.exp_type)
             | Maybe_a_record_type -> None
@@ -4782,7 +4784,7 @@ and type_expect_
                 lbl.lbl_all
             in
             None, label_definitions
-        | Some exp ->
+        | Some (exp, mode) ->
             let ty_exp = instance exp.exp_type in
             let unify_kept lbl =
               let _, ty_arg1, ty_res1 = instance_label false lbl in
@@ -4796,7 +4798,14 @@ and type_expect_
                   unify_exp_types loc env ty_arg1 ty_arg2;
                   with_explanation (fun () ->
                     unify_exp_types loc env (instance ty_expected) ty_res2);
-                  Kept ty_arg1
+                  let mode = modality_l lbl.lbl_global mode in
+                  (* Note: the following doesn't follow strictly the mode
+                     computation in [type_label_exp]; in particular, we skipped
+                     the part about [mode_subcomponent]. However, since the
+                     latter only touches the regionality axis, it should be fine
+                     . *)
+                  let expected_mode = mode_modality lbl.lbl_global expected_mode in
+                  Kept (ty_arg1, unique_use ~loc ~env mode expected_mode.mode)
                 end
             in
             let label_definitions = Array.map unify_kept lbl.lbl_all in
@@ -4834,13 +4843,7 @@ and type_expect_
         | Record_float -> Some (register_allocation expected_mode)
         | _ -> None
       in
-      let mode =
-        match label.lbl_global with
-        | Global -> Value.to_shared (Value.to_global rmode)
-        | Nonlocal -> Value.to_shared (Value.local_to_regional rmode)
-        | Unrestricted -> rmode
-      in
-
+      let mode = modality_l label.lbl_global rmode in
       if !Clflags.principal then
         begin_def ();
 
@@ -6223,15 +6226,7 @@ and type_label_exp create env (expected_mode : expected_mode) loc ty_expected
         expected_mode
       | _ -> mode_subcomponent expected_mode
     in
-    let arg_mode =
-      match label.lbl_global with
-      | Global ->
-         mode_global_field rmode
-      | Nonlocal ->
-         mode_nonlocal_field rmode
-      | Unrestricted ->
-         rmode
-    in
+    let arg_mode = mode_modality label.lbl_global rmode in
     let arg =
       type_argument env arg_mode sarg ty_arg (instance ty_arg)
     in
@@ -6668,15 +6663,7 @@ and type_construct env (expected_mode : expected_mode) loc lid sarg
   let args =
     List.map2
       (fun e ((ty, gf),t0) ->
-         let argument_mode =
-           match gf with
-           | Global ->
-               mode_global_field argument_mode
-           | Nonlocal ->
-               mode_nonlocal_field argument_mode
-           | Unrestricted ->
-               argument_mode
-         in
+         let argument_mode = mode_modality gf argument_mode in
          type_argument ~recarg env argument_mode e ty t0)
       sargs (List.combine ty_args ty_args0)
   in

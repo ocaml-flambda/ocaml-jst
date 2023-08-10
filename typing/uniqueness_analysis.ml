@@ -33,7 +33,23 @@ let rec iter_error f = function
   | [] -> Ok ()
   | x :: xs -> ( match f x with Ok () -> iter_error f xs | Error e -> Error e)
 
+(* raises if lists differ in length *)
+let rec list_zip l0 l1 =
+  match (l0, l1) with
+  | [], [] -> []
+  | [], _ | _, [] -> assert false
+  | x0 :: l0, x1 :: l1 -> (x0, x1) :: list_zip l0 l1
+
 module Maybe_unique : sig
+  (* I put [modality] in this module, because it seems that only this module
+     cares about modes stuff *)
+
+  (** Modalities relevant to the uniqueness analysis *)
+  type modality = Shared
+
+  val modalities_of_global_flag : global_flag -> modality list
+  (** Translate from generic modalities *)
+
   type t
   (** The type representing a usage that could be either unique or shared *)
 
@@ -51,14 +67,24 @@ module Maybe_unique : sig
   (** Describes why cannot force shared - including the failing occurrence, and
       the failing axis *)
 
-  val force_shared : t -> (unit, cannot_force) result
-  (** Force something to shared *)
+  val mark_multi_use : t -> (unit, cannot_force) result
+  (** Call this function to indicate that this is used multiple times *)
+
+  val modalities : modality list -> t -> t
+  (** Run modalities through the usage *)
 
   val uniqueness : t -> Uniqueness.t
   (** Returns the uniqueness represented by this usage. If this identifier is
       expected to be unique in any branch, it will return unique. If the current
       usage is forced, it will return shared. *)
 end = struct
+  type modality = Shared
+
+  let modalities_of_global_flag = function
+    | Unrestricted -> []
+    | Nonlocal -> [ Shared ]
+    | Global -> [ Shared ]
+
   type t = (unique_use * Occurrence.t) list
   (** Occurrences with modes to be forced shared and many in the future if
       needed. This is a list because of multiple control flows. For example, if
@@ -75,8 +101,11 @@ end = struct
   type axis = Uniqueness | Linearity
   type cannot_force = { occ : Occurrence.t; axis : axis }
 
-  let force_shared l =
+  let mark_multi_use l =
     let force_one ((uni, lin), occ) =
+      (* values being multi-used means two things:
+         - the expected mode must be higher than [shared]
+         - the access mode must be lower than [many] *)
       match Linearity.submode lin Linearity.many with
       | Error () -> Error { occ; axis = Linearity }
       | Ok () -> (
@@ -86,6 +115,13 @@ end = struct
     in
     iter_error force_one l
 
+  (* Note that modalities makes usages less likely to emit errors, which means
+     this is to improve completeness *)
+  let modality = function
+    | Shared ->
+        List.map (fun ((_, lin), occ) -> ((Uniqueness.shared, lin), occ))
+
+  let modalities l u = List.fold_left (fun acc m -> modality m acc) u l
   let extract_occurrence = function [] -> assert false | (_, occ) :: _ -> occ
   let par l0 l1 = l0 @ l1
 end
@@ -197,6 +233,9 @@ module Usage : sig
 
   val par : t -> t -> t
   (** Parallel composition  *)
+
+  val modalities : Maybe_unique.modality list -> t -> t
+  (** Run modalities through the usage *)
 end = struct
   (* We have Unused (top) > Borrowed > Shared > Unique > Error (bot).
 
@@ -284,7 +323,7 @@ end = struct
   exception Error of error
 
   let force_shared_multiuse t there first_or_second =
-    match Maybe_unique.force_shared t with
+    match Maybe_unique.mark_multi_use t with
     | Ok () -> ()
     | Error cannot_force ->
         raise (Error { cannot_force; there; first_or_second })
@@ -353,6 +392,10 @@ end = struct
         force_shared_multiuse l1 m0 Second;
         Shared
           (Shared.singleton (Maybe_unique.extract_occurrence l0) Shared.Forced)
+
+  let modalities l = function
+    | Maybe_unique m -> Maybe_unique (Maybe_unique.modalities l m)
+    | m -> m
 end
 
 (** lifting module Usage to trees *)
@@ -361,8 +404,8 @@ module Usage_tree : sig
     (** Projections from parent to child. *)
     type t =
       | Tuple_field of int
-      | Record_field of string
-      | Construct_field of string * int
+      | Record_field of string * Maybe_unique.modality list
+      | Construct_field of string * int * Maybe_unique.modality list
       | Variant_field of label
       | Memory_address
   end
@@ -412,16 +455,16 @@ end = struct
     module T = struct
       type t =
         | Tuple_field of int
-        | Record_field of string
-        | Construct_field of string * int
+        | Record_field of string * Maybe_unique.modality list
+        | Construct_field of string * int * Maybe_unique.modality list
         | Variant_field of label
         | Memory_address
 
       let compare t1 t2 =
         match (t1, t2) with
         | Tuple_field i, Tuple_field j -> Int.compare i j
-        | Record_field l1, Record_field l2 -> String.compare l1 l2
-        | Construct_field (l1, i), Construct_field (l2, j) -> (
+        | Record_field (l1, _), Record_field (l2, _) -> String.compare l1 l2
+        | Construct_field (l1, i, _), Construct_field (l2, j, _) -> (
             match String.compare l1 l2 with 0 -> Int.compare i j | i -> i)
         | Variant_field l1, Variant_field l2 -> String.compare l1 l2
         | Memory_address, Memory_address -> 0
@@ -492,6 +535,28 @@ end = struct
 
   let mapi f t = mapi_aux [] f t
 
+  (* How modalities work in trees?
+     For example, say we have [type r = {global_ x : string}].
+
+     - It is possible that a node [n] of [r] has a [x]-child, in which case
+     the projection must have the proper modalities set. And the usage on the
+     [x]-node is taken literally without applying modalities. In particular, [n]
+     and [x] could both be unique (I don't see why not).
+
+     - It is possible that a node [n] of [r] doesn't have a [x]-child, in which
+     case the usage of [x] is understood to be the usage of [n] but applied the
+     [global_] modality. Note that by looking at the node [n] alone we don't have
+     the modality info about its implicit usage of [n.x]. This is only discovered
+     when [n] interact with another tree with [x]-child by [seq] or [par].
+     However, that's also the only time when the modality matters, so it should
+     be fine.
+  *)
+  let implicit_child = function
+    | Projection.Record_field (_, modalities) -> Usage.modalities modalities
+    | Projection.Construct_field (_, _, modalities) ->
+        Usage.modalities modalities
+    | _ -> Fun.id
+
   let rec mapi2 f t0 t1 =
     let usage = f Self t0.usage t1.usage in
     let children =
@@ -500,14 +565,16 @@ end = struct
           match (c0, c1) with
           | None, None -> assert false
           | None, Some c1 ->
+              let t0_usage = implicit_child proj t0.usage in
               Some
                 (mapi_aux [ proj ]
-                   (fun projs r -> f (Ancestor projs) t0.usage r)
+                   (fun projs r -> f (Ancestor projs) t0_usage r)
                    c1)
           | Some c0, None ->
+              let t1_usage = implicit_child proj t1.usage in
               Some
                 (mapi_aux [ proj ]
-                   (fun projs l -> f (Descendant projs) l t1.usage)
+                   (fun projs l -> f (Descendant projs) l t1_usage)
                    c0)
           | Some c0, Some c1 -> Some (mapi2 f c0 c1))
         t0.children t1.children
@@ -683,9 +750,6 @@ module Value : sig
   val paths : t -> Paths.t
   (** Returns the paths *)
 
-  val unique_use : t -> unique_use option
-  (** Returns the unique_use *)
-
   val occ : t -> Occurrence.t
   (** Returns the occurrence  *)
 
@@ -724,7 +788,6 @@ end = struct
         Paths.mark (Maybe_unique (Maybe_unique.singleton unique_use occ)) paths
 
   let paths { paths; _ } = paths
-  let unique_use { unique_use; _ } = unique_use
   let occ { occ; _ } = occ
 end
 
@@ -821,7 +884,7 @@ type boundary = {
 exception Boundary of boundary
 
 let force_shared_boundary t ~reason =
-  match Maybe_unique.force_shared t with
+  match Maybe_unique.mark_multi_use t with
   | Ok () -> ()
   | Error cannot_force -> raise (Boundary { cannot_force; reason })
 
@@ -873,19 +936,22 @@ and pattern_match_single pat paths : Ienv.Extension.t * UF.t =
   | Tpat_constant _ ->
       ( Ienv.Extension.empty,
         Paths.mark_implicit_borrow_memory_address Read occ paths )
-  | Tpat_construct (lbl, _, pats, _) ->
+  | Tpat_construct (lbl, cd, pats, _) ->
       let prologue = Paths.mark_implicit_borrow_memory_address Read occ paths in
+      let pats_args = list_zip pats cd.cstr_args in
       let ext, uf =
         List.mapi
-          (fun i pat ->
+          (fun i (pat, (_, gf)) ->
             let paths =
               Paths.child
                 (Usage_tree.Projection.Construct_field
-                   (Longident.last lbl.txt, i))
+                   ( Longident.last lbl.txt,
+                     i,
+                     Maybe_unique.modalities_of_global_flag gf ))
                 paths
             in
             pattern_match_single pat paths)
-          pats
+          pats_args
         |> conjuncts_pattern_match
       in
       (ext, UF.seq prologue uf)
@@ -907,7 +973,11 @@ and pattern_match_single pat paths : Ienv.Extension.t * UF.t =
         List.map
           (fun (_, l, pat) ->
             let paths =
-              Paths.child (Usage_tree.Projection.Record_field l.lbl_name) paths
+              Paths.child
+                (Usage_tree.Projection.Record_field
+                   ( l.lbl_name,
+                     Maybe_unique.modalities_of_global_flag l.lbl_global ))
+                paths
             in
             pattern_match_single pat paths)
           pats
@@ -1119,28 +1189,32 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
                  do here*)
           | Some value, uf0 ->
               (* {x with ...} *)
+              let prologue =
+                Value.mark_implicit_borrow_memory_address Read value
+              in
               let ufs =
                 Array.map
                   (fun field ->
                     match field with
-                    | l, Kept _ ->
+                    | l, Kept (_, unique_use) ->
                         let value =
-                          let unique_use = Value.unique_use value in
                           let occ = Value.occ value in
                           let paths = Value.paths value in
                           let paths =
                             Paths.child
-                              (Usage_tree.Projection.Record_field l.lbl_name)
+                              (Usage_tree.Projection.Record_field
+                                 ( l.lbl_name,
+                                   Maybe_unique.modalities_of_global_flag
+                                     l.lbl_global ))
                               paths
                           in
-                          Value.mk paths ?unique_use occ
+                          Value.mk paths ~unique_use occ
                         in
                         Value.mark_maybe_unique value
                     | _, Overridden (_, e) -> check_uniqueness_exp_ e ienv)
                   fields
               in
-              let uf1 = UF.seqs (Array.to_list ufs) in
-              UF.seq uf0 uf1))
+              UF.seqs (uf0 :: prologue :: Array.to_list ufs)))
   | Texp_field _ -> (
       match check_uniqueness_exp' exp ienv with
       | Some value, uf -> UF.seq uf (Value.mark_maybe_unique value)
@@ -1148,11 +1222,10 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
   | Texp_setfield (exp', _, _, _, e) -> (
       (* Setfield allows mutations outside of our uniqueness extension. We still
          need to track it, because a unique use (strong update) followed by
-         setfield could cause segfault. Tracking it as unique is too strong,
-         because that would reject the existing usages of mutable fields.
-         Tracking it as shared is also too strong, because setfield followed by
-         unique use should be allowed. Tracking it as borrow_or_shared (which is
-         how we track `getfield`) sounds about right. *)
+         setfield could cause segfault. Tracking it as shared/unique is also too
+         strong, because setfield followed by unique use should be allowed.
+         Tracking it as borrow_or_shared (which is how we track `getfield`)
+         sounds about right. *)
       let uf = check_uniqueness_exp_ e ienv in
       match check_uniqueness_exp' exp' ienv with
       | None, uf' -> UF.seq uf uf'
@@ -1281,7 +1354,10 @@ and check_uniqueness_exp' exp ienv : Value.t option * UF.t =
           let uf' = Value.mark_implicit_borrow_memory_address Read value in
           let occ = Occurrence.mk loc in
           let paths =
-            Paths.child (Usage_tree.Projection.Record_field l.lbl_name)
+            Paths.child
+              (Usage_tree.Projection.Record_field
+                 ( l.lbl_name,
+                   Maybe_unique.modalities_of_global_flag l.lbl_global ))
               (Value.paths value)
           in
           let value = Value.mk paths ~unique_use occ in

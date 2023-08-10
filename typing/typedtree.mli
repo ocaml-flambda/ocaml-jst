@@ -266,7 +266,7 @@ and expression_desc =
   | Texp_tuple of expression list * Mode.Alloc.t
         (** (E1, ..., EN) *)
   | Texp_construct of
-      Longident.t loc * Types.constructor_description * 
+      Longident.t loc * Types.constructor_description *
       expression list * Mode.Alloc.t option
         (** C                []
             C E              [E]
@@ -307,7 +307,7 @@ and expression_desc =
         only when getting a (float) field from a [Record_float] record
       *)
   | Texp_setfield of
-      expression * Mode.Locality.t * Longident.t loc * 
+      expression * Mode.Locality.t * Longident.t loc *
       Types.label_description * expression
     (** [alloc_mode] translates to the [modify_mode] of the record *)
   | Texp_array of mutable_flag * expression list * Mode.Alloc.t
@@ -416,7 +416,7 @@ and 'k case =
     }
 
 and record_label_definition =
-  | Kept of Types.type_expr
+  | Kept of Types.type_expr * unique_use
   | Overridden of Longident.t loc * expression
 
 and binding_op =

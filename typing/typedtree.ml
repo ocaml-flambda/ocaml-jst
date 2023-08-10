@@ -118,7 +118,7 @@ and expression_desc =
       warnings : Warnings.state;
       arg_mode : Mode.Alloc.t;
       alloc_mode : Mode.Alloc.t }
-  | Texp_apply of 
+  | Texp_apply of
       expression * (arg_label * apply_arg) list * apply_position * Mode.Alloc.t
   | Texp_match of expression * sort * computation case list * partial
   | Texp_try of expression * value case list
@@ -132,7 +132,7 @@ and expression_desc =
       extended_expression : expression option;
       alloc_mode : Mode.Alloc.t option
     }
-  | Texp_field of 
+  | Texp_field of
       expression * Longident.t loc * label_description * unique_use * Mode.Alloc.t option
   | Texp_setfield of
       expression * Mode.Locality.t * Longident.t loc * label_description * expression
@@ -226,7 +226,7 @@ and 'k case =
     }
 
 and record_label_definition =
-  | Kept of Types.type_expr
+  | Kept of Types.type_expr * unique_use
   | Overridden of Longident.t loc * expression
 
 and binding_op =

@@ -15,8 +15,11 @@ let shared_id : 'a -> 'a = fun x -> x
 val shared_id : 'a -> 'a = <fun>
 |}]
 
+let ignore_once: once_ 'a -> unit = fun x -> ()
+
 type box = { x : int }
 [%%expect{|
+val ignore_once : once_ 'a -> unit = <fun>
 type box = { x : int; }
 |}]
 
@@ -588,4 +591,83 @@ let foo () =
   | {x_lazy = lazy y} as r -> ignore (unique_id r.y)
 [%%expect{|
 val foo : unit -> unit = <fun>
+|}]
+
+(* Testing modalities. Record is more general than constructor because it has
+   direct projection (Texp_field). So in the following we test record only *)
+type r_global = {x : string; global_ y : string}
+(* type r = {x : string; y : string} *)
+[%%expect{|
+type r_global = { x : string; global_ y : string; }
+|}]
+
+let foo () =
+  let r = {x = "hello"; y = "world"} in
+  ignore (shared_id r.y);
+  (* the following is allowed, because using r uniquely implies using r.x
+     shared *)
+  ignore (unique_id r)
+[%%expect{|
+val foo : unit -> unit = <fun>
+|}]
+
+(* The linearity axis is not affected *)
+let foo () =
+  let r = once_ {x = "hello"; y = "world"} in
+  ignore_once r.y;
+  ignore_once r;
+[%%expect{|
+Line 4, characters 14-15:
+4 |   ignore_once r;
+                  ^
+Error: This value is used here,
+       but part of it is defined as once and has already been used:
+Line 3, characters 14-17:
+3 |   ignore_once r.y;
+                  ^^^
+
+|}]
+
+let foo () =
+  let r = {x = "hello"; y = "world"} in
+  ignore (shared_id r.x);
+  (* doesn't work for normal fields *)
+  ignore (unique_id r)
+[%%expect{|
+Line 5, characters 20-21:
+5 |   ignore (unique_id r)
+                        ^
+Error: This value is used here as unique,
+       but part of it has already been used:
+Line 3, characters 20-23:
+3 |   ignore (shared_id r.x);
+                        ^^^
+
+|}]
+
+(* testing record update in the presense of modalities *)
+let foo () =
+  let r = {x = "hello"; y = "world"} in
+  ignore (unique_ {r with x = "hello agin"});
+  (* r.y has been used shared; in the following we will use r as unique *)
+  ignore (unique_id r)
+[%%expect{|
+val foo : unit -> unit = <fun>
+|}]
+
+let foo () =
+  let r = {x = "hello"; y = "world"} in
+  ignore (unique_ {r with y = "world again"});
+  (* r.x has been used unique; in the following we will use r as unique *)
+  ignore (unique_id r)
+[%%expect{|
+Line 4, characters 20-21:
+4 |   ignore (unique_id r)
+                        ^
+Error: This value is used here,
+       but part of it has already been used as unique:
+Line 3, characters 19-20:
+3 |   ignore (unique_ {r with y = "world again"});
+                       ^
+
 |}]

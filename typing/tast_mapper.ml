@@ -334,7 +334,7 @@ let expr sub x =
         Texp_variant (l, Option.map (fun (e, am) -> (sub.expr sub e, am)) expo)
     | Texp_record { fields; representation; extended_expression; alloc_mode } ->
         let fields = Array.map (function
-            | label, Kept t -> label, Kept t
+            | label, Kept (t, uu) -> label, Kept (t, uu)
             | label, Overridden (lid, exp) ->
                 label, Overridden (lid, sub.expr sub exp))
             fields
