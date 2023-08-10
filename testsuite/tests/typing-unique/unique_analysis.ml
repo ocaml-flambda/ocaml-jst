@@ -661,13 +661,37 @@ let foo () =
   (* r.x has been used unique; in the following we will use r as unique *)
   ignore (unique_id r)
 [%%expect{|
-Line 4, characters 20-21:
-4 |   ignore (unique_id r)
+Line 5, characters 20-21:
+5 |   ignore (unique_id r)
                         ^
 Error: This value is used here,
        but part of it has already been used as unique:
 Line 3, characters 19-20:
 3 |   ignore (unique_ {r with y = "world again"});
                        ^
+
+|}]
+
+type r = {x : string; y : string}
+
+(* updating record at least reads the memory_address of the record *)
+let foo () =
+  let r = {x = "hello"; y = "world" } in
+  ignore (unique_id r);
+  ignore ({r with x = "hello again"; y = "world again"})
+[%%expect{|
+type r = { x : string; y : string; }
+Line 7, characters 9-56:
+7 |   ignore ({r with x = "hello again"; y = "world again"})
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Warning 23 [useless-record-with]: all the fields are explicitly listed in this record:
+the 'with' clause is useless.
+Line 7, characters 11-12:
+7 |   ignore ({r with x = "hello again"; y = "world again"})
+               ^
+Error: This value is read from here, but it has already been used as unique:
+Line 6, characters 20-21:
+6 |   ignore (unique_id r);
+                        ^
 
 |}]
