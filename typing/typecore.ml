@@ -343,10 +343,29 @@ let apply_position env (expected_mode : expected_mode) sexp : apply_position =
   | Ok (Some `Tail), false -> fail `Not_a_tailcall
   | Error `Conflict, _ -> fail `Conflict
 
-let modality_l = function
-  | Global -> fun mode -> mode |> Value.to_global |> Value.to_shared
-  | Nonlocal -> fun mode -> mode |> Value.to_shared |> Value.local_to_regional
-  | Unrestricted -> Fun.id
+(* Describes how a modality affects field projection. Returns the mode
+   of the projection given the mode of the record. *)
+let modality_unbox_left global_flag mode =
+  match global_flag with
+  | Global ->
+      mode |> Value.to_global |> Value.to_shared |> Value.to_many
+  | Nonlocal ->
+      mode |> Value.local_to_regional |> Value.to_shared
+  | Unrestricted -> mode
+
+(* Describes how a modality affects record construction. Gives the
+   expected mode of the field given the expected mode of the record. *)
+let modality_box_right global_flag mode =
+  match global_flag with
+  | Global ->
+      mode |> Value.to_global |> Value.to_shared |> Value.to_many
+  | Nonlocal ->
+      mode
+      |> Value.regional_to_global
+      |> Value.local_to_regional
+      |> Value.to_shared
+      |> Value.to_many
+  | Unrestricted -> mode
 
 let mode_default mode =
   { position = RNontail;
@@ -379,29 +398,11 @@ let mode_max =
 let mode_max_with_position position =
   { mode_max with position }
 
-(* the global modality *)
-let mode_global_field expected_mode =
-  {expected_mode with mode =
-    Value.to_shared (Value.to_global expected_mode.mode) }
-
 let mode_subcomponent expected_mode =
   mode_default (Value.regional_to_global expected_mode.mode)
 
-(* the nonlocal modality *)
-let mode_nonlocal_field expected_mode =
-  let mode =
-    expected_mode.mode
-    |> Value.regional_to_global
-    |> Value.local_to_regional
-    |> Value.to_shared
-    (* nonlocal modality entails shared modality *)
-  in
-  mode_default mode
-
-let mode_modality = function
-  | Global -> mode_global_field
-  | Nonlocal -> mode_nonlocal_field
-  | Unrestricted -> Fun.id
+let mode_box_modality gf expected_mode =
+  mode_default (modality_box_right gf expected_mode.mode)
 
 let mode_global expected_mode =
   { expected_mode with
@@ -2497,7 +2498,7 @@ and type_pat_aux
 
       map_fold_cont
         (fun (p,(ty, gf)) ->
-           let alloc_mode = modality_l gf alloc_mode.mode in
+           let alloc_mode = modality_unbox_left gf alloc_mode.mode in
            let alloc_mode = simple_pat_mode alloc_mode in
            type_pat ~alloc_mode Value p ty)
         (List.combine sargs (List.combine ty_args_ty ty_args_gf))
@@ -2542,7 +2543,9 @@ and type_pat_aux
       let type_label_pat (label_lid, label, sarg) k =
         let ty_arg =
           solve_Ppat_record_field ~refine loc env label label_lid record_ty in
-        let alloc_mode = modality_l label.lbl_global alloc_mode.mode in
+        let alloc_mode =
+          modality_unbox_left label.lbl_global alloc_mode.mode
+        in
         let alloc_mode = simple_pat_mode alloc_mode in
         type_pat Value ~alloc_mode sarg ty_arg (fun arg ->
           k (label_lid, label, arg))
@@ -4798,13 +4801,15 @@ and type_expect_
                   unify_exp_types loc env ty_arg1 ty_arg2;
                   with_explanation (fun () ->
                     unify_exp_types loc env (instance ty_expected) ty_res2);
-                  let mode = modality_l lbl.lbl_global mode in
-                  (* Note: the following doesn't follow strictly the mode
-                     computation in [type_label_exp]; in particular, we skipped
-                     the part about [mode_subcomponent]. However, since the
-                     latter only touches the regionality axis, it should be fine
-                     . *)
-                  let expected_mode = mode_modality lbl.lbl_global expected_mode in
+                  let mode = modality_unbox_left lbl.lbl_global mode in
+                  let rmode =
+                    (* We skip a potential [mode_subcomponent] since
+                       it does not affect uniqueness. *)
+                    expected_mode
+                  in
+                  let expected_mode =
+                    mode_box_modality lbl.lbl_global rmode
+                  in
                   Kept (ty_arg1, unique_use ~loc ~env mode expected_mode.mode)
                 end
             in
@@ -4843,7 +4848,7 @@ and type_expect_
         | Record_float -> Some (register_allocation expected_mode)
         | _ -> None
       in
-      let mode = modality_l label.lbl_global rmode in
+      let mode = modality_unbox_left label.lbl_global rmode in
       if !Clflags.principal then
         begin_def ();
 
@@ -6226,7 +6231,7 @@ and type_label_exp create env (expected_mode : expected_mode) loc ty_expected
         expected_mode
       | _ -> mode_subcomponent expected_mode
     in
-    let arg_mode = mode_modality label.lbl_global rmode in
+    let arg_mode = mode_box_modality label.lbl_global rmode in
     let arg =
       type_argument env arg_mode sarg ty_arg (instance ty_arg)
     in
@@ -6663,7 +6668,7 @@ and type_construct env (expected_mode : expected_mode) loc lid sarg
   let args =
     List.map2
       (fun e ((ty, gf),t0) ->
-         let argument_mode = mode_modality gf argument_mode in
+         let argument_mode = mode_box_modality gf argument_mode in
          type_argument ~recarg env argument_mode e ty t0)
       sargs (List.combine ty_args ty_args0)
   in

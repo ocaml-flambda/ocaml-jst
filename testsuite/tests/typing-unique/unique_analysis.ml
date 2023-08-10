@@ -494,6 +494,23 @@ let foo () =
 val foo : unit -> point = <fun>
 |}]
 
+let foo () =
+  let unique_ r = {dim=1; x=2.0; y=3.0; z=4.0} in
+  let _l = lazy (r.z) in
+  unique_id r
+[%%expect{|
+Line 4, characters 12-13:
+4 |   unique_id r
+                ^
+Error: This value is used here as unique,
+       but it has already been read from in a closure that might be called later:
+Line 3, characters 17-18:
+3 |   let _l = lazy (r.z) in
+                     ^
+
+|}]
+
+
 type mfoo = {
   mutable a : string;
   b : string;
@@ -611,10 +628,18 @@ let foo () =
 val foo : unit -> unit = <fun>
 |}]
 
-(* The linearity axis is not affected *)
+ (* Similarly for linearity *)
 let foo () =
   let r = once_ {x = "hello"; y = "world"} in
   ignore_once r.y;
+  ignore_once r;
+[%%expect{|
+val foo : unit -> unit = <fun>
+|}]
+
+let foo () =
+  let r = once_ {x = "hello"; y = "world"} in
+  ignore_once r.x;
   ignore_once r;
 [%%expect{|
 Line 4, characters 14-15:
@@ -623,7 +648,7 @@ Line 4, characters 14-15:
 Error: This value is used here,
        but part of it is defined as once and has already been used:
 Line 3, characters 14-17:
-3 |   ignore_once r.y;
+3 |   ignore_once r.x;
                   ^^^
 
 |}]

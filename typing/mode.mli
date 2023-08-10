@@ -270,7 +270,7 @@ module Value : sig
 
   val to_global : t -> t
   val to_unique : t -> t
-  val to_once : t -> t
+  val to_many : t -> t
 
   (** Closure operators *)
 
@@ -284,6 +284,7 @@ module Value : sig
 
   val to_local : t -> t
   val to_shared : t -> t
+  val to_once : t -> t
 
   (** Note that the kernal and closure operators are in the following
       adjunction relationship:

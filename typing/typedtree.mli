@@ -51,6 +51,8 @@ type unique_barrier = Mode.Uniqueness.t list
 
 type unique_use = Mode.Uniqueness.t * Mode.Linearity.t
 
+val shared_many_use : unique_use
+
 type pattern = value general_pattern
 and 'k general_pattern = 'k pattern_desc pattern_data
 

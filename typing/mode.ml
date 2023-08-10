@@ -1015,8 +1015,9 @@ module Value = struct
   let to_local t = { t with locality = Regionality.local }
   let to_global t = { t with locality = Regionality.global }
   let to_unique t = { t with uniqueness = Uniqueness.unique }
-  let to_once t = { t with linearity = Linearity.once }
   let to_shared t = { t with uniqueness = Uniqueness.shared }
+  let to_once t = { t with linearity = Linearity.once }
+  let to_many t = { t with linearity = Linearity.many }
 
   let of_alloc { locality; uniqueness; linearity } =
     let locality = Regionality.of_locality locality in

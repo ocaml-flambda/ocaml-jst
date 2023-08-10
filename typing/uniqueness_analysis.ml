@@ -33,22 +33,7 @@ let rec iter_error f = function
   | [] -> Ok ()
   | x :: xs -> ( match f x with Ok () -> iter_error f xs | Error e -> Error e)
 
-(* raises if lists differ in length *)
-let rec list_zip l0 l1 =
-  match (l0, l1) with
-  | [], [] -> []
-  | [], _ | _, [] -> assert false
-  | x0 :: l0, x1 :: l1 -> (x0, x1) :: list_zip l0 l1
-
 module Maybe_unique : sig
-  (* I put [modality] in this module, because it seems that only this module
-     cares about modes stuff *)
-
-  (** Modalities relevant to the uniqueness analysis *)
-  type modality = Shared
-
-  val modalities_of_global_flag : global_flag -> modality list
-  (** Translate from generic modalities *)
 
   type t
   (** The type representing a usage that could be either unique or shared *)
@@ -70,20 +55,11 @@ module Maybe_unique : sig
   val mark_multi_use : t -> (unit, cannot_force) result
   (** Call this function to indicate that this is used multiple times *)
 
-  val modalities : modality list -> t -> t
-  (** Run modalities through the usage *)
-
   val uniqueness : t -> Uniqueness.t
   (** Returns the uniqueness represented by this usage. If this identifier is
       expected to be unique in any branch, it will return unique. If the current
       usage is forced, it will return shared. *)
 end = struct
-  type modality = Shared
-
-  let modalities_of_global_flag = function
-    | Unrestricted -> []
-    | Nonlocal -> [ Shared ]
-    | Global -> [ Shared ]
 
   type t = (unique_use * Occurrence.t) list
   (** Occurrences with modes to be forced shared and many in the future if
@@ -115,13 +91,6 @@ end = struct
     in
     iter_error force_one l
 
-  (* Note that modalities makes usages less likely to emit errors, which means
-     this is to improve completeness *)
-  let modality = function
-    | Shared ->
-        List.map (fun ((_, lin), occ) -> ((Uniqueness.shared, lin), occ))
-
-  let modalities l u = List.fold_left (fun acc m -> modality m acc) u l
   let extract_occurrence = function [] -> assert false | (_, occ) :: _ -> occ
   let par l0 l1 = l0 @ l1
 end
@@ -229,8 +198,6 @@ module Usage : sig
   val par : t -> t -> t
   (** Parallel composition  *)
 
-  val modalities : Maybe_unique.modality list -> t -> t
-  (** Run modalities through the usage *)
 end = struct
   (* We have Unused (top) > Borrowed > Shared > Unique > Error (bot).
 
@@ -388,22 +355,89 @@ end = struct
         Shared
           (Shared.singleton (Maybe_unique.extract_occurrence l0) Shared.Forced)
 
-  let modalities l = function
-    | Maybe_unique m -> Maybe_unique (Maybe_unique.modalities l m)
-    | m -> m
 end
+
+module Projection : sig
+  (** Projections from parent to child. *)
+  type t =
+    | Tuple_field of int
+    | Record_field of string
+    | Construct_field of string * int
+    | Variant_field of label
+    | Memory_address
+
+  module Map : Map.S with type key = t
+
+end = struct
+
+  module T = struct
+    type t =
+      | Tuple_field of int
+      | Record_field of string
+      | Construct_field of string * int
+      | Variant_field of label
+      | Memory_address
+
+    let compare t1 t2 =
+      match (t1, t2) with
+      | Tuple_field i, Tuple_field j -> Int.compare i j
+      | Record_field l1, Record_field l2 -> String.compare l1 l2
+      | Construct_field (l1, i), Construct_field (l2, j) -> (
+          match String.compare l1 l2 with 0 -> Int.compare i j | i -> i)
+      | Variant_field l1, Variant_field l2 -> String.compare l1 l2
+      | Memory_address, Memory_address -> 0
+      | ( Tuple_field _,
+          ( Record_field _ | Construct_field _ | Variant_field _
+          | Memory_address ) ) ->
+          -1
+      | ( ( Record_field _ | Construct_field _ | Variant_field _
+          | Memory_address ),
+          Tuple_field _ ) ->
+          1
+      | Record_field _, (Construct_field _ | Variant_field _ | Memory_address)
+        ->
+          -1
+      | (Construct_field _ | Variant_field _ | Memory_address), Record_field _
+        ->
+          1
+      | Construct_field _, (Variant_field _ | Memory_address) -> -1
+      | (Variant_field _ | Memory_address), Construct_field _ -> 1
+      | Variant_field _, Memory_address -> -1
+      | Memory_address, Variant_field _ -> 1
+  end
+
+  include T
+  module Map = Map.Make (T)
+end
+
+type boundary_reason =
+  | Paths_from_mod_class (* currently will never trigger *)
+  | Free_var_of_mod_class (* currently will never trigger *)
+  | Out_of_mod_class
+
+(** The relation between two nodes in a usage tree. Obviously the list must be
+    non-empty *)
+type relation =
+  | Self
+  | Ancestor of Projection.t list
+  | Descendant of Projection.t list
+
+type error =
+  | Usage of {
+      inner : Usage.error;  (** Describes the error concerning the two usages  *)
+      first_is_of_second : relation;
+      (** The relation between the two usages in the tree  *)
+    }
+  | Boundary of {
+      cannot_force : Maybe_unique.cannot_force;
+      reason : boundary_reason;
+      (** which kind of boundary is being crossed? *)
+    }
+
+exception Error of error
 
 (** lifting module Usage to trees *)
 module Usage_tree : sig
-  module Projection : sig
-    (** Projections from parent to child. *)
-    type t =
-      | Tuple_field of int
-      | Record_field of string * Maybe_unique.modality list
-      | Construct_field of string * int * Maybe_unique.modality list
-      | Variant_field of label
-      | Memory_address
-  end
 
   module Path : sig
     type t
@@ -419,21 +453,6 @@ module Usage_tree : sig
   type t
   (** Usage tree, lifted from [Usage.t] *)
 
-  (** The relation between two nodes in a tree. Obviously the list must be
-non-empty *)
-  type relation =
-    | Self
-    | Ancestor of Projection.t list
-    | Descendant of Projection.t list
-
-  type error = {
-    inner : Usage.error;  (** Describes the error concerning the two usages  *)
-    first_is_of_second : relation;
-        (** The relation between the two usages in the tree  *)
-  }
-
-  exception Error of error
-
   val seq : t -> t -> t
   (** Sequential composition lifted from [Usage.seq] *)
 
@@ -446,51 +465,6 @@ non-empty *)
   val mapi : (Path.t -> Usage.t -> Usage.t) -> t -> t
   (** Runs a function through the tree; the function must be monotone *)
 end = struct
-  module Projection = struct
-    module T = struct
-      type t =
-        | Tuple_field of int
-        | Record_field of string * Maybe_unique.modality list
-        | Construct_field of string * int * Maybe_unique.modality list
-        | Variant_field of label
-        | Memory_address
-
-      let compare t1 t2 =
-        match (t1, t2) with
-        | Tuple_field i, Tuple_field j -> Int.compare i j
-        | Record_field (l1, _), Record_field (l2, _) -> String.compare l1 l2
-        | Construct_field (l1, i, _), Construct_field (l2, j, _) -> (
-            match String.compare l1 l2 with 0 -> Int.compare i j | i -> i)
-        | Variant_field l1, Variant_field l2 -> String.compare l1 l2
-        | Memory_address, Memory_address -> 0
-        | ( Tuple_field _,
-            ( Record_field _ | Construct_field _ | Variant_field _
-            | Memory_address ) ) ->
-            -1
-        | ( ( Record_field _ | Construct_field _ | Variant_field _
-            | Memory_address ),
-            Tuple_field _ ) ->
-            1
-        | Record_field _, (Construct_field _ | Variant_field _ | Memory_address)
-          ->
-            -1
-        | (Construct_field _ | Variant_field _ | Memory_address), Record_field _
-          ->
-            1
-        | Construct_field _, (Variant_field _ | Memory_address) -> -1
-        | (Variant_field _ | Memory_address), Construct_field _ -> 1
-        | Variant_field _, Memory_address -> -1
-        | Memory_address, Variant_field _ -> 1
-    end
-
-    include T
-    module Map = Map.Make (T)
-  end
-
-  type relation =
-    | Self
-    | Ancestor of Projection.t list
-    | Descendant of Projection.t list
 
   type t = { children : t Projection.Map.t; usage : Usage.t }
   (** Represents a tree of usage. Each node records the par on all possible
@@ -503,10 +477,6 @@ end = struct
      unique parent is nonsense. The invariant is preserved because Usage.par and
      Usage.seq above is monotone, and Usage_tree.par and Usage_tree.seq here is
      node-wise. *)
-
-  type error = { inner : Usage.error; first_is_of_second : relation }
-
-  exception Error of error
 
   module Path = struct
     type t = Projection.t list
@@ -527,28 +497,6 @@ end = struct
 
   let mapi f t = mapi_aux [] f t
 
-  (* How modalities work in trees?
-     For example, say we have [type r = {global_ x : string}].
-
-     - It is possible that a node [n] of [r] has a [x]-child, in which case
-     the projection must have the proper modalities set. And the usage on the
-     [x]-node is taken literally without applying modalities. In particular, [n]
-     and [x] could both be unique (I don't see why not).
-
-     - It is possible that a node [n] of [r] doesn't have a [x]-child, in which
-     case the usage of [x] is understood to be the usage of [n] but applied the
-     [global_] modality. Note that by looking at the node [n] alone we don't have
-     the modality info about its implicit usage of [n.x]. This is only discovered
-     when [n] interact with another tree with [x]-child by [seq] or [par].
-     However, that's also the only time when the modality matters, so it should
-     be fine.
-  *)
-  let implicit_child = function
-    | Projection.Record_field (_, modalities) -> Usage.modalities modalities
-    | Projection.Construct_field (_, _, modalities) ->
-        Usage.modalities modalities
-    | _ -> Fun.id
-
   let rec mapi2 f t0 t1 =
     let usage = f Self t0.usage t1.usage in
     let children =
@@ -557,16 +505,14 @@ end = struct
           match (c0, c1) with
           | None, None -> assert false
           | None, Some c1 ->
-              let t0_usage = implicit_child proj t0.usage in
               Some
                 (mapi_aux [ proj ]
-                   (fun projs r -> f (Ancestor projs) t0_usage r)
+                   (fun projs r -> f (Ancestor projs) t0.usage r)
                    c1)
           | Some c0, None ->
-              let t1_usage = implicit_child proj t1.usage in
               Some
                 (mapi_aux [ proj ]
-                   (fun projs l -> f (Descendant projs) l t1_usage)
+                   (fun projs l -> f (Descendant projs) l t1.usage)
                    c0)
           | Some c0, Some c1 -> Some (mapi2 f c0 c1))
         t0.children t1.children
@@ -580,7 +526,7 @@ end = struct
       (fun first_is_of_second t0 t1 ->
         try Usage.seq t0 t1
         with Usage.Error error ->
-          raise (Error { inner = error; first_is_of_second }))
+          raise (Error (Usage { inner = error; first_is_of_second })))
       t0 t1
 
   let rec singleton leaf = function
@@ -597,7 +543,7 @@ module Usage_forest : sig
   module Path : sig
     type t
 
-    val child : Usage_tree.Projection.t -> t -> t
+    val child : Projection.t -> t -> t
     (** Construct a child path from a parent  *)
 
     val fresh_root : unit -> t
@@ -709,15 +655,38 @@ end
 module UF = Usage_forest
 
 module Paths : sig
+  [@@@warning "-unused-value-declaration"]
+
   type t
   (** Represents a list of [UF.Path.t]  *)
 
-  val child : Usage_tree.Projection.t -> t -> t
+  val child : Projection.t -> t -> t
   (** Returns the element-wise child *)
 
-  val legacy : t
-  (** Representing legacy values whose modes are managed by the type checker.
+  val untracked : t
+  (** Representing values whose modes are managed by the type checker.
       They are ignored by uniqueness analysis and represented as empty lists *)
+
+  val modal_child : global_flag -> Projection.t -> t -> t
+  (** [modal_child gf proj t] is [child prof t] when [gf] is [Unrestricted]
+      and is [untracked] otherwise. *)
+
+  val tuple_field : int -> t -> t
+  (** [tuple_field i t] is [child (Projection.Tuple_field i) t]. *)
+
+  val record_field : global_flag -> string -> t -> t
+  (** [record_field gf s t] is
+      [modal_child gf (Projection.Record_field s) t]. *)
+
+  val construct_field : global_flag -> string -> int -> t -> t
+  (** [construct_field gf s i t] is
+      [modal_child gf (Projection.Construct_field(s, i)) t]. *)
+
+  val variant_field : string -> t -> t
+  (** [variant_field s t] is [child (Projection.Variant_field s) t]. *)
+
+  val memory_address : t -> t
+  (** [memory_address t] is [child Projection.Memory_address t]. *)
 
   val mark : Usage.t -> t -> UF.t
   val fresh : unit -> t
@@ -731,8 +700,20 @@ end = struct
   type t = UF.Path.t list
 
   let par a b = a @ b
-  let legacy = []
+  let untracked = []
   let child proj t = List.map (UF.Path.child proj) t
+  let modal_child gf proj t =
+    match gf with
+    | Global | Nonlocal -> untracked
+    | Unrestricted -> child proj t
+
+  let tuple_field i t = child (Projection.Tuple_field i) t
+  let record_field gf s t = modal_child gf (Projection.Record_field s) t
+  let construct_field gf s i t =
+    modal_child gf (Projection.Construct_field(s, i)) t
+  let variant_field s t = child (Projection.Variant_field s) t
+  let memory_address t = child Projection.Memory_address t
+
   let mark usage t = UF.pars (List.map (UF.singleton usage) t)
   let fresh () = [ UF.Path.fresh_root () ]
 
@@ -743,31 +724,43 @@ end = struct
     let barrier = ref [] in
     mark
       (Maybe_shared (Maybe_shared.singleton barrier occ access))
-      (child Usage_tree.Projection.Memory_address paths)
+      (memory_address paths)
 
   let mark_shared occ reason paths =
     mark (Shared (Shared.singleton occ reason)) paths
 end
 
+let force_shared_boundary unique_use occ ~reason =
+  let maybe_unique = Maybe_unique.singleton unique_use occ in
+  match Maybe_unique.mark_multi_use maybe_unique with
+  | Ok () -> ()
+  | Error cannot_force -> raise (Error (Boundary { cannot_force; reason }))
+
 module Value : sig
   type t
   (** See [mk] for its meaning *)
 
-  val mk : Paths.t -> ?unique_use:unique_use -> Occurrence.t -> t
+  val existing : Paths.t -> unique_use -> Occurrence.t -> t
   (** A value contains the list of paths it could points to, the unique_use if
       it's a variable, and its occurrence in the source code. [unique_use] could
       be None if it's not a variable (e.g. result of an application) *)
 
-  val fresh : ?unique_use:unique_use -> Occurrence.t -> t
+  val fresh : t
+  (** A value not yet being existing by the analysis *)
 
-  val legacy : ?unique_use:unique_use -> Occurrence.t -> t
-  (** The legacy value, lifted from [Paths.legacy] *)
+  val untracked : unique_use -> Occurrence.t -> t
+  (** The untracked value, lifted from [Paths.untracked] *)
 
-  val paths : t -> Paths.t
-  (** Returns the paths *)
+  val paths : t -> Paths.t option
+  (** [paths t] is [None] if [t] is fresh and [Some p] if [t] is
+      existing where [p] are its associated paths *)
 
-  val occ : t -> Occurrence.t
-  (** Returns the occurrence  *)
+  val implicit_record_field : global_flag -> string -> t -> unique_use -> t
+  (** [implicit_record_field gf s t u] is [fresh] if [t] is [fresh],
+      otherwise it is [existing (Paths.record_field gf s p) o u] where [p]
+      are the paths of [t] and [o] is [t]'s occurrence. This is used for the
+      implicit record field values for kept fields in a [{ foo with ... }]
+      expression. *)
 
   val mark_maybe_unique : t -> UF.t
   (** Mark the value as shared_or_unique   *)
@@ -777,34 +770,52 @@ module Value : sig
       (borrow_or_shared). We still ask for the [occ] argument, because
       [Value.occ] is the occurrence of the value, not necessary the place where
       it is borrowed. *)
+
+  val mark_shared : reason:boundary_reason -> t -> UF.t
 end = struct
-  type t = {
-    paths : Paths.t;
-    unique_use : unique_use option;
-    occ : Occurrence.t;
-  }
+  type t =
+    | Fresh
+    | Existing of
+        { paths : Paths.t;
+          unique_use : unique_use;
+          occ : Occurrence.t; }
 
-  let mk paths ?unique_use occ = { paths; unique_use; occ }
+  let existing paths unique_use occ = Existing { paths; unique_use; occ }
 
-  let fresh ?unique_use occ =
-    let paths = Paths.fresh () in
-    { paths; unique_use; occ }
+  let fresh = Fresh
 
-  let legacy = mk Paths.legacy
+  let paths = function
+    | Fresh -> None
+    | Existing { paths; _ } -> Some paths
 
-  let mark_implicit_borrow_memory_address access { paths; occ } =
-    Paths.mark_implicit_borrow_memory_address access occ paths
+  let untracked unique_use occ = existing Paths.untracked unique_use occ
 
-  let mark_maybe_unique { paths; unique_use; occ } =
-    match unique_use with
-    | None ->
-        (* the value is the result of some application *)
-        UF.unused
-    | Some unique_use ->
-        Paths.mark (Maybe_unique (Maybe_unique.singleton unique_use occ)) paths
+  let implicit_record_field gf s t unique_use =
+    match t with
+    | Fresh -> Fresh
+    | Existing { paths; occ; unique_use = _ } ->
+        let paths = Paths.record_field gf s paths in
+        Existing { paths; occ; unique_use }
 
-  let paths { paths; _ } = paths
-  let occ { occ; _ } = occ
+  let mark_implicit_borrow_memory_address access = function
+    | Fresh -> UF.unused
+    | Existing { paths; occ; _ } ->
+        Paths.mark_implicit_borrow_memory_address access occ paths
+
+  let mark_maybe_unique = function
+    | Fresh -> UF.unused
+    | Existing { paths; unique_use; occ } ->
+        Paths.mark
+          (Maybe_unique (Maybe_unique.singleton unique_use occ))
+          paths
+
+  let mark_shared ~reason = function
+    | Fresh -> UF.unused
+    | Existing { paths; unique_use; occ } ->
+        force_shared_boundary unique_use occ ~reason;
+        let shared = Usage.Shared (Shared.singleton occ Shared.Forced) in
+        Paths.mark shared paths
+
 end
 
 module Ienv : sig
@@ -886,24 +897,6 @@ end
 (* Forcing due to boundary is more about OCaml than the algebra, hence defined
    here (as opposed to earlier) *)
 
-(** See [report_error] for explanation *)
-type boundary_reason =
-  | Paths_from_mod_class (* currently will never trigger *)
-  | Free_var_of_mod_class (* currently will never trigger *)
-  | Out_of_mod_class
-
-type boundary = {
-  cannot_force : Maybe_unique.cannot_force;
-  reason : boundary_reason;  (** which kind of boundary is being crossed? *)
-}
-
-exception Boundary of boundary
-
-let force_shared_boundary t ~reason =
-  match Maybe_unique.mark_multi_use t with
-  | Ok () -> ()
-  | Error cannot_force -> raise (Boundary { cannot_force; reason })
-
 type value_to_match =
   | Match_tuple of Value.t list
       (** The value being matched is a tuple; we treat it specially so matching
@@ -924,7 +917,13 @@ let rec pattern_match_tuple pat values =
       (Ienv.Extension.disjunct ext0 ext1, UF.seq uf0 uf1)
   | Tpat_tuple pats ->
       List.map2
-        (fun pat value -> pattern_match_single pat (Value.paths value))
+        (fun pat value ->
+           let paths =
+             match Value.paths value with
+             | None -> Paths.fresh ()
+             | Some paths -> paths
+           in
+           pattern_match_single pat paths)
         pats values
       |> conjuncts_pattern_match
   | _ ->
@@ -953,32 +952,24 @@ and pattern_match_single pat paths : Ienv.Extension.t * UF.t =
       ( Ienv.Extension.empty,
         Paths.mark_implicit_borrow_memory_address Read occ paths )
   | Tpat_construct (lbl, cd, pats, _) ->
-      let prologue = Paths.mark_implicit_borrow_memory_address Read occ paths in
-      let pats_args = list_zip pats cd.cstr_args in
-      let ext, uf =
+      let uf_read = Paths.mark_implicit_borrow_memory_address Read occ paths in
+      let pats_args = List.combine pats cd.cstr_args in
+      let ext, uf_pats =
         List.mapi
           (fun i (pat, (_, gf)) ->
-            let paths =
-              Paths.child
-                (Usage_tree.Projection.Construct_field
-                   ( Longident.last lbl.txt,
-                     i,
-                     Maybe_unique.modalities_of_global_flag gf ))
-                paths
-            in
+            let name = Longident.last lbl.txt in
+            let paths = Paths.construct_field gf name i paths in
             pattern_match_single pat paths)
           pats_args
         |> conjuncts_pattern_match
       in
-      (ext, UF.seq prologue uf)
+      (ext, UF.seq uf_read uf_pats)
   | Tpat_variant (lbl, mpat, _) ->
       let prologue = Paths.mark_implicit_borrow_memory_address Read occ paths in
       let ext, uf =
         match mpat with
         | Some pat' ->
-            let paths =
-              Paths.child (Usage_tree.Projection.Variant_field lbl) paths
-            in
+            let paths = Paths.variant_field lbl paths in
             pattern_match_single pat' paths
         | None -> (Ienv.Extension.empty, UF.unused)
       in
@@ -988,13 +979,7 @@ and pattern_match_single pat paths : Ienv.Extension.t * UF.t =
       let ext, uf =
         List.map
           (fun (_, l, pat) ->
-            let paths =
-              Paths.child
-                (Usage_tree.Projection.Record_field
-                   ( l.lbl_name,
-                     Maybe_unique.modalities_of_global_flag l.lbl_global ))
-                paths
-            in
+            let paths = Paths.record_field l.lbl_global l.lbl_name paths in
             pattern_match_single pat paths)
           pats
         |> conjuncts_pattern_match
@@ -1022,9 +1007,7 @@ and pattern_match_single pat paths : Ienv.Extension.t * UF.t =
       let ext, uf =
         List.mapi
           (fun i pat ->
-            let paths =
-              Paths.child (Usage_tree.Projection.Tuple_field i) paths
-            in
+            let paths = Paths.tuple_field i paths in
             pattern_match_single pat paths)
           pats
         |> conjuncts_pattern_match
@@ -1041,24 +1024,23 @@ let comp_pattern_match pat value =
   | Some pat', _ -> pattern_match pat' value
   | None, _ -> (Ienv.Extension.empty, UF.unused)
 
-let maybe_paths_of_ident ?maybe_unique ienv path =
-  let force reason (unique_use, occ) =
-    let maybe_unique = Maybe_unique.singleton unique_use occ in
-    force_shared_boundary maybe_unique ~reason
-  in
+let value_of_ident ienv unique_use occ path =
   match path with
-  | Path.Pident id -> (
+  | Path.Pident id -> begin
       match Ienv.find_opt id ienv with
       (* TODO: for better error message, we should record in ienv why some
          variables are not in it. *)
       | None ->
-          Option.iter (force Out_of_mod_class) maybe_unique;
+          force_shared_boundary ~reason:Out_of_mod_class unique_use occ;
           None
-      | Some paths -> Some paths)
+      | Some paths ->
+          let value = Value.existing paths unique_use occ in
+          Some value
+    end
   (* accessing a module, which is forced by typemod to be shared and many.
      Here we force it again just to be sure *)
   | Path.Pdot _ ->
-      Option.iter (force Paths_from_mod_class) maybe_unique;
+      force_shared_boundary ~reason:Paths_from_mod_class unique_use occ;
       None
   | Path.Papply _ -> assert false
 
@@ -1081,13 +1063,12 @@ let open_variables ienv f =
       expr =
         (fun self e ->
           (match e.exp_desc with
-          | Texp_ident (path, _, _, _, unique_use) -> (
-              match maybe_paths_of_ident ienv path with
+          | Texp_ident (path, _, _, _, unique_use) -> begin
+              let occ = Occurrence.mk e.exp_loc in
+              match value_of_ident ienv unique_use occ path with
               | None -> ()
-              | Some paths ->
-                  let occ = Occurrence.mk e.exp_loc in
-                  let maybe_unique = Maybe_unique.singleton unique_use occ in
-                  ll := (paths, maybe_unique) :: !ll)
+              | Some value -> ll := value :: !ll
+            end
           | _ -> ());
           Tast_iterator.default_iterator.expr self e);
     }
@@ -1101,22 +1082,23 @@ let mark_shared_open_variables ienv f _loc =
   let ll = open_variables ienv f in
   let ufs =
     List.map
-      (fun (paths, maybe_unique) ->
-        (* the following force is not needed, because when UA is done on the
-           module/class, maybe_paths_of_ident will force free variables to
-           shared, because ienv given to it will not include the outside
-           variables. We nevertheless force it here just to be sure *)
-        force_shared_boundary maybe_unique ~reason:Free_var_of_mod_class;
-        let shared =
-          Usage.Shared
-            (Shared.singleton
-               (Maybe_unique.extract_occurrence maybe_unique)
-               Shared.Forced)
-        in
-        Paths.mark shared paths)
+      (fun value ->
+         Value.mark_shared value ~reason:Free_var_of_mod_class)
       ll
   in
   UF.seqs ufs
+
+let lift_implicit_borrowing uf =
+  UF.map
+    (function
+      | Maybe_shared t ->
+          (* implicit borrowing lifted. *)
+          let occ, access = Maybe_shared.extract_occurrence_access t in
+          Shared (Shared.singleton occ (Shared.Lifted access))
+      | m ->
+          (* other usage stays the same *)
+          m)
+    uf
 
 (* There are two modes our algorithm will work at.
 
@@ -1130,180 +1112,138 @@ let mark_shared_open_variables ienv f _loc =
    using a.x.y. This mode is used in most occasions. *)
 
 (** Corresponds to the second mode *)
-let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
+let rec check_uniqueness_exp (ienv : Ienv.t) exp : UF.t =
   match exp.exp_desc with
-  | Texp_ident _ -> (
-      match check_uniqueness_exp' exp ienv with
-      | None, uf -> uf
-      | Some value, uf -> UF.seq uf (Value.mark_maybe_unique value))
+  | Texp_ident _ ->
+      let value, uf = check_uniqueness_exp_as_value ienv exp in
+      UF.seq uf (Value.mark_maybe_unique value)
   | Texp_constant _ -> UF.unused
-  | Texp_let (_, vbs, exp') ->
-      let ext, uf = check_uniqueness_value_bindings_ vbs ienv in
-      let uf' = check_uniqueness_exp_ exp' (Ienv.extend ienv ext) in
-      UF.seq uf uf'
+  | Texp_let (_, vbs, body) ->
+      let ext, uf_vbs = check_uniqueness_value_bindings ienv vbs in
+      let uf_body = check_uniqueness_exp (Ienv.extend ienv ext) body in
+      UF.seq uf_vbs uf_body
   | Texp_function { cases; _ } ->
       (* `param` is only a hint not a binder;
          actual binding done in cases by Tpat_var and Tpat_alias *)
       let value = Match_single (Paths.fresh ()) in
-      let uf = check_uniqueness_cases value cases ienv in
-      (* we are constructing a closure here, and therefore any borrowing of free
-         variables in the closure is in fact using shared. *)
-      UF.map
-        (function
-          | Maybe_shared t ->
-              (* implicit borrowing lifted. *)
-              let occ, access = Maybe_shared.extract_occurrence_access t in
-              Shared (Shared.singleton occ (Shared.Lifted access))
-          | m ->
-              (* other usage stays the same *)
-              m)
-        uf
-  | Texp_apply (f, xs, _, _) ->
-      let uf = check_uniqueness_exp_ f ienv in
-      let ufs =
+      let uf = check_uniqueness_cases ienv value cases in
+      (* we are constructing a closure here, and therefore any implicit
+         borrowing of free variables in the closure is in fact using shared. *)
+      lift_implicit_borrowing uf
+  | Texp_apply (fn, args, _, _) ->
+      let uf_fn = check_uniqueness_exp ienv fn in
+      let uf_args =
         List.map
           (fun (_, arg) ->
             match arg with
-            | Arg e -> check_uniqueness_exp_ e ienv
+            | Arg e -> check_uniqueness_exp ienv e
             | Omitted _ -> UF.unused)
-          xs
+          args
       in
-      UF.concurrent (uf :: ufs)
-  | Texp_match (e, _, cs, _) ->
-      let value, uf = init_value_to_match e ienv in
-      let uf' = check_uniqueness_comp_cases value cs ienv in
-      UF.seq uf uf'
-  | Texp_try (e, cs) ->
-      let value, uf = init_value_to_match e ienv in
-      let uf' = check_uniqueness_cases value cs ienv in
+      UF.concurrent (uf_fn :: uf_args)
+  | Texp_match (arg, _, cases, _) ->
+      let value, uf_arg = check_uniqueness_exp_for_match ienv arg in
+      let uf_cases = check_uniqueness_comp_cases ienv value cases in
+      UF.seq uf_arg uf_cases
+  | Texp_try (body, cases) ->
+      let uf_body = check_uniqueness_exp ienv body in
+      let value = Match_single (Paths.fresh ()) in
+      let uf_cases = check_uniqueness_cases ienv value cases in
       (* we don't know how much of e will be run; safe to assume all of them *)
-      UF.seq uf uf'
+      UF.seq uf_body uf_cases
   | Texp_tuple (es, _) ->
-      UF.seqs (List.map (fun e -> check_uniqueness_exp_ e ienv) es)
+      UF.seqs (List.map (fun e -> check_uniqueness_exp ienv e) es)
   | Texp_construct (_, _, es, _) ->
-      UF.seqs (List.map (fun e -> check_uniqueness_exp_ e ienv) es)
+      UF.seqs (List.map (fun e -> check_uniqueness_exp ienv e) es)
   | Texp_variant (_, None) -> UF.unused
-  | Texp_variant (_, Some (e, _)) -> check_uniqueness_exp_ e ienv
-  | Texp_record { fields; extended_expression } -> (
-      let check_fields =
-        UF.seqs
-          (Array.to_list
-             (Array.map
-                (fun field ->
-                  match field with
-                  | _, Kept _ -> UF.unused
-                  | _, Overridden (_, e) -> check_uniqueness_exp_ e ienv)
-                fields))
+  | Texp_variant (_, Some (arg, _)) -> check_uniqueness_exp ienv arg
+  | Texp_record { fields; extended_expression } ->
+      let value, uf_ext =
+        match extended_expression with
+        | None -> Value.fresh, UF.unused
+        | Some exp ->
+            let value, uf_exp = check_uniqueness_exp_as_value ienv exp in
+            let uf_read =
+              Value.mark_implicit_borrow_memory_address Read value
+            in
+            value, UF.seq uf_exp uf_read
       in
-      match extended_expression with
-      | None -> check_fields
-      | Some exp -> (
-          match check_uniqueness_exp' exp ienv with
-          | None, uf ->
-              UF.seq uf check_fields
-              (* {exp with ...}; don't know anything about exp so nothing we can
-                 do here*)
-          | Some value, uf0 ->
-              (* {x with ...} *)
-              let prologue =
-                Value.mark_implicit_borrow_memory_address Read value
-              in
-              let ufs =
-                Array.map
-                  (fun field ->
-                    match field with
-                    | l, Kept (_, unique_use) ->
-                        let value =
-                          let occ = Value.occ value in
-                          let paths = Value.paths value in
-                          let paths =
-                            Paths.child
-                              (Usage_tree.Projection.Record_field
-                                 ( l.lbl_name,
-                                   Maybe_unique.modalities_of_global_flag
-                                     l.lbl_global ))
-                              paths
-                          in
-                          Value.mk paths ~unique_use occ
-                        in
-                        Value.mark_maybe_unique value
-                    | _, Overridden (_, e) -> check_uniqueness_exp_ e ienv)
-                  fields
-              in
-              UF.seqs (uf0 :: prologue :: Array.to_list ufs)))
-  | Texp_field _ -> (
-      match check_uniqueness_exp' exp ienv with
-      | Some value, uf -> UF.seq uf (Value.mark_maybe_unique value)
-      | None, uf -> uf)
-  | Texp_setfield (exp', _, _, _, e) -> (
-      (* Setfield allows mutations outside of our uniqueness extension. We still
-         need to track it, because a unique use (strong update) followed by
-         setfield could cause segfault. Tracking it as shared/unique is also too
-         strong, because setfield followed by unique use should be allowed.
-         Tracking it as borrow_or_shared (which is how we track `getfield`)
-         sounds about right. *)
-      let uf = check_uniqueness_exp_ e ienv in
-      match check_uniqueness_exp' exp' ienv with
-      | None, uf' -> UF.seq uf uf'
-      | Some value, uf' ->
-          UF.seqs
-            [ uf; uf'; Value.mark_implicit_borrow_memory_address Write value ])
+      let uf_fields =
+        Array.map
+          (fun field ->
+              match field with
+                | l, Kept(_, unique_use) -> begin
+                    let value =
+                      Value.implicit_record_field
+                        l.lbl_global l.lbl_name value unique_use
+                    in
+                    Value.mark_maybe_unique value
+                  end
+                | _, Overridden (_, e) -> check_uniqueness_exp ienv e)
+          fields
+      in
+      UF.seq uf_ext (UF.seqs (Array.to_list uf_fields))
+  | Texp_field _ ->
+      let value, uf = check_uniqueness_exp_as_value ienv exp in
+      UF.seq uf (Value.mark_maybe_unique value)
+  | Texp_setfield (rcd, _, _, _, arg) ->
+      let value, uf_rcd = check_uniqueness_exp_as_value ienv rcd in
+      let uf_arg = check_uniqueness_exp ienv arg in
+      let uf_write = Value.mark_implicit_borrow_memory_address Write value in
+      UF.seqs [ uf_rcd; uf_arg; uf_write ]
   | Texp_array (_, es, _) ->
-      UF.seqs (List.map (fun e -> check_uniqueness_exp_ e ienv) es)
-  | Texp_ifthenelse (if', then', else_opt) ->
+      UF.seqs (List.map (fun e -> check_uniqueness_exp ienv e) es)
+  | Texp_ifthenelse (if_, then_, else_opt) ->
       (* if' is only borrowed, not used; but probably doesn't matter because of
          mode crossing *)
-      let uf0 = check_uniqueness_exp_ if' ienv in
-      let uf1 =
+      let uf_cond = check_uniqueness_exp ienv if_ in
+      let uf_then = check_uniqueness_exp ienv then_ in
+      let uf_else =
         match else_opt with
-        | Some else' ->
-            UF.par
-              (check_uniqueness_exp_ then' ienv)
-              (check_uniqueness_exp_ else' ienv)
-        | None -> check_uniqueness_exp_ then' ienv
+        | Some else_ -> check_uniqueness_exp ienv else_
+        | None -> UF.unused
       in
-      let uf = UF.seq uf0 uf1 in
-      uf
-  | Texp_sequence (e, _, e') ->
-      let uf0 = check_uniqueness_exp_ e ienv in
-      let uf1 = check_uniqueness_exp_ e' ienv in
+      UF.seq uf_cond (UF.par uf_then uf_else)
+  | Texp_sequence (e0, _, e1) ->
+      let uf0 = check_uniqueness_exp ienv e0 in
+      let uf1 = check_uniqueness_exp ienv e1 in
       UF.seq uf0 uf1
   | Texp_while { wh_cond; wh_body; _ } ->
-      let uf0 = check_uniqueness_exp_ wh_cond ienv in
-      let uf1 = check_uniqueness_exp_ wh_body ienv in
-      UF.seq uf0 uf1
+      let uf_cond = check_uniqueness_exp ienv wh_cond in
+      let uf_body = check_uniqueness_exp ienv wh_body in
+      UF.seq uf_cond uf_body
   | Texp_list_comprehension { comp_body; comp_clauses } ->
-      let uf0 = check_uniqueness_exp_ comp_body ienv in
-      let uf1 = check_uniqueness_comprehensions comp_clauses ienv in
-      UF.seq uf0 uf1
+      let uf_body = check_uniqueness_exp ienv comp_body in
+      let uf_clauses = check_uniqueness_comprehensions ienv comp_clauses in
+      UF.seq uf_body uf_clauses
   | Texp_array_comprehension (_, { comp_body; comp_clauses }) ->
-      let uf0 = check_uniqueness_exp_ comp_body ienv in
-      let uf1 = check_uniqueness_comprehensions comp_clauses ienv in
-      UF.seq uf0 uf1
+      let uf_body = check_uniqueness_exp ienv comp_body in
+      let uf_clauses = check_uniqueness_comprehensions ienv comp_clauses in
+      UF.seq uf_body uf_clauses
   | Texp_for { for_from; for_to; for_body; _ } ->
-      let uf0 = check_uniqueness_exp_ for_from ienv in
-      let uf1 = check_uniqueness_exp_ for_to ienv in
-      let uf2 = check_uniqueness_exp_ for_body ienv in
-      UF.seqs [ uf0; uf1; uf2 ]
-  | Texp_send (e, _, _, _) -> check_uniqueness_exp_ e ienv
+      let uf_from = check_uniqueness_exp ienv for_from in
+      let uf_to = check_uniqueness_exp ienv for_to in
+      let uf_body = check_uniqueness_exp ienv for_body in
+      UF.seqs [ uf_from; uf_to; uf_body ]
+  | Texp_send (e, _, _, _) -> check_uniqueness_exp ienv e
   | Texp_new _ -> UF.unused
   | Texp_instvar _ -> UF.unused
-  | Texp_setinstvar (_, _, _, e) -> check_uniqueness_exp_ e ienv
+  | Texp_setinstvar (_, _, _, e) -> check_uniqueness_exp ienv e
   | Texp_override (_, ls) ->
-      UF.seqs (List.map (fun (_, _, e) -> check_uniqueness_exp_ e ienv) ls)
-  | Texp_letmodule (_, _, _, mod_expr, e) ->
-      let uf =
+      UF.seqs (List.map (fun (_, _, e) -> check_uniqueness_exp ienv e) ls)
+  | Texp_letmodule (_, _, _, mod_expr, body) ->
+      let uf_mod =
         mark_shared_open_variables ienv
           (fun iter -> iter.module_expr iter mod_expr)
           mod_expr.mod_loc
       in
-      UF.seq uf (check_uniqueness_exp_ e ienv)
-  | Texp_letexception (_, e) -> check_uniqueness_exp_ e ienv
-  | Texp_assert e -> check_uniqueness_exp_ e ienv
+      let uf_body = check_uniqueness_exp ienv body in
+      UF.seq uf_mod uf_body
+  | Texp_letexception (_, e) -> check_uniqueness_exp ienv e
+  | Texp_assert e -> check_uniqueness_exp ienv e
   | Texp_lazy e ->
-      (* We would need to lift implicit borrow to shared. However, this is not
-         needed because [Texp_lazy] is already protected by [Share_lock] *)
-      check_uniqueness_exp_ e ienv
+      let uf = check_uniqueness_exp ienv e in
+      lift_implicit_borrowing uf
   | Texp_object (cls_struc, _) ->
       (* the object (methods, values) will be type-checked by Typeclass,
          which invokes uniqueness check.*)
@@ -1317,14 +1257,17 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
         (fun iter -> iter.module_expr iter mod_expr)
         mod_expr.mod_loc
   | Texp_letop { let_; ands; body } ->
-      let uf0 = check_uniqueness_binding_op let_ exp ienv in
-      let ufs1 =
-        List.map (fun bop -> check_uniqueness_binding_op bop exp ienv) ands
+      let uf_let = check_uniqueness_binding_op ienv let_ in
+      let uf_ands =
+        List.map (fun bop -> check_uniqueness_binding_op ienv bop) ands
       in
-      let uf2 =
-        check_uniqueness_cases (Match_single (Paths.fresh ())) [ body ] ienv
+      let uf_body =
+        check_uniqueness_cases ienv
+          (Match_single (Paths.fresh ()))
+          [ body ]
       in
-      UF.seqs ((uf0 :: ufs1) @ [ uf2 ])
+      let uf_body = lift_implicit_borrowing uf_body in
+      UF.seqs (uf_let :: (uf_ands @ [ uf_body ]))
   | Texp_unreachable -> UF.unused
   | Texp_extension_constructor _ -> UF.unused
   | Texp_open (open_decl, e) ->
@@ -1333,10 +1276,10 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
           (fun iter -> iter.open_declaration iter open_decl)
           open_decl.open_loc
       in
-      UF.seq uf (check_uniqueness_exp_ e ienv)
-  | Texp_probe { handler } -> check_uniqueness_exp_ handler ienv
+      UF.seq uf (check_uniqueness_exp ienv e)
+  | Texp_probe { handler } -> check_uniqueness_exp ienv handler
   | Texp_probe_is_enabled _ -> UF.unused
-  | Texp_exclave e -> check_uniqueness_exp_ e ienv
+  | Texp_exclave e -> check_uniqueness_exp ienv e
 
 (**
 Corresponds to the first mode.
@@ -1344,168 +1287,145 @@ Corresponds to the first mode.
 Look at exp and see if it can be treated as an alias. Currently only
 [Texp_ident] and [Texp_field] (and recursively so) are treated so. If it returns
 [Some Value.t], the caller is responsible to mark it as used as needed *)
-and check_uniqueness_exp' exp ienv : Value.t option * UF.t =
+and check_uniqueness_exp_as_value ienv exp : Value.t * UF.t =
   let loc = exp.exp_loc in
   match exp.exp_desc with
-  | Texp_ident (p, _, _, _, unique_use) -> (
+  | Texp_ident (p, _, _, _, unique_use) ->
       let occ = Occurrence.mk loc in
-      let maybe_unique = (unique_use, occ) in
-      match maybe_paths_of_ident ~maybe_unique ienv p with
-      | None ->
-          (* cross module access - don't track;
-             Note the difference between [Some Value.empty] and [None]:
-             - The former is for legacy access
-             - The latter is for non-variable expressions *)
-          (Some (Value.legacy ~unique_use occ), UF.unused)
-      | Some paths -> (Some (Value.mk paths ~unique_use occ), UF.unused))
-  | Texp_field (e, _, l, unique_use, _) -> (
-      let value, uf = check_uniqueness_exp' e ienv in
-      match value with
-      | None ->
-          (* (exp).field is still an expression; return None *)
-          (None, uf)
-      | Some value ->
+      let value =
+        match value_of_ident ienv unique_use occ p with
+        | None ->
+            (* cross module access - don't track *)
+            Value.untracked unique_use occ
+        | Some value -> value
+      in
+      (value, UF.unused)
+  | Texp_field (e, _, l, unique_use, _) -> begin
+      let value, uf = check_uniqueness_exp_as_value ienv e in
+      match Value.paths value with
+      | None -> Value.fresh, uf
+      | Some paths ->
           (* accessing the field meaning borrowing the parent record's mem
              block. Note that the field itself is not borrowed or used *)
-          let uf' = Value.mark_implicit_borrow_memory_address Read value in
+          let uf_read = Value.mark_implicit_borrow_memory_address Read value in
           let occ = Occurrence.mk loc in
-          let paths =
-            Paths.child
-              (Usage_tree.Projection.Record_field
-                 ( l.lbl_name,
-                   Maybe_unique.modalities_of_global_flag l.lbl_global ))
-              (Value.paths value)
-          in
-          let value = Value.mk paths ~unique_use occ in
-          (Some value, UF.seq uf uf'))
+          let paths = Paths.record_field l.lbl_global l.lbl_name paths in
+          let value = Value.existing paths unique_use occ in
+          (value, UF.seq uf uf_read)
+    end
   (* CR-someday anlorenzen: This could also support let-bindings. *)
-  | _ -> (None, check_uniqueness_exp_ exp ienv)
+  | _ -> (Value.fresh, check_uniqueness_exp ienv exp)
 
-and init_single_value_to_match exp ienv : Value.t * UF.t =
-  match check_uniqueness_exp' exp ienv with
-  | None, uf ->
-      let occ = Occurrence.mk exp.exp_loc in
-      (* When matching on an expression, we create fresh value, who will have
-         children by being matched *)
-      let value = Value.fresh occ in
-      (value, uf)
-  | Some value, uf -> (value, uf)
-
-(** take typed expression, do some parsing and returns [init_value_to_match] *)
-and init_value_to_match exp ienv : value_to_match * UF.t =
+(** take typed expression, do some parsing and returns [value_to_match] *)
+and check_uniqueness_exp_for_match ienv exp : value_to_match * UF.t =
   match exp.exp_desc with
   | Texp_tuple (es, _) ->
       let values, ufs =
-        List.split (List.map (fun e -> init_single_value_to_match e ienv) es)
+        List.split (List.map (check_uniqueness_exp_as_value ienv) es)
       in
-      (Match_tuple values, UF.seqs ufs)
+      Match_tuple values, UF.seqs ufs
   | _ ->
-      let value, uf = init_single_value_to_match exp ienv in
-      (Match_single (Value.paths value), uf)
+      let value, uf = check_uniqueness_exp_as_value ienv exp in
+      let paths =
+        match Value.paths value with
+        | None -> Paths.fresh ()
+        | Some paths -> paths
+      in
+      Match_single paths, uf
 
 (** Returns [ienv] and [uf].
    [ienv] is the new bindings introduced;
    [uf] is the usage forest caused by the binding
 *)
-and check_uniqueness_value_bindings_ vbs ienv =
+and check_uniqueness_value_bindings ienv vbs =
   (* we imitate how data are accessed at runtime *)
-  let exts, ufs =
+  let exts, uf_vbs =
     List.split
       (List.map
          (fun vb ->
-           let value, uf = init_value_to_match vb.vb_expr ienv in
-           let ienv, uf' = pattern_match vb.vb_pat value in
-           (ienv, UF.seq uf uf'))
+           let value, uf_value = check_uniqueness_exp_for_match ienv vb.vb_expr in
+           let ienv, uf_pat = pattern_match vb.vb_pat value in
+           (ienv, UF.seq uf_value uf_pat))
          vbs)
   in
-  (Ienv.Extension.conjuncts exts, UF.seqs ufs)
+  (Ienv.Extension.conjuncts exts, UF.seqs uf_vbs)
 
 (* type signature needed because high-ranked *)
-and check_uniqueness_cases_ :
-      'a.
-      ('a Typedtree.general_pattern ->
-      value_to_match ->
-      Ienv.Extension.t * UF.t) ->
-      value_to_match ->
-      'a case list ->
-      Ienv.t ->
-      UF.t =
- fun ptm value cases ienv ->
+and check_uniqueness_cases_gen :
+      'a. ('a Typedtree.general_pattern -> _ -> _) -> _ -> _ -> 'a case list -> _ =
+ fun pat_match ienv value cases ->
   (* In the following we imitate how data are accessed at runtime for cases *)
   (* we first evaluate all LHS including all the guards, _sequentially_ *)
-  let exts, ufs0 =
+  let exts, uf_pats =
     List.split
       (List.map
          (fun case ->
-           let ext, uf = ptm case.c_lhs value in
-           let uf' =
+           let ext, uf_lhs = pat_match case.c_lhs value in
+           let uf_guard =
              match case.c_guard with
              | None -> UF.unused
-             | Some g -> check_uniqueness_exp_ g (Ienv.extend ienv ext)
+             | Some g -> check_uniqueness_exp (Ienv.extend ienv ext) g
            in
-           (ext, UF.seq uf uf'))
+           (ext, UF.seq uf_lhs uf_guard))
          cases)
   in
   (* we then evaluate all RHS, in _parallel_ *)
-  let ufs1 =
+  let uf_cases =
     List.map2
-      (fun ext case -> check_uniqueness_exp_ case.c_rhs (Ienv.extend ienv ext))
+      (fun ext case -> check_uniqueness_exp (Ienv.extend ienv ext) case.c_rhs)
       exts cases
   in
-  UF.seq (UF.seqs ufs0) (UF.pars ufs1)
+  UF.seq (UF.seqs uf_pats) (UF.pars uf_cases)
 
-and check_uniqueness_cases value cases ienv =
-  check_uniqueness_cases_ pattern_match value cases ienv
+and check_uniqueness_cases ienv value cases =
+  check_uniqueness_cases_gen pattern_match ienv value cases
 
-and check_uniqueness_comp_cases value cases ienv =
-  check_uniqueness_cases_ comp_pattern_match value cases ienv
+and check_uniqueness_comp_cases ienv value cases =
+  check_uniqueness_cases_gen comp_pattern_match ienv value cases
 
-and check_uniqueness_comprehensions cs ienv =
+and check_uniqueness_comprehensions ienv cs =
   UF.seqs
     (List.map
        (fun c ->
          match c with
-         | Texp_comp_when e -> check_uniqueness_exp_ e ienv
+         | Texp_comp_when e -> check_uniqueness_exp ienv e
          | Texp_comp_for cbs ->
-             UF.seqs
-               (List.map
-                  (fun cb ->
-                    match cb.comp_cb_iterator with
-                    | Texp_comp_range { start; stop; _ } ->
-                        let uf0 = check_uniqueness_exp_ start ienv in
-                        let uf1 = check_uniqueness_exp_ stop ienv in
-                        UF.seq uf0 uf1
-                    | Texp_comp_in { sequence; _ } ->
-                        check_uniqueness_exp_ sequence ienv)
-                  cbs))
+             check_uniqueness_comprehension_clause_binding ienv cbs)
        cs)
 
-and check_uniqueness_binding_op bo exp ienv =
-  let uf0 =
-    match maybe_paths_of_ident ienv bo.bop_op_path with
-    | Some paths ->
-        let occ = Occurrence.mk exp.exp_loc in
-        let value = Value.mk paths occ in
-        Value.mark_maybe_unique value
+and check_uniqueness_comprehension_clause_binding ienv cbs =
+  UF.seqs
+    (List.map
+       (fun cb ->
+          match cb.comp_cb_iterator with
+          | Texp_comp_range { start; stop; _ } ->
+              let uf_start = check_uniqueness_exp ienv start in
+              let uf_stop = check_uniqueness_exp ienv stop in
+              UF.seq uf_start uf_stop
+          | Texp_comp_in { sequence; _ } ->
+              check_uniqueness_exp ienv sequence)
+       cbs)
+
+and check_uniqueness_binding_op ienv bo =
+  let occ = Occurrence.mk bo.bop_loc in
+  let uf_path =
+    match value_of_ident ienv shared_many_use occ bo.bop_op_path with
+    | Some value -> Value.mark_maybe_unique value
     | None -> UF.unused
   in
-  let uf1 = check_uniqueness_exp_ bo.bop_exp ienv in
-  UF.seq uf0 uf1
+  let uf_exp = check_uniqueness_exp ienv bo.bop_exp in
+  UF.seq uf_path uf_exp
 
 let check_uniqueness_exp exp =
-  let _ = check_uniqueness_exp_ exp Ienv.empty in
+  let _ = check_uniqueness_exp Ienv.empty exp in
   ()
 
 let check_uniqueness_value_bindings vbs =
-  let _ = check_uniqueness_value_bindings_ vbs Ienv.empty in
+  let _ = check_uniqueness_value_bindings Ienv.empty vbs in
   ()
 
-let report_multi_use
-    {
-      Usage_tree.inner =
-        { cannot_force = { occ; axis }; there; first_or_second };
-      first_is_of_second;
-    } =
+let report_multi_use inner first_is_of_second =
+  let { Usage.cannot_force = { occ; axis }; there; first_or_second } = inner in
   let here_usage = "used" in
   let there_usage =
     match there with
@@ -1536,8 +1456,8 @@ let report_multi_use
   let first_is_of_second =
     match first_is_of_second with
     | Self
-    | Ancestor [ Usage_tree.Projection.Memory_address ]
-    | Descendant [ Usage_tree.Projection.Memory_address ] ->
+    | Ancestor [ Projection.Memory_address ]
+    | Descendant [ Projection.Memory_address ] ->
         "it"
     | Descendant _ -> "part of it"
     | Ancestor _ -> "it is part of a value that"
@@ -1569,7 +1489,8 @@ let report_multi_use
   let sub = [ Location.msg ~loc:first.loc "" ] in
   Location.errorf ~loc:second.loc ~sub "@[%t@]" error
 
-let report_boundary { cannot_force = { occ; axis }; reason } =
+let report_boundary cannot_force reason =
+  let { Maybe_unique.occ; axis } = cannot_force in
   let reason =
     match reason with
     | Paths_from_mod_class -> "another module or class"
@@ -1584,16 +1505,15 @@ let report_boundary { cannot_force = { occ; axis }; reason } =
   Location.errorf ~loc:occ.loc "@[%s.\nHint: This value comes from %s.@]" error
     reason
 
-let report_multi_use err =
+let report_error err =
   Printtyp.wrap_printing_env ~error:true Env.empty (fun () ->
-      report_multi_use err)
-
-let report_boundary err =
-  Printtyp.wrap_printing_env ~error:true Env.empty (fun () ->
-      report_boundary err)
+    match err with
+    | Usage { inner; first_is_of_second } ->
+        report_multi_use inner first_is_of_second
+    | Boundary { cannot_force; reason } ->
+        report_boundary cannot_force reason)
 
 let () =
   Location.register_error_of_exn (function
-    | Usage_tree.Error e -> Some (report_multi_use e)
-    | Boundary e -> Some (report_boundary e)
+    | Error e -> Some (report_error e)
     | _ -> None)
