@@ -33,7 +33,7 @@ type _ pattern_category =
 | Value : value pattern_category
 | Computation : computation pattern_category
 
-type unique_barrier = Mode.Uniqueness.t option
+type unique_barrier = Mode.Uniqueness.t list
 
 type unique_use = Mode.Uniqueness.t * Mode.Linearity.t
 

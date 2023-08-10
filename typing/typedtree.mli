@@ -41,11 +41,13 @@ type _ pattern_category =
 | Value : value pattern_category
 | Computation : computation pattern_category
 
-(* The following will be used in the future when overwriting is introduced
-  and code-motion need to be checked. This will be associated to each field
-  projection. If this points to a unique mode, that means this projection must
-  be borrowed and cannot be moved *)
-type unique_barrier = Mode.Uniqueness.t option
+(* The following will be used in the future when overwriting is introduced and
+  code-motion need to be checked. This will be associated to each field
+  projection, and represents the usage of the record immediately after this
+  projection. It is a list to represents multiple code paths. If any of the
+  modes in the list is unique, that means this projection must be borrowed and
+  cannot be moved *)
+type unique_barrier = Mode.Uniqueness.t list
 
 type unique_use = Mode.Uniqueness.t * Mode.Linearity.t
 

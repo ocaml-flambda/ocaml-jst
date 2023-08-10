@@ -137,12 +137,12 @@ module Maybe_shared : sig
   val extract_occurrence_access : t -> Occurrence.t * access
   (** Extract an arbitrary occurrence from the usage *)
 
-  val set_barrier : t -> Uniqueness.t -> unit
-  (** Set the barrier. The uniqueness mode represents the usage immediately
+  val add_barrier : t -> Uniqueness.t -> unit
+  (** Add a barrier. The uniqueness mode represents the usage immediately
       following the current usage. If that mode is Unique, the current usage
        must be Borrowed (hence no code motion); if that mode is not restricted
        to Unique, this usage can be Borrowed or Shared (prefered). Can be called
-       only once; raises if set multiple times *)
+       multiple times to represent multiple code path *)
 
   val par : t -> t -> t
   val singleton : unique_barrier ref -> Occurrence.t -> access -> t
@@ -167,13 +167,8 @@ end = struct
     | [] -> assert false
     | (_, occ, access) :: _ -> (occ, access)
 
-  let set_barrier t uniq =
-    List.iter
-      (fun (barrier, _, _) ->
-        match !barrier with
-        | Some _ -> assert false
-        | None -> barrier := Some uniq)
-      t
+  let add_barrier t uniq =
+    List.iter (fun (barrier, _, _) -> barrier := uniq :: !barrier) t
 end
 
 module Shared : sig
@@ -360,7 +355,7 @@ end = struct
             checking of the whole file, m1 will correctly tells whether it needs
             to be Unique, and by extension whether m0 can be Shared. *)
         let uniq = Maybe_unique.uniqueness l1 in
-        Maybe_shared.set_barrier l0 uniq;
+        Maybe_shared.add_barrier l0 uniq;
         m1
     | Shared _, Borrowed _ -> m0
     | Maybe_unique l, Borrowed occ ->
@@ -443,7 +438,7 @@ non-empty *)
   (** Sequential composition lifted from [Usage.seq] *)
 
   val par : t -> t -> t
-  (** Parallel composition lifted from [Usage.par]  *)
+  (** Parallel composition lifted from [Usage.par] *)
 
   val singleton : Usage.t -> Path.t -> t
   (** A singleton tree containing only one leaf *)
@@ -519,9 +514,6 @@ end = struct
     let child (a : Projection.t) (p : t) : t = p @ [ a ]
     let root : t = []
   end
-
-  let leaf usage = { usage; children = Projection.Map.empty }
-  let _unused = leaf Usage.Unused
 
   let mapi_aux projs f t =
     let rec loop projs t =
@@ -619,7 +611,10 @@ module Usage_forest : sig
   (** Similar to [Usage_tree.seq] but lifted to forests *)
 
   val par : t -> t -> t
-  (** Similar to [Usage_tree.par] but lifted to forests  *)
+  (** Similar to [Usage_tree.par] but lifted to forests *)
+
+  val concurrent : t list -> t
+  (** Similar to [Usage_tree.concurrent] but lifted to forests *)
 
   val seqs : t list -> t
   val pars : t list -> t
@@ -681,6 +676,27 @@ end = struct
   let pars l = List.fold_left par unused l
   let seqs l = List.fold_left seq unused l
 
+  (* Given our [seq] and [par], one might tend to define [concurrent] first as
+     a binary operation, then generalize it to n-ary using [List.fold]. This is
+     however wrong. For example, the concurrent of u0, u1, u2 is:
+     pars [seqs [u0,u1,u2];
+           seqs [u0,u2,u1];
+           seqs [u1,u0,u2];
+           seqs [u1,u2,u0];
+           seqs [u2,u0,u1];
+           seqs [u2,u1,u0]]
+     which is different from
+     concurrent (concurrent u0 u1) u2
+     which does not include the possibility of [u2] between [u0] and [u1].
+
+     In summary, the logic of [concurrent] is interwined with lists, so it's better
+     to start with lists outright *)
+  let rec concurrent = function
+    | [] -> unused
+    | t :: l ->
+        let t' = concurrent l in
+        par (seq t' t) (seq t t')
+
   let singleton leaf ((rootid, path') : Path.t) =
     Root_id.Map.singleton rootid (Usage_tree.singleton leaf path')
 
@@ -724,7 +740,7 @@ end = struct
     (* Currently we just generate a dummy unique_barrier ref that won't be
         consumed. The distinction between implicit and explicit borrowing is
         still needed because they are handled differently in closures *)
-    let barrier = ref None in
+    let barrier = ref [] in
     mark
       (Maybe_shared (Maybe_shared.singleton barrier occ access))
       (child Usage_tree.Projection.Memory_address paths)
@@ -1152,7 +1168,7 @@ let rec check_uniqueness_exp_ exp (ienv : Ienv.t) : UF.t =
             | Omitted _ -> UF.unused)
           xs
       in
-      UF.seqs (uf :: ufs)
+      UF.concurrent (uf :: ufs)
   | Texp_match (e, _, cs, _) ->
       let value, uf = init_value_to_match e ienv in
       let uf' = check_uniqueness_comp_cases value cs ienv in
