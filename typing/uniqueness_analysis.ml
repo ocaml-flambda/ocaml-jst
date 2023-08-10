@@ -106,12 +106,12 @@ module Maybe_shared : sig
   val extract_occurrence_access : t -> Occurrence.t * access
   (** Extract an arbitrary occurrence from the usage *)
 
-  val add_barrier : t -> Uniqueness.t -> unit
-  (** Add a barrier. The uniqueness mode represents the usage immediately
+  val set_barrier : t -> Uniqueness.t -> unit
+  (** set a barrier. The uniqueness mode represents the usage immediately
       following the current usage. If that mode is Unique, the current usage
        must be Borrowed (hence no code motion); if that mode is not restricted
-       to Unique, this usage can be Borrowed or Shared (prefered). Can be called
-       multiple times to represent multiple code path *)
+       to Unique, this usage can be Borrowed or Shared (prefered). Raise if
+        called more than once *)
 
   val par : t -> t -> t
   val singleton : unique_barrier ref -> Occurrence.t -> access -> t
@@ -136,8 +136,12 @@ end = struct
     | [] -> assert false
     | (_, occ, access) :: _ -> (occ, access)
 
-  let add_barrier t uniq =
-    List.iter (fun (barrier, _, _) -> barrier := uniq :: !barrier) t
+  let set_barrier t uniq =
+    List.iter (fun (barrier, _, _) ->
+      match !barrier with
+      | None -> barrier := Some uniq
+      | Some _ -> assert false
+      ) t
 end
 
 module Shared : sig
@@ -197,6 +201,9 @@ module Usage : sig
 
   val par : t -> t -> t
   (** Parallel composition  *)
+
+  val concurrent : t -> t -> t
+  (** Concurrent composition *)
 
 end = struct
   (* We have Unused (top) > Borrowed > Shared > Unique > Error (bot).
@@ -290,6 +297,40 @@ end = struct
     | Error cannot_force ->
         raise (Error { cannot_force; there; first_or_second })
 
+  let concurrent m0 m1 =
+    match (m0, m1) with
+    | Unused, m | m, Unused -> m
+    | Borrowed occ, Borrowed _ -> Borrowed occ
+    | Borrowed _, Maybe_shared t | Maybe_shared t, Borrowed _ ->
+        Maybe_shared t
+    | Borrowed _, Shared t | Shared t, Borrowed _ -> Shared t
+    | Borrowed occ, Maybe_unique t | Maybe_unique t, Borrowed occ ->
+        force_shared_multiuse t (Borrowed occ) First;
+        Shared (Shared.singleton (Maybe_unique.extract_occurrence t) Shared.Forced)
+    | Maybe_shared t0, Maybe_shared t1 -> Maybe_shared (Maybe_shared.par t0 t1)
+    | Maybe_shared _, Shared occ | Shared occ, Maybe_shared _ ->
+        (* the barrier stays empty; if there is any unique after this, it
+           will error *)
+        Shared occ
+    | Maybe_shared t0, Maybe_unique t1 | Maybe_unique t1, Maybe_shared t0 ->
+        (* t1 must be shared *)
+        force_shared_multiuse t1 (Maybe_shared t0) First;
+        (* the barrier stays empty; if there is any unique after  this, it will
+           error *)
+        Shared (Shared.singleton (Maybe_unique.extract_occurrence t1) Shared.Forced)
+    | Shared t0, Shared _ -> Shared t0
+    | Shared t0, Maybe_unique t1 ->
+      force_shared_multiuse t1 (Shared t0) Second;
+      Shared t0
+    | Maybe_unique t1, Shared t0 ->
+      force_shared_multiuse t1 (Shared t0) First;
+      Shared t0
+    | Maybe_unique t0, Maybe_unique t1 ->
+      force_shared_multiuse t0 m1 First;
+      force_shared_multiuse t1 m0 Second;
+      Shared
+        (Shared.singleton (Maybe_unique.extract_occurrence t0) Shared.Forced)
+
   let seq m0 m1 =
     match (m0, m1) with
     | Unused, m | m, Unused -> m
@@ -322,7 +363,7 @@ end = struct
             checking of the whole file, m1 will correctly tells whether it needs
             to be Unique, and by extension whether m0 can be Shared. *)
         let uniq = Maybe_unique.uniqueness l1 in
-        Maybe_shared.add_barrier l0 uniq;
+        Maybe_shared.set_barrier l0 uniq;
         m1
     | Shared _, Borrowed _ -> m0
     | Maybe_unique l, Borrowed occ ->
@@ -459,6 +500,9 @@ module Usage_tree : sig
   val par : t -> t -> t
   (** Parallel composition lifted from [Usage.par] *)
 
+  val concurrent : t -> t -> t
+  (** Concurrent composition lifted from [Usage.concurrent]  *)
+
   val singleton : Usage.t -> Path.t -> t
   (** A singleton tree containing only one leaf *)
 
@@ -519,15 +563,20 @@ end = struct
     in
     { usage; children }
 
-  let par t0 t1 = mapi2 (fun _ -> Usage.par) t0 t1
 
-  let seq t0 t1 =
+  let lift f t0 t1 =
     mapi2
       (fun first_is_of_second t0 t1 ->
-        try Usage.seq t0 t1
+        try f t0 t1
         with Usage.Error error ->
           raise (Error (Usage { inner = error; first_is_of_second })))
       t0 t1
+
+  let par = lift Usage.par
+
+  let seq = lift Usage.seq
+
+  let concurrent = lift Usage.concurrent
 
   let rec singleton leaf = function
     | [] -> { usage = leaf; children = Projection.Map.empty }
@@ -559,11 +608,9 @@ module Usage_forest : sig
   val par : t -> t -> t
   (** Similar to [Usage_tree.par] but lifted to forests *)
 
-  val concurrent : t list -> t
-  (** Similar to [Usage_tree.concurrent] but lifted to forests *)
-
   val seqs : t list -> t
   val pars : t list -> t
+  val concurrents : t list -> t
 
   val unused : t
   (** The empty forest *)
@@ -619,29 +666,11 @@ end = struct
 
   let par t0 t1 = map2 Usage_tree.par t0 t1
   let seq t0 t1 = map2 Usage_tree.seq t0 t1
+  let concurrent t0 t1 = map2 Usage_tree.concurrent t0 t1
   let pars l = List.fold_left par unused l
   let seqs l = List.fold_left seq unused l
+  let concurrents l = List.fold_left concurrent unused l
 
-  (* Given our [seq] and [par], one might tend to define [concurrent] first as
-     a binary operation, then generalize it to n-ary using [List.fold]. This is
-     however wrong. For example, the concurrent of u0, u1, u2 is:
-     pars [seqs [u0,u1,u2];
-           seqs [u0,u2,u1];
-           seqs [u1,u0,u2];
-           seqs [u1,u2,u0];
-           seqs [u2,u0,u1];
-           seqs [u2,u1,u0]]
-     which is different from
-     concurrent (concurrent u0 u1) u2
-     which does not include the possibility of [u2] between [u0] and [u1].
-
-     In summary, the logic of [concurrent] is interwined with lists, so it's better
-     to start with lists outright *)
-  let rec concurrent = function
-    | [] -> unused
-    | t :: l ->
-        let t' = concurrent l in
-        par (seq t' t) (seq t t')
 
   let singleton leaf ((rootid, path') : Path.t) =
     Root_id.Map.singleton rootid (Usage_tree.singleton leaf path')
@@ -721,7 +750,7 @@ end = struct
     (* Currently we just generate a dummy unique_barrier ref that won't be
         consumed. The distinction between implicit and explicit borrowing is
         still needed because they are handled differently in closures *)
-    let barrier = ref [] in
+    let barrier = ref None in
     mark
       (Maybe_shared (Maybe_shared.singleton barrier occ access))
       (memory_address paths)
@@ -1140,7 +1169,7 @@ let rec check_uniqueness_exp (ienv : Ienv.t) exp : UF.t =
             | Omitted _ -> UF.unused)
           args
       in
-      UF.concurrent (uf_fn :: uf_args)
+      UF.concurrents (uf_fn :: uf_args)
   | Texp_match (arg, _, cases, _) ->
       let value, uf_arg = check_uniqueness_exp_for_match ienv arg in
       let uf_cases = check_uniqueness_comp_cases ienv value cases in
@@ -1152,9 +1181,9 @@ let rec check_uniqueness_exp (ienv : Ienv.t) exp : UF.t =
       (* we don't know how much of e will be run; safe to assume all of them *)
       UF.seq uf_body uf_cases
   | Texp_tuple (es, _) ->
-      UF.seqs (List.map (fun e -> check_uniqueness_exp ienv e) es)
+      UF.concurrents (List.map (fun e -> check_uniqueness_exp ienv e) es)
   | Texp_construct (_, _, es, _) ->
-      UF.seqs (List.map (fun e -> check_uniqueness_exp ienv e) es)
+      UF.concurrents (List.map (fun e -> check_uniqueness_exp ienv e) es)
   | Texp_variant (_, None) -> UF.unused
   | Texp_variant (_, Some (arg, _)) -> check_uniqueness_exp ienv arg
   | Texp_record { fields; extended_expression } ->
@@ -1192,7 +1221,7 @@ let rec check_uniqueness_exp (ienv : Ienv.t) exp : UF.t =
       let uf_write = Value.mark_implicit_borrow_memory_address Write value in
       UF.seqs [ uf_rcd; uf_arg; uf_write ]
   | Texp_array (_, es, _) ->
-      UF.seqs (List.map (fun e -> check_uniqueness_exp ienv e) es)
+      UF.concurrents (List.map (fun e -> check_uniqueness_exp ienv e) es)
   | Texp_ifthenelse (if_, then_, else_opt) ->
       (* if' is only borrowed, not used; but probably doesn't matter because of
          mode crossing *)
