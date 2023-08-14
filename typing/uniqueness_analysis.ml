@@ -181,6 +181,9 @@ module Usage : sig
     | Maybe_unique of Maybe_unique.t
         (** A usage that could be either unique or shared. *)
 
+  val shared : Occurrence.t -> Shared.reason -> t
+  val maybe_unique : unique_use -> Occurrence.t -> t
+
   val extract_occurrence : t -> Occurrence.t option
   (** Extract an arbitrary occurrence from a usage *)
 
@@ -263,6 +266,11 @@ end = struct
     | Shared of Shared.t
     | Maybe_unique of Maybe_unique.t
 
+  let shared occ reason = Shared (Shared.singleton occ reason)
+
+  let maybe_unique unique_use occ =
+    Maybe_unique (Maybe_unique.singleton unique_use occ)
+
   let extract_occurrence = function
     | Unused -> None
     | Borrowed occ -> Some occ
@@ -305,8 +313,7 @@ end = struct
     | Borrowed _, Shared t | Shared t, Borrowed _ -> Shared t
     | Borrowed occ, Maybe_unique t | Maybe_unique t, Borrowed occ ->
         force_shared_multiuse t (Borrowed occ) First;
-        Shared
-          (Shared.singleton (Maybe_unique.extract_occurrence t) Shared.Forced)
+        shared (Maybe_unique.extract_occurrence t) Shared.Forced
     | Maybe_shared t0, Maybe_shared t1 ->
         Maybe_shared (Maybe_shared.choose t0 t1)
     | Maybe_shared _, Shared occ | Shared occ, Maybe_shared _ ->
@@ -318,8 +325,7 @@ end = struct
         force_shared_multiuse t1 (Maybe_shared t0) First;
         (* the barrier stays empty; if there is any unique after  this, it will
            error *)
-        Shared
-          (Shared.singleton (Maybe_unique.extract_occurrence t1) Shared.Forced)
+        shared (Maybe_unique.extract_occurrence t1) Shared.Forced
     | Shared t0, Shared _ -> Shared t0
     | Shared t0, Maybe_unique t1 ->
         force_shared_multiuse t1 (Shared t0) Second;
@@ -330,8 +336,7 @@ end = struct
     | Maybe_unique t0, Maybe_unique t1 ->
         force_shared_multiuse t0 m1 First;
         force_shared_multiuse t1 m0 Second;
-        Shared
-          (Shared.singleton (Maybe_unique.extract_occurrence t0) Shared.Forced)
+        shared (Maybe_unique.extract_occurrence t0) Shared.Forced
 
   let seq m0 m1 =
     match (m0, m1) with
@@ -371,7 +376,7 @@ end = struct
     | Shared _, Borrowed _ -> m0
     | Maybe_unique l, Borrowed occ ->
         force_shared_multiuse l m1 First;
-        Shared (Shared.singleton occ Shared.Forced)
+        shared occ Shared.Forced
     | Shared _, Maybe_shared _ -> m0
     | Maybe_unique l0, Maybe_shared l1 ->
         (* Four cases:
@@ -385,7 +390,7 @@ end = struct
         *)
         let occ, _ = Maybe_shared.extract_occurrence_access l1 in
         force_shared_multiuse l0 m1 First;
-        Shared (Shared.singleton occ Shared.Forced)
+        shared occ Shared.Forced
     | Shared _, Shared _ -> m0
     | Maybe_unique l, Shared _ ->
         force_shared_multiuse l m1 First;
@@ -396,8 +401,7 @@ end = struct
     | Maybe_unique l0, Maybe_unique l1 ->
         force_shared_multiuse l0 m1 First;
         force_shared_multiuse l1 m0 Second;
-        Shared
-          (Shared.singleton (Maybe_unique.extract_occurrence l0) Shared.Forced)
+        shared (Maybe_unique.extract_occurrence l0) Shared.Forced
 end
 
 module Projection : sig
@@ -753,8 +757,7 @@ end = struct
       (Maybe_shared (Maybe_shared.singleton barrier occ access))
       (memory_address paths)
 
-  let mark_shared occ reason paths =
-    mark (Shared (Shared.singleton occ reason)) paths
+  let mark_shared occ reason paths = mark (Usage.shared occ reason) paths
 end
 
 let force_shared_boundary unique_use occ ~reason =
@@ -828,13 +831,13 @@ end = struct
   let mark_maybe_unique = function
     | Fresh -> UF.unused
     | Existing { paths; unique_use; occ } ->
-        Paths.mark (Maybe_unique (Maybe_unique.singleton unique_use occ)) paths
+        Paths.mark (Usage.maybe_unique unique_use occ) paths
 
   let mark_shared ~reason = function
     | Fresh -> UF.unused
     | Existing { paths; unique_use; occ } ->
         force_shared_boundary unique_use occ ~reason;
-        let shared = Usage.Shared (Shared.singleton occ Shared.Forced) in
+        let shared = Usage.shared occ Shared.Forced in
         Paths.mark shared paths
 end
 
@@ -1111,7 +1114,7 @@ let lift_implicit_borrowing uf =
       | Maybe_shared t ->
           (* implicit borrowing lifted. *)
           let occ, access = Maybe_shared.extract_occurrence_access t in
-          Shared (Shared.singleton occ (Shared.Lifted access))
+          Usage.shared occ (Shared.Lifted access)
       | m ->
           (* other usage stays the same *)
           m)
