@@ -8371,16 +8371,16 @@ let report_error ~loc env = function
       Location.errorf ~loc
         "@[This function has a %s parameter, but was expected to have type:@ %a@]"
         mkind Printtyp.type_expr ty
-  | Uncurried_function_escapes e ->
-      let reason  =
-        match e with
-        | `Locality -> "escape their region"
-        | `Uniqueness -> assert false
-        | `Linearity -> "will be once but will be used many"
-      in
-      Location.errorf ~loc
-        "This function or one of its parameters %s @ \
-         when it is partially applied." reason
+  | Uncurried_function_escapes e -> begin
+      match e with
+      | `Locality ->
+          Location.errorf ~loc "This function or one of its parameters escape their region @ \
+          when it is partially applied."
+      | `Uniqueness -> assert false
+      | `Linearity ->
+          Location.errorf ~loc "This function when partially applied returns a once value,@ \
+          but expected to be many."
+    end
   | Local_return_annotation_mismatch _ ->
       Location.errorf ~loc
         "This function return is not annotated with \"local_\"@ \

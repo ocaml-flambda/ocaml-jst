@@ -557,8 +557,8 @@ let curry : unique_ box -> (unique_ box -> unique_ box) = fun b1 b2 -> b1
 Line 1, characters 58-73:
 1 | let curry : unique_ box -> (unique_ box -> unique_ box) = fun b1 b2 -> b1
                                                               ^^^^^^^^^^^^^^^
-Error: This function or one of its parameters will be once but will be used many
-       when it is partially applied.
+Error: This function when partially applied returns a once value,
+       but expected to be many.
 |}]
 
 (* If both type and mode are wrong, complain about type *)
