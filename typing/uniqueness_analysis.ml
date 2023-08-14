@@ -608,6 +608,9 @@ module Usage_forest : sig
   val par : t -> t -> t
   (** Similar to [Usage_tree.par] but lifted to forests *)
 
+  val concurrent : t -> t -> t
+  (** Similar to [Usage_tree.concurrent] but lifted to forests *)
+
   val seqs : t list -> t
   val pars : t list -> t
   val concurrents : t list -> t
@@ -936,14 +939,14 @@ type value_to_match =
 
 let conjuncts_pattern_match l =
   let exts, ufs = List.split l in
-  (Ienv.Extension.conjuncts exts, UF.seqs ufs)
+  (Ienv.Extension.conjuncts exts, UF.concurrents ufs)
 
 let rec pattern_match_tuple pat values =
   match pat.pat_desc with
   | Tpat_or (pat0, pat1, _) ->
       let ext0, uf0 = pattern_match_tuple pat0 values in
       let ext1, uf1 = pattern_match_tuple pat1 values in
-      (Ienv.Extension.disjunct ext0 ext1, UF.seq uf0 uf1)
+      (Ienv.Extension.disjunct ext0 ext1, UF.par uf0 uf1)
   | Tpat_tuple pats ->
       List.map2
         (fun pat value ->
@@ -970,7 +973,7 @@ and pattern_match_single pat paths : Ienv.Extension.t * UF.t =
   | Tpat_or (pat0, pat1, _) ->
       let ext0, uf0 = pattern_match_single pat0 paths in
       let ext1, uf1 = pattern_match_single pat1 paths in
-      (Ienv.Extension.disjunct ext0 ext1, UF.seq uf0 uf1)
+      (Ienv.Extension.disjunct ext0 ext1, UF.par uf0 uf1)
   | Tpat_any -> (Ienv.Extension.empty, UF.unused)
   | Tpat_var (id, _, _) -> (Ienv.Extension.singleton id paths, UF.unused)
   | Tpat_alias (pat', id, _, _) ->
@@ -992,20 +995,20 @@ and pattern_match_single pat paths : Ienv.Extension.t * UF.t =
           pats_args
         |> conjuncts_pattern_match
       in
-      (ext, UF.seq uf_read uf_pats)
-  | Tpat_variant (lbl, mpat, _) ->
-      let prologue = Paths.mark_implicit_borrow_memory_address Read occ paths in
-      let ext, uf =
-        match mpat with
-        | Some pat' ->
+      (ext, UF.concurrent uf_read uf_pats)
+  | Tpat_variant (lbl, arg, _) ->
+      let uf_read = Paths.mark_implicit_borrow_memory_address Read occ paths in
+      let ext, uf_arg =
+        match arg with
+        | Some arg ->
             let paths = Paths.variant_field lbl paths in
-            pattern_match_single pat' paths
+            pattern_match_single arg paths
         | None -> (Ienv.Extension.empty, UF.unused)
       in
-      (ext, UF.seq prologue uf)
+      (ext, UF.concurrent uf_read uf_arg)
   | Tpat_record (pats, _) ->
-      let prologue = Paths.mark_implicit_borrow_memory_address Read occ paths in
-      let ext, uf =
+      let uf_read = Paths.mark_implicit_borrow_memory_address Read occ paths in
+      let ext, uf_pats =
         List.map
           (fun (_, l, pat) ->
             let paths = Paths.record_field l.lbl_global l.lbl_name paths in
@@ -1013,10 +1016,10 @@ and pattern_match_single pat paths : Ienv.Extension.t * UF.t =
           pats
         |> conjuncts_pattern_match
       in
-      (ext, UF.seq prologue uf)
+      (ext, UF.concurrent uf_read uf_pats)
   | Tpat_array (_, pats) ->
-      let prologue = Paths.mark_implicit_borrow_memory_address Read occ paths in
-      let ext, uf =
+      let uf_read = Paths.mark_implicit_borrow_memory_address Read occ paths in
+      let ext, uf_pats =
         List.map
           (fun pat ->
             let paths = Paths.fresh () in
@@ -1024,24 +1027,24 @@ and pattern_match_single pat paths : Ienv.Extension.t * UF.t =
           pats
         |> conjuncts_pattern_match
       in
-      (ext, UF.seq prologue uf)
-  | Tpat_lazy pat ->
+      (ext, UF.concurrent uf_read uf_pats)
+  | Tpat_lazy arg ->
       (* forcing a lazy expression is like calling a nullary-function *)
-      let uf = Paths.mark_shared occ Lazy paths in
+      let uf_force = Paths.mark_shared occ Lazy paths in
       let paths = Paths.fresh () in
-      let ext, uf' = pattern_match_single pat paths in
-      (ext, UF.seq uf uf')
-  | Tpat_tuple pats ->
-      let prologue = Paths.mark_implicit_borrow_memory_address Read occ paths in
-      let ext, uf =
+      let ext, uf_arg = pattern_match_single arg paths in
+      (ext, UF.concurrent uf_force uf_arg)
+  | Tpat_tuple args ->
+      let uf_read = Paths.mark_implicit_borrow_memory_address Read occ paths in
+      let ext, uf_args =
         List.mapi
-          (fun i pat ->
+          (fun i arg ->
             let paths = Paths.tuple_field i paths in
-            pattern_match_single pat paths)
-          pats
+            pattern_match_single arg paths)
+          args
         |> conjuncts_pattern_match
       in
-      (ext, UF.seq prologue uf)
+      (ext, UF.concurrent uf_read uf_args)
 
 let pattern_match pat = function
   | Match_tuple values -> pattern_match_tuple pat values
@@ -1115,7 +1118,7 @@ let mark_shared_open_variables ienv f _loc =
          Value.mark_shared value ~reason:Free_var_of_mod_class)
       ll
   in
-  UF.seqs ufs
+  UF.concurrents ufs
 
 let lift_implicit_borrowing uf =
   UF.map
@@ -1195,7 +1198,7 @@ let rec check_uniqueness_exp (ienv : Ienv.t) exp : UF.t =
             let uf_read =
               Value.mark_implicit_borrow_memory_address Read value
             in
-            value, UF.seq uf_exp uf_read
+            value, UF.concurrent uf_exp uf_read
       in
       let uf_fields =
         Array.map
@@ -1211,7 +1214,7 @@ let rec check_uniqueness_exp (ienv : Ienv.t) exp : UF.t =
                 | _, Overridden (_, e) -> check_uniqueness_exp ienv e)
           fields
       in
-      UF.seq uf_ext (UF.seqs (Array.to_list uf_fields))
+      UF.concurrent uf_ext (UF.concurrents (Array.to_list uf_fields))
   | Texp_field _ ->
       let value, uf = check_uniqueness_exp_as_value ienv exp in
       UF.seq uf (Value.mark_maybe_unique value)
@@ -1219,7 +1222,7 @@ let rec check_uniqueness_exp (ienv : Ienv.t) exp : UF.t =
       let value, uf_rcd = check_uniqueness_exp_as_value ienv rcd in
       let uf_arg = check_uniqueness_exp ienv arg in
       let uf_write = Value.mark_implicit_borrow_memory_address Write value in
-      UF.seqs [ uf_rcd; uf_arg; uf_write ]
+      UF.concurrents [ uf_rcd; uf_arg; uf_write ]
   | Texp_array (_, es, _) ->
       UF.concurrents (List.map (fun e -> check_uniqueness_exp ienv e) es)
   | Texp_ifthenelse (if_, then_, else_opt) ->
@@ -1244,22 +1247,23 @@ let rec check_uniqueness_exp (ienv : Ienv.t) exp : UF.t =
   | Texp_list_comprehension { comp_body; comp_clauses } ->
       let uf_body = check_uniqueness_exp ienv comp_body in
       let uf_clauses = check_uniqueness_comprehensions ienv comp_clauses in
-      UF.seq uf_body uf_clauses
+      UF.concurrent uf_body uf_clauses
   | Texp_array_comprehension (_, { comp_body; comp_clauses }) ->
       let uf_body = check_uniqueness_exp ienv comp_body in
       let uf_clauses = check_uniqueness_comprehensions ienv comp_clauses in
-      UF.seq uf_body uf_clauses
+      UF.concurrent uf_body uf_clauses
   | Texp_for { for_from; for_to; for_body; _ } ->
       let uf_from = check_uniqueness_exp ienv for_from in
       let uf_to = check_uniqueness_exp ienv for_to in
       let uf_body = check_uniqueness_exp ienv for_body in
-      UF.seqs [ uf_from; uf_to; uf_body ]
+      UF.seq (UF.concurrent uf_from uf_to) uf_body
   | Texp_send (e, _, _, _) -> check_uniqueness_exp ienv e
   | Texp_new _ -> UF.unused
   | Texp_instvar _ -> UF.unused
   | Texp_setinstvar (_, _, _, e) -> check_uniqueness_exp ienv e
   | Texp_override (_, ls) ->
-      UF.seqs (List.map (fun (_, _, e) -> check_uniqueness_exp ienv e) ls)
+      UF.concurrents
+        (List.map (fun (_, _, e) -> check_uniqueness_exp ienv e) ls)
   | Texp_letmodule (_, _, _, mod_expr, body) ->
       let uf_mod =
         mark_shared_open_variables ienv
@@ -1296,7 +1300,7 @@ let rec check_uniqueness_exp (ienv : Ienv.t) exp : UF.t =
           [ body ]
       in
       let uf_body = lift_implicit_borrowing uf_body in
-      UF.seqs (uf_let :: (uf_ands @ [ uf_body ]))
+      UF.concurrents (uf_let :: (uf_ands @ [ uf_body ]))
   | Texp_unreachable -> UF.unused
   | Texp_extension_constructor _ -> UF.unused
   | Texp_open (open_decl, e) ->
@@ -1352,7 +1356,7 @@ and check_uniqueness_exp_for_match ienv exp : value_to_match * UF.t =
       let values, ufs =
         List.split (List.map (check_uniqueness_exp_as_value ienv) es)
       in
-      Match_tuple values, UF.seqs ufs
+      Match_tuple values, UF.concurrents ufs
   | _ ->
       let value, uf = check_uniqueness_exp_as_value ienv exp in
       let paths =
@@ -1377,14 +1381,14 @@ and check_uniqueness_value_bindings ienv vbs =
            (ienv, UF.seq uf_value uf_pat))
          vbs)
   in
-  (Ienv.Extension.conjuncts exts, UF.seqs uf_vbs)
+  (Ienv.Extension.conjuncts exts, UF.concurrents uf_vbs)
 
 (* type signature needed because high-ranked *)
 and check_uniqueness_cases_gen :
       'a. ('a Typedtree.general_pattern -> _ -> _) -> _ -> _ -> 'a case list -> _ =
  fun pat_match ienv value cases ->
   (* In the following we imitate how data are accessed at runtime for cases *)
-  (* we first evaluate all LHS including all the guards, _sequentially_ *)
+  (* we first evaluate all LHS including all the guards, _concurrently_ *)
   let exts, uf_pats =
     List.split
       (List.map
@@ -1395,7 +1399,7 @@ and check_uniqueness_cases_gen :
              | None -> UF.unused
              | Some g -> check_uniqueness_exp (Ienv.extend ienv ext) g
            in
-           (ext, UF.seq uf_lhs uf_guard))
+           (ext, UF.concurrent uf_lhs uf_guard))
          cases)
   in
   (* we then evaluate all RHS, in _parallel_ *)
@@ -1404,7 +1408,7 @@ and check_uniqueness_cases_gen :
       (fun ext case -> check_uniqueness_exp (Ienv.extend ienv ext) case.c_rhs)
       exts cases
   in
-  UF.seq (UF.seqs uf_pats) (UF.pars uf_cases)
+  UF.seq (UF.concurrents uf_pats) (UF.pars uf_cases)
 
 and check_uniqueness_cases ienv value cases =
   check_uniqueness_cases_gen pattern_match ienv value cases
@@ -1413,7 +1417,7 @@ and check_uniqueness_comp_cases ienv value cases =
   check_uniqueness_cases_gen comp_pattern_match ienv value cases
 
 and check_uniqueness_comprehensions ienv cs =
-  UF.seqs
+  UF.concurrents
     (List.map
        (fun c ->
          match c with
@@ -1423,14 +1427,14 @@ and check_uniqueness_comprehensions ienv cs =
        cs)
 
 and check_uniqueness_comprehension_clause_binding ienv cbs =
-  UF.seqs
+  UF.concurrents
     (List.map
        (fun cb ->
           match cb.comp_cb_iterator with
           | Texp_comp_range { start; stop; _ } ->
               let uf_start = check_uniqueness_exp ienv start in
               let uf_stop = check_uniqueness_exp ienv stop in
-              UF.seq uf_start uf_stop
+              UF.concurrent uf_start uf_stop
           | Texp_comp_in { sequence; _ } ->
               check_uniqueness_exp ienv sequence)
        cbs)
@@ -1443,7 +1447,7 @@ and check_uniqueness_binding_op ienv bo =
     | None -> UF.unused
   in
   let uf_exp = check_uniqueness_exp ienv bo.bop_exp in
-  UF.seq uf_path uf_exp
+  UF.concurrent uf_path uf_exp
 
 let check_uniqueness_exp exp =
   let _ = check_uniqueness_exp Ienv.empty exp in
