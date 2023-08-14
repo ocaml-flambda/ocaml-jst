@@ -34,7 +34,6 @@ let rec iter_error f = function
   | x :: xs -> ( match f x with Ok () -> iter_error f xs | Error e -> Error e)
 
 module Maybe_unique : sig
-
   type t
   (** The type representing a usage that could be either unique or shared *)
 
@@ -44,7 +43,7 @@ module Maybe_unique : sig
   val singleton : unique_use -> Occurrence.t -> t
   (** construct a single usage *)
 
-  val par : t -> t -> t
+  val choose : t -> t -> t
 
   type axis = Uniqueness | Linearity
 
@@ -60,7 +59,6 @@ module Maybe_unique : sig
       expected to be unique in any branch, it will return unique. If the current
       usage is forced, it will return shared. *)
 end = struct
-
   type t = (unique_use * Occurrence.t) list
   (** Occurrences with modes to be forced shared and many in the future if
       needed. This is a list because of multiple control flows. For example, if
@@ -92,7 +90,7 @@ end = struct
     iter_error force_one l
 
   let extract_occurrence = function [] -> assert false | (_, occ) :: _ -> occ
-  let par l0 l1 = l0 @ l1
+  let choose l0 l1 = l0 @ l1
 end
 
 module Maybe_shared : sig
@@ -113,7 +111,7 @@ module Maybe_shared : sig
        to Unique, this usage can be Borrowed or Shared (prefered). Raise if
         called more than once. *)
 
-  val par : t -> t -> t
+  val choose : t -> t -> t
   val singleton : unique_barrier ref -> Occurrence.t -> access -> t
 end = struct
   type access = Read | Write
@@ -129,7 +127,7 @@ end = struct
   Therefore, if this virtual mode needs to be forced borrowed, the whole list
   needs to be forced borrowed. *)
 
-  let par l0 l1 = l0 @ l1
+  let choose l0 l1 = l0 @ l1
   let singleton r occ access = [ (r, occ, access) ]
 
   let extract_occurrence_access = function
@@ -137,11 +135,12 @@ end = struct
     | (_, occ, access) :: _ -> (occ, access)
 
   let set_barrier t uniq =
-    List.iter (fun (barrier, _, _) ->
-      match !barrier with
-      | None -> barrier := Some uniq
-      | Some _ -> assert false
-      ) t
+    List.iter
+      (fun (barrier, _, _) ->
+        match !barrier with
+        | None -> barrier := Some uniq
+        | Some _ -> assert false)
+      t
 end
 
 module Shared : sig
@@ -162,7 +161,6 @@ module Shared : sig
   val reason : t -> reason
 end = struct
   type reason = Forced | Lazy | Lifted of Maybe_shared.access
-
   type t = Occurrence.t * reason
 
   let singleton occ reason = (occ, reason)
@@ -179,8 +177,7 @@ module Usage : sig
         have explicit borrowing *)
     | Maybe_shared of Maybe_shared.t
         (** A usage that could be either borrowed or shared. *)
-    | Shared of Shared.t
-        (** A shared usage *)
+    | Shared of Shared.t  (** A shared usage *)
     | Maybe_unique of Maybe_unique.t
         (** A usage that could be either unique or shared. *)
 
@@ -201,14 +198,11 @@ module Usage : sig
   val seq : t -> t -> t
   (** Sequential composition *)
 
+  val choose : t -> t -> t
+  (** non-det choice *)
+
   val par : t -> t -> t
-  (** Parallel composition  *)
-
-  val concurrent : t -> t -> t
-  (** Concurrent composition *)
-
-
-  val unused : t
+  (** par composition *)
 end = struct
   (* We have Unused (top) > Borrowed > Shared > Unique > Error (bot).
 
@@ -269,8 +263,6 @@ end = struct
     | Shared of Shared.t
     | Maybe_unique of Maybe_unique.t
 
-  let unused = Unused
-
   let extract_occurrence = function
     | Unused -> None
     | Borrowed occ -> Some occ
@@ -278,14 +270,16 @@ end = struct
     | Shared t -> Some (Shared.extract_occurrence t)
     | Maybe_unique t -> Some (Maybe_unique.extract_occurrence t)
 
-  let par m0 m1 =
+  let choose m0 m1 =
     match (m0, m1) with
     | Unused, m | m, Unused -> m
     | Borrowed _, t | t, Borrowed _ -> t
-    | Maybe_shared l0, Maybe_shared l1 -> Maybe_shared (Maybe_shared.par l0 l1)
+    | Maybe_shared l0, Maybe_shared l1 ->
+        Maybe_shared (Maybe_shared.choose l0 l1)
     | Maybe_shared _, t | t, Maybe_shared _ -> t
     | Shared _, t | t, Shared _ -> t
-    | Maybe_unique l0, Maybe_unique l1 -> Maybe_unique (Maybe_unique.par l0 l1)
+    | Maybe_unique l0, Maybe_unique l1 ->
+        Maybe_unique (Maybe_unique.choose l0 l1)
 
   type first_or_second = First | Second
 
@@ -303,17 +297,18 @@ end = struct
     | Error cannot_force ->
         raise (Error { cannot_force; there; first_or_second })
 
-  let concurrent m0 m1 =
+  let par m0 m1 =
     match (m0, m1) with
     | Unused, m | m, Unused -> m
     | Borrowed occ, Borrowed _ -> Borrowed occ
-    | Borrowed _, Maybe_shared t | Maybe_shared t, Borrowed _ ->
-        Maybe_shared t
+    | Borrowed _, Maybe_shared t | Maybe_shared t, Borrowed _ -> Maybe_shared t
     | Borrowed _, Shared t | Shared t, Borrowed _ -> Shared t
     | Borrowed occ, Maybe_unique t | Maybe_unique t, Borrowed occ ->
         force_shared_multiuse t (Borrowed occ) First;
-        Shared (Shared.singleton (Maybe_unique.extract_occurrence t) Shared.Forced)
-    | Maybe_shared t0, Maybe_shared t1 -> Maybe_shared (Maybe_shared.par t0 t1)
+        Shared
+          (Shared.singleton (Maybe_unique.extract_occurrence t) Shared.Forced)
+    | Maybe_shared t0, Maybe_shared t1 ->
+        Maybe_shared (Maybe_shared.choose t0 t1)
     | Maybe_shared _, Shared occ | Shared occ, Maybe_shared _ ->
         (* the barrier stays empty; if there is any unique after this, it
            will error *)
@@ -323,26 +318,28 @@ end = struct
         force_shared_multiuse t1 (Maybe_shared t0) First;
         (* the barrier stays empty; if there is any unique after  this, it will
            error *)
-        Shared (Shared.singleton (Maybe_unique.extract_occurrence t1) Shared.Forced)
+        Shared
+          (Shared.singleton (Maybe_unique.extract_occurrence t1) Shared.Forced)
     | Shared t0, Shared _ -> Shared t0
     | Shared t0, Maybe_unique t1 ->
-      force_shared_multiuse t1 (Shared t0) Second;
-      Shared t0
+        force_shared_multiuse t1 (Shared t0) Second;
+        Shared t0
     | Maybe_unique t1, Shared t0 ->
-      force_shared_multiuse t1 (Shared t0) First;
-      Shared t0
+        force_shared_multiuse t1 (Shared t0) First;
+        Shared t0
     | Maybe_unique t0, Maybe_unique t1 ->
-      force_shared_multiuse t0 m1 First;
-      force_shared_multiuse t1 m0 Second;
-      Shared
-        (Shared.singleton (Maybe_unique.extract_occurrence t0) Shared.Forced)
+        force_shared_multiuse t0 m1 First;
+        force_shared_multiuse t1 m0 Second;
+        Shared
+          (Shared.singleton (Maybe_unique.extract_occurrence t0) Shared.Forced)
 
   let seq m0 m1 =
     match (m0, m1) with
     | Unused, m | m, Unused -> m
     | Borrowed _, t -> t
     | Maybe_shared _, Borrowed _ -> m0
-    | Maybe_shared l0, Maybe_shared l1 -> Maybe_shared (Maybe_shared.par l0 l1)
+    | Maybe_shared l0, Maybe_shared l1 ->
+        Maybe_shared (Maybe_shared.choose l0 l1)
     | Maybe_shared _, Shared _ -> m1
     | Maybe_shared l0, Maybe_unique l1 ->
         (* Four cases (semi-colon meaning sequential composition):
@@ -401,7 +398,6 @@ end = struct
         force_shared_multiuse l1 m0 Second;
         Shared
           (Shared.singleton (Maybe_unique.extract_occurrence l0) Shared.Forced)
-
 end
 
 module Projection : sig
@@ -414,9 +410,7 @@ module Projection : sig
     | Memory_address
 
   module Map : Map.S with type key = t
-
 end = struct
-
   module T = struct
     type t =
       | Tuple_field of int
@@ -434,11 +428,10 @@ end = struct
       | Variant_field l1, Variant_field l2 -> String.compare l1 l2
       | Memory_address, Memory_address -> 0
       | ( Tuple_field _,
-          ( Record_field _ | Construct_field _ | Variant_field _
-          | Memory_address ) ) ->
+          (Record_field _ | Construct_field _ | Variant_field _ | Memory_address)
+        ) ->
           -1
-      | ( ( Record_field _ | Construct_field _ | Variant_field _
-          | Memory_address ),
+      | ( (Record_field _ | Construct_field _ | Variant_field _ | Memory_address),
           Tuple_field _ ) ->
           1
       | Record_field _, (Construct_field _ | Variant_field _ | Memory_address)
@@ -471,21 +464,20 @@ type relation =
 
 type error =
   | Usage of {
-      inner : Usage.error;  (** Describes the error concerning the two usages  *)
+      inner : Usage.error;
+          (** Describes the error concerning the two usages  *)
       first_is_of_second : relation;
-      (** The relation between the two usages in the tree  *)
+          (** The relation between the two usages in the tree  *)
     }
   | Boundary of {
       cannot_force : Maybe_unique.cannot_force;
-      reason : boundary_reason;
-      (** which kind of boundary is being crossed? *)
+      reason : boundary_reason;  (** which kind of boundary is being crossed? *)
     }
 
 exception Error of error
 
 (** lifting module Usage to trees *)
 module Usage_tree : sig
-
   module Path : sig
     type t
     (** Represents a path from the root to a node in a tree *)
@@ -503,11 +495,11 @@ module Usage_tree : sig
   val seq : t -> t -> t
   (** Sequential composition lifted from [Usage.seq] *)
 
-  val par : t -> t -> t
-  (** Parallel composition lifted from [Usage.par] *)
+  val choose : t -> t -> t
+  (** non-det choice lifted from [Usage.choose] *)
 
-  val concurrent : t -> t -> t
-  (** Concurrent composition lifted from [Usage.concurrent]  *)
+  val par : t -> t -> t
+  (** parallel composition lifted from [Usage.par]  *)
 
   val singleton : Usage.t -> Path.t -> t
   (** A singleton tree containing only one leaf *)
@@ -515,18 +507,17 @@ module Usage_tree : sig
   val mapi : (Path.t -> Usage.t -> Usage.t) -> t -> t
   (** Runs a function through the tree; the function must be monotone *)
 end = struct
-
   type t = { children : t Projection.Map.t; usage : Usage.t }
-  (** Represents a tree of usage. Each node records the par on all possible
+  (** Represents a tree of usage. Each node records the choose on all possible
      execution paths. As a result, trees such as `S -> U` is valid, even though
      it would be invalid if it was the result of a single path: using a parent
      shared and a child uniquely is obviously bad. Howerver, it might be the
-     result of "par"ing multiple path: `S` par `N -> U`, which is valid.
+     result of "choos"ing multiple path: choose `S` `N -> U`, which is valid.
 
      INVARIANT: children >= parent. For example, having a shared child under a
-     unique parent is nonsense. The invariant is preserved because Usage.par and
-     Usage.seq above is monotone, and Usage_tree.par and Usage_tree.seq here is
-     node-wise. *)
+     unique parent is nonsense. The invariant is preserved because Usage.choose,
+     Usage.par, and Usage.seq above is monotone, and Usage_tree.par and
+     Usage_tree.seq, Usage_tree.choose here is node-wise. *)
 
   module Path = struct
     type t = Projection.t list
@@ -569,7 +560,6 @@ end = struct
     in
     { usage; children }
 
-
   let lift f t0 t1 =
     mapi2
       (fun first_is_of_second t0 t1 ->
@@ -578,11 +568,9 @@ end = struct
           raise (Error (Usage { inner = error; first_is_of_second })))
       t0 t1
 
-  let par = lift Usage.par
-
+  let choose = lift Usage.choose
   let seq = lift Usage.seq
-
-  let concurrent = lift Usage.concurrent
+  let par = lift Usage.par
 
   let rec singleton leaf = function
     | [] -> { usage = leaf; children = Projection.Map.empty }
@@ -611,15 +599,15 @@ module Usage_forest : sig
   val seq : t -> t -> t
   (** Similar to [Usage_tree.seq] but lifted to forests *)
 
+  val choose : t -> t -> t
+  (** Similar to [Usage_tree.choose] but lifted to forests *)
+
   val par : t -> t -> t
   (** Similar to [Usage_tree.par] but lifted to forests *)
 
-  val concurrent : t -> t -> t
-  (** Similar to [Usage_tree.concurrent] but lifted to forests *)
-
   val seqs : t list -> t
+  val chooses : t list -> t
   val pars : t list -> t
-  val concurrents : t list -> t
 
   val unused : t
   (** The empty forest *)
@@ -673,13 +661,12 @@ end = struct
         | Some t0, Some t1 -> Some (f t0 t1))
       t0 t1
 
-  let par t0 t1 = map2 Usage_tree.par t0 t1
+  let choose t0 t1 = map2 Usage_tree.choose t0 t1
   let seq t0 t1 = map2 Usage_tree.seq t0 t1
-  let concurrent t0 t1 = map2 Usage_tree.concurrent t0 t1
-  let pars l = List.fold_left par unused l
+  let par t0 t1 = map2 Usage_tree.par t0 t1
+  let chooses l = List.fold_left choose unused l
   let seqs l = List.fold_left seq unused l
-  let concurrents l = List.fold_left concurrent unused l
-
+  let pars l = List.fold_left par unused l
 
   let singleton leaf ((rootid, path') : Path.t) =
     Root_id.Map.singleton rootid (Usage_tree.singleton leaf path')
@@ -728,7 +715,7 @@ module Paths : sig
 
   val mark : Usage.t -> t -> UF.t
   val fresh : unit -> t
-  val par : t -> t -> t
+  val choose : t -> t -> t
 
   val mark_implicit_borrow_memory_address :
     Maybe_shared.access -> Occurrence.t -> t -> UF.t
@@ -737,9 +724,10 @@ module Paths : sig
 end = struct
   type t = UF.Path.t list
 
-  let par a b = a @ b
+  let choose a b = a @ b
   let untracked = []
   let child proj t = List.map (UF.Path.child proj) t
+
   let modal_child gf proj t =
     match gf with
     | Global | Nonlocal -> untracked
@@ -747,12 +735,13 @@ end = struct
 
   let tuple_field i t = child (Projection.Tuple_field i) t
   let record_field gf s t = modal_child gf (Projection.Record_field s) t
+
   let construct_field gf s i t =
-    modal_child gf (Projection.Construct_field(s, i)) t
+    modal_child gf (Projection.Construct_field (s, i)) t
+
   let variant_field s t = child (Projection.Variant_field s) t
   let memory_address t = child Projection.Memory_address t
-
-  let mark usage t = UF.pars (List.map (UF.singleton usage) t)
+  let mark usage t = UF.chooses (List.map (UF.singleton usage) t)
   let fresh () = [ UF.Path.fresh_root () ]
 
   let mark_implicit_borrow_memory_address access occ paths =
@@ -813,19 +802,15 @@ module Value : sig
 end = struct
   type t =
     | Fresh
-    | Existing of
-        { paths : Paths.t;
-          unique_use : unique_use;
-          occ : Occurrence.t; }
+    | Existing of {
+        paths : Paths.t;
+        unique_use : unique_use;
+        occ : Occurrence.t;
+      }
 
   let existing paths unique_use occ = Existing { paths; unique_use; occ }
-
   let fresh = Fresh
-
-  let paths = function
-    | Fresh -> None
-    | Existing { paths; _ } -> Some paths
-
+  let paths = function Fresh -> None | Existing { paths; _ } -> Some paths
   let untracked unique_use occ = existing Paths.untracked unique_use occ
 
   let implicit_record_field gf s t unique_use =
@@ -843,9 +828,7 @@ end = struct
   let mark_maybe_unique = function
     | Fresh -> UF.unused
     | Existing { paths; unique_use; occ } ->
-        Paths.mark
-          (Maybe_unique (Maybe_unique.singleton unique_use occ))
-          paths
+        Paths.mark (Maybe_unique (Maybe_unique.singleton unique_use occ)) paths
 
   let mark_shared ~reason = function
     | Fresh -> UF.unused
@@ -853,7 +836,6 @@ end = struct
         force_shared_boundary unique_use occ ~reason;
         let shared = Usage.Shared (Shared.singleton occ Shared.Forced) in
         Paths.mark shared paths
-
 end
 
 module Ienv : sig
@@ -899,7 +881,7 @@ end = struct
         (fun _id locs0 locs1 ->
           match (locs0, locs1) with
           | None, None -> None
-          | Some paths0, Some paths1 -> Some (Paths.par paths0 paths1)
+          | Some paths0, Some paths1 -> Some (Paths.choose paths0 paths1)
           (* cannot bind variable only in one of the OR-patterns *)
           | _, _ -> assert false)
         ienv0 ienv1
@@ -945,23 +927,23 @@ type value_to_match =
 
 let conjuncts_pattern_match l =
   let exts, ufs = List.split l in
-  (Ienv.Extension.conjuncts exts, UF.concurrents ufs)
+  (Ienv.Extension.conjuncts exts, UF.pars ufs)
 
 let rec pattern_match_tuple pat values =
   match pat.pat_desc with
   | Tpat_or (pat0, pat1, _) ->
       let ext0, uf0 = pattern_match_tuple pat0 values in
       let ext1, uf1 = pattern_match_tuple pat1 values in
-      (Ienv.Extension.disjunct ext0 ext1, UF.par uf0 uf1)
+      (Ienv.Extension.disjunct ext0 ext1, UF.choose uf0 uf1)
   | Tpat_tuple pats ->
       List.map2
         (fun pat value ->
-           let paths =
-             match Value.paths value with
-             | None -> Paths.fresh ()
-             | Some paths -> paths
-           in
-           pattern_match_single pat paths)
+          let paths =
+            match Value.paths value with
+            | None -> Paths.fresh ()
+            | Some paths -> paths
+          in
+          pattern_match_single pat paths)
         pats values
       |> conjuncts_pattern_match
   | _ ->
@@ -979,7 +961,7 @@ and pattern_match_single pat paths : Ienv.Extension.t * UF.t =
   | Tpat_or (pat0, pat1, _) ->
       let ext0, uf0 = pattern_match_single pat0 paths in
       let ext1, uf1 = pattern_match_single pat1 paths in
-      (Ienv.Extension.disjunct ext0 ext1, UF.par uf0 uf1)
+      (Ienv.Extension.disjunct ext0 ext1, UF.choose uf0 uf1)
   | Tpat_any -> (Ienv.Extension.empty, UF.unused)
   | Tpat_var (id, _, _) -> (Ienv.Extension.singleton id paths, UF.unused)
   | Tpat_alias (pat', id, _, _) ->
@@ -1001,7 +983,7 @@ and pattern_match_single pat paths : Ienv.Extension.t * UF.t =
           pats_args
         |> conjuncts_pattern_match
       in
-      (ext, UF.concurrent uf_read uf_pats)
+      (ext, UF.par uf_read uf_pats)
   | Tpat_variant (lbl, arg, _) ->
       let uf_read = Paths.mark_implicit_borrow_memory_address Read occ paths in
       let ext, uf_arg =
@@ -1011,7 +993,7 @@ and pattern_match_single pat paths : Ienv.Extension.t * UF.t =
             pattern_match_single arg paths
         | None -> (Ienv.Extension.empty, UF.unused)
       in
-      (ext, UF.concurrent uf_read uf_arg)
+      (ext, UF.par uf_read uf_arg)
   | Tpat_record (pats, _) ->
       let uf_read = Paths.mark_implicit_borrow_memory_address Read occ paths in
       let ext, uf_pats =
@@ -1022,7 +1004,7 @@ and pattern_match_single pat paths : Ienv.Extension.t * UF.t =
           pats
         |> conjuncts_pattern_match
       in
-      (ext, UF.concurrent uf_read uf_pats)
+      (ext, UF.par uf_read uf_pats)
   | Tpat_array (_, pats) ->
       let uf_read = Paths.mark_implicit_borrow_memory_address Read occ paths in
       let ext, uf_pats =
@@ -1033,13 +1015,13 @@ and pattern_match_single pat paths : Ienv.Extension.t * UF.t =
           pats
         |> conjuncts_pattern_match
       in
-      (ext, UF.concurrent uf_read uf_pats)
+      (ext, UF.par uf_read uf_pats)
   | Tpat_lazy arg ->
       (* forcing a lazy expression is like calling a nullary-function *)
       let uf_force = Paths.mark_shared occ Lazy paths in
       let paths = Paths.fresh () in
       let ext, uf_arg = pattern_match_single arg paths in
-      (ext, UF.concurrent uf_force uf_arg)
+      (ext, UF.par uf_force uf_arg)
   | Tpat_tuple args ->
       let uf_read = Paths.mark_implicit_borrow_memory_address Read occ paths in
       let ext, uf_args =
@@ -1050,7 +1032,7 @@ and pattern_match_single pat paths : Ienv.Extension.t * UF.t =
           args
         |> conjuncts_pattern_match
       in
-      (ext, UF.concurrent uf_read uf_args)
+      (ext, UF.par uf_read uf_args)
 
 let pattern_match pat = function
   | Match_tuple values -> pattern_match_tuple pat values
@@ -1064,7 +1046,7 @@ let comp_pattern_match pat value =
 
 let value_of_ident ienv unique_use occ path =
   match path with
-  | Path.Pident id -> begin
+  | Path.Pident id -> (
       match Ienv.find_opt id ienv with
       (* TODO: for better error message, we should record in ienv why some
          variables are not in it. *)
@@ -1073,8 +1055,7 @@ let value_of_ident ienv unique_use occ path =
           None
       | Some paths ->
           let value = Value.existing paths unique_use occ in
-          Some value
-    end
+          Some value)
   (* accessing a module, which is forced by typemod to be shared and many.
      Here we force it again just to be sure *)
   | Path.Pdot _ ->
@@ -1101,12 +1082,11 @@ let open_variables ienv f =
       expr =
         (fun self e ->
           (match e.exp_desc with
-          | Texp_ident (path, _, _, _, unique_use) -> begin
+          | Texp_ident (path, _, _, _, unique_use) -> (
               let occ = Occurrence.mk e.exp_loc in
               match value_of_ident ienv unique_use occ path with
               | None -> ()
-              | Some value -> ll := value :: !ll
-            end
+              | Some value -> ll := value :: !ll)
           | _ -> ());
           Tast_iterator.default_iterator.expr self e);
     }
@@ -1120,11 +1100,10 @@ let mark_shared_open_variables ienv f _loc =
   let ll = open_variables ienv f in
   let ufs =
     List.map
-      (fun value ->
-         Value.mark_shared value ~reason:Free_var_of_mod_class)
+      (fun value -> Value.mark_shared value ~reason:Free_var_of_mod_class)
       ll
   in
-  UF.concurrents ufs
+  UF.pars ufs
 
 let lift_implicit_borrowing uf =
   UF.map
@@ -1178,7 +1157,7 @@ let rec check_uniqueness_exp (ienv : Ienv.t) exp : UF.t =
             | Omitted _ -> UF.unused)
           args
       in
-      UF.concurrents (uf_fn :: uf_args)
+      UF.pars (uf_fn :: uf_args)
   | Texp_match (arg, _, cases, _) ->
       let value, uf_arg = check_uniqueness_exp_for_match ienv arg in
       let uf_cases = check_uniqueness_comp_cases ienv value cases in
@@ -1190,37 +1169,36 @@ let rec check_uniqueness_exp (ienv : Ienv.t) exp : UF.t =
       (* we don't know how much of e will be run; safe to assume all of them *)
       UF.seq uf_body uf_cases
   | Texp_tuple (es, _) ->
-      UF.concurrents (List.map (fun e -> check_uniqueness_exp ienv e) es)
+      UF.pars (List.map (fun e -> check_uniqueness_exp ienv e) es)
   | Texp_construct (_, _, es, _) ->
-      UF.concurrents (List.map (fun e -> check_uniqueness_exp ienv e) es)
+      UF.pars (List.map (fun e -> check_uniqueness_exp ienv e) es)
   | Texp_variant (_, None) -> UF.unused
   | Texp_variant (_, Some (arg, _)) -> check_uniqueness_exp ienv arg
   | Texp_record { fields; extended_expression } ->
       let value, uf_ext =
         match extended_expression with
-        | None -> Value.fresh, UF.unused
+        | None -> (Value.fresh, UF.unused)
         | Some exp ->
             let value, uf_exp = check_uniqueness_exp_as_value ienv exp in
             let uf_read =
               Value.mark_implicit_borrow_memory_address Read value
             in
-            value, UF.concurrent uf_exp uf_read
+            (value, UF.par uf_exp uf_read)
       in
       let uf_fields =
         Array.map
           (fun field ->
-              match field with
-                | l, Kept(_, unique_use) -> begin
-                    let value =
-                      Value.implicit_record_field
-                        l.lbl_global l.lbl_name value unique_use
-                    in
-                    Value.mark_maybe_unique value
-                  end
-                | _, Overridden (_, e) -> check_uniqueness_exp ienv e)
+            match field with
+            | l, Kept (_, unique_use) ->
+                let value =
+                  Value.implicit_record_field l.lbl_global l.lbl_name value
+                    unique_use
+                in
+                Value.mark_maybe_unique value
+            | _, Overridden (_, e) -> check_uniqueness_exp ienv e)
           fields
       in
-      UF.concurrent uf_ext (UF.concurrents (Array.to_list uf_fields))
+      UF.par uf_ext (UF.pars (Array.to_list uf_fields))
   | Texp_field _ ->
       let value, uf = check_uniqueness_exp_as_value ienv exp in
       UF.seq uf (Value.mark_maybe_unique value)
@@ -1228,9 +1206,9 @@ let rec check_uniqueness_exp (ienv : Ienv.t) exp : UF.t =
       let value, uf_rcd = check_uniqueness_exp_as_value ienv rcd in
       let uf_arg = check_uniqueness_exp ienv arg in
       let uf_write = Value.mark_implicit_borrow_memory_address Write value in
-      UF.concurrents [ uf_rcd; uf_arg; uf_write ]
+      UF.pars [ uf_rcd; uf_arg; uf_write ]
   | Texp_array (_, es, _) ->
-      UF.concurrents (List.map (fun e -> check_uniqueness_exp ienv e) es)
+      UF.pars (List.map (fun e -> check_uniqueness_exp ienv e) es)
   | Texp_ifthenelse (if_, then_, else_opt) ->
       (* if' is only borrowed, not used; but probably doesn't matter because of
          mode crossing *)
@@ -1241,7 +1219,7 @@ let rec check_uniqueness_exp (ienv : Ienv.t) exp : UF.t =
         | Some else_ -> check_uniqueness_exp ienv else_
         | None -> UF.unused
       in
-      UF.seq uf_cond (UF.par uf_then uf_else)
+      UF.seq uf_cond (UF.choose uf_then uf_else)
   | Texp_sequence (e0, _, e1) ->
       let uf0 = check_uniqueness_exp ienv e0 in
       let uf1 = check_uniqueness_exp ienv e1 in
@@ -1253,23 +1231,22 @@ let rec check_uniqueness_exp (ienv : Ienv.t) exp : UF.t =
   | Texp_list_comprehension { comp_body; comp_clauses } ->
       let uf_body = check_uniqueness_exp ienv comp_body in
       let uf_clauses = check_uniqueness_comprehensions ienv comp_clauses in
-      UF.concurrent uf_body uf_clauses
+      UF.par uf_body uf_clauses
   | Texp_array_comprehension (_, { comp_body; comp_clauses }) ->
       let uf_body = check_uniqueness_exp ienv comp_body in
       let uf_clauses = check_uniqueness_comprehensions ienv comp_clauses in
-      UF.concurrent uf_body uf_clauses
+      UF.par uf_body uf_clauses
   | Texp_for { for_from; for_to; for_body; _ } ->
       let uf_from = check_uniqueness_exp ienv for_from in
       let uf_to = check_uniqueness_exp ienv for_to in
       let uf_body = check_uniqueness_exp ienv for_body in
-      UF.seq (UF.concurrent uf_from uf_to) uf_body
+      UF.seq (UF.par uf_from uf_to) uf_body
   | Texp_send (e, _, _, _) -> check_uniqueness_exp ienv e
   | Texp_new _ -> UF.unused
   | Texp_instvar _ -> UF.unused
   | Texp_setinstvar (_, _, _, e) -> check_uniqueness_exp ienv e
   | Texp_override (_, ls) ->
-      UF.concurrents
-        (List.map (fun (_, _, e) -> check_uniqueness_exp ienv e) ls)
+      UF.pars (List.map (fun (_, _, e) -> check_uniqueness_exp ienv e) ls)
   | Texp_letmodule (_, _, _, mod_expr, body) ->
       let uf_mod =
         mark_shared_open_variables ienv
@@ -1301,12 +1278,10 @@ let rec check_uniqueness_exp (ienv : Ienv.t) exp : UF.t =
         List.map (fun bop -> check_uniqueness_binding_op ienv bop) ands
       in
       let uf_body =
-        check_uniqueness_cases ienv
-          (Match_single (Paths.fresh ()))
-          [ body ]
+        check_uniqueness_cases ienv (Match_single (Paths.fresh ())) [ body ]
       in
       let uf_body = lift_implicit_borrowing uf_body in
-      UF.concurrents (uf_let :: (uf_ands @ [ uf_body ]))
+      UF.pars (uf_let :: (uf_ands @ [ uf_body ]))
   | Texp_unreachable -> UF.unused
   | Texp_extension_constructor _ -> UF.unused
   | Texp_open (open_decl, e) ->
@@ -1339,10 +1314,10 @@ and check_uniqueness_exp_as_value ienv exp : Value.t * UF.t =
         | Some value -> value
       in
       (value, UF.unused)
-  | Texp_field (e, _, l, unique_use, _) -> begin
+  | Texp_field (e, _, l, unique_use, _) -> (
       let value, uf = check_uniqueness_exp_as_value ienv e in
       match Value.paths value with
-      | None -> Value.fresh, uf
+      | None -> (Value.fresh, uf)
       | Some paths ->
           (* accessing the field meaning borrowing the parent record's mem
              block. Note that the field itself is not borrowed or used *)
@@ -1350,8 +1325,7 @@ and check_uniqueness_exp_as_value ienv exp : Value.t * UF.t =
           let occ = Occurrence.mk loc in
           let paths = Paths.record_field l.lbl_global l.lbl_name paths in
           let value = Value.existing paths unique_use occ in
-          (value, UF.seq uf uf_read)
-    end
+          (value, UF.seq uf uf_read))
   (* CR-someday anlorenzen: This could also support let-bindings. *)
   | _ -> (Value.fresh, check_uniqueness_exp ienv exp)
 
@@ -1362,7 +1336,7 @@ and check_uniqueness_exp_for_match ienv exp : value_to_match * UF.t =
       let values, ufs =
         List.split (List.map (check_uniqueness_exp_as_value ienv) es)
       in
-      Match_tuple values, UF.concurrents ufs
+      (Match_tuple values, UF.pars ufs)
   | _ ->
       let value, uf = check_uniqueness_exp_as_value ienv exp in
       let paths =
@@ -1370,7 +1344,7 @@ and check_uniqueness_exp_for_match ienv exp : value_to_match * UF.t =
         | None -> Paths.fresh ()
         | Some paths -> paths
       in
-      Match_single paths, uf
+      (Match_single paths, uf)
 
 (** Returns [ienv] and [uf].
    [ienv] is the new bindings introduced;
@@ -1382,19 +1356,22 @@ and check_uniqueness_value_bindings ienv vbs =
     List.split
       (List.map
          (fun vb ->
-           let value, uf_value = check_uniqueness_exp_for_match ienv vb.vb_expr in
+           let value, uf_value =
+             check_uniqueness_exp_for_match ienv vb.vb_expr
+           in
            let ienv, uf_pat = pattern_match vb.vb_pat value in
            (ienv, UF.seq uf_value uf_pat))
          vbs)
   in
-  (Ienv.Extension.conjuncts exts, UF.concurrents uf_vbs)
+  (Ienv.Extension.conjuncts exts, UF.pars uf_vbs)
 
 (* type signature needed because high-ranked *)
 and check_uniqueness_cases_gen :
-      'a. ('a Typedtree.general_pattern -> _ -> _) -> _ -> _ -> 'a case list -> _ =
+      'a.
+      ('a Typedtree.general_pattern -> _ -> _) -> _ -> _ -> 'a case list -> _ =
  fun pat_match ienv value cases ->
   (* In the following we imitate how data are accessed at runtime for cases *)
-  (* we first evaluate all LHS including all the guards, _concurrently_ *)
+  (* we first evaluate all LHS including all the guards, in parallel *)
   let exts, uf_pats =
     List.split
       (List.map
@@ -1405,7 +1382,7 @@ and check_uniqueness_cases_gen :
              | None -> UF.unused
              | Some g -> check_uniqueness_exp (Ienv.extend ienv ext) g
            in
-           (ext, UF.concurrent uf_lhs uf_guard))
+           (ext, UF.par uf_lhs uf_guard))
          cases)
   in
   (* we then evaluate all RHS, in _parallel_ *)
@@ -1414,7 +1391,7 @@ and check_uniqueness_cases_gen :
       (fun ext case -> check_uniqueness_exp (Ienv.extend ienv ext) case.c_rhs)
       exts cases
   in
-  UF.seq (UF.concurrents uf_pats) (UF.pars uf_cases)
+  UF.seq (UF.pars uf_pats) (UF.chooses uf_cases)
 
 and check_uniqueness_cases ienv value cases =
   check_uniqueness_cases_gen pattern_match ienv value cases
@@ -1423,7 +1400,7 @@ and check_uniqueness_comp_cases ienv value cases =
   check_uniqueness_cases_gen comp_pattern_match ienv value cases
 
 and check_uniqueness_comprehensions ienv cs =
-  UF.concurrents
+  UF.pars
     (List.map
        (fun c ->
          match c with
@@ -1433,16 +1410,15 @@ and check_uniqueness_comprehensions ienv cs =
        cs)
 
 and check_uniqueness_comprehension_clause_binding ienv cbs =
-  UF.concurrents
+  UF.pars
     (List.map
        (fun cb ->
-          match cb.comp_cb_iterator with
-          | Texp_comp_range { start; stop; _ } ->
-              let uf_start = check_uniqueness_exp ienv start in
-              let uf_stop = check_uniqueness_exp ienv stop in
-              UF.concurrent uf_start uf_stop
-          | Texp_comp_in { sequence; _ } ->
-              check_uniqueness_exp ienv sequence)
+         match cb.comp_cb_iterator with
+         | Texp_comp_range { start; stop; _ } ->
+             let uf_start = check_uniqueness_exp ienv start in
+             let uf_stop = check_uniqueness_exp ienv stop in
+             UF.par uf_start uf_stop
+         | Texp_comp_in { sequence; _ } -> check_uniqueness_exp ienv sequence)
        cbs)
 
 and check_uniqueness_binding_op ienv bo =
@@ -1453,7 +1429,7 @@ and check_uniqueness_binding_op ienv bo =
     | None -> UF.unused
   in
   let uf_exp = check_uniqueness_exp ienv bo.bop_exp in
-  UF.concurrent uf_path uf_exp
+  UF.par uf_path uf_exp
 
 let check_uniqueness_exp exp =
   let _ = check_uniqueness_exp Ienv.empty exp in
@@ -1546,11 +1522,10 @@ let report_boundary cannot_force reason =
 
 let report_error err =
   Printtyp.wrap_printing_env ~error:true Env.empty (fun () ->
-    match err with
-    | Usage { inner; first_is_of_second } ->
-        report_multi_use inner first_is_of_second
-    | Boundary { cannot_force; reason } ->
-        report_boundary cannot_force reason)
+      match err with
+      | Usage { inner; first_is_of_second } ->
+          report_multi_use inner first_is_of_second
+      | Boundary { cannot_force; reason } -> report_boundary cannot_force reason)
 
 let () =
   Location.register_error_of_exn (function
