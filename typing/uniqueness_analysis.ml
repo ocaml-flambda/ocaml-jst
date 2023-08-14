@@ -111,7 +111,7 @@ module Maybe_shared : sig
       following the current usage. If that mode is Unique, the current usage
        must be Borrowed (hence no code motion); if that mode is not restricted
        to Unique, this usage can be Borrowed or Shared (prefered). Raise if
-        called more than once *)
+        called more than once. *)
 
   val par : t -> t -> t
   val singleton : unique_barrier ref -> Occurrence.t -> access -> t
@@ -155,10 +155,14 @@ module Shared : sig
           access *)
 
   val singleton : Occurrence.t -> reason -> t
+  (** The occurrence is only for future error messages. The share_reason must
+  corresponds to the occurrence *)
+
   val extract_occurrence : t -> Occurrence.t
   val reason : t -> reason
 end = struct
   type reason = Forced | Lazy | Lifted of Maybe_shared.access
+
   type t = Occurrence.t * reason
 
   let singleton occ reason = (occ, reason)
@@ -176,9 +180,7 @@ module Usage : sig
     | Maybe_shared of Maybe_shared.t
         (** A usage that could be either borrowed or shared. *)
     | Shared of Shared.t
-        (** A shared usage with an arbitrary occurrence. The occurrence is only
-        for future error messages. The share_reason must corresponds to the
-        occurrence *)
+        (** A shared usage *)
     | Maybe_unique of Maybe_unique.t
         (** A usage that could be either unique or shared. *)
 
@@ -205,6 +207,8 @@ module Usage : sig
   val concurrent : t -> t -> t
   (** Concurrent composition *)
 
+
+  val unused : t
 end = struct
   (* We have Unused (top) > Borrowed > Shared > Unique > Error (bot).
 
@@ -264,6 +268,8 @@ end = struct
     | Maybe_shared of Maybe_shared.t
     | Shared of Shared.t
     | Maybe_unique of Maybe_unique.t
+
+  let unused = Unused
 
   let extract_occurrence = function
     | Unused -> None
