@@ -610,8 +610,7 @@ let foo () =
 val foo : unit -> unit = <fun>
 |}]
 
-(* Testing modalities. Record is more general than constructor because it has
-   direct projection (Texp_field). So in the following we test record only *)
+(* Testing modalities in records *)
 type r_global = {x : string; global_ y : string}
 [%%expect{|
 type r_global = { x : string; global_ y : string; }
@@ -696,26 +695,88 @@ Line 3, characters 19-20:
 
 |}]
 
-type r = {x : string; y : string}
+(* testing modalities in constructors *)
+type r_global = R_global of string * global_ string
+[%%expect{|
+type r_global = R_global of string * global_ string
+|}]
+
+let foo () =
+  let r = R_global ("hello", "world") in
+  let R_global (_, y) = r in
+  ignore (shared_id y);
+  (* the following is allowed, because using r uniquely implies using r.x
+     shared *)
+  ignore (unique_id r)
+[%%expect{|
+val foo : unit -> unit = <fun>
+|}]
+
+ (* Similarly for linearity *)
+let foo () =
+  let r = once_ (R_global ("hello", "world")) in
+  let R_global (_, y) = r in
+  ignore_once y;
+  ignore_once r;
+[%%expect{|
+val foo : unit -> unit = <fun>
+|}]
+
+let foo () =
+  let r = once_ (R_global ("hello", "world")) in
+  let R_global (x, _) = r in
+  ignore_once x;
+  ignore_once r;
+[%%expect{|
+Line 5, characters 14-15:
+5 |   ignore_once r;
+                  ^
+Error: This value is used here,
+       but part of it is defined as once and has already been used:
+Line 4, characters 14-15:
+4 |   ignore_once x;
+                  ^
+
+|}]
+
+let foo () =
+  let r = R_global ("hello", "world") in
+  let R_global (x, _) = r in
+  ignore (shared_id x);
+  (* doesn't work for normal fields *)
+  ignore (unique_id r)
+[%%expect{|
+Line 6, characters 20-21:
+6 |   ignore (unique_id r)
+                        ^
+Error: This value is used here as unique,
+       but part of it has already been used:
+Line 4, characters 20-21:
+4 |   ignore (shared_id x);
+                        ^
+
+|}]
 
 (* updating record at least reads the memory_address of the record *)
+type r = {x : string; y : string}
 let foo () =
   let r = {x = "hello"; y = "world" } in
   ignore (unique_id r);
   ignore ({r with x = "hello again"; y = "world again"})
 [%%expect{|
 type r = { x : string; y : string; }
-Line 7, characters 9-56:
-7 |   ignore ({r with x = "hello again"; y = "world again"})
+Line 5, characters 9-56:
+5 |   ignore ({r with x = "hello again"; y = "world again"})
              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Warning 23 [useless-record-with]: all the fields are explicitly listed in this record:
 the 'with' clause is useless.
-Line 7, characters 11-12:
-7 |   ignore ({r with x = "hello again"; y = "world again"})
+Line 5, characters 11-12:
+5 |   ignore ({r with x = "hello again"; y = "world again"})
                ^
 Error: This value is read from here, but it has already been used as unique:
-Line 6, characters 20-21:
-6 |   ignore (unique_id r);
+Line 4, characters 20-21:
+4 |   ignore (unique_id r);
                         ^
 
 |}]
+
