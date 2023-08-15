@@ -43,7 +43,7 @@ module Maybe_unique : sig
   val singleton : unique_use -> Occurrence.t -> t
   (** construct a single usage *)
 
-  val choose : t -> t -> t
+  val meet : t -> t -> t
 
   type axis = Uniqueness | Linearity
 
@@ -90,7 +90,7 @@ end = struct
     iter_error force_one l
 
   let extract_occurrence = function [] -> assert false | (_, occ) :: _ -> occ
-  let choose l0 l1 = l0 @ l1
+  let meet l0 l1 = l0 @ l1
 end
 
 module Maybe_shared : sig
@@ -111,7 +111,7 @@ module Maybe_shared : sig
        to Unique, this usage can be Borrowed or Shared (prefered). Raise if
         called more than once. *)
 
-  val choose : t -> t -> t
+  val meet : t -> t -> t
   val singleton : unique_barrier ref -> Occurrence.t -> access -> t
 end = struct
   type access = Read | Write
@@ -127,7 +127,7 @@ end = struct
   Therefore, if this virtual mode needs to be forced borrowed, the whole list
   needs to be forced borrowed. *)
 
-  let choose l0 l1 = l0 @ l1
+  let meet l0 l1 = l0 @ l1
   let singleton r occ access = [ (r, occ, access) ]
 
   let extract_occurrence_access = function
@@ -202,10 +202,10 @@ module Usage : sig
   (** Sequential composition *)
 
   val choose : t -> t -> t
-  (** non-det choice *)
+  (** Non-deterministic choice *)
 
   val par : t -> t -> t
-  (** par composition *)
+  (** Parallel composition *)
 end = struct
   (* We have Unused (top) > Borrowed > Shared > Unique > Error (bot).
 
@@ -283,11 +283,11 @@ end = struct
     | Unused, m | m, Unused -> m
     | Borrowed _, t | t, Borrowed _ -> t
     | Maybe_shared l0, Maybe_shared l1 ->
-        Maybe_shared (Maybe_shared.choose l0 l1)
+        Maybe_shared (Maybe_shared.meet l0 l1)
     | Maybe_shared _, t | t, Maybe_shared _ -> t
     | Shared _, t | t, Shared _ -> t
     | Maybe_unique l0, Maybe_unique l1 ->
-        Maybe_unique (Maybe_unique.choose l0 l1)
+        Maybe_unique (Maybe_unique.meet l0 l1)
 
   type first_or_second = First | Second
 
@@ -315,15 +315,15 @@ end = struct
         force_shared_multiuse t (Borrowed occ) First;
         shared (Maybe_unique.extract_occurrence t) Shared.Forced
     | Maybe_shared t0, Maybe_shared t1 ->
-        Maybe_shared (Maybe_shared.choose t0 t1)
+        Maybe_shared (Maybe_shared.meet t0 t1)
     | Maybe_shared _, Shared occ | Shared occ, Maybe_shared _ ->
-        (* the barrier stays empty; if there is any unique after this, it
+        (* The barrier stays empty; if there is any unique after this, it
            will error *)
         Shared occ
     | Maybe_shared t0, Maybe_unique t1 | Maybe_unique t1, Maybe_shared t0 ->
         (* t1 must be shared *)
         force_shared_multiuse t1 (Maybe_shared t0) First;
-        (* the barrier stays empty; if there is any unique after  this, it will
+        (* The barrier stays empty; if there is any unique after this, it will
            error *)
         shared (Maybe_unique.extract_occurrence t1) Shared.Forced
     | Shared t0, Shared _ -> Shared t0
@@ -344,7 +344,7 @@ end = struct
     | Borrowed _, t -> t
     | Maybe_shared _, Borrowed _ -> m0
     | Maybe_shared l0, Maybe_shared l1 ->
-        Maybe_shared (Maybe_shared.choose l0 l1)
+        Maybe_shared (Maybe_shared.meet l0 l1)
     | Maybe_shared _, Shared _ -> m1
     | Maybe_shared l0, Maybe_unique l1 ->
         (* Four cases (semi-colon meaning sequential composition):
@@ -475,7 +475,7 @@ type error =
     }
   | Boundary of {
       cannot_force : Maybe_unique.cannot_force;
-      reason : boundary_reason;  (** which kind of boundary is being crossed? *)
+      reason : boundary_reason;
     }
 
 exception Error of error
@@ -500,10 +500,10 @@ module Usage_tree : sig
   (** Sequential composition lifted from [Usage.seq] *)
 
   val choose : t -> t -> t
-  (** non-det choice lifted from [Usage.choose] *)
+  (** Non-deterministic choice lifted from [Usage.choose] *)
 
   val par : t -> t -> t
-  (** parallel composition lifted from [Usage.par]  *)
+  (** Parallel composition lifted from [Usage.par]  *)
 
   val singleton : Usage.t -> Path.t -> t
   (** A singleton tree containing only one leaf *)
@@ -515,13 +515,13 @@ end = struct
   (** Represents a tree of usage. Each node records the choose on all possible
      execution paths. As a result, trees such as `S -> U` is valid, even though
      it would be invalid if it was the result of a single path: using a parent
-     shared and a child uniquely is obviously bad. Howerver, it might be the
+     shared and a child uniquely is obviously bad. However, it might be the
      result of "choos"ing multiple path: choose `S` `N -> U`, which is valid.
 
      INVARIANT: children >= parent. For example, having a shared child under a
      unique parent is nonsense. The invariant is preserved because Usage.choose,
-     Usage.par, and Usage.seq above is monotone, and Usage_tree.par and
-     Usage_tree.seq, Usage_tree.choose here is node-wise. *)
+     Usage.par, and Usage.seq above are monotone, and Usage_tree.par and
+     Usage_tree.seq, Usage_tree.choose here are node-wise. *)
 
   module Path = struct
     type t = Projection.t list
@@ -572,9 +572,9 @@ end = struct
           raise (Error (Usage { inner = error; first_is_of_second })))
       t0 t1
 
-  let choose = lift Usage.choose
-  let seq = lift Usage.seq
-  let par = lift Usage.par
+  let choose t0 t1 = lift Usage.choose t0 t1
+  let seq t0 t1 = lift Usage.seq t0 t1
+  let par t0 t1 = lift Usage.par t0 t1
 
   let rec singleton leaf = function
     | [] -> { usage = leaf; children = Projection.Map.empty }

@@ -613,7 +613,6 @@ val foo : unit -> unit = <fun>
 (* Testing modalities. Record is more general than constructor because it has
    direct projection (Texp_field). So in the following we test record only *)
 type r_global = {x : string; global_ y : string}
-(* type r = {x : string; y : string} *)
 [%%expect{|
 type r_global = { x : string; global_ y : string; }
 |}]
