@@ -15,15 +15,14 @@
 
 ; set warning as error in release profile
 (env
- (dev     (flags (:standard -w +a-4-9-40-41-42-44-45-48-66-67-70)))
  (release (flags (:standard -w +a-4-9-40-41-42-44-45-48-66-67-70)))
 
  (main
   (flags
    (:standard -warn-error +A)))
- (boot
+ (dev
   (flags
-   (:standard -warn-error +A))))
+   (:standard -w +a-4-9-40-41-42-44-45-48-66-67-70 -warn-error +A))))
 
 ; Disable the runtime/ directory for now
 ; (We're currently using runtime4/ instead)
