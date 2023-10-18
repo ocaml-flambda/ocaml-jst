@@ -95,26 +95,16 @@ type stat =
 
     stack_size: int;
     (** Current size of the stack, in words.
-<<<<<<< HEAD
-        @since 3.12.0 *)
-||||||| merged common ancestors
-    (** Current size of the stack, in words. @since 3.12.0 *)
-=======
-        This metrics is currently not available in OCaml 5: the field value is
-        always [0].
+
+        This metrics will not be available in the OCaml 5 runtime: the field
+        value will always be [0].
+
         @since 3.12 *)
->>>>>>> ocaml/5.1
 
     forced_major_collections: int;
     (** Number of forced full major collections completed since the program
         was started.
-<<<<<<< HEAD
-        @since 4.12.0 *)
-||||||| merged common ancestors
-        was started. @since 4.12.0 *)
-=======
         @since 4.12 *)
->>>>>>> ocaml/5.1
 }
 (** The memory management counters are returned in a [stat] record. These
    counters give values for the whole program.
@@ -221,13 +211,7 @@ type control =
         out variations in its workload. This is an integer between
         1 and 50.
         Default: 1.
-<<<<<<< HEAD
-        @since 4.03.0 *)
-||||||| merged common ancestors
-        Default: 1. @since 4.03.0 *)
-=======
         @since 4.03 *)
->>>>>>> ocaml/5.1
 
     custom_major_ratio : int;
     (** Target ratio of floating garbage to major heap size for
@@ -449,7 +433,6 @@ val delete_alarm : alarm -> unit
 (** [delete_alarm a] will stop the calls to the function associated
    to [a]. Calling [delete_alarm a] again has no effect. *)
 
-<<<<<<< HEAD
 external eventlog_pause : unit -> unit = "caml_eventlog_pause"
 (** [eventlog_pause ()] will pause the collection of traces in the
    runtime.
@@ -472,30 +455,6 @@ external eventlog_resume : unit -> unit = "caml_eventlog_resume"
 
    @since 4.11
   *)
-||||||| merged common ancestors
-external eventlog_pause : unit -> unit = "caml_eventlog_pause"
-(** [eventlog_pause ()] will pause the collection of traces in the
-   runtime.
-   Traces are collected if the program is linked to the instrumented runtime
-   and started with the environment variable OCAML_EVENTLOG_ENABLED.
-   Events are flushed to disk after pausing, and no new events will be
-   recorded until [eventlog_resume] is called. *)
-
-external eventlog_resume : unit -> unit = "caml_eventlog_resume"
-(** [eventlog_resume ()] will resume the collection of traces in the
-   runtime.
-   Traces are collected if the program is linked to the instrumented runtime
-   and started with the environment variable OCAML_EVENTLOG_ENABLED.
-   This call can be used after calling [eventlog_pause], or if the program
-   was started with OCAML_EVENTLOG_ENABLED=p. (which pauses the collection of
-   traces before the first event.) *)
-=======
-val eventlog_pause : unit -> unit
-[@@ocaml.deprecated "Use Runtime_events.pause instead."]
->>>>>>> ocaml/5.1
-
-val eventlog_resume : unit -> unit
-[@@ocaml.deprecated "Use Runtime_events.resume instead."]
 
 (** [Memprof] is a sampling engine for allocated memory words. Every
    allocated word has a probability of being sampled equal to a
