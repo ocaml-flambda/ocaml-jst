@@ -72,12 +72,7 @@ and all_ppx = ref ([] : string list)        (* -ppx *)
 let absname = ref false                 (* -absname *)
 let annotations = ref false             (* -annot *)
 let binary_annotations = ref false      (* -bin-annot *)
-<<<<<<< HEAD
 let binary_annotations_cms = ref false  (* -bin-annot-cms *)
-||||||| merged common ancestors
-let binary_annotations = ref false      (* -annot *)
-=======
->>>>>>> ocaml/5.1
 and use_threads = ref false             (* -thread *)
 and noassert = ref false                (* -noassert *)
 and verbose = ref false                 (* -verbose *)
@@ -512,13 +507,8 @@ module Compiler_pass = struct
      - the manpages in man/ocaml{c,opt}.m
      - the manual manual/src/cmds/unified-options.etex
   *)
-<<<<<<< HEAD
-  type t = Parsing | Typing | Scheduling | Emit | Simplify_cfg | Selection
-||||||| merged common ancestors
-  type t = Parsing | Typing | Scheduling | Emit
-=======
-  type t = Parsing | Typing | Lambda | Scheduling | Emit
->>>>>>> ocaml/5.1
+  type t = Parsing | Typing | Lambda
+         | Scheduling | Emit | Simplify_cfg | Selection
 
   let to_string = function
     | Parsing -> "parsing"
@@ -542,13 +532,9 @@ module Compiler_pass = struct
   let rank = function
     | Parsing -> 0
     | Typing -> 1
-<<<<<<< HEAD
+    | Lambda -> 2
     | Selection -> 20
     | Simplify_cfg -> 49
-||||||| merged common ancestors
-=======
-    | Lambda -> 2
->>>>>>> ocaml/5.1
     | Scheduling -> 50
     | Emit -> 60
 
