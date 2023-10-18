@@ -773,22 +773,12 @@ method emit_expr_aux (env:environment) exp :
           self#insert_debug env  (Iraise k) dbg rd [||];
           None
       end
-<<<<<<< HEAD
   | Cop(Ccmpf _, _, dbg) ->
       self#emit_expr_aux env
         (Cifthenelse (exp,
           dbg, Cconst_int (1, dbg),
           dbg, Cconst_int (0, dbg),
           dbg, Any))
-||||||| merged common ancestors
-  | Cop(Ccmpf _, _, dbg) ->
-      self#emit_expr env
-        (Cifthenelse (exp,
-          dbg, Cconst_int (1, dbg),
-          dbg, Cconst_int (0, dbg),
-          dbg))
-=======
->>>>>>> ocaml/5.1
   | Cop(Copaque, args, dbg) ->
       begin match self#emit_parts_list env args with
         None -> None
@@ -831,16 +821,8 @@ method emit_expr_aux (env:environment) exp :
               self#insert_move_args env r1 loc_arg stack_ofs;
               self#insert_debug env (Iop new_op) dbg loc_arg loc_res;
               self#insert_move_results env loc_res rd stack_ofs;
-<<<<<<< HEAD
               Some (rd, unclosed_regions)
           | Iextcall { ty_args; _} ->
-||||||| merged common ancestors
-              Some rd
-          | Iextcall { ty_args; _} ->
-=======
-              Some rd
-          | Iextcall r ->
->>>>>>> ocaml/5.1
               let (loc_arg, stack_ofs) =
                 self#emit_extcall_args env r.ty_args new_args in
               let rd = self#regs_for ty in
