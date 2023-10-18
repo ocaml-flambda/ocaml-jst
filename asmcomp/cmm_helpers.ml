@@ -1,6 +1,3 @@
-(* CR mshinwell: check occurrences of Cload and any other constructors
-   that changed upstream *)
-
 (**************************************************************************)
 (*                                                                        *)
 (*                                 OCaml                                  *)
@@ -641,8 +638,8 @@ let rec unbox_float dbg =
             e
         with
         | e -> Cregion e
-        | exception Exit -> Cop (Cload (Double, Immutable), [cmm], dbg))
-      | cmm -> Cop(Cload (Double, Immutable), [cmm], dbg)
+        | exception Exit -> Cop (mk_load_immut Double, [cmm], dbg))
+      | cmm -> Cop(mk_load_immut Double, [cmm], dbg)
     )
 
 (* Complex *)
@@ -2328,7 +2325,7 @@ let read_from_closure_given_machtype t clos base_offset dbg =
     | Float -> Double
   in
   Cop
-    ( Cload (memory_chunk, Asttypes.Mutable),
+    ( make_load_mut memory_chunk,
       [field_address clos base_offset dbg],
       dbg )
 
