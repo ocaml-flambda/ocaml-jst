@@ -553,14 +553,14 @@ module Compiler_pass = struct
     | Emit -> true
     | Simplify_cfg -> true
     | Selection -> true
-    | Parsing | Typing -> false
+    | Parsing | Typing | Lambda -> false
 
   let enabled is_native t = not (is_native_only t) || is_native
   let can_save_ir_after = function
     | Scheduling -> true
     | Simplify_cfg -> true
     | Selection -> true
-    | Parsing | Typing | Emit -> false
+    | Parsing | Typing | Lambda | Emit -> false
 
   let available_pass_names ~filter ~native =
     passes
@@ -576,7 +576,7 @@ module Compiler_pass = struct
     | Scheduling -> prefix ^ Compiler_ir.(extension Linear)
     | Simplify_cfg -> prefix ^ Compiler_ir.(extension Cfg)
     | Selection -> prefix ^ Compiler_ir.(extension Cfg) ^ "-sel"
-    | Emit | Parsing | Typing -> Misc.fatal_error "Not supported"
+    | Emit | Parsing | Typing | Lambda -> Misc.fatal_error "Not supported"
 
   let of_input_filename name =
     match Compiler_ir.extract_extension_with_pass name with

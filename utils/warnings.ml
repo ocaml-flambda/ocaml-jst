@@ -542,12 +542,12 @@ let descriptions = [
   { number = 190;
     names = ["probe-name-too-long"];
     description = "Probe name must be at most 100 characters long.";
-    since = 4 14 };
+    since = since 4 14 };
   { number = 199;
     names = ["unchecked-property-attribute"];
     description = "A property of a function that was \
                    optimized away cannot be checked.";
-    since = 4 14 };
+    since = since 4 14 };
 ]
 
 let name_to_number =
