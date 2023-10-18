@@ -39,6 +39,7 @@ let mk_annot f =
 
 let mk_binannot f =
   "-bin-annot", Arg.Unit f, " Save typedtree in <filename>.cmt"
+;;
 
 let mk_binannot_cms f =
   "-bin-annot-cms", Arg.Unit f, " Save shapes in <filename>.cms"
@@ -171,15 +172,8 @@ let mk_inline_toplevel f =
 
 let mk_inlining_report f =
   "-inlining-report", Arg.Unit f, " Emit `.<round>.inlining' file(s) (one per \
-<<<<<<< HEAD
       round) showing the inliner's decisions (Flambda 1 and 2)"
 ;;
-||||||| merged common ancestors
-      round) showing the inliner's decisions"
-;;
-=======
-      round) showing the inliner's decisions"
->>>>>>> ocaml/5.1
 
 let mk_dump_pass f =
   "-dump-pass", Arg.String f,
@@ -212,15 +206,8 @@ let mk_inline_max_unroll f =
 let mk_classic_inlining f =
   "-Oclassic", Arg.Unit f, " Make inlining decisions at function definition \
      time rather than at the call site (replicates previous behaviour of the \
-<<<<<<< HEAD
      compiler).  Implies -linscan (and causes -nolinscan to be ignored)."
 ;;
-||||||| merged common ancestors
-     compiler)"
-;;
-=======
-     compiler)"
->>>>>>> ocaml/5.1
 
 let mk_inline_cost arg descr default f =
   Printf.sprintf "-inline-%s-cost" arg,
@@ -287,6 +274,7 @@ let mk_keep_locs f =
 
 let mk_no_keep_locs f =
   "-no-keep-locs", Arg.Unit f, " Do not keep locations in .cmi files"
+;;
 
 let mk_probes f =
   if Config.probes then
@@ -495,7 +483,8 @@ let mk_thread f =
   " (deprecated) same as -I +threads"
 
 let mk_dtimings f =
-  "-dtimings", Arg.Unit f, " Print timings information for each pass"
+  "-dtimings", Arg.Unit f, " Print timings information for each pass";
+;;
 
 let mk_dtimings_precision f =
   "-dtimings-precision", Arg.Int f,
@@ -524,17 +513,7 @@ let mk_unboxed_types f =
 let mk_no_unboxed_types f =
   "-no-unboxed-types", Arg.Unit f,
   " unannotated unboxable types will not be unboxed (default)"
-<<<<<<< HEAD
 ;;
-||||||| merged common ancestors
-;;
-
-let mk_force_tmc f =
-  "-force-tmc", Arg.Unit f, " Rewrite all possible TMC calls"
-;;
-
-=======
->>>>>>> ocaml/5.1
 
 let mk_unsafe f =
   "-unsafe", Arg.Unit f,
@@ -651,10 +630,7 @@ let mk_use_prims f =
 
 let mk_dump_into_file f =
   "-dump-into-file", Arg.Unit f, " dump output like -dlambda into <target>.dump"
-
-let mk_dump_dir f =
-  "-dump-dir", Arg.String f,
-  "<dir> dump output like -dlambda into <dir>/<target>.dump"
+;;
 
 let mk_extension f =
   let available_extensions =
@@ -707,9 +683,7 @@ let mk_dparsetree f =
 
 let mk_dtypedtree f =
   "-dtypedtree", Arg.Unit f, " (undocumented)"
-
-let mk_dshape f =
-  "-dshape", Arg.Unit f, " (undocumented)"
+;;
 
 let mk_dshape f =
   "-dshape", Arg.Unit f, " (undocumented)"
@@ -743,54 +717,22 @@ let mk_dclambda f =
   "-dclambda", Arg.Unit f, " (undocumented)"
 
 let mk_dflambda f =
-<<<<<<< HEAD
   "-dflambda", Arg.Unit f, " Print Flambda (1 or 2) terms on exit from Flambda"
 ;;
-||||||| merged common ancestors
-  "-dflambda", Arg.Unit f, " Print Flambda terms"
-;;
-=======
-  "-dflambda", Arg.Unit f, " Print Flambda terms"
->>>>>>> ocaml/5.1
 
 let mk_drawflambda f =
-<<<<<<< HEAD
   "-drawflambda", Arg.Unit f, " Print Flambda terms after closure conversion\n\
   \     (for Flambda 2, after [Lambda_to_flambda])"
 ;;
-||||||| merged common ancestors
-  "-drawflambda", Arg.Unit f, " Print Flambda terms after closure conversion"
-;;
-=======
-  "-drawflambda", Arg.Unit f, " Print Flambda terms after closure conversion"
->>>>>>> ocaml/5.1
 
 let mk_dflambda_invariants f =
-<<<<<<< HEAD
   "-dflambda-invariants", Arg.Unit f, " Check Flambda (1 and 2) invariants"
 ;;
-||||||| merged common ancestors
-  "-dflambda-invariants", Arg.Unit f, " Check Flambda invariants \
-      around each pass"
-;;
-=======
-  "-dflambda-invariants", Arg.Unit f, " Check Flambda invariants \
-      around each pass"
->>>>>>> ocaml/5.1
 
 let mk_dflambda_no_invariants f =
-<<<<<<< HEAD
   "-dflambda-no-invariants", Arg.Unit f, " Do not check Flambda (1 and 2) \
       invariants"
 ;;
-||||||| merged common ancestors
-  "-dflambda-no-invariants", Arg.Unit f, " Do not Check Flambda invariants \
-      around each pass"
-;;
-=======
-  "-dflambda-no-invariants", Arg.Unit f, " Do not Check Flambda invariants \
-      around each pass"
->>>>>>> ocaml/5.1
 
 let mk_dflambda_let f =
   "-dflambda-let", Arg.Int f, "<stamp>  Print when the given Flambda 1 [Let] \
@@ -853,6 +795,10 @@ let mk_dinterval f =
 
 let mk_dstartup f =
   "-dstartup", Arg.Unit f, " (undocumented)"
+
+let mk_debug_ocaml f =
+  "-debug-ocaml", Arg.Unit f, " Debugging output for the compiler\n\
+                               (internal use only)"
 
 let mk_debug_ocaml f =
   "-debug-ocaml", Arg.Unit f, " Debugging output for the compiler\n\
@@ -933,14 +879,9 @@ module type Common_options = sig
   val _no_strict_formats : unit -> unit
   val _unboxed_types : unit -> unit
   val _no_unboxed_types : unit -> unit
-<<<<<<< HEAD
   val _unsafe_string : unit -> unit
   val _verbose_types : unit -> unit
   val _no_verbose_types : unit -> unit
-||||||| merged common ancestors
-  val _unsafe_string : unit -> unit
-=======
->>>>>>> ocaml/5.1
   val _version : unit -> unit
   val _vnum : unit -> unit
   val _w : string -> unit
@@ -1286,11 +1227,7 @@ struct
     mk_dprofile F._dprofile;
     mk_dump_into_file F._dump_into_file;
     mk_dump_dir F._dump_dir;
-<<<<<<< HEAD
     mk_debug_ocaml F._debug_ocaml;
-||||||| merged common ancestors
-=======
->>>>>>> ocaml/5.1
 
     mk_args F._args;
     mk_args0 F._args0;
@@ -1339,15 +1276,9 @@ struct
     mk_unboxed_types F._unboxed_types;
     mk_no_unboxed_types F._no_unboxed_types;
     mk_unsafe F._unsafe;
-<<<<<<< HEAD
     mk_unsafe_string F._unsafe_string;
     mk_verbose_types F._verbose_types;
     mk_no_verbose_types F._no_verbose_types;
-||||||| merged common ancestors
-    mk_unsafe_string F._unsafe_string;
-=======
-    mk_unsafe_string;
->>>>>>> ocaml/5.1
     mk_version F._version;
     mk__version F._version;
     mk_no_version F._no_version;
@@ -1805,13 +1736,8 @@ module Default = struct
     let _strict_formats = set strict_formats
     let _strict_sequence = set strict_sequence
     let _unboxed_types = set unboxed_types
-<<<<<<< HEAD
     let _unsafe_string = set unsafe_string
     let _verbose_types = set verbose_types
-||||||| merged common ancestors
-    let _unsafe_string = set unsafe_string
-=======
->>>>>>> ocaml/5.1
     let _w s =
       Warnings.parse_options false s |> Option.iter Location.(prerr_alert none)
     let _debug_ocaml = set debug_ocaml
@@ -1959,13 +1885,7 @@ module Default = struct
     let _dtimings_precision n = timings_precision := n
     let _dump_into_file = set dump_into_file
     let _dump_dir s = dump_dir := Some s
-<<<<<<< HEAD
     let _for_pack s = for_package := (Some (String.capitalize_ascii s))
-||||||| merged common ancestors
-    let _for_pack s = for_package := (Some s)
-=======
-    let _for_pack s = for_package := (Some s)
->>>>>>> ocaml/5.1
     let _g = set debug
     let _no_g = clear debug
     let _i = set print_types
