@@ -631,15 +631,11 @@ let emit_instr env i =
         assert (i.arg.(2).loc = i.res.(0).loc);
         let instr = name_for_specific sop in
         `	{emit_string instr}	{emit_reg i.res.(0)}, {emit_reg i.arg.(0)}, {emit_reg i.arg.(1)}\n`
-<<<<<<< HEAD
     | Lop (Iprobe _ |Iprobe_is_enabled _) ->
       Misc.fatal_error ("Probes not supported.")
-||||||| merged common ancestors
-=======
     | Lop (Idls_get) ->
         let ofs = Domainstate.(idx_of_field Domain_dls_root) * 8 in
         `	lg	{emit_reg i.res.(0)}, {emit_int ofs}(%r10)\n`
->>>>>>> ocaml/5.1
     | Lreloadretaddr ->
         let n = frame_size env in
         `	lg	%r14, {emit_int(n - size_addr)}(%r15)\n`

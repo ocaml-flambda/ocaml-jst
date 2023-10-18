@@ -899,7 +899,6 @@ let emit_instr env fallthrough i =
       I.movsxd (arg32 i 0) (res i 0)
   | Lop(Ispecific(Izextend32)) ->
       I.mov (arg32 i 0) (res32 i 0)
-<<<<<<< HEAD
   | Lop(Ibeginregion) ->
       I.mov (domain_field Domainstate.Domain_local_sp) (res i 0)
   | Lop(Iendregion) ->
@@ -933,11 +932,8 @@ let emit_instr env fallthrough i =
     I.cmp (int 0) (res16 i 0);
     I.set (cond (Iunsigned Cne)) (res8 i 0);
     I.movzx (res8 i 0) (res i 0)
-||||||| merged common ancestors
-=======
   | Lop (Idls_get) ->
       I.mov (domain_field Domainstate.Domain_dls_root) (res i 0)
->>>>>>> ocaml/5.1
   | Lreloadretaddr ->
       ()
   | Lreturn ->
@@ -1075,7 +1071,6 @@ let rec emit_all env fallthrough i =
 
 let all_functions = ref []
 
-<<<<<<< HEAD
 let emit_function_type_and_size fun_name =
   match system with
   | S_gnu | S_linux ->
@@ -1085,9 +1080,6 @@ let emit_function_type_and_size fun_name =
          ConstThis,
          ConstLabel (emit_symbol fun_name)))
   | _ -> ()
-||||||| merged common ancestors
-=======
->>>>>>> ocaml/5.1
 
 (* Emission of a function declaration *)
 
