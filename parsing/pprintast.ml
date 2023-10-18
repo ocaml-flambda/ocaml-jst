@@ -1462,10 +1462,10 @@ and binding ctxt f {pvb_pat=p; pvb_expr=x; pvb_constraint = ct; _} =
         (core_type ctxt) coercion
         (expression ctxt) x
   | None ->
-      (* We just need to check for [is_desugared_gadt] because the parser
-         hasn't been upgraded to parse [let x : type a. ... = ...] as
-         [Pvb_constraint] as it has been upstream. Once we encode that
-         with Jane Syntax appropriately, we can delete this code.
+      (* CR layouts 1.5: We just need to check for [is_desugared_gadt] because
+         the parser hasn't been upgraded to parse [let x : type a. ... = ...] as
+         [Pvb_constraint] as it has been upstream. Once we encode that with Jane
+         Syntax appropriately, we can delete this code.
       *)
       let tyvars_str tyvars = List.map (fun v -> v.txt) tyvars in
       let is_desugared_gadt p e =
