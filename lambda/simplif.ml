@@ -934,7 +934,6 @@ let simplify_local_functions lam =
             check_static lf;
             (* note: if scope = None, the function is unused *)
             function_definition lf
-            function_definition lf
         end
     | Lapply {ap_func = Lvar id; ap_args; ap_region_close; _} ->
         let curr_scope =

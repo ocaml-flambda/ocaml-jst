@@ -292,12 +292,12 @@ let primitive ppf = function
   | Pmakeufloatblock (Mutable, mode) ->
      fprintf ppf "make%sufloatblock Mutable"
         (alloc_mode mode)
-  | Pfield (n, sem) ->
+  | Pfield (n, ptr, sem) ->
       let instr =
-        match ptr, mut with
+        match ptr, sem with
         | Immediate, _ -> "field_int "
-        | Pointer, Mutable -> "field_mut "
-        | Pointer, Immutable -> "field_imm "
+        | Pointer, Reads_vary -> "field_mut "
+        | Pointer, Reads_agree -> "field_imm "
       in
       fprintf ppf "%s%a %i" instr field_read_semantics sem n
   | Pfield_computed sem ->

@@ -1416,7 +1416,7 @@ let reset () =
   raise_count := 0
 
 let mod_field ?(read_semantics=Reads_agree) pos =
-  Pfield (pos, read_semantics)
+  Pfield (pos, Pointer, read_semantics)
 
 let mod_setfield pos =
   Psetfield (pos, Pointer, Root_initialization)
