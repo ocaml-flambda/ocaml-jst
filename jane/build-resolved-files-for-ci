@@ -1,1 +1,14 @@
- dune b --workspace=duneconf/boot.ws _build/default/.ocamlcommon.objs/native/matching.cmx
+#!/bin/bash
+
+set -euo pipefail
+
+# build parser.mli from parser.mly
+dune b --workspace=duneconf/boot.ws _build/default/.ocamlcommon.objs/byte/parser.cmi
+
+# ocamlcommon mlis
+for mli in {utils,typing,parsing,lambda}/*.mli; do
+  cmi=$(basename ${mli%.mli})
+  dune b --workspace=duneconf/boot.ws _build/default/.ocamlcommon.objs/byte/$cmi.cmi
+done
+
+
