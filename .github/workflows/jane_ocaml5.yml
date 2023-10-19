@@ -1,0 +1,23 @@
+name: jane_ocaml5
+on: [push, pull_request]
+jobs:
+  jane_ocaml5:
+    name: Check that resolved files build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the ocaml-jst repo
+        uses: actions/checkout@master
+        with:
+          path: 'ocaml-jst'
+      - name: Configure
+        working-directory: ocaml-jst
+        run: |
+          ./configure --prefix=$GITHUB_WORKSPACE/ocaml-5/_install
+      - name: Build _bootinstall
+        working-directory: ocaml-jst
+        run: |
+          make -f Makefile.jst _build/_bootinstall
+      - name: Check that resolved files build
+        working-directory: ocaml-jst
+        run: |
+          jane/build-resolved-files-for-ci
