@@ -69,7 +69,8 @@ module Error: sig
 
   type module_type_symptom =
     | Mt_core of core_module_type_symptom
-    | Signature of signature_symptom
+    | Signature of int signature_symptom
+    | Include_functor_signature of Ident.t signature_symptom
     | Functor of functor_symptom
     | Invalid_module_alias of Path.t
     | After_alias_expansion of module_type_diff
@@ -91,12 +92,12 @@ module Error: sig
   and functor_params_diff =
     (Types.functor_parameter list * Types.module_type) core_diff
 
-  and signature_symptom = {
+  and 'a signature_symptom = {
     env: Env.t;
     missings: Types.signature_item list;
     incompatibles: (Ident.t * sigitem_symptom) list;
-    oks: (int * Typedtree.module_coercion) list;
-    leftovers: ((Types.signature_item as 'it) * 'it * int) list
+    oks: ('a * Typedtree.module_coercion) list;
+    leftovers: ((Types.signature_item as 'it) * 'it * 'a) list
     (** signature items that could not be compared due to type divergence *)
   }
   and sigitem_symptom =
@@ -114,9 +115,9 @@ module Error: sig
 
 
   type all =
-    | In_Compilation_unit of (string, signature_symptom) diff
-    | In_Signature of signature_symptom
-    | In_Include_functor_signature of signature_symptom
+    | In_Compilation_unit of (string, int signature_symptom) diff
+    | In_Signature of int signature_symptom
+    | In_Include_functor_signature of Ident.t signature_symptom
     | In_Module_type of module_type_diff
     | In_Module_type_substitution of
         Ident.t * (Types.module_type,module_type_declaration_symptom) diff
