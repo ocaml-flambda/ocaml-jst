@@ -386,7 +386,7 @@ method is_simple_expr = function
       | Cload _ | Caddi | Csubi | Cmuli | Cmulhi | Cdivi | Cmodi | Cand | Cor
       | Cxor | Clsl | Clsr | Casr | Ccmpi _ | Caddv | Cadda | Ccmpa _ | Cnegf
       | Cabsf | Caddf | Csubf | Cmulf | Cdivf | Cfloatofint | Cintoffloat
-      | Ccmpf _ | Ccheckbound | Cdls_get ->
+      | Ccmpf _ | Cdls_get ->
           List.for_all self#is_simple_expr args
       end
   | Cassign _ | Cifthenelse _ | Cswitch _ | Ccatch _ | Cexit _
@@ -822,7 +822,7 @@ method emit_expr_aux (env:environment) exp :
               self#insert_debug env (Iop new_op) dbg loc_arg loc_res;
               self#insert_move_results env loc_res rd stack_ofs;
               Some (rd, unclosed_regions)
-          | Iextcall { ty_args; _} ->
+          | Iextcall r ->
               let (loc_arg, stack_ofs) =
                 self#emit_extcall_args env r.ty_args new_args in
               let rd = self#regs_for ty in
