@@ -128,7 +128,6 @@ val function_sections : bool
 val instrumented_runtime : bool
 (** Whether the instrumented runtime is available *)
 
-<<<<<<< HEAD
 val naked_pointers : bool
 (** Whether the runtime system supports naked pointers outside the heap *)
 
@@ -140,10 +139,6 @@ val stack_allocation : bool
 
 val poll_insertion : bool
 (** Whether poll insertion is enabled *)
-||||||| merged common ancestors
-val naked_pointers : bool
-(** Whether the runtime system supports naked pointers outside the heap *)
-=======
+
 val frame_pointers : bool
 (** Whether frame-pointers have been enabled at configure time *)
->>>>>>> ocaml/5.1
