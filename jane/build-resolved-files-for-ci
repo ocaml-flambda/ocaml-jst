@@ -2,6 +2,8 @@
 
 set -euo pipefail
 
+make -f Makefile.jst _build/_bootinstall
+
 echo "==========="
 echo "Testing mlis"
 echo "==========="
