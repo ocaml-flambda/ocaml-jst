@@ -806,10 +806,10 @@ external float_of_string : string -> float = "caml_float_of_string"
 
 (** {1 Pair operations} *)
 
-external fst : ('a * 'b[@local_opt]) -> ('a[@local_opt]) = "%field0_immut"
+external fst : ('a * 'b[@local_opt]) -> ('a[@local_opt]) = "%field0"
 (** Return the first component of a pair. *)
 
-external snd : ('a * 'b[@local_opt]) -> ('b[@local_opt]) = "%field1_immut"
+external snd : ('a * 'b[@local_opt]) -> ('b[@local_opt]) = "%field1"
 (** Return the second component of a pair. *)
 
 
@@ -1384,7 +1384,8 @@ val unsafe_really_input : in_channel -> bytes -> int -> int -> unit
 
 val do_at_exit : unit -> unit
 
-val do_domain_local_at_exit : (unit -> unit) ref
+(* CR ocaml 5 runtime: We should expose this. *)
+(* val do_domain_local_at_exit : (unit -> unit) ref *)
 
 (**/**)
 
