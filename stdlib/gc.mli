@@ -100,6 +100,11 @@ type stat =
         value will always be [0].
 
         @since 3.12 *)
+    (* CR ocaml 5 runtime: Update the above comment to what it is upstream:
+
+       This metrics is currently not available in OCaml 5: the field value is
+       always [0].
+    *)
 
     forced_major_collections: int;
     (** Number of forced full major collections completed since the program
@@ -434,27 +439,10 @@ val delete_alarm : alarm -> unit
    to [a]. Calling [delete_alarm a] again has no effect. *)
 
 external eventlog_pause : unit -> unit = "caml_eventlog_pause"
-(** [eventlog_pause ()] will pause the collection of traces in the
-   runtime.
-   Traces are collected if the program is linked to the instrumented runtime
-   and started with the environment variable OCAML_EVENTLOG_ENABLED.
-   Events are flushed to disk after pausing, and no new events will be
-   recorded until [eventlog_resume] is called.
-
-   @since 4.11
-  *)
+[@@ocaml.deprecated "Use Runtime_events.pause instead."]
 
 external eventlog_resume : unit -> unit = "caml_eventlog_resume"
-(** [eventlog_resume ()] will resume the collection of traces in the
-   runtime.
-   Traces are collected if the program is linked to the instrumented runtime
-   and started with the environment variable OCAML_EVENTLOG_ENABLED.
-   This call can be used after calling [eventlog_pause], or if the program
-   was started with OCAML_EVENTLOG_ENABLED=p. (which pauses the collection of
-   traces before the first event.)
-
-   @since 4.11
-  *)
+[@@ocaml.deprecated "Use Runtime_events.resume instead."]
 
 (** [Memprof] is a sampling engine for allocated memory words. Every
    allocated word has a probability of being sampled equal to a
