@@ -8,7 +8,9 @@ echo "==========="
 
 # ocamlcommon mlis
 mlis=$(
-  echo {utils,typing,parsing,lambda}/*.mli |
+  { echo parsing/parser.mli
+    echo {utils,typing,parsing,lambda}/*.mli
+  } |
     tr ' ' '\n'
 )
 echo "$mlis"
@@ -28,7 +30,9 @@ echo "==========="
 
 # ocamlcommon mls
 mls=$(
-  echo {utils,parsing}/*.ml |
+  { echo parsing/parser.ml
+    echo {utils,parsing}/*.ml
+  } |
     tr ' ' '\n' |
     grep -v "utils/config.common.ml" |
     grep -v "utils/config.fixed.ml" |
