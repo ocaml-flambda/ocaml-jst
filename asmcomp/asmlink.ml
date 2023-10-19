@@ -57,10 +57,7 @@ let check_consistency file_name unit crc =
         match crco with
           None -> ()
         | Some (full_name, crc) ->
-            if CU.Name.equal name (CU.name unit.ui_unit)
-            then Cmi_consistbl.set crc_interfaces name full_name crc file_name
-            else
-              Cmi_consistbl.check crc_interfaces name full_name crc file_name)
+            Cmi_consistbl.check crc_interfaces name full_name crc file_name)
       unit.ui_imports_cmi
   with Cmi_consistbl.Inconsistency {
       unit_name = name;
@@ -96,7 +93,7 @@ let check_consistency file_name unit crc =
   with Not_found -> ()
   end;
   implementations := unit.ui_unit :: !implementations;
-  Cmx_consistbl.set crc_implementations unit.ui_unit () crc file_name;
+  Cmx_consistbl.check crc_implementations unit.ui_unit () crc file_name;
   implementations_defined :=
     (unit.ui_unit, file_name) :: !implementations_defined;
   if CU.is_packed unit.ui_unit then
