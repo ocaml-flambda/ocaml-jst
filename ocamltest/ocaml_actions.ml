@@ -1163,34 +1163,18 @@ let no_flat_float_array = make
     "compiler configured with --enable-flat-float")
 
 let flambda = Actions.make
-<<<<<<< HEAD
-  "flambda"
+  ~name:"flambda"
+  ~description:"Passes if the compiler is configured with flambda or flambda2 enabled"
   (Actions_helpers.pass_or_skip
      (Ocamltest_config.flambda || Ocamltest_config.flambda2)
-||||||| merged common ancestors
-  "flambda"
-  (Actions_helpers.pass_or_skip Ocamltest_config.flambda
-=======
-  ~name:"flambda"
-  ~description:"Passes if the compiler is configured with flambda enabled"
-  (Actions_helpers.pass_or_skip Ocamltest_config.flambda
->>>>>>> ocaml/5.1
     "support for flambda enabled"
     "support for flambda disabled")
 
 let no_flambda = make
-<<<<<<< HEAD
-  "no-flambda"
+  ~name:"no-flambda"
+  ~description:"Passes if the compiler is NOT configured with flambda or flambda2 enabled"
   (Actions_helpers.pass_or_skip
      (not (Ocamltest_config.flambda || Ocamltest_config.flambda2))
-||||||| merged common ancestors
-  "no-flambda"
-  (Actions_helpers.pass_or_skip (not Ocamltest_config.flambda)
-=======
-  ~name:"no-flambda"
-  ~description:"Passes if the compiler is NOT configured with flambda enabled"
-  (Actions_helpers.pass_or_skip (not Ocamltest_config.flambda)
->>>>>>> ocaml/5.1
     "support for flambda disabled"
     "support for flambda enabled")
 
