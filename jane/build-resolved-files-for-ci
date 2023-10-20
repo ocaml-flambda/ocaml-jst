@@ -23,7 +23,7 @@ dune_targets=$(
     echo _build/default/.ocamlcommon.objs/byte/$cmi.cmi
   done
 )
-
+echo "$mlis"
 # ocamlbytecomp mlis
 mlis=$(
   { echo driver/{errors,compile,maindriver}.mli
