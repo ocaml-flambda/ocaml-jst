@@ -71,7 +71,6 @@ val make_closure_declaration
   -> params:Parameter.t list
   -> return_layout:Lambda.layout
   -> free_variables:Lambda.layout Variable.Map.t
-  -> stub:bool
   -> Flambda.t
 
 val toplevel_substitution
