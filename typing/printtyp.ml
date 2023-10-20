@@ -27,8 +27,8 @@ open Btype
 open Outcometree
 
 module String = Misc.Stdlib.String
-<<<<<<< HEAD
 module Int = Misc.Stdlib.Int
+module Sig_component_kind = Shape.Sig_component_kind
 
 (* Note [When to print jkind annotations]
    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -108,10 +108,6 @@ module Int = Misc.Stdlib.Int
    This will allow an informative type to be printed for e.g. [let f x = x],
    which can work with any sort.
 *)
-||||||| merged common ancestors
-=======
-module Sig_component_kind = Shape.Sig_component_kind
->>>>>>> ocaml/5.1
 
 (* Print a long identifier *)
 
@@ -489,7 +485,6 @@ let rewrite_double_underscore_paths env p =
   else
     rewrite_double_underscore_paths env p
 
-<<<<<<< HEAD
 let rec rewrite_double_underscore_longidents env (l : Longident.t) =
   match l with
   | Ldot (l, s) ->
@@ -509,15 +504,10 @@ let rec rewrite_double_underscore_longidents env (l : Longident.t) =
           else
           l
 
-let rec tree_of_path namespace = function
-||||||| merged common ancestors
-let rec tree_of_path namespace = function
-=======
 let rec tree_of_path ?(disambiguation=true) namespace p =
   let tree_of_path namespace p = tree_of_path ~disambiguation namespace p in
   let namespace = if disambiguation then namespace else None in
   match p with
->>>>>>> ocaml/5.1
   | Pident id ->
       Oide_ident (ident_name namespace id)
   | Pdot(_, s) as path when non_shadowed_stdlib namespace path ->
@@ -1201,7 +1191,6 @@ let add_type_to_preparation = prepare_type
 (* Disabled in classic mode when printing an unification error *)
 let print_labels = ref true
 
-<<<<<<< HEAD
 (* returns None for [value], according to (C2.1) from
    Note [When to print jkind annotations] *)
 let out_jkind_option_of_jkind jkind =
@@ -1234,15 +1223,13 @@ let tree_of_mode mode =
     | None -> Olinm_unknown
   in
   {oam_locality; oam_uniqueness; oam_linearity}
-||||||| merged common ancestors
-=======
+
 let alias_nongen_row mode px ty =
     match get_desc ty with
     | Tvariant _ | Tobject _ ->
         if is_non_gen mode (Transient_expr.type_expr px) then
           add_alias_proxy px
     | _ -> ()
->>>>>>> ocaml/5.1
 
 let rec tree_of_typexp mode ty =
   let px = proxy ty in
@@ -1256,15 +1243,7 @@ let rec tree_of_typexp mode ty =
     match tty.desc with
     | Tvar _ ->
         let non_gen = is_non_gen mode ty in
-<<<<<<< HEAD
-        let name_gen = if non_gen then Names.new_weak_name ty else Names.new_name in
-||||||| merged common ancestors
-        let name_gen =
-          if non_gen then Names.new_weak_name ty else Names.new_name
-        in
-=======
         let name_gen = Names.new_var_name ~non_gen ty in
->>>>>>> ocaml/5.1
         Otyp_var (non_gen, Names.name_of_type name_gen tty)
     | Tarrow ((l, marg, mret), ty1, ty2, _) ->
         let lab =
