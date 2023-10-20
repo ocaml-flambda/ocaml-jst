@@ -1521,16 +1521,31 @@ let param_jkind ty =
   | _ -> None (* this is (C2.2) from Note [When to print jkind annotations] *)
 
 let tree_of_label l =
-  (Ident.name l.ld_id, l.ld_mutable = Mutable, tree_of_typexp Type l.ld_type)
+  let gom =
+    match l.ld_mutable, l.ld_global with
+    | Mutable, _ -> Ogom_mutable
+    | Immutable, Global -> Ogom_global
+    | Immutable, Unrestricted -> Ogom_immutable
+  in
+  (Ident.name l.ld_id, gom, tree_of_typexp Type l.ld_type)
 
 let tree_of_constructor_arguments = function
-  | Cstr_tuple l -> tree_of_typlist Type l
-  | Cstr_record l -> [ Otyp_record (List.map tree_of_label l) ]
+  | Cstr_tuple l -> List.map tree_of_typ_gf l
+  | Cstr_record l -> [ Otyp_record (List.map tree_of_label l), Ogf_unrestricted ]
+
+let tree_of_constructor_args_and_ret_type args ret_type =
+  match ret_type with
+  | None -> (tree_of_constructor_arguments args, None)
+  | Some res ->
+      Names.with_local_names (fun () ->
+        let out_ret = tree_of_typexp Type res in
+        let out_args = tree_of_constructor_arguments args in
+        let qtvs = extract_qtvs (res :: tys_of_constr_args args) in
+        (out_args, Some (qtvs, out_ret)))
 
 let tree_of_single_constructor cd =
   let name = Ident.name cd.cd_id in
-  let ret = Option.map (tree_of_typexp Type) cd.cd_res in
-  let args = tree_of_constructor_arguments cd.cd_args in
+  let args, ret = tree_of_constructor_args_and_ret_type cd.cd_args cd.cd_res in
   {
       ocstr_name = name;
       ocstr_args = args;
@@ -1664,19 +1679,12 @@ let tree_of_type_decl id decl =
             tree_of_typexp Type ty, decl.type_private, false
         end
     | Type_variant (cstrs, rep) ->
-<<<<<<< HEAD
         let unboxed =
           match rep with
           | Variant_unboxed -> true
           | Variant_boxed _ | Variant_extensible -> false
         in
-        tree_of_manifest (Otyp_sum (List.map tree_of_constructor cstrs)),
-||||||| merged common ancestors
-        tree_of_manifest (Otyp_sum (List.map tree_of_constructor cstrs)),
-=======
-        tree_of_manifest
-          (Otyp_sum (List.map tree_of_constructor_in_decl cstrs)),
->>>>>>> ocaml/5.1
+        tree_of_manifest (Otyp_sum (List.map tree_of_constructor_in_decl cstrs)),
         decl.type_private,
         unboxed
     | Type_record(lbls, rep) ->
@@ -1713,74 +1721,12 @@ let tree_of_type_decl id decl =
       otype_unboxed = unboxed;
       otype_cstrs = constraints }
 
-<<<<<<< HEAD
-and tree_of_constructor_arguments = function
-  | Cstr_tuple l -> List.map tree_of_typ_gf l
-  | Cstr_record l -> [ Otyp_record (List.map tree_of_label l), Ogf_unrestricted ]
-
-and tree_of_constructor_args_and_ret_type args ret_type =
-  match ret_type with
-  | None -> (tree_of_constructor_arguments args, None)
-  | Some res ->
-      Names.with_local_names (fun () ->
-        let out_ret = tree_of_typexp Type res in
-        let out_args = tree_of_constructor_arguments args in
-        let qtvs = extract_qtvs (res :: tys_of_constr_args args) in
-        (out_args, Some (qtvs, out_ret)))
-||||||| merged common ancestors
-and tree_of_constructor_arguments = function
-  | Cstr_tuple l -> tree_of_typlist Type l
-  | Cstr_record l -> [ Otyp_record (List.map tree_of_label l) ]
-=======
 let add_type_decl_to_preparation id decl =
    ignore @@ prepare_decl id decl
->>>>>>> ocaml/5.1
 
-<<<<<<< HEAD
-and tree_of_constructor cd =
-  let name = Ident.name cd.cd_id in
-  let args, ret = tree_of_constructor_args_and_ret_type cd.cd_args cd.cd_res in
-  { ocstr_name = name;
-    ocstr_args = args;
-    ocstr_return_type = ret
-  }
-||||||| merged common ancestors
-and tree_of_constructor cd =
-  let name = Ident.name cd.cd_id in
-  let arg () = tree_of_constructor_arguments cd.cd_args in
-  match cd.cd_res with
-  | None -> {
-      ocstr_name = name;
-      ocstr_args = arg ();
-      ocstr_return_type = None;
-    }
-  | Some res ->
-      Names.with_local_names (fun () ->
-        let ret = tree_of_typexp Type res in
-        let args = arg () in
-        {
-          ocstr_name = name;
-          ocstr_args = args;
-          ocstr_return_type = Some ret;
-        })
-=======
 let tree_of_prepared_type_decl id decl =
   tree_of_type_decl id decl
->>>>>>> ocaml/5.1
 
-<<<<<<< HEAD
-and tree_of_label l =
-  let gom =
-    match l.ld_mutable, l.ld_global with
-    | Mutable, _ -> Ogom_mutable
-    | Immutable, Global -> Ogom_global
-    | Immutable, Unrestricted -> Ogom_immutable
-  in
-  (Ident.name l.ld_id, gom, tree_of_typexp Type l.ld_type)
-||||||| merged common ancestors
-and tree_of_label l =
-  (Ident.name l.ld_id, l.ld_mutable = Mutable, tree_of_typexp Type l.ld_type)
-=======
 let tree_of_type_decl id decl =
   reset_except_context();
   tree_of_type_decl id decl
@@ -1791,20 +1737,11 @@ let add_constructor_to_preparation c =
 
 let prepared_constructor ppf c =
   !Oprint.out_constr ppf (tree_of_single_constructor c)
->>>>>>> ocaml/5.1
 
 let constructor ppf c =
   reset_except_context ();
-<<<<<<< HEAD
-  prepare_type_constructor_arguments c.cd_args;
-  Option.iter prepare_type c.cd_res;
-  !Oprint.out_constr ppf (tree_of_constructor c)
-||||||| merged common ancestors
-  !Oprint.out_constr ppf (tree_of_constructor c)
-=======
   add_constructor_to_preparation c;
   prepared_constructor ppf c
->>>>>>> ocaml/5.1
 
 let label ppf l =
   reset_except_context ();
@@ -1833,29 +1770,6 @@ let constructor_arguments ppf a =
 
 (* Print an extension declaration *)
 
-<<<<<<< HEAD
-let tree_of_extension_constructor id ext es =
-  reset_except_context ();
-  let ty_name = Path.name ext.ext_type_path in
-||||||| merged common ancestors
-let extension_constructor_args_and_ret_type_subtree ext_args ext_ret_type =
-  match ext_ret_type with
-  | None -> (tree_of_constructor_arguments ext_args, None)
-  | Some res ->
-      Names.with_local_names (fun () ->
-        let ret = tree_of_typexp Type res in
-        let args = tree_of_constructor_arguments ext_args in
-        (args, Some ret))
-
-let tree_of_extension_constructor id ext es =
-  reset_except_context ();
-  let ty_name = Path.name ext.ext_type_path in
-=======
-let extension_constructor_args_and_ret_type_subtree ext_args ext_ret_type =
-  let ret = Option.map (tree_of_typexp Type) ext_ret_type in
-  let args = tree_of_constructor_arguments ext_args in
-  (args, ret)
-
 (* When printing extension constructor, it is important to ensure that
 after printing the constructor, we are still in the scope of the constructor.
 For GADT constructor, this can be done by printing the type parameters inside
@@ -1877,7 +1791,6 @@ type 'a t = X of 'a
 
 
 let add_extension_constructor_to_preparation ext =
->>>>>>> ocaml/5.1
   let ty_params = filter_params ext.ext_type_params in
   List.iter add_alias ty_params;
   List.iter prepare_type ty_params;
@@ -2000,17 +1913,10 @@ let prepare_method _lab (priv, _virt, ty) =
 let tree_of_method mode (lab, priv, virt, ty) =
   let (ty, tyl) = method_type priv ty in
   let tty = tree_of_typexp mode ty in
-<<<<<<< HEAD
   let tyl = List.map Transient_expr.repr tyl in
   let qtvs = tree_of_qtvs tyl in
   let qtvs = zap_qtvs_if_boring qtvs in
   Names.remove_names tyl;
-||||||| merged common ancestors
-  Names.remove_names (List.map Transient_expr.repr tyl);
-  let priv = priv = Private in
-=======
-  Names.remove_names (List.map Transient_expr.repr tyl);
->>>>>>> ocaml/5.1
   let priv = priv <> Mpublic in
   let virt = virt = Virtual in
   Ocsg_method (lab, priv, virt, Otyp_poly(qtvs, tty))
@@ -2325,8 +2231,7 @@ let rec tree_of_modtype ?abbrev = function
       let res = wrap_env env (tree_of_modtype ?abbrev) ty_res in
       Omty_functor (param, res)
   | Mty_alias p ->
-<<<<<<< HEAD
-      Omty_alias (tree_of_path Module p)
+      Omty_alias (tree_of_path (Some Module) p)
   | Mty_strengthen _ as mty ->
       begin match !expand_module_type !printing_env mty with
       | Mty_strengthen (mty,p,a) ->
@@ -2335,14 +2240,9 @@ let rec tree_of_modtype ?abbrev = function
             && not (Env.is_functor_arg p !printing_env)
           in
           Omty_strengthen
-            (tree_of_modtype ?abbrev mty, tree_of_path Module p, unaliasable)
+            (tree_of_modtype ?abbrev mty, tree_of_path (Some Module) p, unaliasable)
       | mty -> tree_of_modtype ?abbrev mty
       end
-||||||| merged common ancestors
-      Omty_alias (tree_of_path Module p)
-=======
-      Omty_alias (tree_of_path (Some Module) p)
->>>>>>> ocaml/5.1
 
 and tree_of_functor_parameter ?abbrev = function
   | Unit ->
@@ -2378,7 +2278,6 @@ and tree_of_signature ?abbrev = function
 
 and tree_of_signature_rec ?abbrev ?max_items env' sg =
   let structured = List.of_seq (Signature_group.seq sg) in
-<<<<<<< HEAD
   (* Don't descent into more than 'max_items' (if set) elements to save time. *)
   let collect_trees_of_rec_group max_items group =
     match max_items with
@@ -2386,8 +2285,7 @@ and tree_of_signature_rec ?abbrev ?max_items env' sg =
     | Some _ | None ->
         let env = !printing_env in
         let env', group_trees =
-          Naming_context.with_ctx
-            (fun () -> trees_of_recursive_sigitem_group ?abbrev env group)
+            trees_of_recursive_sigitem_group ?abbrev env group
         in
         set_printing_env env';
         let max_items, group_trees = match max_items with
@@ -2403,24 +2301,6 @@ and tree_of_signature_rec ?abbrev ?max_items env' sg =
         in
         max_items, (env, group_trees)
   in
-||||||| merged common ancestors
-  let collect_trees_of_rec_group group =
-    let env = !printing_env in
-    let env', group_trees =
-      Naming_context.with_ctx
-        (fun () -> trees_of_recursive_sigitem_group env group)
-    in
-    set_printing_env env';
-    (env, group_trees) in
-=======
-  let collect_trees_of_rec_group group =
-    let env = !printing_env in
-    let env', group_trees =
-       trees_of_recursive_sigitem_group env group
-    in
-    set_printing_env env';
-    (env, group_trees) in
->>>>>>> ocaml/5.1
   set_printing_env env';
   snd (List.fold_left_map collect_trees_of_rec_group max_items structured)
 
@@ -3134,11 +3014,10 @@ let report_ambiguous_type_error ppf env tp0 tpl txt1 txt2 txt3 =
           txt3 type_path_expansion tp0)
 
 (* Adapt functions to exposed interface *)
-<<<<<<< HEAD
 let abbreviate ~abbrev f =
   f ?abbrev:(if abbrev then Some (Abbrev.abbrev ()) else None)
 
-let tree_of_path = tree_of_path Other
+let tree_of_path = tree_of_path None
 let tree_of_module ident ?(ellipsis = false) =
   tree_of_module ident ?abbrev:(if ellipsis then Some (Abbrev.ellipsis ()) else None)
 let tree_of_signature sg = tree_of_signature sg
@@ -3146,13 +3025,6 @@ let tree_of_modtype ?(abbrev = false) ty =
   abbreviate ~abbrev tree_of_modtype ty
 let tree_of_modtype_declaration ?(abbrev = false) id md =
   abbreviate ~abbrev tree_of_modtype_declaration id md
-||||||| merged common ancestors
-let tree_of_path = tree_of_path Other
-let tree_of_modtype = tree_of_modtype ~ellipsis:false
-=======
-let tree_of_path = tree_of_path None
-let tree_of_modtype = tree_of_modtype ~ellipsis:false
->>>>>>> ocaml/5.1
 let type_expansion mode ppf ty_exp =
   type_expansion ppf (trees_of_type_expansion mode ty_exp)
 let tree_of_type_declaration ident td rs =
