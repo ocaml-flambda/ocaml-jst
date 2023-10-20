@@ -58,7 +58,7 @@ mls=$(
     grep -v "utils/config.fixed.ml" |
     grep -v "utils/config.generated.ml"
 )
-
+echo "$mls"
 dune_targets=$(
   for ml in $mls; do
     cmx=$(basename ${ml%.ml})
