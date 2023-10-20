@@ -295,9 +295,9 @@ let primitive ppf = function
   | Pfield (n, ptr, sem) ->
       let instr =
         match ptr, sem with
-        | Immediate, _ -> "field_int "
-        | Pointer, Reads_vary -> "field_mut "
-        | Pointer, Reads_agree -> "field_imm "
+        | Immediate, _ -> "field_int"
+        | Pointer, Reads_vary -> "field_mut"
+        | Pointer, Reads_agree -> "field_imm"
       in
       fprintf ppf "%s%a %i" instr field_read_semantics sem n
   | Pfield_computed sem ->
