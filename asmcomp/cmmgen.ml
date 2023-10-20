@@ -978,8 +978,15 @@ and transl_prim_1 env p arg dbg =
   | Pget_header m ->
       box_int dbg Pnativeint m (get_header (transl env arg) dbg)
   | Pperform ->
-      let cont = make_alloc dbg Obj.cont_tag [int_const dbg 0] in
-      Cop(Capply typ_val,
+      (* We have to hard-code this at the moment since the system compiler's
+         stdlib doesn't have [Obj.cont_tag]. *)
+      let cont_tag = 245 in
+      let cont =
+        make_alloc dbg cont_tag [int_const dbg 0] ~mode:Lambda.alloc_heap
+      in
+      (* CR mshinwell: should this close the region?  seems like maybe it
+         should *)
+      Cop(Capply (typ_val, Rc_normal),
        [Cconst_symbol ("caml_perform", dbg); transl env arg; cont],
        dbg)
   | Pdls_get ->
@@ -1247,19 +1254,22 @@ and transl_prim_3 env p arg1 arg2 arg3 dbg =
 
   (* Effects *)
   | Presume ->
-      Cop (Capply typ_val,
+      (* CR mshinwell: likewise, should this close the region? *)
+      Cop (Capply (typ_val, Rc_normal),
            [Cconst_symbol ("caml_resume", dbg);
            transl env arg1; transl env arg2; transl env arg3],
            dbg)
 
   | Prunstack ->
-      Cop (Capply typ_val,
+      (* CR mshinwell: likewise, should this close the region? *)
+      Cop (Capply (typ_val, Rc_normal),
            [Cconst_symbol ("caml_runstack", dbg);
            transl env arg1; transl env arg2; transl env arg3],
            dbg)
 
   | Preperform ->
-      Cop (Capply typ_val,
+      (* CR mshinwell: likewise, should this close the region? *)
+      Cop (Capply (typ_val, Rc_normal),
            [Cconst_symbol ("caml_reperform", dbg);
            transl env arg1; transl env arg2; transl env arg3],
            dbg)
