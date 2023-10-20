@@ -1619,7 +1619,9 @@ let primitive_result_layout (p : primitive) =
       layout_any_value
   | (Parray_to_iarray | Parray_of_iarray) -> layout_any_value
   | Pget_header _ -> layout_boxedint Pnativeint
-  | Prunstack | Presume | Pperform | Preperform -> layout_any_value
+  | Prunstack | Presume | Pperform | Preperform ->
+    (* CR mshinwell/ncourant: to be thought about later *)
+    layout_top
   | Patomic_load { immediate_or_pointer = Immediate } -> layout_int
   | Patomic_load { immediate_or_pointer = Pointer } -> layout_any_value
   | Patomic_exchange
