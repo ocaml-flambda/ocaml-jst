@@ -423,6 +423,8 @@ let emit_instr env i =
         `{emit_label lbl_frame_lbl}:\n`;
         `	addi	{emit_reg i.res.(0)}, {emit_reg reg_alloc_ptr}, 8\n`
       end
+  | Lop(Ialloc { mode = Alloc_local } | Ibeginregion | Iendregion) ->
+      Misc.fatal_error "Local allocations not supported on this architecture"
   | Lop(Ipoll { return_label }) ->
       let lbl_frame_lbl = record_frame_label env i.live (Dbg_alloc []) in
       let lbl_after_poll = match return_label with
