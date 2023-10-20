@@ -143,9 +143,9 @@ let include_kind sub = function
 let str_include_infos sub x =
   let incl_loc = sub.location sub x.incl_loc in
   let incl_attributes = sub.attributes sub x.incl_attributes in
-  { x with incl_loc; incl_attributes;
-           incl_mod = sub.module_expr sub x.incl_mod;
-           incl_kind = include_kind sub x.incl_kind }
+  let incl_mod = sub.module_expr sub x.incl_mod in
+  let incl_kind = include_kind sub x.incl_kind in
+  { x with incl_loc; incl_attributes; incl_mod; incl_kind }
 
 let class_type_declaration sub x =
   class_infos sub (sub.class_type sub) x
@@ -559,9 +559,9 @@ let signature sub x =
 let sig_include_infos sub x =
   let incl_loc = sub.location sub x.incl_loc in
   let incl_attributes = sub.attributes sub x.incl_attributes in
-  { x with incl_loc; incl_attributes;
-           incl_mod = sub.module_type sub x.incl_mod;
-           incl_kind = include_kind sub x.incl_kind }
+  let incl_mod = sub.module_type sub x.incl_mod in
+  let incl_kind = include_kind sub x.incl_kind in
+  { x with incl_loc; incl_attributes; incl_mod; incl_kind }
 
 let signature_item sub x =
   let sig_loc = sub.location sub x.sig_loc in
