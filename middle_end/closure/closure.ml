@@ -545,7 +545,7 @@ let simplif_prim_pure ~backend fpc p (args, approxs) dbg =
             [ Value_const(Uconst_ref(_, Some (Uconst_block(_, l)))) ]
     when n < List.length l ->
       make_const (List.nth l n)
-  | Pfield (n, _, _), [ Uprim(P.Pmakeblock _, ul, _) ], [approx]
+  | Pfield (n, _, _, _), [ Uprim(P.Pmakeblock _, ul, _) ], [approx]
     when n < List.length ul ->
       (* This case is particularly useful for removing allocations
          for optional parameters *)
@@ -1327,6 +1327,11 @@ let rec close ({ backend; fenv; cenv ; mutable_vars; kinds; catch_env } as env) 
   | Lprim(Pfield (n, ptr, mut), [lam], loc) ->
       let (ulam, approx) = close env lam in
       let dbg = Debuginfo.from_location loc in
+      let mut : Lambda.mutable_flag =
+        match mut with
+        | Reads_agree -> Immutable
+        | Reads_vary -> Mutable
+      in
       check_constant_result
         (Uprim(P.Pfield (n, Lambda.layout_any_value, ptr, mut), [ulam], dbg))
         (field_approx n approx)

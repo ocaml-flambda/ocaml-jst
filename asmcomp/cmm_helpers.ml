@@ -688,8 +688,8 @@ let field_address ptr n dbg =
   then ptr
   else Cop(Cadda, [ptr; Cconst_int(n * size_addr, dbg)], dbg)
 
-let get_field_gen_given_memory_chunk memory_chunk mut ptr n dbg =
-  Cop(Cload {memory_chunk=Word_val; mutability; is_atomic=false},
+let get_field_gen_given_memory_chunk memory_chunk mutability ptr n dbg =
+  Cop(Cload {memory_chunk; mutability; is_atomic=false},
     [field_address ptr n dbg], dbg)
 
 let get_field_gen mut ptr n dbg =
@@ -1560,71 +1560,6 @@ let box_sized size mode dbg exp =
 let default_prim name =
   Primitive.simple_on_values ~name ~arity:0(*ignored*) ~alloc:true
 
-
-let int64_native_prim name arity ~alloc =
-  let u64 = Primitive.(Prim_global, Unboxed_integer Pint64) in
-  let rec make_args = function 0 -> [] | n -> u64 :: make_args (n - 1) in
-  let effects = Primitive.Arbitrary_effects in
-  let coeffects = Primitive.Has_coeffects in
-  Primitive.make ~name ~native_name:(name ^ "_native")
-    ~alloc
-    ~c_builtin:false
-    ~effects ~coeffects
-    ~native_repr_args:(make_args arity)
-    ~native_repr_res:u64
-
-(* TODO: On 32-bit, these will do heap allocations even in situations
-   where local allocs are allowed *)
-let simplif_primitive_32bits :
-  Clambda_primitives.primitive -> Clambda_primitives.primitive = function
-    Pbintofint (Pint64,_) -> Pccall (default_prim "caml_int64_of_int")
-  | Pintofbint Pint64 -> Pccall (default_prim "caml_int64_to_int")
-  | Pcvtbint(Pint32, Pint64,_) -> Pccall (default_prim "caml_int64_of_int32")
-  | Pcvtbint(Pint64, Pint32,_) -> Pccall (default_prim "caml_int64_to_int32")
-  | Pcvtbint(Pnativeint, Pint64,_) ->
-      Pccall (default_prim "caml_int64_of_nativeint")
-  | Pcvtbint(Pint64, Pnativeint,_) ->
-      Pccall (default_prim "caml_int64_to_nativeint")
-  | Pnegbint(Pint64,_) -> Pccall (int64_native_prim "caml_int64_neg" 1
-                                 ~alloc:false)
-  | Paddbint(Pint64,_) -> Pccall (int64_native_prim "caml_int64_add" 2
-                                 ~alloc:false)
-  | Psubbint(Pint64,_) -> Pccall (int64_native_prim "caml_int64_sub" 2
-                                 ~alloc:false)
-  | Pmulbint(Pint64,_) -> Pccall (int64_native_prim "caml_int64_mul" 2
-                                 ~alloc:false)
-  | Pdivbint {size=Pint64} -> Pccall (int64_native_prim "caml_int64_div" 2
-                                        ~alloc:true)
-  | Pmodbint {size=Pint64} -> Pccall (int64_native_prim "caml_int64_mod" 2
-                                        ~alloc:true)
-  | Pandbint(Pint64,_) -> Pccall (int64_native_prim "caml_int64_and" 2
-                                 ~alloc:false)
-  | Porbint(Pint64,_) ->  Pccall (int64_native_prim "caml_int64_or" 2
-                                 ~alloc:false)
-  | Pxorbint(Pint64,_) -> Pccall (int64_native_prim "caml_int64_xor" 2
-                                 ~alloc:false)
-  | Plslbint(Pint64,_) -> Pccall (default_prim "caml_int64_shift_left")
-  | Plsrbint(Pint64,_) -> Pccall (default_prim "caml_int64_shift_right_unsigned")
-  | Pasrbint(Pint64,_) -> Pccall (default_prim "caml_int64_shift_right")
-  | Pbintcomp(Pint64, Lambda.Ceq) -> Pccall (default_prim "caml_equal")
-  | Pbintcomp(Pint64, Lambda.Cne) -> Pccall (default_prim "caml_notequal")
-  | Pbintcomp(Pint64, Lambda.Clt) -> Pccall (default_prim "caml_lessthan")
-  | Pbintcomp(Pint64, Lambda.Cgt) -> Pccall (default_prim "caml_greaterthan")
-  | Pbintcomp(Pint64, Lambda.Cle) -> Pccall (default_prim "caml_lessequal")
-  | Pbintcomp(Pint64, Lambda.Cge) -> Pccall (default_prim "caml_greaterequal")
-  | Pcompare_bints Pint64 -> Pccall (default_prim "caml_int64_compare")
-  | Pbigarrayref(_unsafe, n, Pbigarray_int64, _layout) ->
-      Pccall (default_prim ("caml_ba_get_" ^ Int.to_string n))
-  | Pbigarrayset(_unsafe, n, Pbigarray_int64, _layout) ->
-      Pccall (default_prim ("caml_ba_set_" ^ Int.to_string n))
-  | Pstring_load(Sixty_four, _, _) -> Pccall (default_prim "caml_string_get64")
-  | Pbytes_load(Sixty_four, _, _) -> Pccall (default_prim "caml_bytes_get64")
-  | Pbytes_set(Sixty_four, _) -> Pccall (default_prim "caml_bytes_set64")
-  | Pbigstring_load(Sixty_four,_,_) -> Pccall (default_prim "caml_ba_uint8_get64")
-  | Pbigstring_set(Sixty_four,_) -> Pccall (default_prim "caml_ba_uint8_set64")
-  | Pbbswap (Pint64,_) -> Pccall (default_prim "caml_int64_bswap")
-  | p -> p
-
 let simplif_primitive p : Clambda_primitives.primitive =
   match (p : Clambda_primitives.primitive) with
   | Pduprecord _ ->
@@ -2321,7 +2256,7 @@ let read_from_closure_given_machtype t clos base_offset dbg =
     | Float -> Double
   in
   Cop
-    ( make_load_mut memory_chunk,
+    ( mk_load_mut memory_chunk,
       [field_address clos base_offset dbg],
       dbg )
 
@@ -2601,7 +2536,7 @@ let assignment_kind
   | Assignment Modify_maybe_stack, Pointer ->
     assert Config.stack_allocation;
     Caml_modify_local
-  | Heap_initialization, Pointer ->
+  | Heap_initialization, Pointer
   | Root_initialization, Pointer -> Caml_initialize
   | (Assignment _), Immediate -> Simple Assignment
   | Heap_initialization, Immediate

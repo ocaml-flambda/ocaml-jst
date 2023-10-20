@@ -273,7 +273,6 @@ let box_int dbg bi mode arg =
 
 let typ_of_boxed_number = function
   | Boxed_float _ -> Cmm.typ_float
-  | Boxed_integer (Pint64, _,_) when size_int = 4 -> [|Int;Int|]
   | Boxed_integer _ -> Cmm.typ_int
 
 let equal_unboxed_integer ui1 ui2 =
@@ -893,8 +892,6 @@ and transl_ccall env prim args dbg =
     | _, Same_as_ocaml_repr sort -> (machtype_of_sort sort, fun x -> x)
     (* TODO: Allow Alloc_local on suitably typed C stubs *)
     | _, Unboxed_float -> (typ_float, box_float dbg alloc_heap)
-    | _, Unboxed_integer Pint64 when size_int = 4 ->
-        ([|Int; Int|], box_int dbg Pint64 alloc_heap)
     | _, Unboxed_integer bi -> (typ_int, box_int dbg bi alloc_heap)
     | _, Untagged_int -> (typ_int, (fun i -> tag_int i dbg))
     | _, Unboxed_vector _ ->
