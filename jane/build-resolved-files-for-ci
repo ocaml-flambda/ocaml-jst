@@ -130,9 +130,10 @@ dune_targets=$(
 # ocamloptcomp mls
 mls=$(
   { echo middle_end/{,closure,flambda}/*.ml
-    echo asmcomp/*cmm*.ml
+    echo asmcomp/*.ml
   } |
-    tr ' ' '\n'
+    tr ' ' '\n' |
+    grep -v "asmcomp/CSEgen.ml"
 )
 echo "$mls"
 dune_targets=$(
