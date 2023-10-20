@@ -113,12 +113,9 @@ let main argv ppf =
   | exception Continue
   | () ->
     Compmisc.with_ppf_dump ~file_prefix:"profile"
-      (fun ppf -> Profile.print ppf !Clflags.profile_columns);
+      (fun ppf -> Profile.print ppf !Clflags.profile_columns
+        ~timings_precision:!Clflags.timings_precision);
     0
   | exception x ->
     Location.report_exception ppf x;
     2
-  | () ->
-    Compmisc.with_ppf_dump ~stdout:() ~file_prefix:"profile"
-      (fun ppf -> Profile.print ppf !Clflags.profile_columns ~timings_precision:!Clflags.timings_precision);
-    0
