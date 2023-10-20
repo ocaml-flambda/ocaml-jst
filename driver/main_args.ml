@@ -519,12 +519,6 @@ let mk_unsafe f =
   "-unsafe", Arg.Unit f,
   " Do not compile bounds checking on array and string access"
 
-let mk_unsafe_string =
- let err () =
-   raise (Arg.Bad "-unsafe-string is not available since OCaml 5.0")
- in
- "-unsafe-string", Arg.Unit err, " (option not available)"
-
 let mk_use_runtime f =
   "-use-runtime", Arg.String f,
   "<file>  Generate bytecode for the given runtime system"
@@ -800,10 +794,6 @@ let mk_debug_ocaml f =
   "-debug-ocaml", Arg.Unit f, " Debugging output for the compiler\n\
                                (internal use only)"
 
-let mk_debug_ocaml f =
-  "-debug-ocaml", Arg.Unit f, " Debugging output for the compiler\n\
-                               (internal use only)"
-
 let mk_opaque f =
   "-opaque", Arg.Unit f,
   " Does not generate cross-module optimization information\n\
@@ -879,7 +869,6 @@ module type Common_options = sig
   val _no_strict_formats : unit -> unit
   val _unboxed_types : unit -> unit
   val _no_unboxed_types : unit -> unit
-  val _unsafe_string : unit -> unit
   val _verbose_types : unit -> unit
   val _no_verbose_types : unit -> unit
   val _version : unit -> unit
@@ -1191,7 +1180,6 @@ struct
     mk_unboxed_types F._unboxed_types;
     mk_no_unboxed_types F._no_unboxed_types;
     mk_unsafe F._unsafe;
-    mk_unsafe_string;
     mk_use_runtime F._use_runtime;
     mk_use_runtime_2 F._use_runtime;
     mk_v F._v;
@@ -1276,7 +1264,6 @@ struct
     mk_unboxed_types F._unboxed_types;
     mk_no_unboxed_types F._no_unboxed_types;
     mk_unsafe F._unsafe;
-    mk_unsafe_string F._unsafe_string;
     mk_verbose_types F._verbose_types;
     mk_no_verbose_types F._no_verbose_types;
     mk_version F._version;
@@ -1422,7 +1409,6 @@ struct
     mk_unboxed_types F._unboxed_types;
     mk_no_unboxed_types F._no_unboxed_types;
     mk_unsafe F._unsafe;
-    mk_unsafe_string;
     mk_v F._v;
     mk_verbose F._verbose;
     mk_verbose_types F._verbose_types;
@@ -1550,7 +1536,6 @@ module Make_opttop_options (F : Opttop_options) = struct
     mk_unboxed_types F._unboxed_types;
     mk_no_unboxed_types F._no_unboxed_types;
     mk_unsafe F._unsafe;
-    mk_unsafe_string;
     mk_verbose F._verbose;
     mk_verbose_types F._verbose_types;
     mk_no_verbose_types F._no_verbose_types;
@@ -1639,7 +1624,6 @@ struct
     mk_thread F._thread;
     mk_unboxed_types F._unboxed_types;
     mk_no_unboxed_types F._no_unboxed_types;
-    mk_unsafe_string;
     mk_v F._v;
     mk_verbose F._verbose;
     mk_verbose_types F._verbose_types;
@@ -1736,7 +1720,6 @@ module Default = struct
     let _strict_formats = set strict_formats
     let _strict_sequence = set strict_sequence
     let _unboxed_types = set unboxed_types
-    let _unsafe_string = set unsafe_string
     let _verbose_types = set verbose_types
     let _w s =
       Warnings.parse_options false s |> Option.iter Location.(prerr_alert none)

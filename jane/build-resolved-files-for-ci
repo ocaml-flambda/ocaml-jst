@@ -10,7 +10,7 @@ echo "==========="
 
 # ocamlcommon mlis
 mlis=$(
-  { echo driver/{compenv,compmisc,main_args}.ml
+  { echo driver/{compenv,compmisc,main_args}.mli
     echo parsing/parser.mli
     echo {utils,typing,parsing,lambda}/*.mli
   } |
@@ -32,6 +32,7 @@ mlis=$(
 )
 echo "$mlis"
 dune_targets=$(
+  echo $dune_targets
   for mli in $mlis; do
     cmi=$(basename ${mli%.mli})
     echo _build/default/.ocamlbytecomp.objs/byte/$cmi.cmi
@@ -74,6 +75,7 @@ mls=$(
 
 echo "$mls"
 dune_targets=$(
+  echo $dune_targets
   for ml in $mls; do
     cmx=$(basename ${ml%.ml})
     echo _build/default/.ocamlbytecomp.objs/native/$cmx.cmx
