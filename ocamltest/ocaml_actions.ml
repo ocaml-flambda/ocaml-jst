@@ -1249,25 +1249,29 @@ let no_afl_instrument = Actions.make
     "AFL instrumentation enabled")
 
 let stack_allocation = Actions.make
-  "stack-allocation"
+  ~name:"stack-allocation"
+  ~description:"Passes if stack allocation is enabled"
   (Actions_helpers.pass_or_skip Ocamltest_config.stack_allocation
     "Stack allocation enabled"
     "Stack allocation disabled")
 
 let no_stack_allocation = Actions.make
-  "no-stack-allocation"
+  ~name:"no-stack-allocation"
+  ~description:"Passes if stack allocation is disabled"
   (Actions_helpers.pass_or_skip (not Ocamltest_config.stack_allocation)
     "Stack allocation disabled"
     "Stack allocation enabled")
 
 let poll_insertion = Actions.make
-  "poll-insertion"
+  ~name:"poll-insertion"
+  ~description:"Passes if poll insertion is enabled"
   (Actions_helpers.pass_or_skip Ocamltest_config.poll_insertion
     "Poll insertion enabled"
     "Poll insertion disabled")
 
 let no_poll_insertion = Actions.make
-  "no-poll-insertion"
+  ~name:"no-poll-insertion"
+  ~description:"Passes if poll insertion is disabled"
   (Actions_helpers.pass_or_skip (not Ocamltest_config.poll_insertion)
     "Stack allocation disabled"
     "Stack allocation enabled")

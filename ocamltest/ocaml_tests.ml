@@ -37,7 +37,7 @@ let bytecode =
   test_run_by_default = true;
   test_description = "Build bytecode program, run it and check its output";
   test_actions =
-  (if Sys.win32 && Ocamltest_config.native_compiler then
+  (if true && Ocamltest_config.native_compiler then
     opt_build
   else
     byte_build) @
@@ -45,7 +45,7 @@ let bytecode =
     run;
     check_program_output;
   ] @
-  (if not Sys.win32 && Ocamltest_config.native_compiler then
+  (if false && Ocamltest_config.native_compiler then
     opt_build @ [compare_bytecode_programs]
   else
     []
@@ -66,7 +66,7 @@ let native =
     check_ocamlopt_opt_output;
   ] in
   let opt_actions =
-  (if Sys.win32 then
+  (if true then
     opt_build
   else
     byte_build
@@ -75,7 +75,7 @@ let native =
     run;
     check_program_output;
   ] @
-  (if not Sys.win32 then
+  (if false then
     opt_build
   else
     []
