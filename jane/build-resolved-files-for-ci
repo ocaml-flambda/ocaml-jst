@@ -62,6 +62,7 @@ typing_mls=(
   tast_iterator
   tast_mapper
   typeclass
+  typedecl
   typedecl_variance
   typedtree
   types)
