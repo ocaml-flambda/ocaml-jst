@@ -23,6 +23,7 @@ dune_targets=$(
     echo _build/default/.ocamlcommon.objs/byte/$cmi.cmi
   done
 )
+
 # ocamlbytecomp mlis
 mlis=$(
   { echo driver/{errors,compile,maindriver}.mli
@@ -97,21 +98,11 @@ mls=$(
     grep -v "utils/config.fixed.ml" |
     grep -v "utils/config.generated.ml"
 )
-
-# ocamloptcomp mls
-mls=$(
-  { echo middle_end/{,closure,flambda}/*.ml
-    echo asmcomp/*cmm*.ml
-  } |
-    tr ' ' '\n'
-)
-
 echo "$mls"
 dune_targets=$(
-  echo $dune_targets
   for ml in $mls; do
     cmx=$(basename ${ml%.ml})
-    echo _build/default/.ocamloptcomp.objs/native/$cmx.cmx
+    echo _build/default/.ocamlcommon.objs/native/$cmx.cmx
   done
 )
 
@@ -121,13 +112,28 @@ mls=$(
   } |
     tr ' ' '\n'
 )
-
 echo "$mls"
 dune_targets=$(
   echo $dune_targets
   for ml in $mls; do
     cmx=$(basename ${ml%.ml})
     echo _build/default/.ocamlbytecomp.objs/native/$cmx.cmx
+  done
+)
+
+# ocamloptcomp mls
+mls=$(
+  { echo middle_end/{,closure,flambda}/*.ml
+    echo asmcomp/*cmm*.ml
+  } |
+    tr ' ' '\n'
+)
+echo "$mls"
+dune_targets=$(
+  echo $dune_targets
+  for ml in $mls; do
+    cmx=$(basename ${ml%.ml})
+    echo _build/default/.ocamloptcomp.objs/native/$cmx.cmx
   done
 )
 
