@@ -1506,6 +1506,12 @@ let primitive_may_allocate : primitive -> alloc_mode option = function
   | Pobj_magic _ -> None
   | Punbox_float | Punbox_int _ -> None
   | Pbox_float m | Pbox_int (_, m) -> Some m
+  | Prunstack | Presume | Pperform | Preperform -> Some alloc_heap
+  | Patomic_load _
+  | Patomic_exchange
+  | Patomic_cas
+  | Patomic_fetch_add
+  | Pdls_get -> None
 
 let constant_layout = function
   | Const_int _ | Const_char _ -> Pvalue Pintval
@@ -1613,6 +1619,13 @@ let primitive_result_layout (p : primitive) =
       layout_any_value
   | (Parray_to_iarray | Parray_of_iarray) -> layout_any_value
   | Pget_header _ -> layout_boxedint Pnativeint
+  | Prunstack | Presume | Pperform | Preperform -> layout_any_value
+  | Patomic_load { immediate_or_pointer = Immediate } -> layout_int
+  | Patomic_load { immediate_or_pointer = Pointer } -> layout_any_value
+  | Patomic_exchange
+  | Patomic_cas
+  | Patomic_fetch_add
+  | Pdls_get -> layout_any_value
 
 let compute_expr_layout free_vars_kind lam =
   let rec compute_expr_layout kinds = function
