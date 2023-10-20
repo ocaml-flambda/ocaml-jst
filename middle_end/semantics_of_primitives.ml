@@ -286,3 +286,6 @@ let may_locally_allocate (prim:Clambda_primitives.primitive) : bool =
       false
   | Pprobe_is_enabled _ -> false
   | Pget_header m -> is_local_alloc m
+  | Prunstack | Pperform | Presume | Preperform -> true
+  | Patomic_exchange | Patomic_cas | Patomic_fetch_add | Pdls_get
+  | Patomic_load _ -> false

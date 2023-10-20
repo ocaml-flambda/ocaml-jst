@@ -111,9 +111,10 @@ let primitive ppf (prim:Clambda_primitives.primitive) =
   | Pfield (n, layout, ptr, mut) ->
       let instr =
         match ptr, mut with
-        | Immediate, _ -> "field_int "
-        | Pointer, Mutable -> "field_mut "
-        | Pointer, Immutable -> "field_imm "
+        | Immediate, _ -> "field_int"
+        | Pointer, Mutable -> "field_mut"
+        | Pointer, Immutable -> "field_imm"
+        | Pointer, Immutable_unique -> "field_imm_unique"
       in
       fprintf ppf "%s%a %i" instr Printlambda.layout layout n
   | Pfield_computed -> fprintf ppf "field_computed"

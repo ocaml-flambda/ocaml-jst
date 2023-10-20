@@ -248,4 +248,6 @@ let result_layout (p : primitive) =
   | Pstring_load _ | Pbytes_load _ | Pbytes_set _ | Pbigstring_load _
   | Pbigstring_set _ | Pbswap16 | Pbbswap _ | Pint_as_pointer _ | Popaque
   | Pprobe_is_enabled _ | Pbox_float _ | Pbox_int _ | Pget_header _
+  | Prunstack | Pperform | Presume | Preperform | Patomic_exchange
+  | Patomic_cas | Patomic_fetch_add | Pdls_get | Patomic_load _
     -> Lambda.layout_any_value

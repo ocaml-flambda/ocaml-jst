@@ -342,16 +342,12 @@ let mk_compare_ints dbg a1 a2 =
   | a1, a2 -> begin
       bind "int_cmp" a2 (fun a2 ->
         bind "int_cmp" a1 (fun a1 ->
-      bind "int_cmp" a2 (fun a2 ->
-        bind "int_cmp" a1 (fun a1 ->
           let op1 = Cop(Ccmpi(Cgt), [a1; a2], dbg) in
           let op2 = Cop(Ccmpi(Clt), [a1; a2], dbg) in
           tag_int(sub_int op1 op2 dbg) dbg))
     end
 
 let mk_compare_floats dbg a1 a2 =
-  bind "float_cmp" a2 (fun a2 ->
-    bind "float_cmp" a1 (fun a1 ->
   bind "float_cmp" a2 (fun a2 ->
     bind "float_cmp" a1 (fun a1 ->
       let op1 = Cop(Ccmpf(CFgt), [a1; a2], dbg) in

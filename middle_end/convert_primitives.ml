@@ -31,6 +31,11 @@ let convert (prim : Lambda.primitive) : Clambda_primitives.primitive =
   | Pmakeufloatblock (mutability, mode) ->
       Pmakeufloatblock (mutability, mode)
   | Pfield (field, imm_or_pointer, sem) ->
+      let sem : Lambda.mutable_flag =
+        match sem with
+        | Reads_agree -> Immutable
+        | Reads_vary -> Mutable
+      in
       Pfield (field, Pvalue Pgenval, imm_or_pointer, sem)
   | Pfield_computed _sem -> Pfield_computed
   | Psetfield (field, imm_or_pointer, init_or_assign) ->
@@ -176,7 +181,8 @@ let convert (prim : Lambda.primitive) : Clambda_primitives.primitive =
   | Punbox_int bi -> Punbox_int bi
   | Pbox_int (bi, m) -> Pbox_int (bi, m)
   | Pget_header m -> Pget_header m
-  | Pobj_magic _  | Pdls_get -> Pdls_get
+  | Pdls_get -> Pdls_get
+  | Pobj_magic _
   | Pbytes_to_string
   | Pbytes_of_string
   | Pctconst _

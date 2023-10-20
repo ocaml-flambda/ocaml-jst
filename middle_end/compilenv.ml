@@ -30,7 +30,8 @@ type error =
     Not_a_unit_info of string
   | Corrupted_unit_info of string
   | Illegal_renaming of CU.t * CU.t * string
-  | Mismatching_for_pack of string * string * string * string option
+  | Mismatching_for_pack of
+      string * CU.Prefix.t * CU.Name.t * CU.Prefix.t option
 
 exception Error of error
 
@@ -91,9 +92,6 @@ let current_unit =
     ui_export_info = default_ui_export_info;
     ui_for_pack = None }
 
-let concat_symbol unitname id =
-  unitname ^ "." ^ id
-
 let reset compilation_unit =
   CU.Name.Tbl.clear global_infos_table;
   Set_of_closures_id.Tbl.clear imported_sets_of_closures_table;
@@ -106,7 +104,6 @@ let reset compilation_unit =
   current_unit.ui_apply_fun <- [];
   current_unit.ui_send_fun <- [];
   current_unit.ui_force_link <- !Clflags.link_everything;
-  current_unit.ui_for_pack <- packname;
   Hashtbl.clear exported_constants;
   structured_constants := structured_constants_empty;
   current_unit.ui_export_info <- default_ui_export_info;
@@ -168,15 +165,21 @@ let get_unit_info comp_unit =
             if not (CU.equal ui.ui_unit comp_unit) then
               raise(Error(Illegal_renaming(comp_unit, ui.ui_unit, filename)));
             (* Linking to a compilation unit expected to go into a
-               pack (ui_for_pack = Some ...) is possible only from
+               pack is possible only from
                inside the same pack, but it is perfectly ok to link to
                an unit outside of the pack. *)
-            (match ui.ui_for_pack, current_unit.ui_for_pack with
+            let[@inline] for_pack_prefix unit =
+              let prefix = CU.for_pack_prefix unit in
+              if CU.Prefix.is_empty prefix then None else Some prefix
+            in
+            (match for_pack_prefix ui.ui_unit,
+                   for_pack_prefix current_unit.ui_unit
+             with
              | None, _ -> ()
-             | Some p1, Some p2 when String.equal p1 p2 -> ()
+             | Some p1, Some p2 when CU.Prefix.equal p1 p2 -> ()
              | Some p1, p2 ->
                raise (Error (Mismatching_for_pack
-                               (filename, p1, current_unit.ui_name, p2))));
+                        (filename, p1, CU.name current_unit.ui_unit, p2))));
             (Some ui, Some crc)
           with Not_found ->
             let warn = Warnings.No_cmx_file (cmx_name |> CU.Name.to_string) in
@@ -372,13 +375,15 @@ let report_error ppf = function
         CU.print name
         CU.print modname
   | Mismatching_for_pack(filename, pack_1, current_unit, None) ->
-      fprintf ppf "%a@ was built with -for-pack %s, but the \
-                   @ current unit %s is not"
-        Location.print_filename filename pack_1 current_unit
+      fprintf ppf "%a@ was built with -for-pack %a, but the \
+                   @ current unit %a is not"
+        Location.print_filename filename CU.Prefix.print pack_1
+          CU.Name.print current_unit
   | Mismatching_for_pack(filename, pack_1, current_unit, Some pack_2) ->
-      fprintf ppf "%a@ was built with -for-pack %s, but the \
-                   @ current unit %s is built with -for-pack %s"
-        Location.print_filename filename pack_1 current_unit pack_2
+      fprintf ppf "%a@ was built with -for-pack %a, but the \
+                   @ current unit %a is built with -for-pack %a"
+        Location.print_filename filename CU.Prefix.print pack_1
+          CU.Name.print current_unit CU.Prefix.print pack_2
 
 let () =
   Location.register_error_of_exn
