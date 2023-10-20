@@ -117,7 +117,6 @@ dune_targets="$dune_targets \
   $ocamltest/ocaml_actions.cmi \
   $ocamltest/ocaml_backends.cmi \
   $ocamltest/ocaml_commands.cmi \
-  $ocamltest/ocaml_compiler.cmi \
   $ocamltest/ocaml_compilers.cmi \
   $ocamltest/ocaml_directories.cmi \
   $ocamltest/ocaml_files.cmi \
