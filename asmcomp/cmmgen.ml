@@ -984,8 +984,8 @@ and transl_prim_1 env p arg dbg =
       let cont =
         make_alloc dbg cont_tag [int_const dbg 0] ~mode:Lambda.alloc_heap
       in
-      (* CR mshinwell: should this close the region?  seems like maybe it
-         should *)
+      (* CR mshinwell: Rc_normal may be wrong, but this code is unlikely
+         to be in production by then *)
       Cop(Capply (typ_val, Rc_normal),
        [Cconst_symbol ("caml_perform", dbg); transl env arg; cont],
        dbg)
@@ -1254,21 +1254,24 @@ and transl_prim_3 env p arg1 arg2 arg3 dbg =
 
   (* Effects *)
   | Presume ->
-      (* CR mshinwell: likewise, should this close the region? *)
+      (* CR mshinwell: Rc_normal may be wrong, but this code is unlikely
+         to be in production by then *)
       Cop (Capply (typ_val, Rc_normal),
            [Cconst_symbol ("caml_resume", dbg);
            transl env arg1; transl env arg2; transl env arg3],
            dbg)
 
   | Prunstack ->
-      (* CR mshinwell: likewise, should this close the region? *)
+      (* CR mshinwell: Rc_normal may be wrong, but this code is unlikely
+         to be in production by then *)
       Cop (Capply (typ_val, Rc_normal),
            [Cconst_symbol ("caml_runstack", dbg);
            transl env arg1; transl env arg2; transl env arg3],
            dbg)
 
   | Preperform ->
-      (* CR mshinwell: likewise, should this close the region? *)
+      (* CR mshinwell: Rc_normal may be wrong, but this code is unlikely
+         to be in production by then *)
       Cop (Capply (typ_val, Rc_normal),
            [Cconst_symbol ("caml_reperform", dbg);
            transl env arg1; transl env arg2; transl env arg3],
