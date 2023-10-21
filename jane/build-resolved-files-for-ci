@@ -63,7 +63,8 @@ typing_mls=(
   tast_mapper
   typedecl_variance
   typedtree
-  types)
+  types
+  typetexp)
 
 # ocamlcommon mls
 mls=$(
