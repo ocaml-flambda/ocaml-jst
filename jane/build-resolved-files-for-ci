@@ -49,6 +49,7 @@ echo "==========="
 
 typing_mls=(
   datarepr
+  env
   includecore
   mtype
   oprint
