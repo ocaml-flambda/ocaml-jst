@@ -60,8 +60,7 @@ module Error = struct
 
   type module_type_symptom =
     | Mt_core of core_module_type_symptom
-    | Signature of int signature_symptom
-    | Include_functor_signature of Ident.t signature_symptom
+    | Signature of signature_symptom
     | Functor of functor_symptom
     | Invalid_module_alias of Path.t
     | After_alias_expansion of module_type_diff
@@ -82,12 +81,10 @@ module Error = struct
 
   and functor_params_diff = (functor_parameter list * module_type) core_diff
 
-  and 'a signature_symptom = {
+  and signature_symptom = {
     env: Env.t;
     missings: signature_item list;
     incompatibles: (Ident.t * sigitem_symptom) list;
-    oks: ('a * module_coercion) list;
-    leftovers: (signature_item * signature_item * 'a) list;
   }
   and sigitem_symptom =
     | Core of core_sigitem_symptom
@@ -104,9 +101,9 @@ module Error = struct
 
 
   type all =
-    | In_Compilation_unit of (string, int signature_symptom) diff
-    | In_Signature of int signature_symptom
-    | In_Include_functor_signature of Ident.t signature_symptom
+    | In_Compilation_unit of (string, signature_symptom) diff
+    | In_Signature of signature_symptom
+    | In_Include_functor_signature of signature_symptom
     | In_Module_type of module_type_diff
     | In_Module_type_substitution of
         Ident.t * (Types.module_type,module_type_declaration_symptom) diff
@@ -758,13 +755,11 @@ and signatures ~in_eq ~loc env ~mark subst sig1 sig2 mod_shape =
           Ok (simplify_structure_coercion cc id_pos_list, shape)
         else
           Ok (Tcoerce_structure (cc, id_pos_list), shape)
-    | missings, incompatibles, runtime_coercions, leftovers ->
+    | missings, incompatibles, _runtime_coercions, _leftovers ->
         Error {
           Error.env=new_env;
           missings = List.map force_signature_item missings;
           incompatibles;
-          oks = runtime_coercions;
-          leftovers;
         }
 
 (* Inclusion between signature components *)
@@ -981,10 +976,9 @@ let include_functor_signatures ~loc env ~mark subst sig1 sig2 mod_shape =
   match unpaired, d.errors, d.leftovers with
   | [], [], [] ->
      Ok d.runtime_coercions
-  | missings, incompatibles, leftovers ->
+  | missings, incompatibles, _leftovers ->
      let missings = List.map Subst.Lazy.force_signature_item missings in
-     Error Error.{ env; missings; incompatibles;
-                   oks = d.runtime_coercions; leftovers}
+     Error Error.{ env; missings; incompatibles }
 
 let can_alias env path =
   let rec no_apply = function
