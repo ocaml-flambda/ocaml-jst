@@ -26,8 +26,7 @@ type raw_data = nativeint
 
 external repr : 'a -> t = "%identity"
 external obj : t -> 'a = "%identity"
-let _ = assert false
-external magic : 'a -> 'b = "%identity"
+external magic : 'a -> 'b = "%obj_magic"
 external is_int : t -> bool = "%obj_is_int"
 let [@inline always] is_block a = not (is_int a)
 external tag : t -> int = "caml_obj_tag" [@@noalloc]
@@ -55,9 +54,15 @@ external set_raw_field : t -> int -> raw_data -> unit
                                           = "caml_obj_set_raw_field"
 
 external new_block : int -> int -> t = "caml_obj_block"
+<<<<<<< HEAD
 
-let _ = assert false
+external dup : t -> t = "%obj_dup"
+||||||| merged common ancestors
 external dup : t -> t = "caml_obj_dup"
+external truncate : t -> int -> unit = "caml_obj_truncate"
+=======
+external dup : t -> t = "caml_obj_dup"
+>>>>>>> ocaml/5.1
 external add_offset : t -> Int32.t -> t = "caml_obj_add_offset"
 external with_tag : int -> t -> t = "caml_obj_with_tag"
 

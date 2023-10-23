@@ -22,7 +22,6 @@ open! Stdlib
 
 [@@@ocaml.inline 3]
 [@@@ocaml.warning "A"]
-
 (* The [inner_buffer] type ensures that the [length] and [buffer] fields are
    always synchronized, [length = Bytes.length buffer], even in presence
    of data races.
