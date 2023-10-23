@@ -205,11 +205,7 @@ let check_consistency file_name cu =
         match crco with
           None -> ()
         | Some (full_name, crc) ->
-            if CU.Name.equal name (CU.name cu.cu_name)
-            (* CR mshinwell for lmaurer: please double-check, these two used
-               to be [Consistbl.set] and [Consistbl.check] respectively *)
-            then Consistbl.check crc_interfaces name full_name crc file_name
-            else Consistbl.check_noadd crc_interfaces name full_name crc file_name)
+            Consistbl.check crc_interfaces name full_name crc file_name)
       cu.cu_imports
   with Consistbl.Inconsistency {
       unit_name = name;
