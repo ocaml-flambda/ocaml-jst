@@ -131,9 +131,10 @@ dune_targets=$(
 mls=$(
   { echo middle_end/{,closure,flambda}/*.ml
     echo asmcomp/*.ml
+    echo asmcomp/amd64/*.ml
   } |
     tr ' ' '\n' |
-    sed "s/CSEgen/cSEgen/"
+    sed "s/CSE/cSE/"
 )
 echo "$mls"
 dune_targets=$(
