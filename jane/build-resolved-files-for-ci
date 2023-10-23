@@ -133,7 +133,7 @@ mls=$(
     echo asmcomp/*.ml
   } |
     tr ' ' '\n' |
-    grep -v "asmcomp/CSEgen.ml"
+    sed "s/CSEgen/cSEgen/"
 )
 echo "$mls"
 dune_targets=$(
