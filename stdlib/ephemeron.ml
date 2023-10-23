@@ -17,7 +17,6 @@
 open! Stdlib
 
 [@@@ocaml.flambda_o3]
-[@@@ocaml.warning "-32"]
 
 module type SeededS = sig
 
