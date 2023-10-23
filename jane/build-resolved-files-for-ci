@@ -44,9 +44,10 @@ dune_targets=$(
 # ocamloptcomp mlis
 mlis=$(
   { echo middle_end/{,closure,flambda}/*.mli
-    echo asmcomp/*cmm*.mli
+    echo asmcomp/*.mli
   } |
-    tr ' ' '\n'
+    tr ' ' '\n' |
+    sed "s/CSE/cSE/"
 )
 echo "$mlis"
 dune_targets=$(
