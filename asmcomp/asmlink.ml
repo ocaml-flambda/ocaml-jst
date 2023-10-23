@@ -48,6 +48,12 @@ let implementations_defined = ref ([] : (CU.t * string) list)
 let cmx_required = ref ([] : CU.t list)
 
 let check_consistency file_name unit crc =
+  let ui_name = CU.name unit.ui_unit in
+  begin try
+    let source = List.assoc unit.ui_unit !implementations_defined in
+    raise (Error(Multiple_definition(ui_name, file_name, source)))
+  with Not_found -> ()
+  end;
   begin try
     Array.iter
       (fun import ->
@@ -85,12 +91,6 @@ let check_consistency file_name unit crc =
       original_source = auth;
     } ->
     raise(Error(Inconsistent_implementation(name, user, auth)))
-  end;
-  let ui_name = CU.name unit.ui_unit in
-  begin try
-    let source = List.assoc unit.ui_unit !implementations_defined in
-    raise (Error(Multiple_definition(ui_name, file_name, source)))
-  with Not_found -> ()
   end;
   implementations := unit.ui_unit :: !implementations;
   Cmx_consistbl.check crc_implementations unit.ui_unit () crc file_name;
