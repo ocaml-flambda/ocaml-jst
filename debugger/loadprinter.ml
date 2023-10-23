@@ -94,14 +94,14 @@ let eval_value_path env path =
 let match_printer_type desc make_printer_type =
   Ctype.with_local_level ~post:Ctype.generalize begin fun () ->
     let ty_arg = Ctype.newvar Jkind.(value ~why:Debug_printer_argument) in
-    Ctype.unify (Lazy.force Env.initial)
+    Ctype.unify Env.empty
       (make_printer_type ty_arg)
       (Ctype.instance desc.val_type);
     ty_arg
   end
 
 let find_printer_type lid =
-  match Env.find_value_by_name lid (Lazy.force Env.initial) with
+  match Env.find_value_by_name lid Env.empty with
   | (path, desc) -> begin
       match match_printer_type desc Topprinters.printer_type_new with
       | ty_arg -> (ty_arg, path, false)
