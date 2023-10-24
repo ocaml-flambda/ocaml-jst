@@ -160,8 +160,8 @@ default:
 	@echo "    ... TEST=f                 ... the single test in the file f"
 	@echo "    ... DIR=d                  ... the tests located in the directory d"
 	@echo "    ... LIST=f                 ... the tests listed in the file f (one \
-	@echo "  promote-failed  promote all the tests that failed in the previous run"
 	per line)"
+	@echo "  promote-failed  promote all the tests that failed in the previous run"
 	@echo "  lib                        build library modules"
 	@echo "  tools                      build test tools"
 	@echo "  clean                      delete generated files"
