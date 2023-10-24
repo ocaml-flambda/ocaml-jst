@@ -131,13 +131,7 @@ let dummy_table =
 let table_count = ref 0
 
 (* dummy_met should be a pointer, so use an atom *)
-<<<<<<< HEAD
 let dummy_met : item = of_repr (Obj.new_block 0 0)
-||||||| merged common ancestors
-let dummy_met : item = obj (Obj.new_block 0 0)
-=======
-let dummy_met : item = Obj.obj (Obj.new_block 0 0)
->>>>>>> ocaml/5.1
 (* if debugging is needed, this could be a good idea: *)
 (* let dummy_met () = failwith "Undefined method" *)
 
