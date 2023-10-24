@@ -278,9 +278,8 @@ let () =
   test_sheep ();
   if (not debug_runtime) then (
     test_cow_repeated ();
-    test_cow_repeated ()
+    test_cow_repeated_different_cmxs ();
   );
-  test_cow_repeated_different_cmxs ();
   test_cow_same_name_same_mli ();
   test_cow_same_name_different_mli ();
   test_pig ();
