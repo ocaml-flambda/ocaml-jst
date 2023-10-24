@@ -1704,8 +1704,6 @@ module Shape_arg :
   end
 |}]
 
-(* CR mshinwell: unsure how to resolve merge here *)
-
 module F (X : sig module type S module M : S end) = struct
   module N = X.M
 end
