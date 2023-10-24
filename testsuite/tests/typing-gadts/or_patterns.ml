@@ -221,7 +221,7 @@ Line 3, characters 18-19:
 3 |   | IntLit, (3 as x)
                       ^
 Error: This pattern matches values of type int
-       This instance of a is ambiguous:
+       This instance of int is ambiguous:
        it would escape the scope of its equation
 |}]
 
