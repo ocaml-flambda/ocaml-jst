@@ -2491,8 +2491,8 @@ let transl_with_constraint id ?fixed_row_path ~sig_env ~sig_decl ~outer_env
 
 let abstract_type_decl ~injective jkind params =
   let arity = List.length params in
-  let params = List.map Ctype.newvar params in
   Ctype.with_local_level ~post:generalize_decl begin fun () ->
+    let params = List.map Ctype.newvar params in
     { type_params = params;
       type_arity = arity;
       type_kind = Type_abstract Abstract_def;
