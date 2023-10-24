@@ -350,41 +350,21 @@ module Make (P : Dynlink_platform_intf.S) = struct
     | exception exn -> raise (DT.Error (Cannot_open_dynamic_library exn))
     | handle, units ->
       try
-<<<<<<< HEAD
-        global_state := check filename units !global_state ~priv;
-        P.run_shared_startup handle ~filename ~priv;
-||||||| merged common ancestors
-        global_state := check filename units !global_state ~priv;
-        P.run_shared_startup handle;
-=======
         with_lock (fun ({unsafe_allowed; _ } as global) ->
             global.state <- check filename units global.state
                 ~unsafe_allowed
                 ~priv;
-            P.run_shared_startup handle;
+            P.run_shared_startup handle ~filename ~priv;
           );
->>>>>>> ocaml/5.1
         List.iter
           (fun unit_header ->
-<<<<<<< HEAD
-             P.run handle ~filename ~unit_header ~priv;
-             if not priv then begin
-               global_state := set_loaded filename unit_header !global_state
-             end)
-||||||| merged common ancestors
-             P.run handle ~unit_header ~priv;
-             if not priv then begin
-               global_state := set_loaded filename unit_header !global_state
-             end)
-=======
              (* Linked modules might call Dynlink themselves,
                 we need to release the lock *)
-             P.run Global.lock handle ~unit_header ~priv;
+             P.run Global.lock handle ~filename ~unit_header ~priv;
              if not priv then with_lock (fun global ->
                  global.state <- set_loaded filename unit_header global.state
                )
           )
->>>>>>> ocaml/5.1
           units;
         P.finish handle
       with exn ->
