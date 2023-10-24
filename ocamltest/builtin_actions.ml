@@ -223,6 +223,12 @@ let probes = make
      "Target supports probes"
      "Target does not support probes")
 
+let naked_pointers = make
+  "naked_pointers"
+  (Actions_helpers.pass_or_skip (Ocamltest_config.naked_pointers)
+     "Runtime system supports naked pointers"
+     "Runtime system does not support naked pointers")
+
 let has_symlink = make
   ~name:"has_symlink"
   ~description:"Pass if symbolic links are available"
@@ -357,6 +363,7 @@ let _ =
     arch_power;
     function_sections;
     frame_pointers;
+    naked_pointers;
     file_exists;
     copy;
     probes
