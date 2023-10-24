@@ -116,7 +116,7 @@ module TyVarEnv : sig
   val fixed_policy : policy (* no wildcards allowed *)
   val extensible_policy : policy (* common case *)
   val univars_policy : policy (* fresh variables are univars (in methods) *)
-  val new_anon_var : Location.t -> Env.t -> Jkind.t -> policy -> type_expr
+  val new_any_var : Location.t -> Env.t -> Jkind.t -> policy -> type_expr
     (* create a new variable to represent a _; fails for fixed_policy *)
   val new_var : ?name:string -> Jkind.t -> policy -> type_expr
     (* create a new variable according to the given policy *)
@@ -217,20 +217,21 @@ end = struct
   *)
   type pending_univar = {
     univar: type_expr  (** the univar itself *);
-    mutable associated: type_expr option ref list
+    mutable associated: type_expr option ref list;
      (** associated references to row variables that we want to generalize
        if possible *)
+    jkind_info : jkind_info (** the original kind *)
   }
 
-  type poly_univars = (string * pending_univar * jkind_info) list
+  type poly_univars = (string * pending_univar) list
 
   let univars = ref ([] : poly_univars)
   let assert_univars uvs =
-    assert (List.for_all (fun (_name, v, _lay) -> not_generic v.univar) uvs)
+    assert (List.for_all (fun (_name, v) -> not_generic v.univar) uvs)
 
   let rec find_poly_univars name = function
     | [] -> raise Not_found
-    | (n, t, _) :: rest ->
+    | (n, t) :: rest ->
       if String.equal name n
       then t
       else find_poly_univars name rest
@@ -243,28 +244,28 @@ end = struct
       f
       ~finally:(fun () -> univars := old_univars)
 
-  let mk_pending_univar name jkind =
-    { univar = newvar ~name jkind; associated = [] }
+  let mk_pending_univar name jkind jkind_info =
+    { univar = newvar ~name jkind; associated = []; jkind_info }
 
-  let mk_poly_univars_triple_with_jkind ~context var jkind =
+  let mk_poly_univars_tuple_with_jkind ~context var jkind =
     let name = var.txt in
     let original_jkind = Jkind.of_annotation ~context:(context name) jkind in
     let jkind_info = { original_jkind; defaulted = false } in
-    name, mk_pending_univar name original_jkind, jkind_info
+    name, mk_pending_univar name original_jkind jkind_info
 
-  let mk_poly_univars_triple_without_jkind var =
+  let mk_poly_univars_tuple_without_jkind var =
     let name = var.txt in
     let original_jkind = Jkind.value ~why:Univar in
     let jkind_info = { original_jkind; defaulted = true } in
-    name, mk_pending_univar name original_jkind, jkind_info
+    name, mk_pending_univar name original_jkind jkind_info
 
   let make_poly_univars vars =
-    List.map mk_poly_univars_triple_without_jkind vars
+    List.map mk_poly_univars_tuple_without_jkind vars
 
   let make_poly_univars_jkinds ~context vars_jkinds =
     let mk_trip = function
-        | (v, None) -> mk_poly_univars_triple_without_jkind v
-        | (v, Some l) -> mk_poly_univars_triple_with_jkind ~context v l
+        | (v, None) -> mk_poly_univars_tuple_without_jkind v
+        | (v, Some l) -> mk_poly_univars_tuple_with_jkind ~context v l
     in
     List.map mk_trip vars_jkinds
 
@@ -280,16 +281,16 @@ end = struct
         promoted vars
 
   let check_poly_univars env loc vars =
-    vars |> List.iter (fun (_, p, _) -> generalize p.univar);
+    vars |> List.iter (fun (_, p) -> generalize p.univar);
     let univars =
-      vars |> List.map (fun (name, {univar=ty1; _ },
-                             ({ original_jkind; _ } as jkind_info)) ->
+      vars |> List.map (fun (name, {univar=ty1; jkind_info; _ }) ->
       let v = Btype.proxy ty1 in
       let cant_quantify reason =
         raise (Error (loc, env, Cannot_quantify(name, reason)))
       in
       begin match get_desc v with
-      | Tvar { jkind } when not (Jkind.equate jkind original_jkind) ->
+      | Tvar { jkind } when
+          not (Jkind.equate jkind jkind_info.original_jkind) ->
         let reason =
           Bad_univar_jkind { name; jkind_info; inferred_jkind = jkind }
         in
@@ -310,7 +311,7 @@ end = struct
        multiple univars we will promote it once, when checking the nearest
        univar associated to this row variable.
     *)
-    let promote_associated acc (_,v,_) =
+    let promote_associated acc (_,v) =
       let enclosed_rows = List.filter_map (!) v.associated in
       promote_generics_to_univars acc enclosed_rows
     in
@@ -377,7 +378,7 @@ end = struct
     add_pre_univar tv policy;
     tv
 
-  let new_anon_var loc env jkind = function
+  let new_any_var loc env jkind = function
     | { extensibility = Fixed } -> raise(Error(loc, env, No_type_wildcards))
     | policy -> new_var jkind policy
 
@@ -605,7 +606,7 @@ and transl_type_aux env ~row_context ~aliased ~policy mode styp =
   match styp.ptyp_desc with
     Ptyp_any ->
      let ty =
-       TyVarEnv.new_anon_var loc env (Jkind.any ~why:Wildcard) policy
+       TyVarEnv.new_any_var loc env (Jkind.any ~why:Wildcard) policy
      in
      ctyp (Ttyp_var (None, None)) ty
   | Ptyp_var name ->
@@ -944,7 +945,7 @@ and transl_type_aux_jst_layout env ~policy ~row_context mode loc :
   | Ltyp_var { name = None; jkind } ->
     let tjkind = Jkind.of_annotation ~context:(Type_wildcard loc) jkind in
     Ttyp_var (None, Some jkind.txt),
-    TyVarEnv.new_anon_var loc env tjkind policy
+    TyVarEnv.new_any_var loc env tjkind policy
   | Ltyp_var { name = Some name; jkind } ->
     transl_type_var env ~policy ~row_context loc name (Some jkind)
   | Ltyp_poly { bound_vars; inner_type } ->
