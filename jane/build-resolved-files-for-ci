@@ -101,6 +101,7 @@ typing_mls=(
   tast_mapper
   typeclass
   typedecl
+  typecore
   typedecl_variance
   typedtree
   types
