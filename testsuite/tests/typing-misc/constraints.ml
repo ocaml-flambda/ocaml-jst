@@ -341,6 +341,19 @@ end;;
 Exception: Failure "Default_extension failure".
 |}]
 
+(* #11207 *)
+
+type 'a t = 'b constraint 'a = < x : 'b >
+type u = < x : u > t
+[%%expect{|
+type 'a t = 'b constraint 'a = < x : 'b >
+Line 2, characters 0-20:
+2 | type u = < x : u > t
+    ^^^^^^^^^^^^^^^^^^^^
+Error: The type abbreviation u is cyclic:
+         u = < x : u > t,
+         < x : u > t = u
+|}]
 
 (* PR#11771 -- Constraints making expansion affect typeability *)
 type foo = Foo
