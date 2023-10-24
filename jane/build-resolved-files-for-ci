@@ -138,10 +138,12 @@ dune_targets=$(
     echo _build/default/toplevel/byte/.ocamltoplevel.objs/byte/$cmt.cmt{,i}
     echo _build/default/toplevel/native/.ocamltoplevel_native.objs/byte/$cmt.cmt{,i}
   done
+  echo _build/default/toplevel/native/.ocamltoplevel_native.objs/byte/tophooks.cmt{,i}
   for cmt in topstart; do
     echo _build/default/toplevel/native/.topstart.eobjs/byte/$cmt.cmt{,i}
     echo _build/default/toplevel/.topstart.eobjs/byte/$cmt.cmt{,i}
   done
+  echo _build/default/toplevel/.expunge.eobjs/byte/expunge.cmt{,i}
 )
 
 # ocamloptcomp mls

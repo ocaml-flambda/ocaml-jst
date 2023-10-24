@@ -60,7 +60,8 @@ let main () =
   (* Copy each section, modifying the symbol section in passing *)
   let toc_writer = Bytesections.init_record oc in
   List.iter
-    (fun (name, len) ->
+    (fun {Bytesections.name; pos; len} ->
+      seek_in ic pos;
       begin match name with
         SYMB ->
           let global_map : Symtable.global_map = input_value ic in
@@ -71,7 +72,7 @@ let main () =
       | _ ->
           copy_file_chunk ic oc len
       end;
-      Bytesections.record oc name)
+      Bytesections.record toc_writer name)
     (Bytesections.all toc);
   (* Rewrite the toc and trailer *)
   Bytesections.write_toc_and_trailer toc_writer;
