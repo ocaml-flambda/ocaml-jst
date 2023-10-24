@@ -184,7 +184,7 @@ static void st_masterlock_init(st_masterlock * m)
   if (!m->init) {
     // FIXME: check errors
     pthread_mutex_init(&m->lock, NULL);
-    custom_condvar_init(&m->is_free, NULL);
+    custom_condvar_init(&m->is_free);
     m->init = 1;
   }
   m->busy = 1;
@@ -309,7 +309,7 @@ Caml_inline void st_thread_yield(st_masterlock * m)
 typedef struct st_event_struct {
   pthread_mutex_t lock;         /* to protect contents */
   int status;                   /* 0 = not triggered, 1 = triggered */
-  custom_condvar_t triggered;     /* signaled when triggered */
+  custom_condvar triggered;     /* signaled when triggered */
 } * st_event;
 
 
@@ -320,7 +320,7 @@ static int st_event_create(st_event * res)
   if (e == NULL) return ENOMEM;
   rc = pthread_mutex_init(&e->lock, NULL);
   if (rc != 0) { caml_stat_free(e); return rc; }
-  rc = custom_condvar_init(&e->triggered, NULL);
+  rc = custom_condvar_init(&e->triggered);
   if (rc != 0)
   { pthread_mutex_destroy(&e->lock); caml_stat_free(e); return rc; }
   e->status = 0;
