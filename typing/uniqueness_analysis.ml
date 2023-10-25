@@ -1111,10 +1111,10 @@ let value_of_ident ienv unique_use occ path =
       Some value)
   (* accessing a module, which is forced by typemod to be shared and many.
      Here we force it again just to be sure *)
-  | Path.Pdot _ | Path.Pextra_ty _ ->
+  | Path.Pdot _ ->
     force_shared_boundary ~reason:Paths_from_mod_class unique_use occ;
     None
-  | Path.Papply _ -> assert false
+  | Path.Papply _ | Path.Pextra_ty _ -> assert false
 
 (* TODO: replace the dirty hack.
    The following functions are dirty hacks and used for modules and classes.
