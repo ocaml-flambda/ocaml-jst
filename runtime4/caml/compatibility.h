@@ -41,6 +41,9 @@
    - ui_*   (reverifier que win32.c n'en depend pas)
 */
 
+/* mshinwell: temporary hack */
+#if 0
+
 
 /* **** alloc.c */
 #define alloc CAML_DEPRECATED("alloc", "caml_alloc") caml_alloc /*SP*/
@@ -368,6 +371,8 @@
 #define bigarray_fill CAML_DEPRECATED("bigarray_fill", "caml_ba_fill") caml_ba_fill
 #define bigarray_reshape CAML_DEPRECATED("bigarray_reshape", "caml_ba_reshape") caml_ba_reshape
 #define bigarray_init CAML_DEPRECATED("bigarray_init", "caml_ba_init") caml_ba_init
+
+#endif
 
 #endif /* CAML_NAME_SPACE */
 #endif /* CAML_COMPATIBILITY_H */
