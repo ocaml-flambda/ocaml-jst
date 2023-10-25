@@ -58,7 +58,7 @@ exception Undefined = CamlinternalLazy.Undefined
 external make_forward : 'a -> 'a lazy_t = "caml_lazy_make_forward"
 external force : 'a t -> 'a = "%lazy_force"
 
-(* CR ocaml 5 runtime
+(* CR ocaml 5 runtime:
    BACKPORT BEGIN
 let force_val l = CamlinternalLazy.force_gen ~only_val:true l
 *)

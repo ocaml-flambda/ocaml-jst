@@ -62,7 +62,7 @@ let randomized = Atomic.make randomized_default
 let randomize () = Atomic.set randomized true
 let is_randomized () = Atomic.get randomized
 
-(* CR ocaml 5 runtime
+(* CR ocaml 5 runtime:
    BACKPORT BEGIN
 let prng_key = Domain.DLS.new_key Random.State.make_self_init
 *)
@@ -83,7 +83,7 @@ let rec power_2_above x n =
 let create ?(random = Atomic.get randomized) initial_size =
   let s = power_2_above 16 initial_size in
   let seed =
-(* CR ocaml 5 runtime
+(* CR ocaml 5 runtime:
     BACKPORT BEGIN
     if random then Random.State.bits (Domain.DLS.get prng_key) else 0
 *)
@@ -636,7 +636,8 @@ let of_seq i =
 let rebuild ?(random = Atomic.get randomized) h =
   let s = power_2_above 16 (Array.length h.data) in
   let seed =
-(* BACKPORT BEGIN
+(* CR ocaml 5 runtime:
+  BACKPORT BEGIN
     if random then Random.State.bits (Domain.DLS.get prng_key)
 *)
     if random then Random.State.bits (Lazy.force prng)

@@ -266,7 +266,7 @@ let split () = State.split (Domain.DLS.get random_key)
 
 (* Manipulating the current state. *)
 
-(* CR ocaml 5 runtime
+(* CR ocaml 5 runtime:
    BACKPORT BEGIN
 let get_state () = State.copy (Domain.DLS.get random_key)
 let set_state s = State.assign (Domain.DLS.get random_key) s
