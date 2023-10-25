@@ -104,7 +104,8 @@ typing_mls=(
   typedecl_variance
   typedtree
   types
-  typetexp)
+  typetexp
+  typemod)
 
 # ocamlcommon mls
 mls=$(
