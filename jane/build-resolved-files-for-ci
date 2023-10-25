@@ -198,6 +198,8 @@ dune_targets=$(
   done
   echo _build/default/ocamldoc/.odoc_native.eobjs/byte/odoc_native.cmi
   echo _build/default/ocamldoc/.odoc_byte.eobjs/byte/odoc_byte.cmi
+  echo _build/default/ocamldoc/.odoc_native.eobjs/native/odoc_native.cmx
+  echo _build/default/ocamldoc/.odoc_byte.eobjs/native/odoc_byte.cmx
 )
 
 mls=$(
