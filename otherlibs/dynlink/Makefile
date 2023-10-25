@@ -266,7 +266,7 @@ ifeq "$(strip $(NATDYNLINK))" "true"
 endif
 
 partialclean:
-	rm -f $(extract_crc) *.cm[ioaxt] *.cmti *.cmxa \
+	rm -f *.cm[ioaxt] *.cmti *.cmxa \
 	      *.cm[iotx] *.cmti *.o *.obj \
 	      $(LOCAL_SRC)/*.cm[ioaxt] $(LOCAL_SRC)/*.cmti \
         $(LOCAL_SRC)/*.o $(LOCAL_SRC)/*.obj
