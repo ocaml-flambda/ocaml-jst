@@ -87,7 +87,7 @@ let create ?(random = Atomic.get randomized) initial_size =
     BACKPORT BEGIN
     if random then Random.State.bits (Domain.DLS.get prng_key) else 0
 *)
-    if random then Random.State.bits (Lazy.force prng)
+    if random then Random.State.bits (Lazy.force prng) else 0
 (* BACKPORT END *)
   in
   { initial_size = s; size = 0; seed = seed; data = Array.make s Empty }
