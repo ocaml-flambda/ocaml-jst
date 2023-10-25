@@ -178,6 +178,6 @@ module Memprof =
 (* BACKPORT BEGIN
     external discard : t -> unit = "caml_memprof_discard"
 *)
-    let discard _ = failwith "4.x memprof doesn't support discard"
+    let _discard _ = failwith "4.x memprof doesn't support discard"
 (* BACKPORT END *)
   end
