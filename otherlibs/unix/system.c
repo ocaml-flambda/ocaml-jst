@@ -21,8 +21,13 @@
 #include <caml/signals.h>
 #include <caml/osdeps.h>
 #include "unixsupport.h"
+/* BACKPORT
 #include <process.h>
+*/
 #include <stdio.h>
+
+/* CR mshinwell: hack */
+#define _wsystem system
 
 CAMLprim value caml_unix_system(value cmd)
 {

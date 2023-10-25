@@ -20,7 +20,9 @@
 #include <caml/callback.h>
 #include <caml/memory.h>
 #include <caml/fail.h>
+/* BACKPORT
 #include <caml/platform.h>
+*/
 #include "unixsupport.h"
 #include "cst2constr.h"
 #include <errno.h>
