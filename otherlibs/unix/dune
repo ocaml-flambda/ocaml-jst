@@ -93,7 +93,6 @@
    mmap_ba
    mmap_unix
    nice
-   nonblock
    open_unix
    opendir
    pipe_unix
