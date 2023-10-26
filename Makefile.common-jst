@@ -74,7 +74,7 @@ runtime-stdlib: boot-compiler
 	@touch _build/install/runtime_stdlib/lib/ocaml_runtime_stdlib/dynlink.cmxa
 
 compiler: runtime-stdlib
-	$(dune) build --verbose $(ws_main) --only-package=ocaml @install $(ocamldir)/ocamltest/ocamltest.byte
+	$(dune) build $(ws_main) --only-package=ocaml @install $(ocamldir)/ocamltest/ocamltest.byte
 
 runtest: compiler
 	$(dune) runtest $(ws_main)
