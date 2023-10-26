@@ -2013,7 +2013,7 @@ let explicitly_quantified_row: 'a 'r. (<x:'a; ..> as 'r) -> 'a = fun o -> o#y ()
 Line 1, characters 65-85:
 1 | let explicitly_quantified_row: 'a 'r. (<x:'a; ..> as 'r) -> 'a = fun o -> o#y (); o#x
                                                                      ^^^^^^^^^^^^^^^^^^^^
-Error: This definition has type 'b. < x : 'b; y : unit -> 'c; .. > -> 'b
+Error: This definition has type < x : 'b; y : unit -> 'c; .. > -> 'b
        which is less general than 'a 'd. (< x : 'a; .. > as 'd) -> 'a
 |}]
 

@@ -197,7 +197,7 @@ Line 3, characters 2-29:
       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Error: In the GADT constructor
          G : 'a X.t -> 'a X.t u x
-       the type variable 'a cannot be deduced from the type parameters.
+       the type variable 'b cannot be deduced from the type parameters.
 |}]
 
 (* Try to be clever *)
@@ -378,7 +378,7 @@ Line 2, characters 0-27:
     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Error: In the GADT constructor
          M : < b : 'a; c : 'b > -> < b : 'a; c : 'b > t u
-       the type variable 'b cannot be deduced from the type parameters.
+       the type variable 'c cannot be deduced from the type parameters.
 |}]
 
 

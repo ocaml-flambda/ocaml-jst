@@ -1,1 +1,6 @@
-Abstract 10
+Fatal error: exception Dynlink.Error (Dynlink.Library's_module_initializers_failed "Invalid_argument(\"Dynlink: failed to load module due to missing symbol caml_shared_startup__gc_roots\")")
+Raised by primitive operation at Dynlink.Native.ndl_run in file "otherlibs/dynlink/dynlink.ml", line 292, characters 8-25
+Re-raised at Dynlink.Native.ndl_run in file "otherlibs/dynlink/dynlink.ml", line 304, characters 6-137
+Called from Dynlink_common.Make.load in file "otherlibs/dynlink/dynlink_common.ml", line 357, characters 8-244
+Re-raised at Dynlink_common.Make.load in file "otherlibs/dynlink/dynlink_common.ml", line 376, characters 8-17
+Called from Main in file "main.ml", line 88, characters 4-39

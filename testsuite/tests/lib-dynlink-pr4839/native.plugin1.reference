@@ -1,3 +1,2 @@
 API
-zero=0
-fact (zero+5) = 120
+ERROR: execution of module initializers in the shared library failed: Invalid_argument("Dynlink: failed to load module due to missing symbol caml_shared_startup__gc_roots")

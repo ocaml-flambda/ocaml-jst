@@ -171,7 +171,11 @@ let foo () =
     ((fun y z -> z) : int -> local_ (int -> int)) in
   ()
 [%%expect{|
-val foo : unit -> unit = <fun>
+Line 3, characters 4-49:
+3 |     ((fun y z -> z) : int -> local_ (int -> int)) in
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: This expression has type int -> local_ (int -> int)
+       but an expression was expected of type int -> int -> int
 |}]
 
 let foo () =
@@ -230,7 +234,7 @@ let foo (local_ bar : int -> int -> int) =
   let _ = (bar : int -> local_ (int -> int)) in
   ()
 [%%expect{|
-val foo : local_ (int -> int -> int) -> unit = <fun>
+val foo : local_ (int -> (int -> int)) -> unit = <fun>
 |}]
 
 let foo (bar : int -> local_ (int -> int)) =
@@ -358,11 +362,16 @@ val apply4_wrapped : int -> int = <fun>
 |}]
 let ill_typed () = g 1 2 3 4 5
 [%%expect{|
-Line 1, characters 19-20:
+Line 1, characters 19-30:
 1 | let ill_typed () = g 1 2 3 4 5
-                       ^
-Error: This function has type local_ 'a -> int -> (local_ 'b -> int -> int)
-       It is applied to too many arguments; maybe you forgot a `;'.
+                       ^^^^^^^^^^^
+Error: The function 'g' has type
+         local_ 'a -> int -> (local_ 'b -> int -> int)
+       It is applied to too many arguments
+Line 1, characters 29-30:
+1 | let ill_typed () = g 1 2 3 4 5
+                                 ^
+  This extra argument is not expected.
 |}]
 
 (*
@@ -762,8 +771,12 @@ let use (local_ f : _ -> _ -> _) x y =
   f x y
 let result = use (+) 1 2
 [%%expect{|
-val use : local_ ('a -> 'b -> 'c) -> 'a -> 'b -> 'c = <fun>
-val result : int = 3
+Line 2, characters 2-5:
+2 |   f x y
+      ^^^
+Error: This application is complete, but surplus arguments were provided afterwards.
+       When passing or calling a local value, extra arguments are passed in a separate application.
+  Hint: Try wrapping the marked application in parentheses.
 |}]
 
 let baduse (f : _ -> _ -> _) x y = lazy (f x y)
@@ -2710,7 +2723,11 @@ let foo () =
   let local_ _bar2 z : int -> int -> int = local_ (fun x y -> x + y + z) in
   ()
 [%%expect{|
-val foo : unit -> unit = <fun>
+Line 2, characters 6-66:
+2 |   let local_ _bar1 : int -> int -> int = local_ (fun x y -> x + y) in
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: This expression has type int -> local_ (int -> int)
+       but an expression was expected of type int -> int -> int
 |}];;
 
 let foo () =

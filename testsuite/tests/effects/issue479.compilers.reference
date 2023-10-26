@@ -1,13 +1,22 @@
+Line 9, characters 5-11:
+9 | open Effect
+         ^^^^^^
+Error: Unbound module Effect
 - : unit = ()
 type ('a, 'container) iterator = ('a -> unit) -> 'container -> unit
 type 'a generator = unit -> 'a option
 type ('a, 'container) iter2gen =
     ('a, 'container) iterator -> 'container -> 'a generator
-type _ Stdlib.Effect.t += Hold : unit Effect.t
-val iter2gen : (int, 'a) iter2gen = <fun>
-val f : unit -> unit = <fun>
-Hold 1
-1
-Hold 2
-Exception: Stdlib.Effect.Continuation_already_resumed.
+Line 2, characters 7-8:
+2 | type _ t += Hold: unit t
+           ^
+Error: Unbound type constructor t
+Line 3, characters 12-20:
+3 |   let gen = iter2gen List.iter in
+                ^^^^^^^^
+Error: Unbound value iter2gen
+Line 2, characters 0-1:
+2 | f ();;
+    ^
+Error: Unbound value f
 

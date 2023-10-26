@@ -211,5 +211,5 @@ Line 2, characters 0-27:
     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Error: In the GADT constructor
          G : 'a list -> 'a list t g
-       the type variable 'a cannot be deduced from the type parameters.
+       the type variable 'b cannot be deduced from the type parameters.
 |}];;
