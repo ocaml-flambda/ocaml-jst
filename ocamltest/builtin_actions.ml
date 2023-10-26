@@ -369,5 +369,6 @@ let _ =
     naked_pointers;
     file_exists;
     copy;
-    probes
+    probes;
+    naked_pointers
   ]
