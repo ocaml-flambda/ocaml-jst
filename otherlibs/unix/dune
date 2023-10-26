@@ -119,7 +119,6 @@
    socketpair_unix
    sockopt_unix
    spawn
-   startup
    stat_unix
    strofaddr
    symlink_unix

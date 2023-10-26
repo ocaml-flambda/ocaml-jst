@@ -17,16 +17,8 @@
 #include <caml/signals.h>
 #include "unixsupport.h"
 
-/* CR mshinwell: what is this u_long thing? */
-typedef unsigned long u_long;
-
 CAMLprim value caml_unix_set_nonblock(value socket)
 {
-  abort();
-
-  /* CR mshinwell: unclear why this doesn't build (macos problem
-     maybe?) */
-#if 0
   u_long non_block = 1;
 
   if (ioctlsocket(Socket_val(socket), FIONBIO, &non_block) != 0) {
@@ -35,13 +27,10 @@ CAMLprim value caml_unix_set_nonblock(value socket)
   }
   Flags_fd_val(socket) = Flags_fd_val(socket) & ~FLAGS_FD_IS_BLOCKING;
   return Val_unit;
-#endif
 }
 
 CAMLprim value caml_unix_clear_nonblock(value socket)
 {
-  abort();
-#if 0
   u_long non_block = 0;
 
   if (ioctlsocket(Socket_val(socket), FIONBIO, &non_block) != 0) {
@@ -50,5 +39,4 @@ CAMLprim value caml_unix_clear_nonblock(value socket)
   }
   Flags_fd_val(socket) = Flags_fd_val(socket) | FLAGS_FD_IS_BLOCKING;
   return Val_unit;
-#endif
 }
