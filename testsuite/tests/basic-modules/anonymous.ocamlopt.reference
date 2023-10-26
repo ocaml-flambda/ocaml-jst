@@ -34,6 +34,6 @@
       (let
         (*match* =[int]
            (apply (field_imm 4 (global Anonymous!))
-             (field_mut_mut 0 (field_imm 3 (global Anonymous!)))))
+             (field_mut 0 (field_imm 3 (global Anonymous!)))))
         0)
       0)))
