@@ -123,18 +123,10 @@ let rec call_alarm arec =
   end
 
 
-<<<<<<< HEAD
 (* We use [@inline never] to ensure [arec] is never statically allocated
    (which would prevent installation of the finaliser). *)
 let [@inline never] create_alarm f =
-  let arec = { active = ref true; f = f } in
-||||||| merged common ancestors
-let create_alarm f =
-  let arec = { active = ref true; f = f } in
-=======
-let create_alarm f =
   let arec = { active = Atomic.make true; f = f } in
->>>>>>> ocaml/5.1
   finalise call_alarm arec;
   arec.active
 
@@ -143,6 +135,11 @@ let delete_alarm a = Atomic.set a false
 
 module Memprof =
   struct
+(* BACKPORT BEGIN
+    type t
+*)
+    type t = unit
+(* BACKPORT END *)
     type allocation_source = Normal | Marshal | Custom
     type allocation =
       { n_samples : int;
@@ -177,4 +174,8 @@ module Memprof =
       c_start sampling_rate callstack_size tracker
 
     external stop : unit -> unit = "caml_memprof_stop"
+
+(* BACKPORT
+    external discard : t -> unit = "caml_memprof_discard"
+*)
   end
