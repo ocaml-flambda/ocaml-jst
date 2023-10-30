@@ -3139,9 +3139,8 @@ let_binding_body_no_punning:
         let typ =
           Jane_syntax.Layouts.type_of ~loc:typ_loc ltyp
         in
-        let pat = mkpat_with_modes $1 $2 in
         let exp = ghexp_with_modes $sloc $1 $6 in
-        (pat, exp, Some (Pvc_constraint { locally_abstract_univars = []; typ }),
+        ($2, exp, Some (Pvc_constraint { locally_abstract_univars = []; typ }),
          let_binding_mode_attrs $1)
       }
   | let_ident COLON TYPE newtypes DOT core_type EQUAL seq_expr
