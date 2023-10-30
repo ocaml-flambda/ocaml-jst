@@ -83,23 +83,9 @@ external ( != ) : ('a[@local_opt]) -> ('a[@local_opt]) -> bool = "%noteq"
 
 (* Boolean operations *)
 
-<<<<<<< HEAD
 external not : (bool[@local_opt]) -> bool = "%boolnot"
-external ( & ) : (bool[@local_opt]) -> (bool[@local_opt]) -> bool = "%sequand"
 external ( && ) : (bool[@local_opt]) -> (bool[@local_opt]) -> bool = "%sequand"
-external ( or ) : (bool[@local_opt]) -> (bool[@local_opt]) -> bool = "%sequor"
 external ( || ) : (bool[@local_opt]) -> (bool[@local_opt]) -> bool = "%sequor"
-||||||| merged common ancestors
-external not : bool -> bool = "%boolnot"
-external ( & ) : bool -> bool -> bool = "%sequand"
-external ( && ) : bool -> bool -> bool = "%sequand"
-external ( or ) : bool -> bool -> bool = "%sequor"
-external ( || ) : bool -> bool -> bool = "%sequor"
-=======
-external not : bool -> bool = "%boolnot"
-external ( && ) : bool -> bool -> bool = "%sequand"
-external ( || ) : bool -> bool -> bool = "%sequor"
->>>>>>> ocaml/5.1
 
 (* Integer operations *)
 
@@ -568,11 +554,27 @@ let ( ^^ ) (Format (fmt1, str1)) (Format (fmt2, str2)) =
 external sys_exit : int -> 'a = "caml_sys_exit"
 
 (* for at_exit *)
+(* BACKPORT BEGIN
 type 'a atomic_t
 external atomic_make : 'a -> 'a atomic_t = "%makemutable"
 external atomic_get : 'a atomic_t -> 'a = "%atomic_load"
 external atomic_compare_and_set : 'a atomic_t -> 'a -> 'a -> bool
   = "%atomic_cas"
+*)
+type 'a t = {mutable v: 'a}
+
+let atomic_make v = {v}
+let atomic_get r = r.v
+let[@inline never] atomic_compare_and_set r seen v =
+  (* BEGIN ATOMIC *)
+  let cur = r.v in
+  if cur == seen then (
+    r.v <- v;
+    (* END ATOMIC *)
+    true
+  ) else
+    false
+(* BACKPORT END *)
 
 let exit_function = atomic_make flush_all
 
@@ -599,6 +601,14 @@ let exit retcode =
 
 let _ = register_named_value "Pervasives.do_at_exit" do_at_exit
 
+(* CR ocaml 5 runtime:
+ BACKPORT BEGIN *)
+external major : unit -> unit = "caml_gc_major"
+external naked_pointers_checked : unit -> bool
+  = "caml_sys_const_naked_pointers_checked"
+let () = if naked_pointers_checked () then at_exit major
+(* BACKPORT END *)
+
 (*MODULE_ALIASES*)
 module Arg            = Arg
 module Array          = Array
@@ -612,10 +622,16 @@ module BytesLabels    = BytesLabels
 module Callback       = Callback
 module Char           = Char
 module Complex        = Complex
+(* CR ocaml 5 runtime:
+   BACKPORT
 module Condition      = Condition
+*)
 module Digest         = Digest
+(* CR ocaml 5 runtime:
+   BACKPORT
 module Domain         = Domain
 module Effect         = Effect
+*)
 module Either         = Either
 module Ephemeron      = Ephemeron
 module Filename       = Filename
@@ -635,7 +651,10 @@ module ListLabels     = ListLabels
 module Map            = Map
 module Marshal        = Marshal
 module MoreLabels     = MoreLabels
+(* CR ocaml 5 runtime:
+   BACKPORT
 module Mutex          = Mutex
+*)
 module Nativeint      = Nativeint
 module Obj            = Obj
 module Oo             = Oo
@@ -648,7 +667,10 @@ module Queue          = Queue
 module Random         = Random
 module Result         = Result
 module Scanf          = Scanf
+(* CR ocaml 5 runtime:
+   BACKPORT
 module Semaphore      = Semaphore
+*)
 module Seq            = Seq
 module Set            = Set
 module Stack          = Stack

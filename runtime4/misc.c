@@ -225,4 +225,3 @@ void caml_flambda2_invalid (value message)
   fprintf (stderr, "Consider using [Sys.opaque_identity].\n");
   abort ();
 }
-
