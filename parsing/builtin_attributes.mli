@@ -156,9 +156,6 @@ end
     handle this by taking a bool, rather than simply passing fewer nms in those
     cases, to support misplaced attribute warnings - the attribute should not
     count as misplaced if the compiler could use it in some configuration.
-
-    [Attributes_filter.t] is an abstract type so that [Builtin_attributes]
-    can expose other filters without calling code inspecting attribute names.
 *)
 val filter_attributes :
   Attributes_filter.t -> Parsetree.attributes -> Parsetree.attributes
