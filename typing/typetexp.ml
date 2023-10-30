@@ -730,51 +730,23 @@ and transl_type_aux env ~row_context ~aliased ~policy mode styp =
       let ty, fields = transl_fields env ~policy ~row_context o fields in
       ctyp (Ttyp_object (fields, o)) (newobj ty)
   | Ptyp_class(lid, stl) ->
-<<<<<<< HEAD
       let (path, decl) =
-        let path, decl = Env.lookup_cltype ~loc:lid.loc lid.txt env in
-        (path, decl.clty_hash_type)
-=======
-      let (path, decl, _is_variant) =
-        try
-          let path, decl = Env.find_type_by_name lid.txt env in
-          let rec check decl =
-            match decl.type_manifest with
-              None -> raise Not_found
-            | Some ty ->
-                match get_desc ty with
-                  Tvariant row when Btype.static_row row -> ()
-                | Tconstr (path, _, _) ->
-                    check (Env.find_type path env)
-                | _ -> raise Not_found
-          in check decl;
-          Location.deprecated styp.ptyp_loc
-            "old syntax for polymorphic variant type";
-          ignore(Env.lookup_type ~loc:lid.loc lid.txt env);
-          (path, decl,true)
-        with Not_found -> try
-          let lid2 =
-            match lid.txt with
-              Longident.Lident s     -> Longident.Lident ("#" ^ s)
-            | Longident.Ldot(r, s)   -> Longident.Ldot (r, "#" ^ s)
-            | Longident.Lapply(_, _) -> fatal_error "Typetexp.transl_type"
-          in
-          let path, decl = Env.find_type_by_name lid2 env in
-          ignore(Env.lookup_cltype ~loc:lid.loc lid.txt env);
-          (path, decl, false)
-        with Not_found -> try
-          (* Raise a different error if it matches the name of an unboxed type *)
-          let lid3 =
-            match lid.txt with
-              Longident.Lident s     -> Longident.Lident (s ^ "#")
-            | Longident.Ldot(r, s)   -> Longident.Ldot (r, s ^ "#")
-            | Longident.Lapply(_, _) -> fatal_error "Typetexp.transl_type"
-          in
-          ignore (Env.find_type_by_name lid3 env : Path.t * Types.type_declaration);
-          raise (Error (styp.ptyp_loc, env, Did_you_mean_unboxed lid.txt))
-        with Not_found ->
-          ignore (Env.lookup_cltype ~loc:lid.loc lid.txt env); assert false
->>>>>>> 7da89ee53c (flambda-backend: Error message: add hint for unboxed types (#1960))
+        match Env.lookup_cltype ~loc:lid.loc lid.txt env with
+        | (path, decl) -> (path, decl.clty_hash_type)
+        (* Raise a different error if it matches the name of an unboxed type *)
+        | exception
+            (Env.Error (Lookup_error (_, _, Unbound_cltype _)) as exn)
+          ->
+            let unboxed_lid : Longident.t =
+              match lid.txt with
+              | Lident s -> Lident (s ^ "#")
+              | Ldot (l, s) -> Ldot (l, s ^ "#")
+              | Lapply _ -> fatal_error "Typetexp.transl_type"
+            in
+            match Env.find_type_by_name unboxed_lid env with
+            | exception Not_found -> raise exn
+            | (_ : _ * _) ->
+                raise (Error (styp.ptyp_loc, env, Did_you_mean_unboxed lid.txt))
       in
       if List.length stl <> decl.type_arity then
         raise(Error(styp.ptyp_loc, env,
