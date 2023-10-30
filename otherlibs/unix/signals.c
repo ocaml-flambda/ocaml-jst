@@ -25,6 +25,8 @@
 #include <caml/signals.h>
 #include "unixsupport.h"
 
+#include <stdatomic.h>
+
 #ifdef POSIX_SIGNALS
 
 static void decode_sigset(value vset, sigset_t * set)
@@ -89,7 +91,7 @@ CAMLprim value caml_unix_sigpending(value unit)
   uintnat curr;
   if (sigpending(&pending) == -1) caml_uerror("sigpending", Nothing);
   for (i = 0; i < NSIG_WORDS; i++) {
-    curr = /* CR mshinwell: XXX */ /*atomic_load*/ (uintnat)(&caml_pending_signals[i]);
+    curr = atomic_load((_Atomic uintnat*) &caml_pending_signals[i]);
     if (curr == 0) continue;
     for (j = 0; j < BITS_PER_WORD; j++) {
       if (curr & ((uintnat)1 << j))
