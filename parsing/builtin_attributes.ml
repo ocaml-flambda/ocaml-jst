@@ -651,7 +651,7 @@ module Mode_annotation_attribute = struct
 
   let extra_user_written_names = function
     | Local -> [ "ocaml.local"; "local" ]
-    | Global -> [ "extension.global"; "global" ]
+    | Global -> [ "ocaml.global"; "global" ]
     | Unique -> [ "ocaml.unique"; "unique" ]
     | Once -> [ "ocaml.once"; "once" ]
 

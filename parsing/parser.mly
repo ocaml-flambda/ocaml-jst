@@ -3172,7 +3172,8 @@ let_binding_body_no_punning:
   | simple_pattern_not_ident COLON core_type EQUAL seq_expr
       { ($1, $5, Some(Pvc_constraint { locally_abstract_univars=[]; typ=$3 }), []) }
   | mode_flag+ let_ident strict_binding_modes
-      { ($2, ghexp_with_modes $sloc $1 ($3 $1), None, []) }
+      { ($2, ghexp_with_modes $sloc $1 ($3 $1), None,
+         let_binding_mode_attrs $1) }
 ;
 let_binding_body:
   | let_binding_body_no_punning
