@@ -1442,7 +1442,7 @@ let report_error env ppf = function
       (Jkind.Violation.report_with_offender
          ~offender:(fun ppf -> Printtyp.type_expr ppf ty)) violation
   | Did_you_mean_unboxed lid ->
-    fprintf ppf "@[%a is neither a polymorphic variant nor a class type.@ \
+    fprintf ppf "@[%a isn't a class type.@ \
                  Did you mean the unboxed type %a#?@]" longident lid longident lid
 
 let () =

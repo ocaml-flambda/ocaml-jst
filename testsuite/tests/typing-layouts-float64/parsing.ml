@@ -258,8 +258,7 @@ type t = #float;;
 Line 1, characters 9-15:
 1 | type t = #float;;
              ^^^^^^
-Error: float is neither a polymorphic variant nor a class type.
-       Did you mean the unboxed type float#?
+Error: float isn't a class type. Did you mean the unboxed type float#?
 |}]
 
 (* Hint should not show up in this case *)
